@@ -9,22 +9,14 @@ use Exception;
 
 class PropertyController extends Controller
 {
+    protected $rules = [
+        'name'   => 'required|max:200',
+        'domain' => 'required',
+    ];
+
     public function create(Request $request)
     {
-        $rules = [
-            'name'   => 'required|max:200',
-            'domain' => 'required|url',
-        ];
-
-        $messages = [
-            'name.required'     => 'Name required',
-            'name.max'          => 'Name cannot exceed 200 characters',
-            'domain.required'   => 'Domain required',
-            'domain.url'        => 'Domain must be a URL'
-        ];
-
-        $validator = $this->validator($request->input());
-
+        $validator = Validator::make($request->input(), $this->rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first(),
@@ -33,12 +25,18 @@ class PropertyController extends Controller
         }
 
         $user = $request->user();
+        $domain = Property::domain($request->domain);
+        if( ! $domain )     
+            return response([
+                'error' => 'Domain invalid',
+                'ok'     => false
+            ], 400);
 
         $property = Property::create([
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'name'       => $request->name,
-            'domain'     => $this->domain($request->domain),
+            'domain'     => Property::domain($request->domain),
             'key'        => 'MKF-' . str_random(16)
         ]);
 
@@ -53,10 +51,10 @@ class PropertyController extends Controller
      * Read a record
      * 
      */
-    public function read(Request $request, $id)
+    public function read(Request $request, Property $property)
     {
-        $property = Property::find($id);
-        $user     = $request->user();
+        $user = $request->user();
+        
         if( ! $property || $property->company_id != $user->company_id ){
             return response([
                 'error' => 'Not found',
@@ -75,10 +73,9 @@ class PropertyController extends Controller
      * Update a record
      * 
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Property $property)
     {
-        $property = Property::find($id);
-        $user     = $request->user();
+        $user = $request->user();
         if( ! $property || $property->company_id != $user->company_id ){
             return response([
                 'error' => 'Not found',
@@ -86,15 +83,23 @@ class PropertyController extends Controller
             ], 404);
         }
 
-        $validator = $this->validator($request->input());
+        $validator = Validator::make($request->input(), $this->rules);
         if( $validator->fails() ){
             return response([
-                'error' => $validator->errors()->first()
+                'error' => $validator->errors()->first(),
+                'ok'    => false
             ], 400);
         }
 
+        $domain = Property::domain($request->domain);
+        if( ! $domain )     
+            return response([
+                'error' => 'Domain invalid',
+                'ok'     => false
+            ], 400);
+
         $property->name   = $request->name;
-        $property->domain = $this->domain($request->domain);
+        $property->domain = Property::domain($request->domain);
         $property->save();
 
         return response([
@@ -104,10 +109,9 @@ class PropertyController extends Controller
         ]);
     }
 
-    public function delete(Request $request, $id)
+    public function delete(Request $request, Property $property)
     {
-        $property = Property::find($id);
-        $user     = $request->user();
+        $user = $request->user();
         if( ! $property || $property->company_id != $user->company_id ){
             return response([
                 'error' => 'Not found',
@@ -136,32 +140,5 @@ class PropertyController extends Controller
             'properties' => Property::where('company_id', $request->user()->company_id)
                                     ->get()
         ]);
-    }
-
-    /**
-     * Create a validator
-     * 
-     */
-    public function validator(array $input = [])
-    {
-        $rules = [
-            'name'   => 'required|max:200',
-            'domain' => 'required|max:1024|regex:/(.*)+\.([0-9A-z]{2,16})/',
-        ];
-
-        $messages = [
-            'name.required'     => 'Name required',
-            'name.max'          => 'Name cannot exceed 200 characters',
-            'domain.required'   => 'Domain required',
-            'domain.max'        => 'Domain cannot exceed 1024 characters',
-            'domain.regex'      => 'Domain invalid'
-        ];
-
-        return Validator::make($input, $rules, $messages);
-    }
-
-    public function domain($url)
-    {
-        return Property::domain($url);
     }
 }

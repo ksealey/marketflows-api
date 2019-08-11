@@ -1,0 +1,48 @@
+<?php
+
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
+
+class CreatePhoneNumbersTable extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('phone_numbers', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->bigInteger('company_id')->unsigned();
+            $table->bigInteger('created_by')->unsigned();
+            $table->string('twilio_id', 64);
+            $table->bigInteger('phone_number_pool_id')->unsigned()->nullable();
+            $table->string('country_code', 16)->nullable();
+            $table->string('number', 16);
+            $table->boolean('voice')->default(0);
+            $table->boolean('sms')->default(0);
+            $table->boolean('mms')->default(0);
+            $table->string('name', 255);
+            $table->string('source', 255);
+            $table->string('forward_to_country_code', 16)->nullable();
+            $table->string('forward_to_number', 16);
+            $table->timestamps();
+            $table->softDeletes();
+            $table->foreign('company_id')->references('id')->on('companies');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::dropIfExists('phone_numbers');
+    }
+}

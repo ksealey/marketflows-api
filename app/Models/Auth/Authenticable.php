@@ -4,8 +4,9 @@ namespace App\Models\Auth;
 
 use Illuminate\Database\Eloquent\Model;
 use \Firebase\JWT\JWT;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-abstract class Authenticable extends Model
+abstract class Authenticable extends Authenticatable
 {
     /**
      * Return a bearer token with the user as the subject

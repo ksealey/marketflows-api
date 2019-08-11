@@ -45,19 +45,15 @@ class User extends Authenticable
 
     public function createEmailVerification()
     {
-        $key   = str_random(40);
-        
-        $later = date('Y-m-d H:i:s', strtotime('now +24 hours'));
-
-        $this->emailVerification = EmailVerification::create([
+        return EmailVerification::create([
             'user_id'       => $this->id,  
-            'key'           => $key,
-            'expires_at'    => $later
+            'key'           => str_random(40),
+            'expires_at'    => date('Y-m-d H:i:s', strtotime('now +24 hours'))
         ]);
     }
 
-    public function getEmailVerification()
+    public function company()
     {
-        return $this->emailVerification;
+        return $this->belongsTo('\App\Models\Company');
     }
 }

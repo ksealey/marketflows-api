@@ -15,7 +15,7 @@ class CreateTokenBlacklistTable extends Migration
     {
         Schema::create('blacklisted_tokens', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('token', 255)->index();
+            $table->string('token', 512)->index();
             $table->dateTime('remove_at');
             $table->timestamps();
         });

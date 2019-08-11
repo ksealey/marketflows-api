@@ -5,19 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Company extends Model
+class AudioClip extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'companies'; 
-
     protected $fillable = [
+        'company_id',
+        'created_by',
         'name',
+        'path',
+        'mime_type'
     ];
 
     protected $hidden = [
-        'stripe_id',
-        'disabled_at',
         'deleted_at'
     ];
+
+    public function canBeDeleted()
+    {
+        return true;
+    }
 }
