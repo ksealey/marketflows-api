@@ -21,12 +21,12 @@ class CreateCampaignsTable extends Migration
             $table->string('type', 32);
             $table->dateTime('starts_at')->nullable();
             $table->dateTime('ends_at')->nullable();
-            $table->boolean('active')->default(0);
+            $table->dateTime('activated_at')->nullable();
+            $table->dateTime('suspended_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('created_by')->references('id')->on('users');
-            $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
         });
     }
 

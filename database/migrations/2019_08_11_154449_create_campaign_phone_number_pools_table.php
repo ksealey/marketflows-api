@@ -15,8 +15,11 @@ class CreateCampaignPhoneNumberPoolsTable extends Migration
     {
         Schema::create('campaign_phone_number_pools', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->bigInteger('campaign_id')->unsigned();
+            $table->bigInteger('phone_number_pool_id')->unsigned();
             $table->timestamps();
-            $table->softDeletes();
+            $table->foreign('campaign_id')->references('id')->on('campaigns');
+            $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
         });
     }
 

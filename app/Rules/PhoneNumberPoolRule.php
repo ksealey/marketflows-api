@@ -35,7 +35,7 @@ class PhoneNumberPoolRule implements Rule
         if( $pool && ($pool->company_id == $this->companyId) )
             return true;
 
-        $this->message = 'Invalid pool';
+        $this->message = 'Invalid phone number pool';
 
         return false;
     }

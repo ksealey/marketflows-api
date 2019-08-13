@@ -15,6 +15,7 @@ $factory->define(\App\Models\PhoneNumber::class, function (Faker $faker) {
         'forward_to_number'         => substr($faker->e164PhoneNumber, -10),
         'voice'                     => true,
         'sms'                       => true,
-        'mms'                       => true
+        'mms'                       => true,
+        'twilio_id'                 => str_random(40)
     ];
 });

@@ -7,13 +7,13 @@ trait CreatesUser
 
     public $user;
 
-    public function createUser()
+    public function createUser(array $fields = [])
     {
         $this->company =  factory(\App\Models\Company::class)->create();
         
-        $this->user =  factory(\App\Models\User::class)->create([
+        $this->user =  factory(\App\Models\User::class)->create(array_merge([
             'company_id' => $this->company->id
-        ]);
+        ], $fields));
 
         return $this->user;
     }

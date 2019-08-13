@@ -3,14 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-class CampaignPhoneNumbers extends Model
+class CampaignPhoneNumberPool extends Model
 {
-    use SoftDeletes;
-
     protected $hidden = [
         'company_id',
         'deleted_at'
+    ];
+
+    protected $fillable = [
+        'campaign_id',
+        'phone_number_pool_id'
     ];
 }
