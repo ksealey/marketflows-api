@@ -50,11 +50,11 @@ class CampaignTest extends TestCase
     }
 
     /**
-     * Test creating
+     * Test creating with a phone number
      *
      * @group campaigns
      */
-    public function testCreate()
+    public function testCreateWithPhone()
     {
         $myTZ = 'America/New_York';
 
@@ -115,6 +115,51 @@ class CampaignTest extends TestCase
     }
 
     /**
+     * Test creating with a phone number in use
+     *
+     * @group campaigns
+     */
+    public function testCreateWithPhoneInUse()
+    {
+    
+        $user = $this->createUser();
+
+        $phoneNumber1 = factory(PhoneNumber::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+
+        // This one will be in use..
+        $phoneNumber2 = factory(PhoneNumber::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+        $otherCampaign    = factory(Campaign::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+        CampaignPhoneNumber::create([
+            'campaign_id'     => $otherCampaign->id,
+            'phone_number_id' => $phoneNumber2->id
+        ]);
+
+        $campaign = factory(Campaign::class)->make();
+
+        $response = $this->json('POST', '/v1/campaigns', [
+            'name'          => $campaign->name,
+            'type'          => Campaign::TYPE_WEB,
+            'starts_at'     => $campaign->starts_at,
+            'ends_at'       => $campaign->ends_at,
+            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id]
+        ], $this->authHeaders());
+
+        $response->assertStatus(400);
+        $response->assertJSON([
+            'error' => 'Phone numbers in use | ' . $phoneNumber2->id
+        ]);
+    }
+
+    /**
      * Test creating with a phone pool
      *
      * @group campaigns
@@ -161,6 +206,55 @@ class CampaignTest extends TestCase
                     'id' => $pool->id
                 ]
             ]
+        ]);
+
+        //  Make sure the phone number pool is linked
+        $linkCount = CampaignPhoneNumberPool::where('phone_number_pool_id', $pool->id)
+                                            ->count();
+        
+        $this->assertTrue($linkCount === 1);
+    }
+
+    /**
+     * Test creating with a phone pool that is in use
+     *
+     * @group campaigns-
+     */
+    public function testCreateWithPhonePoolInUse()
+    {
+        $myTZ = 'America/New_York';
+
+        $user = $this->createUser([
+            'timezone' => $myTZ
+        ]);
+
+        $pool = factory(PhoneNumberPool::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+
+        $otherCampaign    = factory(Campaign::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+        CampaignPhoneNumberPool::create([
+            'campaign_id'          => $otherCampaign->id,
+            'phone_number_pool_id' => $pool->id
+        ]);
+
+        $campaign    = factory(Campaign::class)->make();
+
+        $response = $this->json('POST', '/v1/campaigns', [
+            'name'      => $campaign->name,
+            'type'      => Campaign::TYPE_WEB,
+            'starts_at' => $campaign->starts_at,
+            'ends_at'   => $campaign->ends_at,
+            'phone_number_pool' => $pool->id
+        ], $this->authHeaders());
+
+        $response->assertStatus(400);
+        $response->assertJSON([
+            'error' => 'Phone number pool in use'
         ]);
 
         //  Make sure the phone number pool is linked

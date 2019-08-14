@@ -9,6 +9,8 @@ class PhoneNumberRule implements Rule
 {
     protected $companyId;
 
+    protected $campaignId;
+
     protected $message;
 
     /**
@@ -16,9 +18,11 @@ class PhoneNumberRule implements Rule
      *
      * @return void
      */
-    public function __construct($companyId)
+    public function __construct($companyId, $campaignId = null)
     {
         $this->companyId = $companyId;
+
+        $this->campaignId = $campaignId;
     }
 
     /**
@@ -52,7 +56,15 @@ class PhoneNumberRule implements Rule
         
         $diff = array_diff($value, $foundIds);
         if( count($diff) ){
-            $this->message = 'Phone numbers invalid: ' . implode(',', $diff);
+            $this->message = 'Phone numbers invalid | ' . implode(',', $diff);
+
+            return false;
+        }
+
+        //  Make sure they are not in use
+        $numbersInUse = PhoneNumber::numbersInUseExcludingCampaign($value, $this->campaignId);
+        if( count($numbersInUse) ){
+            $this->message = 'Phone numbers in use | ' . implode(',', $numbersInUse);
 
             return false;
         }

@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
+use \App\Models\Campaign;
+use \App\Models\CampaignPhoneNumber;
+use \App\Models\PhoneNumberPool;
 use Twilio\Rest\Client as TwilioClient;
 
 class PhoneNumber extends Model
@@ -26,7 +29,8 @@ class PhoneNumber extends Model
         'name',
         'source',
         'forward_to_country_code',
-        'forward_to_number'
+        'forward_to_number',
+        'audio_clip_id'
     ];
 
     protected $hidden = [
@@ -153,6 +157,54 @@ class PhoneNumber extends Model
 
     public function isInUse()
     {
-        return false;
+        $linkCount = CampaignPhoneNumber::where('phone_number_id', $this->id)->count();
+
+        if( $linkCount )
+            return true;
+
+        if( ! $this->phone_number_pool_id )
+            return false;
+        
+        $pool = PhoneNumberPool::find($this->phone_number_pool_id);
+        
+        return $pool ? $pool->isInUse() : false;
+    }
+
+    static public function numbersInUse(array $numbers = [], $excludingCampaignId = null)
+    {
+        if( ! count($numbers) )
+            return [];
+
+        //  Looks for a direct link
+        $query = CampaignPhoneNumber::whereIn('phone_number_id', $numbers);
+        if( $excludingCampaignId )
+            $query->where('campaign_id', '!=', $excludingCampaignId);
+        $numberLinks = $query->get();
+
+        if( count($numberLinks) )
+            return array_column($numberLinks->toArray(), 'phone_number_id');
+     
+        //  Look through a link via pool 
+        $numbersInLinkedPools = PhoneNumber::whereIn('phone_number_pool_id', function($query) use($numbers, $excludingCampaignId){
+            $query->select('phone_number_pool_id')
+                  ->from('campaign_phone_number_pools')
+                  ->whereIn('phone_number_pool_id', function($query) use($numbers){
+                    $query->select('phone_number_pool_id')
+                        ->from('phone_numbers')
+                        ->whereIn('id', $numbers);
+                });
+            if( $excludingCampaignId )
+                $query->where('campaign_id', '!=', $excludingCampaignId);
+        })->get(); 
+        
+        if( count($numbersInLinkedPools) )
+            return array_column($numbersInLinkedPools->toArray(), 'id');
+        
+        return [];
+    }
+
+    static public function numbersInUseExcludingCampaign(array $numbers = [], $campaignId = null)
+    {
+        return self::numbersInUse($numbers, $campaignId);
     }
 }

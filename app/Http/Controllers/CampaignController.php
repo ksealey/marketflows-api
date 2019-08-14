@@ -193,8 +193,8 @@ class CampaignController extends Controller
             'type'              => 'bail|required|in:' . implode(',', Campaign::types()),
             'starts_at'         => 'bail|required|date',
             'ends_at'           => ['bail', 'date'],
-            'phone_numbers'     => ['bail','required_without:phone_number_pool', new PhoneNumberRule($user->company_id)],
-            'phone_number_pool' => ['bail', 'numeric', 'required_without:phone_numbers',new PhoneNumberPoolRule($user->company_id)],
+            'phone_numbers'     => ['bail','required_without:phone_number_pool', new PhoneNumberRule($user->company_id, $campaign->id)],
+            'phone_number_pool' => ['bail', 'numeric', 'required_without:phone_numbers',new PhoneNumberPoolRule($user->company_id, $campaign->id)],
         ]; 
 
         $validator = Validator::make($request->input(), $rules);

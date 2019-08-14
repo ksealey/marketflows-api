@@ -28,11 +28,13 @@ class CreatePhoneNumbersTable extends Migration
             $table->string('source', 255);
             $table->string('forward_to_country_code', 16)->nullable();
             $table->string('forward_to_number', 16);
+            $table->bigInteger('audio_clip_id')->unsigned()->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
+            $table->foreign('audio_clip_id')->references('id')->on('audio_clips');
         });
     }
 

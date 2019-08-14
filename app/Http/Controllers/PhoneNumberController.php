@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Rules\PhoneNumberPoolRule;
+use App\Rules\AudioClipRule;
+use App\Models\AudioClip;
 use App\Models\PhoneNumber;
 use Validator;
 use Exception;
@@ -66,7 +68,8 @@ class PhoneNumberController extends Controller
             'number'            => 'bail|required|digits_between:10,13',
             'name'              => 'bail|required|max:255',
             'source'            => 'bail|required|max:255',
-            'forward_to_number' => 'bail|required|digits_between:10,13'
+            'forward_to_number' => 'bail|required|digits_between:10,13',
+            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($user->company_id)]  
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -94,7 +97,8 @@ class PhoneNumberController extends Controller
                 'name'         => $request->name,
                 'source'       => $request->source,
                 'forward_to_country_code' => PhoneNumber::countryCode($request->forward_to_number),
-                'forward_to_number'       => PhoneNumber::phone($request->forward_to_number)
+                'forward_to_number'       => PhoneNumber::phone($request->forward_to_number),
+                'audio_clip_id' => $request->audio_clip
             ]);
         }catch(Exception $e){
             throw $e;
@@ -145,7 +149,8 @@ class PhoneNumberController extends Controller
             'phone_number_pool' => ['bail', new PhoneNumberPoolRule($user->company_id)],
             'name'              => 'bail|required|max:255',
             'source'            => 'bail|required|max:255',
-            'forward_to_number' => 'bail|required|digits_between:10,13'
+            'forward_to_number' => 'bail|required|digits_between:10,13',
+            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($user->company_id)]
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -160,6 +165,7 @@ class PhoneNumberController extends Controller
         $phoneNumber->phone_number_pool_id      = $request->phone_number_pool;
         $phoneNumber->forward_to_country_code   = PhoneNumber::countryCode($request->forward_to_number) ?: null;
         $phoneNumber->forward_to_number         = PhoneNumber::phone($request->forward_to_number) ?: null;
+        $phoneNumber->audio_clip_id             = $request->audio_clip;
         $phoneNumber->save();
 
         return response([

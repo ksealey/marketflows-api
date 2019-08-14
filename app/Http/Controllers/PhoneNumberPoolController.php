@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use \App\Rules\AudioClipRule;
 use \App\Models\AudioClip;
 use \App\Models\PhoneNumber;
 use \App\Models\PhoneNumberPool;
@@ -51,11 +52,14 @@ class PhoneNumberPoolController extends Controller
 
     public function create(Request $request)
     {
+        $user = $request->user();
+
         $rules = [
-            'name'                      => 'required|max:255',
-            'source'                    => 'required|max:255',
-            'forward_to_country_code'   => 'digits_between:1,4',
-            'forward_to_number'         => 'required|digits:10',
+            'name'                      => 'bail|required|max:255',
+            'source'                    => 'bail|required|max:255',
+            'forward_to_country_code'   => 'bail|digits_between:1,4',
+            'forward_to_number'         => 'bail|required|digits:10',
+            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($user->company_id)]            
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -63,17 +67,6 @@ class PhoneNumberPoolController extends Controller
             return response([
                 'error' =>  $validator->errors()->first()
             ], 400);
-        }
-
-        $user = $request->user();
-
-        if( $request->audio_clip ){
-            $audioClip = AudioClip::find($request->audio_clip);
-            if( ! $audioClip || $audioClip->company_id != $user->company_id ){
-                return response([
-                    'error' => 'Audio clip not found'
-                ], 400);
-            }
         }
 
         $phoneNumberPool = PhoneNumberPool::create([
@@ -110,6 +103,7 @@ class PhoneNumberPoolController extends Controller
     public function update(Request $request, PhoneNumberPool $phoneNumberPool)
     {
         $user = $request->user();
+        
         if( ! $phoneNumberPool || $phoneNumberPool->company_id != $user->company_id ){
             return response([
                 'error' => 'Not found'
@@ -117,10 +111,11 @@ class PhoneNumberPoolController extends Controller
         }
 
         $rules = [
-            'name'                      => 'required|max:255',
-            'source'                    => 'required|max:255',
-            'forward_to_country_code'   => 'digits_between:1,4',
-            'forward_to_number'         => 'required|digits:10',
+            'name'                      => 'bail|required|max:255',
+            'source'                    => 'bail|required|max:255',
+            'forward_to_country_code'   => 'bail|digits_between:1,4',
+            'forward_to_number'         => 'bail|required|digits:10',
+            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($user->company_id)]  
         ];
 
         $validator = Validator::make($request->input(), $rules);

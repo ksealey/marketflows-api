@@ -5,7 +5,11 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use \App\Models\Campaign;
 use \App\Models\PhoneNumber;
+use \App\Models\PhoneNumberPool;
+use \App\Models\CampaignPhoneNumber;
+use \App\Models\CampaignPhoneNumberPool;
 
 class PhoneNumberTest extends TestCase
 {
@@ -67,7 +71,7 @@ class PhoneNumberTest extends TestCase
         PhoneNumber::purchase('15005550001');
     }
 
-     /**
+    /**
      * Test cleaning phone numbers
      *
      * @group phone-numbers
@@ -80,6 +84,112 @@ class PhoneNumberTest extends TestCase
 
         $this->assertTrue(PhoneNumber::countryCode($phone) == $countryCode);
         $this->assertTrue(PhoneNumber::phone($phone) == $number);
+    }
+
+    /**
+     * Test checking if a phone number is in use
+     *
+     * @group phone-numbers
+     */
+    public function testPhoneNumberIsUse()
+    {
+        $user = $this->createUser();
+
+        $campaign    = factory(Campaign::class)->create([
+            'company_id'   => $user->company_id,
+            'created_by'   => $user->id,
+            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
+            'ends_at'      => date('Y-m-d H:i:s', strtotime('now -10 minutes')),
+        ]);
+
+        $phone = factory(PhoneNumber::class)->create([
+            'company_id'  => $user->company_id,
+            'twilio_id'   => str_random(40),
+            'created_by'  => $user->id
+        ]);
+
+        $this->assertTrue($phone->isInUse() === false);
+
+        $link = CampaignPhoneNumber::create([
+            'campaign_id'     => $campaign->id,
+            'phone_number_id' => $phone->id
+        ]);
+
+        $this->assertTrue($phone->isInUse() === true);
+
+        $link->delete();
+
+        $this->assertTrue($phone->isInUse() === false);
+    }
+
+    /**
+     * Test checking if a phone number is in use
+     *
+     * @group phone-numbers
+     */
+    public function testPhoneNumberPoolIsUse()
+    {
+        $user = $this->createUser();
+
+        $pool = factory(PhoneNumberPool::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+
+        $phone = factory(PhoneNumber::class)->create([
+            'company_id'           => $user->company_id,
+            'created_by'           => $user->id,
+            'phone_number_pool_id' => $pool->id,
+            'twilio_id'            => str_random(40)
+        ]);
+
+        $phone2 = factory(PhoneNumber::class)->create([
+            'company_id'           => $user->company_id,
+            'created_by'           => $user->id,
+            'phone_number_pool_id' => $pool->id,
+            'twilio_id'            => str_random(40)
+        ]);
+
+        $campaign    = factory(Campaign::class)->create([
+            'company_id'   => $user->company_id,
+            'created_by'   => $user->id,
+            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
+            'ends_at'      => date('Y-m-d H:i:s', strtotime('now +10 minutes')),
+        ]);
+
+        //  Make sure they know they're not in use
+        $this->assertTrue($pool->isInUse() === false);
+        $this->assertTrue($phone->isInUse() === false);
+        $this->assertTrue($phone2->isInUse() === false);
+        //  Check as a group
+        $numberArr = [$phone->id, $phone2->id];
+        $numbersInUse = PhoneNumber::numbersInUse($numberArr);
+        $this->assertTrue(count($numbersInUse) == 0);
+
+        //  Put it in use
+        $link = CampaignPhoneNumberPool::create([
+            'campaign_id'          => $campaign->id,
+            'phone_number_pool_id' => $pool->id
+        ]);
+
+        $this->assertTrue($pool->isInUse() === true);
+        $this->assertTrue($phone->isInUse() === true);
+        //  Check as a group
+        $numbersInUse = PhoneNumber::numbersInUse($numberArr);
+        $this->assertTrue(count($numbersInUse) == 2);
+        $this->assertTrue(in_array($phone->id, $numbersInUse) && in_array($phone2->id, $numbersInUse) );
+        //  Remove second number from pool and check again
+        $phone2->phone_number_pool_id = null;
+        $phone2->save();
+        $this->assertTrue($phone2->isInUse() === false);
+        $numbersInUse = PhoneNumber::numbersInUse($numberArr);
+        $this->assertTrue(count($numbersInUse) == 1);
+        $this->assertTrue(in_array($phone->id, $numbersInUse));
+
+        //  Remove link and check that they know they're no longer in use
+        $link->delete();
+        $this->assertTrue($pool->isInUse() === false);
+        $this->assertTrue($phone->isInUse() === false);
     }
 
 }
