@@ -29,5 +29,19 @@ services:
       - "3306:3306"
     networks:
       - mf_net
+  nosql_a:
+    image: cassandra:latest
+    restart: always
+    container_name: mf_nosql_a
+    networks:
+      - mf_net
+  nosql_b:
+    image: cassandra:latest
+    restart: always
+    container_name: mf_nosql_b
+    environment: # tell the second where the first is
+      - CASSANDRA_SEEDS=mf_nosql_a
+    networks:
+      - mf_net
 networks:
   mf_net:
