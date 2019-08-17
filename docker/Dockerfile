@@ -13,8 +13,8 @@ RUN apt-get update
 
 # Install PHP 7
 RUN apt-get install -y \
-  php7.2-cli \
-  php7.2
+  php7.3-cli \
+  php7.3
 
 # Install Apache
 RUN apt-get install -y \
@@ -24,19 +24,20 @@ RUN apt-get install -y \
 RUN apt-get install -y \
   php-apcu \
   php-xdebug \
-  php7.2-gd \
-  php7.2-json \
-  php7.2-ldap \
-  php7.2-mbstring \
-  php7.2-mysql \
-  php7.2-pgsql \
-  php7.2-sqlite3 \
-  php7.2-xml \
-  php7.2-xsl \
-  php7.2-zip \
-  php7.2-pdo \
-  php7.2-curl \
-  php7.2-gmp
+  php7.3-gd \
+  php7.3-json \
+  php7.3-ldap \
+  php7.3-mbstring \
+  php7.3-mysql \
+  php7.3-pgsql \
+  php7.3-sqlite3 \
+  php7.3-xml \
+  php7.3-xsl \
+  php7.3-zip \
+  php7.3-pdo \
+  php7.3-curl \
+  php7.3-gmp \
+  php-cassandra
 
 # Install handy utils
 RUN apt-get install -y \
@@ -48,8 +49,8 @@ RUN apt-get install -y \
 COPY apache/config/vhost /etc/apache2/sites-available/000-default.conf
 
 # Copy php.ini file
-COPY php/config/php.ini /etc/php/7.0/apache2/php.ini
-COPY php/config/php.ini /etc/php/7.0/cli/php.ini
+COPY php/config/php.ini /etc/php/7.3/apache2/php.ini
+COPY php/config/php.ini /etc/php/7.3/cli/php.ini
 
 # Enable Mod rewrite
 RUN a2enmod rewrite

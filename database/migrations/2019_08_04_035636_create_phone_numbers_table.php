@@ -29,6 +29,7 @@ class CreatePhoneNumbersTable extends Migration
             $table->string('forward_to_country_code', 16)->nullable();
             $table->string('forward_to_number', 16);
             $table->bigInteger('audio_clip_id')->unsigned()->nullable();
+            $table->dateTime('last_assigned_at', 6)->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');

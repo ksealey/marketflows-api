@@ -2,7 +2,7 @@ version: "2"
 
 services:
   web:
-    image: ksealey1990/ubuntu:latest
+    image: ksealey1990/ubuntu-18-laravel:08-14-2019
     restart: always
     container_name: mf_web
     ports: 
@@ -10,7 +10,7 @@ services:
     networks:
       - mf_net
     volumes: 
-      - "/Users/ksealey1990/market-flows-api:/var/www/app"
+      - "/Users/ksealey1990/MarketFlows-API:/var/www/app"
     environment:
       PHP_XDEBUG_ENABLED: 1
       XDEBUG_CONFIG: remote_host=host.docker.internal
