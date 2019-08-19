@@ -44,4 +44,12 @@ return [
         ],
     ],
 
+    'twilio' => [
+        'languages' => [
+            'alice' => 'Alice'
+        ],
+        'voices' => [
+            'en' => 'English'
+        ]
+    ]
 ];

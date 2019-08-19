@@ -52,14 +52,19 @@ class PhoneNumberPoolController extends Controller
 
     public function create(Request $request)
     {
-        $user = $request->user();
+        $config = config('services.twilio');
+        $user   = $request->user();
 
         $rules = [
             'name'                      => 'bail|required|max:255',
             'source'                    => 'bail|required|max:255',
             'forward_to_country_code'   => 'bail|digits_between:1,4',
             'forward_to_number'         => 'bail|required|digits:10',
-            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($user->company_id)]            
+            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($user->company_id)],
+            'record'                    => 'boolean',
+            'whisper_message'           => 'max:255',
+            'whisper_language'          => 'in:' . implode(',', array_keys($config['languages'])),
+            'whisper_voice'             => 'in:' . implode(',', array_keys($config['voices'])),      
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -76,7 +81,11 @@ class PhoneNumberPoolController extends Controller
             'source'                    => $request->source, 
             'forward_to_country_code'   => $request->forward_to_country_code,
             'forward_to_number'         => $request->forward_to_number,
-            'audio_clip_id'             => $request->audio_clip
+            'audio_clip_id'             => $request->audio_clip,
+            'recording_enabled_at'      => $request->record ? date('Y-m-d H:i:s') : null,
+            'whisper_message'           => $request->whisper_message,
+            'whisper_language'          => $request->whisper_language,
+            'whisper_voice'             => $request->whisper_voice
         ]);
 
         return response([
@@ -102,7 +111,8 @@ class PhoneNumberPoolController extends Controller
 
     public function update(Request $request, PhoneNumberPool $phoneNumberPool)
     {
-        $user = $request->user();
+        $config = config('services.twilio');
+        $user   = $request->user();
         
         if( ! $phoneNumberPool || $phoneNumberPool->company_id != $user->company_id ){
             return response([
@@ -115,7 +125,11 @@ class PhoneNumberPoolController extends Controller
             'source'                    => 'bail|required|max:255',
             'forward_to_country_code'   => 'bail|digits_between:1,4',
             'forward_to_number'         => 'bail|required|digits:10',
-            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($user->company_id)]  
+            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($user->company_id)],
+            'record'                    => 'boolean',
+            'whisper_message'           => 'max:255',
+            'whisper_language'          => 'in:' . implode(',', array_keys($config['languages'])),
+            'whisper_voice'             => 'in:' . implode(',', array_keys($config['voices'])), 
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -138,6 +152,10 @@ class PhoneNumberPoolController extends Controller
         $phoneNumberPool->source                    = $request->source;
         $phoneNumberPool->forward_to_country_code   = $request->forward_to_country_code;
         $phoneNumberPool->forward_to_number         = $request->forward_to_number;
+        $phoneNumberPool->recording_enabled_at      = $request->record ? ($phoneNumberPool->recording_enabled_at ?: date('Y-m-d H:i:s')) : null;
+        $phoneNumberPool->whisper_message           = $request->whisper_message;
+        $phoneNumberPool->whisper_language          = $request->whisper_language;
+        $phoneNumberPool->whisper_voice             = $request->whisper_voice;
         $phoneNumberPool->save();
 
         return response([
@@ -160,6 +178,10 @@ class PhoneNumberPoolController extends Controller
                 'error' => 'This phone number pool is in use - please detach from all related entities and try again'
             ], 400);
         }
+
+        //  Detach phone numbers from pool
+        PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
+                   ->update(['phone_number_pool_id' => null]);
 
         $phoneNumberPool->delete();
 

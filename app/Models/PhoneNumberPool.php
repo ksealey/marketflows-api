@@ -4,11 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use \App\Contracts\CanBeDialed;
+use \App\Traits\IsDialed;
 use \App\Models\CampaignPhoneNumberPool;
 
-class PhoneNumberPool extends Model
+
+class PhoneNumberPool extends Model implements CanBeDialed
 {
-    use SoftDeletes;
+    use SoftDeletes, IsDialed;
 
     protected $fillable = [
         'company_id',
@@ -17,14 +20,19 @@ class PhoneNumberPool extends Model
         'source', 
         'forward_to_country_code',
         'forward_to_number',
-        'audio_clip_id'
+        'audio_clip_id',
+        'recording_enabled_at',
+        'whisper_message',
+        'whisper_language',
+        'whisper_voice',
     ];
 
     protected $hidden = [
         'company_id',
         'created_by',
         'deleted_at',
-        'audio_clip_id'
+        'audio_clip_id',
+        'recording_enabled_at'
     ];
 
     public function isInUse($campaignId = null)

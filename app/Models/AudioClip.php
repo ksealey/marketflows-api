@@ -25,4 +25,9 @@ class AudioClip extends Model
     {
         return true;
     }
+
+    public function getURL()
+    {
+        return rtrim(env('AWS_URL'), '/') . '/' . trim($this->path, '/');
+    }
 }

@@ -4,15 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use \App\Contracts\CanBeDialed;
+use \App\Traits\IsDialed;
 use \App\Models\User;
 use \App\Models\Campaign;
 use \App\Models\CampaignPhoneNumber;
 use \App\Models\PhoneNumberPool;
 use Twilio\Rest\Client as TwilioClient;
 
-class PhoneNumber extends Model
+class PhoneNumber extends Model implements CanBeDialed
 {
-    use SoftDeletes;
+    use SoftDeletes, IsDialed;
 
     static private $client;
 
@@ -30,7 +32,12 @@ class PhoneNumber extends Model
         'source',
         'forward_to_country_code',
         'forward_to_number',
-        'audio_clip_id'
+        'audio_clip_id',
+        'recording_enabled_at',
+        'whisper_message',
+        'whisper_language',
+        'whisper_voice',
+        'assigned'
     ];
 
     protected $hidden = [
@@ -82,14 +89,14 @@ class PhoneNumber extends Model
     {
         $client = self::client();
 
-        $rootActionPath = trim(env('API_URL'), '/') . '/react';
+        $rootActionPath = trim(env('APP_API_URL'), '/') . '/incoming';
 
         $num = $client->incomingPhoneNumbers
                          ->create([
                             'phoneNumber' => $phone,
-                            'voiceUrl'    => env('APP_ENV') == 'testing' ? 'http://demo.twilio.com/docs/voice.xml' : $rootActionPath . '/call',
-                            'smsUrl'      => env('APP_ENV') == 'testing' ? '' : $rootActionPath . '/sms',
-                            'mmsUrl'      => env('APP_ENV') == 'testing' ? '' : $rootActionPath . '/mms'
+                            'voiceUrl'    => route('incoming-call'),
+                            'smsUrl'      => route('incoming-sms'),
+                            'mmsUrl'      => route('incoming-mms')
                         ]);
 
         return [

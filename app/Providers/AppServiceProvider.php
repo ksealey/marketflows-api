@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Http\Response;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -13,7 +14,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        Response::macro('xmlResponse', function($content, $responseCode = 200){
+            return response($content, $responseCode)
+                    ->header('Content-Type', 'application/xml');
+        });
     }
 
     /**

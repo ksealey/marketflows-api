@@ -90,3 +90,13 @@ Route::middleware('api')->prefix('open')->group(function(){
     Route::post('/campaigns/{campaign}/assign-phone', 'Open\CampaignController@assignPhone');
 });
 
+Route::middleware('api')->prefix('incoming')->group(function(){
+    Route::any('call', 'Incoming\CallController@handleCall')->name('incoming-call');
+    Route::any('sms', 'Incoming\CallController@handleSms')->name('incoming-sms');
+    Route::any('mms', 'Incoming\CallController@handleMms')->name('incoming-mms');
+    Route::any('recorded-call', 'Incoming\CallController@handleRecordedCall')->name('recorded-call');
+    Route::any('call-status-changed', 'Incoming\CallController@handleCallStatusChanged');
+
+    Route::any('whisper', 'Incoming\CallController@whisper')->name('whisper');
+});
+
