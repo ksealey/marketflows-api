@@ -71,6 +71,25 @@ Route::middleware(['auth:api', 'api'])->group(function(){
         Route::put('/{user}/change-password', 'UserController@changePassword')
             ->middleware('can:update,user'); 
     });
+
+    /*
+    |--------------------------------
+    | Handle payment methods
+    |--------------------------------
+    */
+    Route::prefix('payment-methods')->group(function(){
+        Route::post('/', 'PaymentMethodController@create')
+             ->middleware('can:create,\App\Models\PaymentMethod');
+        Route::get('/{paymentMethod}', 'PaymentMethodController@read')
+             ->middleware('can:read,paymentMethod');
+        Route::put('/{paymentMethod}/make-default', 'PaymentMethodController@makeDefault')
+             ->middleware('can:update,paymentMethod');
+        Route::delete('/{paymentMethod}', 'PaymentMethodController@delete')
+            ->middleware('can:delete,paymentMethod'); 
+        Route::get('/', 'PaymentMethodController@list')
+            ->middleware('can:list,\App\Models\PaymentMethod'); 
+    });
+
    
     //  Audio Clips
     Route::prefix('audio-clips')->group(function(){
@@ -106,15 +125,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
         Route::put('/{property}', 'PropertyController@update');
         Route::delete('/{property}', 'PropertyController@delete');
         Route::get('/', 'PropertyController@list');
-    });
-
-    //  Payment Methods
-    Route::prefix('payment-methods')->group(function(){
-        Route::post('/', 'PaymentMethodController@create');
-        Route::get('/{paymentMethod}', 'PaymentMethodController@read');
-        Route::put('/{paymentMethod}', 'PaymentMethodController@update');
-        Route::delete('/{paymentMethod}', 'PaymentMethodController@delete');
-        Route::get('/', 'PaymentMethodController@list');
     });
 
      //  Campaigns

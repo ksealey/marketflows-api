@@ -22,14 +22,14 @@ class PaymentMethod extends Model
     private $lastChargeError;
 
     protected $hidden = [
-        'company_id',
+        'account_id',
         'stripe_id',
         'created_by',
         'deleted_at'
     ];
 
     protected $fillable = [
-        'company_id',
+        'account_id',
         'created_by',
         'stripe_id',
         'last_4',
@@ -40,9 +40,9 @@ class PaymentMethod extends Model
         'primary_method'
     ];
 
-    public function company()
+    public function account()
     {
-        return $this->belongsTo('\App\Models\Company');
+        return $this->belongsTo('\App\Models\Account');
     }
 
     public function charges()
@@ -67,34 +67,34 @@ class PaymentMethod extends Model
         Stripe::setApiKey(env('STRIPE_SK'));
 
         //  Create customer with source if not exists
-        $company = $user->company;
-        if( ! $company->stripe_id ){
+        $account = $user->account;
+        if( ! $account->stripe_id ){
             $primaryMethod = true; // Since there is no primary methon set this as true
             $customer = Customer::create([
-                'description' => $company->name,
+                'description' => $account->name,
                 'source'      => $stripeToken
             ]);
-            $company->stripe_id = $customer->id;
-            $company->save();
+            $account->stripe_id = $customer->id;
+            $account->save();
             
             $card = $customer->sources->data[0];
         }else{
             $card = Customer::createSource(
-                $company->stripe_id,
+                $account->stripe_id,
                 ['source' => $stripeToken]
             );
         }
 
         //  If this is the new primary method, unset existing
         if( $primaryMethod ){
-            self::where('company_id', $user->company_id)
+            self::where('account_id', $user->account_id)
                 ->update([
                     'primary_method' => false
                 ]);
         }
 
         return self::create([
-            'company_id'     => $user->company_id,
+            'account_id'     => $user->account_id,
             'created_by'     => $user->id,
             'stripe_id'      => $card->id,
             'last_4'         => $card->last4,
@@ -119,7 +119,7 @@ class PaymentMethod extends Model
         try{
             //  Create remote charge
             $stripeCharge = StripeCharge::create([
-                'customer'      => $this->company->stripe_id,
+                'customer'      => $this->account->stripe_id,
                 'source'        => $this->stripe_id,
                 'amount'        => $amount * 100,
                 'currency'      => 'usd',

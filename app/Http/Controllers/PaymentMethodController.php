@@ -62,14 +62,6 @@ class PaymentMethodController extends Controller
      */
     public function read(Request $request, PaymentMethod $paymentMethod)
     {
-        $user = $request->user();
-
-        if( $user->company_id !== $paymentMethod->company_id ){
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        }
-
         return response([
             'message'        => 'success',
             'ok'             => true,
@@ -85,18 +77,14 @@ class PaymentMethodController extends Controller
      * 
      * @return Response
      */
-    public function update(Request $request, PaymentMethod $paymentMethod)
+    public function makeDefault(Request $request, PaymentMethod $paymentMethod)
     {
         $user = $request->user();
-        if( $user->company_id !== $paymentMethod->company_id ){
-            return response([
-                'error' => 'Not found',
-                'ok'    => false
-            ], 404);
-        }
-
-        PaymentMethod::where('company_id', $user->company_id)   
-                      ->update([ 'primary_method' => false ]);
+    
+        PaymentMethod::where('account_id', $user->account_id)   
+                      ->update([ 
+                          'primary_method' => false 
+                        ]);
 
         $paymentMethod->primary_method = true;
         $paymentMethod->save();
@@ -119,13 +107,7 @@ class PaymentMethodController extends Controller
     public function delete(Request $request, PaymentMethod $paymentMethod)
     {
         $user = $request->user();
-        if( $user->company_id !== $paymentMethod->company_id ){
-            return response([
-                'error' => 'Not found',
-                'ok'    => false
-            ], 404);
-        }
-
+    
         //  Do not allow deleting this card it's your primary payment method
         if( $paymentMethod->primary_method ){
             return response([
@@ -153,7 +135,7 @@ class PaymentMethodController extends Controller
         $start = intval($request->input('start', 0));
         $limit = intval($request->input('limit', 0)) ?: 25;
 
-        $query      = PaymentMethod::where('company_id', $user->company_id); 
+        $query      = PaymentMethod::where('account_id', $user->account_id); 
         $totalCount = $query->count();
 
         $paymentMethods = $query->limit($limit)

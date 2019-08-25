@@ -15,7 +15,7 @@ class CreatePaymentMethodsTable extends Migration
     {
         Schema::create('payment_methods', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->bigInteger('company_id')->unsigned();
+            $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('created_by')->unsigned();
             $table->string('stripe_id', 64);
             $table->integer('last_4')->unsigned();
@@ -26,7 +26,7 @@ class CreatePaymentMethodsTable extends Migration
             $table->boolean('primary_method')->default(0);
             $table->timestamps();
             $table->softDeletes();
-            $table->foreign('company_id')->references('id')->on('companies');
+            $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('created_by')->references('id')->on('users');
         });
     }

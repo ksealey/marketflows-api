@@ -50,7 +50,7 @@ class PaymentMethodTest extends TestCase
         $user         = $this->createUser();
         
         $paymentMethod = factory(PaymentMethod::class)->create([
-            'company_id' => $user->company_id,
+            'account_id' => $user->account_id,
             'created_by' => $user->id
         ]);
 
@@ -71,22 +71,22 @@ class PaymentMethodTest extends TestCase
     }
 
     /**
-     * Test updating(Setting to default) a payment method
+     * Test setting payment method as default
      * 
      * @group integrate-payment-methods
      */
-    public function testUpdate()
+    public function testMakeDefault()
     {
         $user = $this->createUser();
         
         $paymentMethod = factory(PaymentMethod::class)->create([
-            'company_id'     => $user->company_id,
+            'account_id' => $user->account_id,
             'created_by'     => $user->id,
             'primary_method' => true
         ]);
 
         $paymentMethod2 = factory(PaymentMethod::class)->create([
-            'company_id'    => $user->company_id,
+            'account_id' => $user->account_id,
             'created_by'     => $user->id,
             'primary_method' => false
         ]);
@@ -94,8 +94,7 @@ class PaymentMethodTest extends TestCase
         $this->assertTrue($paymentMethod->primary_method == true);
         $this->assertTrue($paymentMethod2->primary_method == false);
 
-        $response = $this->json('PUT', 'http://localhost/v1/payment-methods/' . $paymentMethod2->id, [], $this->authHeaders());
-
+        $response = $this->json('PUT', 'http://localhost/v1/payment-methods/' . $paymentMethod2->id . '/make-default', [], $this->authHeaders());
         $response->assertStatus(200);
 
         $response->assertJson([
@@ -117,7 +116,7 @@ class PaymentMethodTest extends TestCase
         $user = $this->createUser();
         
         $paymentMethod = factory(PaymentMethod::class)->create([
-            'company_id'     => $user->company_id,
+            'account_id'     => $user->account_id,
             'created_by'     => $user->id,
             'primary_method' => false
         ]);
@@ -146,7 +145,7 @@ class PaymentMethodTest extends TestCase
         $user = $this->createUser();
         
         $paymentMethod = factory(PaymentMethod::class)->create([
-            'company_id'     => $user->company_id,
+            'account_id' => $user->account_id,
             'created_by'     => $user->id,
             'primary_method' => true
         ]);
@@ -179,19 +178,19 @@ class PaymentMethodTest extends TestCase
         $user = $this->createUser();
         
         $paymentMethod = factory(PaymentMethod::class)->create([
-            'company_id'     => $user->company_id,
+            'account_id'     => $user->account_id,
             'created_by'     => $user->id,
             'primary_method' => true
         ]);
 
         $paymentMethod2 = factory(PaymentMethod::class)->create([
-            'company_id'     => $user->company_id,
+            'account_id'     => $user->account_id,
             'created_by'     => $user->id,
             'primary_method' => true
         ]);
 
         $paymentMethod3 = factory(PaymentMethod::class)->create([
-            'company_id'     => $user->company_id,
+            'account_id'     => $user->account_id,
             'created_by'     => $user->id,
             'primary_method' => true
         ]);
@@ -207,8 +206,7 @@ class PaymentMethodTest extends TestCase
                 [
                     'id'
                 ]
-            ],
-            'ok'
+            ]
         ]);
     }
    
