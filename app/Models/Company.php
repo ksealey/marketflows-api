@@ -13,11 +13,13 @@ class Company extends Model
 
     protected $fillable = [
         'account_id',
+        'created_by',
         'name',
     ];
 
     protected $hidden = [
         'account_id',
+        'created_by',
         'deleted_at'
     ];
 }

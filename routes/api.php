@@ -55,6 +55,22 @@ Route::middleware(['auth:api', 'api'])->group(function(){
         Route::delete('/{role}', 'RoleController@delete')
             ->middleware('can:delete,role'); 
     });
+
+    /*
+    |--------------------------------
+    | Handle users
+    |--------------------------------
+    */
+    Route::prefix('users')->group(function(){
+        Route::get('/{user}', 'UserController@read')
+             ->middleware('can:read,user');
+        Route::put('/{user}', 'UserController@update')
+             ->middleware('can:update,user');
+        Route::delete('/{user}', 'UserController@delete')
+            ->middleware('can:delete,user'); 
+        Route::put('/{user}/change-password', 'UserController@changePassword')
+            ->middleware('can:update,user'); 
+    });
    
     //  Audio Clips
     Route::prefix('audio-clips')->group(function(){

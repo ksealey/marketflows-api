@@ -41,6 +41,14 @@ class CreateUsersTable extends Migration
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('role_id')->references('id')->on('roles');
         });
+
+        Schema::table('companies', function (Blueprint $table) {
+            $table->foreign('created_by')->references('id')->on('users');
+        });
+
+        Schema::table('roles', function (Blueprint $table) {
+            $table->foreign('created_by')->references('id')->on('users');
+        });
     }
 
     /**

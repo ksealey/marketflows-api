@@ -42,6 +42,7 @@ class UserInviteController extends Controller
         }
 
         $user = $request->user();
+        
         if( $request->role ){
             $role = Role::find($request->role);
             if( ! $role || $role->account_id != $user->account_id ){

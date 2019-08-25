@@ -15,13 +15,11 @@ class CreateAccountsTable extends Migration
     {
         Schema::create('accounts', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->bigInteger('parent_account_id')->unsigned()->nullable();
             $table->string('name', 255);
             $table->string('stripe_id', 255)->nullable();
             $table->dateTime('disabled_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
-            $table->foreign('parent_account_id')->references('id')->on('accounts');
         });
     }
 
