@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Auth\Authenticable; 
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\EmailVerification;
+use App\Models\Company;
 
-class User extends Authenticable
+class User extends Authenticatable
 {
     use SoftDeletes;
 
@@ -15,7 +16,11 @@ class User extends Authenticable
 
     protected $fillable = [
         'id',
+        'account_id',
         'company_id',
+        'role_id',
+        'is_admin',
+        'is_client',
         'timezone',
         'first_name',
         'last_name',
@@ -24,6 +29,7 @@ class User extends Authenticable
         'area_code',
         'phone',
         'password_hash',
+        'auth_token',
         'email_verified_at',
         'phone_verified_at',
         'last_login_at',
@@ -37,6 +43,7 @@ class User extends Authenticable
 
     protected $hidden = [
         'password_hash',
+        'auth_token',
         'last_login_at',
         'disabled_until',
         'login_attempts',
@@ -52,8 +59,80 @@ class User extends Authenticable
         ]);
     }
 
+    public function account()
+    {
+        return $this->belongsTo('\App\Models\Account');
+    }
+
     public function company()
     {
         return $this->belongsTo('\App\Models\Company');
+    }
+
+    public function companies()
+    {
+        return $this->belongsToMany('App\Models\Company', 'user_companies');
+    }
+
+    public function role()
+    {
+        return $this->belongsTo('\App\Models\Role');
+    }
+
+    public function canDoAction($action)
+    {
+        list($requestedModule, $requestedAction) = explode('.', $action);
+
+        if( $this->is_admin )
+            return true;
+
+        //  Only allow the following for clients
+        //  Reporting
+        //      - read
+        if( $this->is_client ){
+            if( $action == 'reporting.read' )
+                return true;
+            return false;
+        }
+
+        //  This user can't do a thing...
+        if( ! $myRole = $this->role )
+            return false;
+
+        $myPolicy = $myRole->policy;
+        if( ! $myPolicy )
+            return false;
+
+        $policyRules = json_decode($myPolicy);
+        if( ! $policyRules || empty($policyRules->can) )
+            return false;
+
+        foreach( $policyRules->can as $rule ){
+            $myModule = trim(strtolower($rule->module));
+            //  Module found
+            if( $myModule == '*' || $myModule == $requestedModule ){
+                //  Can we do this action?
+                $myActions = trim(strtolower($rule->permissions));
+                if( $myActions == '*' )
+                    return true;
+                $myActions = explode(',', $myActions);
+                foreach( $myActions as $myAction ){
+                    if( $myAction == $requestedAction )
+                        return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function canDoCompanyAction(Company $company, $action)
+    {
+        foreach($this->companies as $myCompany){
+            if( $myCompany->id === $company->id )
+                return $this->canDoAction($action);
+        }
+
+        return false;
     }
 }

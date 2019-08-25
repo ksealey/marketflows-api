@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateTokenBlacklistTable extends Migration
+class CreateRolesTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,14 @@ class CreateTokenBlacklistTable extends Migration
      */
     public function up()
     {
-        Schema::create('blacklisted_tokens', function (Blueprint $table) {
+        Schema::create('roles', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('token', 512)->index();
-            $table->dateTime('remove_at');
+            $table->bigInteger('account_id')->unsigned();
+            $table->bigInteger('created_by')->unsigned()->nullable()->index();
+            $table->string('name', 255);
+            $table->json('policy');
             $table->timestamps();
+            $table->foreign('account_id')->references('id')->on('accounts');
         });
     }
 
@@ -28,6 +31,6 @@ class CreateTokenBlacklistTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('blacklisted_tokens');
+        Schema::dropIfExists('roles');
     }
 }

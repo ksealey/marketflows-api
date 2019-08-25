@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Helpers\Formatter;
+use App\Models\Account;
 use App\Models\Company;
 use App\Models\User;
+use App\Models\UserCompany;
+use App\Models\Role;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use Validator;
@@ -77,15 +80,27 @@ class RegisterController extends Controller
         }
 
         DB::beginTransaction();
+
         try{
-            //  Create company
-            $company = Company::create([
+            //  Create account
+            $account = Account::create([
                 'name' => $request->company_name
             ]);
 
+            //  Create company
+            $company = Company::create([
+                'account_id' => $account->id,
+                'name'       => $request->company_name
+            ]);
+
+            //  Ship with a sample role for reporting
+            Role::createReportingRole($account);
+
             //  Create user
             $user = User::create([
+                'account_id'    => $account->id,
                 'company_id'    => $company->id,
+                'is_admin'      => true,
                 'first_name'    => $request->first_name,
                 'last_name'     => $request->last_name,
                 'email'         => $request->email,
@@ -93,34 +108,30 @@ class RegisterController extends Controller
                 'area_code'     => $request->area_code,
                 'phone'         => $request->phone,
                 'timezone'      => $request->timezone,
-                'password_hash' => bcrypt($request->password)
+                'password_hash' => bcrypt($request->password),
+                'auth_token'    => str_random(128),
             ]);
 
-            //  Add verification mail onto queue
+            //  Tie user to company
+            UserCompany::create([
+                'user_id'    => $user->id,
+                'company_id' => $company->id
+            ]);
+
+            //  Add verification mail to queue
             Mail::to($user->email)
-                ->later(
-                   now(), 
-                   new UserEmailVerificationMail($user)
-                );
+                ->later( now(), new UserEmailVerificationMail($user) );
         }catch(Exception $e){
-            try{
-                DB::rollBack();
-            }catch(Exception $e){}
-
-            Log::critical($e->getMessage() . "\n\n" . $e->getTraceAsString());
-
-            return response([
-                'error' => 'Unable to create account - please try again later',
-                'ok'    => false,
-            ], 400);
+            DB::rollBack();
+            
+            throw $e;
         }
+
         DB::commit(); 
         
         return response([
             'message'       => 'created',
-            'ok'            => true,
-            'bearer_token'  => $user->getBearerToken(),
-            'refresh_token' => $user->getRefreshToken(),
+            'auth_token'    => $user->auth_token,
             'user'          => $user,
         ], 201);
     }

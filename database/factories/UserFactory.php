@@ -27,5 +27,6 @@ $factory->define(User::class, function (Faker $faker) {
         'phone'                 => mt_rand(1111111111, 9999999999),
         'timezone'              => $faker->timezone,
         'password_hash'         => '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
+        'auth_token'            => str_random(128)
     ];
 });

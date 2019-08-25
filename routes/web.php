@@ -15,10 +15,12 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::prefix('auth')->group(function(){
-    Route::get('/login', 'Auth\LoginController@viewLogin');
-    Route::get('/reset-password/{userId}/{key}', 'Auth\LoginController@viewResetPassword');
-    Route::post('/reset-password/{userId}/{key}', 'Auth\LoginController@handleResetPassword');
+Route::get('companies/{companyId}/js/main.js', function(Request $request, $companyId){
+    $company = \App\Models\Company::find($companyId);
+
+    return trim(strip_tags(view('js.main', ['company'=>$company])->render()));
 });
+
+
 
 

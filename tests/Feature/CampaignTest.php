@@ -72,6 +72,10 @@ class CampaignTest extends TestCase
         ]);
 
         $campaign = factory(Campaign::class)->make();
+
+        \Queue::fake();
+        \Queue::assertNothingPushed();
+
         $response = $this->json('POST', '/v1/campaigns', [
             'name'          => $campaign->name,
             'type'          => Campaign::TYPE_WEB,
@@ -112,6 +116,12 @@ class CampaignTest extends TestCase
                                         ->count();
         
         $this->assertTrue($linkCount === 2);
+
+        //  Make sure the job to update JS went out
+        \Queue::assertPushed(\App\Jobs\BuildAndPublishCompanyJs::class, function ($job) use($user){
+            return $job->company->id == $user->company->id;
+        });
+
     }
 
     /**

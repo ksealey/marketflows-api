@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Mail\Auth;
+namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use App\Models\Auth\UserInvite as UserInviteEmail;
+use App\Models\UserInvite as UserInviteEmail;
 
 class UserInvite extends Mailable
 {

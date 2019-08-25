@@ -59,7 +59,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test creating a phone number
      *
-     * @group phone-numbers
+     * @group phone-numbers-
      */
     public function testCreate()
     {
@@ -88,6 +88,8 @@ class PhoneNumberTest extends TestCase
             'forward_to_number' => $phone->forward_to_country_code . $phone->forward_to_number,
             'audio_clip'        => $audioClip->id
         ], $this->authHeaders());
+
+        $response->dump();
 
         $response->assertStatus(201);
 

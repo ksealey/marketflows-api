@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 use \App\Models\User;
 use \Firebase\JWT\JWT;
 use Exception;
@@ -17,7 +17,7 @@ class AuthServiceProvider extends ServiceProvider
      * @var array
      */
     protected $policies = [
-        //\App\Models\PaymentMethod::class => \App\Policies\PaymentMethodPolicy::class,
+
     ];
 
     /**
@@ -29,8 +29,16 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        Auth::viaRequest('jwt', function ($request){
-            //  Check headers for JWT
+        Gate::guessPolicyNamesUsing(function ($modelClass) {
+            $pieces = explode('\\', $modelClass);
+
+            $policyName = '\App\Policies\\' . end($pieces) . 'Policy';
+
+            return $policyName;
+        });
+
+        Auth::viaRequest('auth_token', function ($request){
+            //  Check headers for bearer token
             $auth = $request->header('Authorization');
             if( ! $auth )
                 return null;
@@ -39,20 +47,11 @@ class AuthServiceProvider extends ServiceProvider
             if( count($segments) !== 2 )
                 return null;
 
-            list($tokenType, $token) = $segments; 
+            list($tokenType, $authToken) = $segments; 
             if( strtoupper($tokenType) !== 'BEARER' )
                 return null;
-            
-            try{
-                $token = base64_decode($token);
-
-                $jwt = JWT::decode($token, env('APP_KEY'), array('HS256'));
-            }catch(Exception $e){ return null; }
-            
-            if( $jwt->typ !== 'bearer' ) // Don't let refresh tokens pass for bearer tokens
-                return null;
-
-            return User::find($jwt->sub);
+        
+            return User::where('auth_token', $authToken)->first();
         });
     }
 }

@@ -6,7 +6,12 @@ use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use \App\Models\Account;
+use \App\Models\Company;
+use \App\Models\AccountCompany;
 use \App\Models\User;
+
+
 
 class AuthTest extends TestCase
 {
@@ -40,20 +45,25 @@ class AuthTest extends TestCase
 
         $response = $this->json('POST', 'http://localhost/v1/auth/register', $data);
 
-        $response->assertJson([
-            'ok'      => true,
-            'message' => 'created',
-        ]);
-
+        // Make sure the request was successful
         $response->assertJsonStructure([
-            'ok',
             'message',
-            'user',
-            'refresh_token',
-            'bearer_token'
+            'auth_token',
+            'user' => [
+                'id',
+                'created_at'
+            ]
         ]);
-
+        
         $response->assertStatus(201);
+
+        //  Make sure the account, company and user was created
+        $user = User::find(json_decode($response->getContent())->user->id);
+        $this->assertTrue( $user != null);
+        $this->assertTrue( $user->account != null );
+        $this->assertTrue( $user->company != null );
+        $this->assertTrue(count($user->companies) == 1);
+        $this->assertTrue($user->companies[0]->id == $user->company->id);   
 
         //  Test Email verification sent
         Mail::assertQueued(\App\Mail\Auth\EmailVerification::class);
@@ -75,80 +85,15 @@ class AuthTest extends TestCase
             'password'  => 'password'
         ]);
 
-        $response->assertJson([
-            'ok'      => true,
-            'message' => 'success',
-        ]);
-
         $response->assertJsonStructure([
-            'ok',
             'message',
             'user',
-            'refresh_token',
-            'bearer_token'
+            'auth_token'
         ]);
 
         $response->assertStatus(200);
     }
 
-    /**
-     * Test refreshing a token
-     * 
-     * @group auth
-     * 
-     * @return void
-     */
-    public function testRefreshToken()
-    {
-        $user = $this->createUser();
-
-        $response = $this->json('POST', 'https://localhost/v1/auth/token', [
-            'grant_type'    => 'refresh_token',
-            'refresh_token' => $user->getRefreshToken()
-        ]);
-
-        $response->assertJson([
-            'ok'      => true,
-            'message' => 'success',
-        ]);
-
-        $response->assertJsonStructure([
-            'ok',
-            'message',
-            'bearer_token'
-        ]);
-
-        $response->assertStatus(200);
-    }
-
-    /**
-     * Test refreshing a token
-     * 
-     * @group auth
-     * 
-     * @return void
-     */
-    public function testRefreshTokenFailsFromBlackist()
-    {
-        $user = $this->createUser();
-
-        $refreshToken     = $user->getRefreshToken();
-        $blacklistedToken = factory(\App\Models\Auth\BlacklistedToken::class)->create([
-            'token' => $refreshToken
-        ]);
-
-        $response = $this->json('POST', 'https://localhost/v1/auth/token', [
-            'grant_type'    => 'refresh_token',
-            'refresh_token' => $refreshToken
-        ]);
-
-        $response->assertJson([
-            'ok'    => false,
-            'error' => 'Unable to generate token',
-        ]);
-
-        $response->assertStatus(401);
-    }
 
     /**
      * Test a failed login
@@ -167,7 +112,6 @@ class AuthTest extends TestCase
             'password'  => 'password'
         ]);
         $response->assertJson([
-            'ok'      => false,
             'error'  => 'User does not exist',
         ]);
         $response->assertStatus(400);
@@ -178,7 +122,6 @@ class AuthTest extends TestCase
             'password'  => 'password1'
         ]);
         $response->assertJson([
-            'ok'      => false,
             'error'  => 'Invalid credentials',
         ]);
         $response->assertStatus(400);
@@ -189,7 +132,6 @@ class AuthTest extends TestCase
             'password'  => 'password1'
         ]);
         $response->assertJson([
-            'ok'      => false,
             'error'  => 'Invalid credentials',
         ]);
         $response->assertStatus(400);
@@ -200,7 +142,6 @@ class AuthTest extends TestCase
             'password'  => 'password1'
         ]);
         $response->assertJson([
-            'ok'      => false,
             'error'  => 'Invalid credentials',
         ]);
         $response->assertStatus(400);
@@ -211,7 +152,6 @@ class AuthTest extends TestCase
             'password'  => 'password1'
         ]);
         $response->assertJson([
-            'ok'      => false,
             'error'  => 'Too many failed attempts - account disabled for 8 hours',
         ]);
         $response->assertStatus(400);
@@ -221,7 +161,7 @@ class AuthTest extends TestCase
             'email'     => $user->email,
             'password'  => 'password1'
         ]);
-        $response->assertSee('Account disabled until');
+        $response->assertSee('Account disabled -');
         $response->assertStatus(400);
 
         //  Even with valid credentials...
@@ -229,7 +169,7 @@ class AuthTest extends TestCase
             'email'     => $user->email,
             'password'  => 'password'
         ]);
-        $response->assertSee('Account disabled until');
+        $response->assertSee('Account disabled -');
         $response->assertStatus(400);
     }
 
@@ -250,7 +190,6 @@ class AuthTest extends TestCase
             'password'  => 'password1'
         ]);
         $response->assertJson([
-            'ok'      => false,
             'error'  => 'Invalid credentials',
         ]);
         $response->assertStatus(400);
@@ -264,9 +203,7 @@ class AuthTest extends TestCase
             'email'     => $user->email,
             'password'  => 'password'
         ]);
-        $response->assertJson([
-            'ok' => true
-        ]);
+       
         $response->assertStatus(200);
 
         $u = \App\Models\User::find($user->id);
@@ -277,6 +214,7 @@ class AuthTest extends TestCase
     /**
      * Test requesting a password reset
      * 
+     * @group auth
      */
     public function testRequestPasswordReset()
     {
@@ -289,13 +227,8 @@ class AuthTest extends TestCase
         ]);
 
         //  Make sure the request is ok
-        $response->assertJson([
-            'ok' => true,
-            'message' => 'success'
-        ]);
-
         $response->assertStatus(200);
-
+        
         //  Make sure the password reset is created
         $passwordReset = \App\Models\Auth\PasswordReset::where('user_id', $user->id)->first();
         $this->assertTrue($passwordReset != null);
@@ -310,20 +243,31 @@ class AuthTest extends TestCase
      * Test resetting the password from password reset
      * 
      * @depends testRequestPasswordReset
+     * @group auth
      */
     public function testGetResettingPassword($passwordReset)
     {
-        $response = $this->get('http://localhost/auth/reset-password/' . $passwordReset->user_id . '/' . $passwordReset->key);
+        $user              = User::find($passwordReset->user_id);
+        $user->disabled_until = date('Y-m-d H:i:s', strtotime('tomorrow'));
+        $user->save();
 
-        $response->assertStatus(200);
-
-        $user            = User::find($passwordReset->user_id);
         $currentPassword = $user->password_hash;
 
-        $response = $this->post('http://localhost/auth/reset-password/' . $passwordReset->user_id . '/' . $passwordReset->key, [
+        $response = $this->post('http://localhost/v1/auth/reset-password/' . $passwordReset->user_id . '/' . $passwordReset->key, [
             'password' => 'Password1!'
         ]);
+
+        //  Make sure response is ok
         $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'message',
+            'user',
+            'auth_token'
+        ]);
+
+        //  Make sure user options were reset
+        $userData = json_decode($response->getContent());
+        $this->assertTrue($userData->auth_token != $user->auth_token);
 
         //  Make sure my password was reset
         $user = User::find($passwordReset->user_id);

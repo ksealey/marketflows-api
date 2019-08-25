@@ -12,24 +12,34 @@ use Illuminate\Http\Request;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+
+/*
+|--------------------------------
+| Handle user auth
+|--------------------------------
+*/
 Route::prefix('auth')->group(function(){
-    //  Handle auth
     Route::post('/register', 'Auth\RegisterController@register');
     Route::post('/login', 'Auth\LoginController@login');
     Route::post('/reset-password', 'Auth\LoginController@resetPassword');
-    
-    Route::post('/token', 'Auth\TokenController@token');
-
-    //  Handle Invites
-    //  ....
-
+    Route::post('/reset-password/{userId}/{key}', 'Auth\LoginController@handleResetPassword');
 });
 
 Route::middleware(['auth:api', 'api'])->group(function(){
-    //  Invites
-    Route::post('/invite', 'Auth\InviteController@invite');
-    Route::delete('/invite/{id}', 'Auth\InviteController@deleteInvite');
-
+    /*
+    |--------------------------------
+    | Handle user invites
+    |--------------------------------
+    */
+    Route::prefix('user-invites')->group(function(){
+        Route::post('/', 'UserInviteController@create')
+             ->middleware('can:create,\App\Models\UserInvite');
+        Route::get('/{userInvite}', 'UserInviteController@read')
+             ->middleware('can:read,userInvite');
+        Route::delete('/{userInvite}', 'UserInviteController@delete')
+            ->middleware('can:delete,userInvite'); 
+    });
+   
     //  Audio Clips
     Route::prefix('audio-clips')->group(function(){
         Route::post('/', 'AudioClipController@create');
@@ -86,17 +96,27 @@ Route::middleware(['auth:api', 'api'])->group(function(){
      
 });
 
-Route::middleware('api')->prefix('open')->group(function(){
-    Route::post('/campaigns/{campaign}/assign-phone', 'Open\CampaignController@assignPhone');
+Route::middleware('api')->group(function(){
+    Route::prefix('incoming')->group(function(){
+        Route::any('call', 'Incoming\CallController@handleCall')->name('incoming-call');
+        Route::any('sms', 'Incoming\CallController@handleSms')->name('incoming-sms');
+        Route::any('mms', 'Incoming\CallController@handleMms')->name('incoming-mms');
+        Route::any('recorded-call', 'Incoming\CallController@handleRecordedCall')->name('recorded-call');
+        Route::any('call-status-changed', 'Incoming\CallController@handleCallStatusChanged');
+        Route::any('whisper', 'Incoming\CallController@whisper')->name('whisper');
+    });
+
+    Route::prefix('public')->group(function(){
+        Route::prefix('user-invites')->group(function(){
+            Route::get('/{userInvite}/{key}', 'UserInviteController@publicRead');
+            Route::put('/{userInvite}/{key}', 'UserInviteController@publicAccept');
+        });
+    });
 });
 
-Route::middleware('api')->prefix('incoming')->group(function(){
-    Route::any('call', 'Incoming\CallController@handleCall')->name('incoming-call');
-    Route::any('sms', 'Incoming\CallController@handleSms')->name('incoming-sms');
-    Route::any('mms', 'Incoming\CallController@handleMms')->name('incoming-mms');
-    Route::any('recorded-call', 'Incoming\CallController@handleRecordedCall')->name('recorded-call');
-    Route::any('call-status-changed', 'Incoming\CallController@handleCallStatusChanged');
 
-    Route::any('whisper', 'Incoming\CallController@whisper')->name('whisper');
-});
+//  Public
+Route::post('/sessions', 'SessionController@create')->name('session');
+Route::post('/events', 'EventController@create')->name('event');
+
 

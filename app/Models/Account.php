@@ -5,19 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Company extends Model
+class Account extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'companies'; 
+    protected $table = 'accounts'; 
 
     protected $fillable = [
-        'account_id',
         'name',
     ];
 
     protected $hidden = [
-        'account_id',
+        'stripe_id',
+        'disabled_at',
         'deleted_at'
     ];
 }

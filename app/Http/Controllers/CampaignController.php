@@ -11,6 +11,7 @@ use App\Models\CampaignPhoneNumber;
 use App\Rules\CampaignRule;
 use App\Rules\PhoneNumberPoolRule;
 use App\Rules\PhoneNumberRule;
+use App\Jobs\BuildAndPublishCompanyJs;
 use DateTime;
 use DateTimeZone;
 use Validator;
@@ -141,6 +142,9 @@ class CampaignController extends Controller
         }
 
         DB::commit();
+
+        if( $campaign->type == Campaign::TYPE_WEB )
+            BuildAndPublishCompanyJs::dispatch($user->company);
 
         return response([
             'campaign' => $campaign
@@ -298,6 +302,9 @@ class CampaignController extends Controller
         }
 
         DB::commit();
+
+        if( $campaign->type == Campaign::TYPE_WEB )
+            BuildAndPublishCompanyJs::dispatch($user->company);
 
         return response([
             'campaign' => $campaign

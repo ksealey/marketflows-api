@@ -18,6 +18,11 @@ class AppServiceProvider extends ServiceProvider
             return response($content, $responseCode)
                     ->header('Content-Type', 'application/xml');
         });
+
+        Response::macro('jsResponse', function($content, $responseCode = 200){
+            return response($content, $responseCode)
+                    ->header('Content-Type', 'application/javascript');
+        });
     }
 
     /**
