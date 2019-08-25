@@ -39,6 +39,22 @@ Route::middleware(['auth:api', 'api'])->group(function(){
         Route::delete('/{userInvite}', 'UserInviteController@delete')
             ->middleware('can:delete,userInvite'); 
     });
+
+    /*
+    |--------------------------------
+    | Handle roles
+    |--------------------------------
+    */
+    Route::prefix('roles')->group(function(){
+        Route::post('/', 'RoleController@create')
+             ->middleware('can:create,\App\Models\Role');
+        Route::get('/{role}', 'RoleController@read')
+             ->middleware('can:read,role');
+        Route::put('/{role}', 'RoleController@update')
+             ->middleware('can:update,role');
+        Route::delete('/{role}', 'RoleController@delete')
+            ->middleware('can:delete,role'); 
+    });
    
     //  Audio Clips
     Route::prefix('audio-clips')->group(function(){

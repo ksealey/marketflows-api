@@ -12,6 +12,10 @@ class Role extends Model
         'policy'
     ];
 
+    protected $hidden = [
+        'account_id',
+    ];
+
     /**
      * Create a role for a user that should only accedd reports.
      * This ships with any new user account
@@ -23,7 +27,7 @@ class Role extends Model
             'account_id'    => $account->id,
             'name'          => 'Reporting User',
             'policy'        => json_encode([
-                'can' => [
+                'policy' => [
                     [
                         'module'        => 'reports',
                         'permissions'   => '*'

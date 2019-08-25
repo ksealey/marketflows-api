@@ -107,7 +107,7 @@ class User extends Authenticatable
         if( ! $policyRules || empty($policyRules->can) )
             return false;
 
-        foreach( $policyRules->can as $rule ){
+        foreach( $policyRules->policy as $rule ){
             $myModule = trim(strtolower($rule->module));
             //  Module found
             if( $myModule == '*' || $myModule == $requestedModule ){
