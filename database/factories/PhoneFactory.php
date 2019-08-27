@@ -5,7 +5,7 @@
 use App\Model;
 use Faker\Generator as Faker;
 
-$factory->define(\App\Models\PhoneNumber::class, function (Faker $faker) {
+$factory->define(\App\Models\Company\PhoneNumber::class, function (Faker $faker) {
     return [
         'country_code'              => 1,
         'number'                    => substr($faker->e164PhoneNumber, -10),

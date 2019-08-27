@@ -19,7 +19,6 @@ use Illuminate\Http\Request;
 |--------------------------------
 */
 Route::prefix('auth')->group(function(){
-
     Route::post('/register', 'Auth\RegisterController@register');
 
     Route::post('/login', 'Auth\LoginController@login');
@@ -27,7 +26,6 @@ Route::prefix('auth')->group(function(){
     Route::post('/reset-password', 'Auth\LoginController@resetPassword');
 
     Route::post('/reset-password/{userId}/{key}', 'Auth\LoginController@handleResetPassword');  
-
 });
 
 Route::middleware(['auth:api', 'api'])->group(function(){
@@ -37,7 +35,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
     |--------------------------------
     */
     Route::prefix('user-invites')->group(function(){
-
         Route::post('/', 'UserInviteController@create')
              ->middleware('can:create,\App\Models\UserInvite');
 
@@ -46,7 +43,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
         Route::delete('/{userInvite}', 'UserInviteController@delete')
             ->middleware('can:delete,userInvite'); 
-
     });
 
     /*
@@ -55,7 +51,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
     |--------------------------------
     */
     Route::prefix('roles')->group(function(){
-
         Route::post('/', 'RoleController@create')
              ->middleware('can:create,\App\Models\Role');
 
@@ -67,7 +62,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
         Route::delete('/{role}', 'RoleController@delete')
             ->middleware('can:delete,role'); 
-
     });
 
     /*
@@ -76,7 +70,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
     |--------------------------------
     */
     Route::prefix('users')->group(function(){
-
         Route::get('/{user}', 'UserController@read')
              ->middleware('can:read,user');
 
@@ -88,16 +81,14 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
         Route::put('/{user}/change-password', 'UserController@changePassword')
             ->middleware('can:update,user');
-
     });
 
     /*
-    |--------------------------------
+    |----------------------------------------
     | Handle payment methods
-    |--------------------------------
+    |----------------------------------------
     */
     Route::prefix('payment-methods')->group(function(){
-
         Route::get('/', 'PaymentMethodController@list')
             ->middleware('can:list,\App\Models\PaymentMethod'); 
 
@@ -112,7 +103,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
         Route::delete('/{paymentMethod}', 'PaymentMethodController@delete')
             ->middleware('can:delete,paymentMethod'); 
-
     });
 
     /*
@@ -163,20 +153,33 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                 Route::delete('/{audioClip}', 'Company\AudioClipController@delete')
                     ->middleware('can:delete,audioClip');
             });  
-        });
- 
-    });
-   
-    
 
-    //  Phone Number Pools
-    Route::prefix('phone-number-pools')->group(function(){
-        Route::post('/', 'PhoneNumberPoolController@create');
-        Route::get('/{phoneNumberPool}', 'PhoneNumberPoolController@read');
-        Route::put('/{phoneNumberPool}', 'PhoneNumberPoolController@update');
-        Route::delete('/{phoneNumberPool}', 'PhoneNumberPoolController@delete');
-        Route::get('/', 'PhoneNumberPoolController@list');
+            /*
+            |--------------------------------
+            | Handle phone number pools
+            |--------------------------------
+            */
+            Route::prefix('phone-number-pools')->group(function(){
+                Route::get('/', 'Company\PhoneNumberPoolController@list')
+                    ->middleware('can:list,\App\Models\Company\PhoneNumberPool');
+
+                Route::post('/', 'Company\PhoneNumberPoolController@create')
+                    ->middleware('can:create,App\Models\Company\PhoneNumberPool');
+
+                Route::get('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@read')
+                    ->middleware('can:read,phoneNumberPool');
+
+                Route::put('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@update')
+                    ->middleware('can:update,phoneNumberPool');
+
+                Route::delete('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@delete')
+                    ->middleware('can:delete,phoneNumberPool');
+            });  
+        }); 
     });
+
+
+   
 
     //  Phone Numbers
     Route::prefix('phone-numbers')->group(function(){
@@ -200,12 +203,12 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
 Route::middleware('api')->group(function(){
     Route::prefix('incoming')->group(function(){
-        Route::any('call', 'Incoming\CallController@handleCall')->name('incoming-call');
-        Route::any('sms', 'Incoming\CallController@handleSms')->name('incoming-sms');
-        Route::any('mms', 'Incoming\CallController@handleMms')->name('incoming-mms');
-        Route::any('recorded-call', 'Incoming\CallController@handleRecordedCall')->name('recorded-call');
-        Route::any('call-status-changed', 'Incoming\CallController@handleCallStatusChanged');
-        Route::any('whisper', 'Incoming\CallController@whisper')->name('whisper');
+        Route::get('call', 'Incoming\CallController@handleCall')->name('incoming-call');
+        Route::get('sms', 'Incoming\CallController@handleSms')->name('incoming-sms');
+        Route::get('mms', 'Incoming\CallController@handleMms')->name('incoming-mms');
+        Route::get('recorded-call', 'Incoming\CallController@handleRecordedCall')->name('recorded-call');
+        Route::get('call-status-changed', 'Incoming\CallController@handleCallStatusChanged');
+        Route::get('whisper', 'Incoming\CallController@whisper')->name('whisper');
     });
 
     Route::prefix('public')->group(function(){
@@ -214,11 +217,11 @@ Route::middleware('api')->group(function(){
             Route::put('/{userInvite}/{key}', 'UserInviteController@publicAccept');
         });
     });
+
+    Route::post('/sessions', 'SessionController@create')->name('session');
+    Route::post('/events', 'EventController@create')->name('event');
 });
 
 
-//  Public
-Route::post('/sessions', 'SessionController@create')->name('session');
-Route::post('/events', 'EventController@create')->name('event');
 
 

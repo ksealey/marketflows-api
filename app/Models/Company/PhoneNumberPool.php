@@ -1,13 +1,12 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use \App\Models\Company\CampaignPhoneNumberPool;
 use \App\Contracts\CanBeDialed;
 use \App\Traits\IsDialed;
-use \App\Models\CampaignPhoneNumberPool;
-
 
 class PhoneNumberPool extends Model implements CanBeDialed
 {

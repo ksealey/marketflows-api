@@ -1,56 +1,67 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Company;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use \App\Rules\Company\AudioClipRule;
+use \App\Models\Company;
 use \App\Models\Company\AudioClip;
-use \App\Models\PhoneNumber;
-use \App\Models\PhoneNumberPool;
+use \App\Models\Company\PhoneNumberPool;
+use \App\Models\Company\PhoneNumber;
 use Validator;
 
 class PhoneNumberPoolController extends Controller
 {
-    public function list(Request $request)
+    /**
+     * List phone number pools
+     * 
+     * @param Request $company
+     * @param Company $company
+     * 
+     * @return Response
+     */
+    public function list(Request $request, Company $company)
     {
-        $rules = [
-            'start' => 'numeric',
-            'limit' => 'numeric',
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' =>  $validator->errors()->first()
-            ], 400);
-        }
-
+        $limit  = intval($request->limit) ?: 25;
+        $page   = intval($request->page) ? intval($request->page) - 1 : 0;
+        $search = $request->search;
+        
         $user  = $request->user();
-        $query = PhoneNumberPool::where('company_id', $user->company_id);
-        if( $search = $request->search ){
+        $query = PhoneNumberPool::where('company_id', $company->id);
+        
+        if( $search ){
             $query->where(function($query) use($search){
-                $query->where('name', 'like', $search . '%')
-                      ->orWhere('source', 'like', $search . '%')
-                      ->orWhere('forward_to_number', 'like', $search . '%');
+                $query->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('source', 'like', '%' . $search . '%')
+                      ->orWhere('forward_to_number', 'like', '%' . $search . '%');
             });
         }
 
-        $totalCount = $query->count();
-        
-        $query->offset($request->start ?: 0);
-        $query->limit($request->limit ?: 25);
-
-        $pools = $query->get();
+        $resultCount = $query->count();
+        $records     = $query->offset($page * $limit)
+                             ->limit($limit)
+                             ->get();
 
         return response([
-            'phone_number_pools' => $pools,
-            'result_count'       => count($pools),
-            'total_count'        => $totalCount,
-            'message'            => 'success'
+            'message'               => 'success',
+            'phone_number_pools'    => $records,
+            'result_count'          => $resultCount,
+            'limit'                 => $limit,
+            'page'                  => $page + 1,
+            'total_pages'           => ceil($resultCount / $limit)
         ]);
     }
 
-    public function create(Request $request)
+    /**
+     * Create a phone number pool
+     * 
+     * @param Request $request
+     * @param Company $company
+     * 
+     * @return Response
+     */
+    public function create(Request $request, Company $company)
     {
         $config = config('services.twilio');
         $user   = $request->user();
@@ -94,38 +105,42 @@ class PhoneNumberPoolController extends Controller
         ], 201);
     }
 
-    public function read(Request $request, PhoneNumberPool $phoneNumberPool)
+    /**
+     * View a phone number pool
+     * 
+     * @param Request $company
+     * @param Company $company
+     * @param PhoneNumberPool $phoneNumberPool
+     * 
+     * @return Response
+     */
+    public function read(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        $user = $request->user();
-        if( $phoneNumberPool->company_id != $user->company_id ){
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        }
-
         return response([
             'phone_number_pool' => $phoneNumberPool,
-            'message' => 'success'
+            'message'           => 'success'
         ]);
     }
 
-    public function update(Request $request, PhoneNumberPool $phoneNumberPool)
+    /**
+     * Update a phone number pool
+     * 
+     * @param Request $company
+     * @param Company $company
+     * @param PhoneNumberPool $phoneNumberPool
+     * 
+     * @return Response
+     */
+    public function update(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
         $config = config('services.twilio');
         $user   = $request->user();
-        
-        if( ! $phoneNumberPool || $phoneNumberPool->company_id != $user->company_id ){
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        }
-
         $rules = [
             'name'                      => 'bail|required|max:255',
             'source'                    => 'bail|required|max:255',
             'forward_to_country_code'   => 'bail|digits_between:1,4',
             'forward_to_number'         => 'bail|required|digits:10',
-            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($user->company_id)],
+            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($phoneNumberPool->company_id)],
             'record'                    => 'boolean',
             'whisper_message'           => 'max:255',
             'whisper_language'          => 'in:' . implode(',', array_keys($config['languages'])),
@@ -164,15 +179,17 @@ class PhoneNumberPoolController extends Controller
         ], 200);
     }
 
-    public function delete(Request $request, PhoneNumberPool $phoneNumberPool)
+    /**
+     * Delete a phone number pool
+     * 
+     * @param Request $company
+     * @param Company $company
+     * @param PhoneNumberPool $phoneNumberPool
+     * 
+     * @return Response
+     */
+    public function delete(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        $user = $request->user();
-        if( ! $phoneNumberPool || $phoneNumberPool->company_id != $user->company_id ){
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        }
-
         if( $phoneNumberPool->isInUse() ){
             return response([
                 'error' => 'This phone number pool is in use - please detach from all related entities and try again'
@@ -187,8 +204,6 @@ class PhoneNumberPoolController extends Controller
 
         return response([
             'message' => 'deleted'
-        ], 200);
+        ]);
     }
-
-
 }

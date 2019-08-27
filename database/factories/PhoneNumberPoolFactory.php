@@ -5,7 +5,7 @@
 use App\Model;
 use Faker\Generator as Faker;
 
-$factory->define(\App\Models\PhoneNumberPool::class, function (Faker $faker) {
+$factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $faker) {
     return [
         'name'                      => $faker->ein,
         'source'                    => 'TRK_SOURCE_POOL',

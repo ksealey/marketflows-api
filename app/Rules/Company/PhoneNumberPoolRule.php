@@ -3,7 +3,7 @@
 namespace App\Rules;
 
 use Illuminate\Contracts\Validation\Rule;
-use App\Models\PhoneNumberPool;
+use App\Models\Company\PhoneNumberPool;
 
 class PhoneNumberPoolRule implements Rule
 {

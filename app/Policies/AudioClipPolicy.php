@@ -3,8 +3,8 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Company\AudioClip;
 use App\Models\Company;
+use App\Models\Company\AudioClip;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use App\Policies\Traits\HandlesCompanyResources;
 

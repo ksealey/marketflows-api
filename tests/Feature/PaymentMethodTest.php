@@ -14,13 +14,12 @@ class PaymentMethodTest extends TestCase
     /**
      * Test creating a payment method
      * 
-     * @group integrate-payment-methods
+     * @group payment-methods
      */
     public function testCreate()
     {
         $user         = $this->createUser();
         $stripeToken  = 'tok_visa';
-        $declineToken = 'tok_chargeCustomerFail';
 
         $response = $this->json('POST', 'http://localhost/v1/payment-methods', [
             'token' => $stripeToken
@@ -42,7 +41,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test showing a payment method
      * 
-     * @group integrate-payment-methods
+     * @group payment-methods
      */
     public function testRead()
     {
@@ -71,7 +70,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test setting payment method as default
      * 
-     * @group integrate-payment-methods
+     * @group payment-methods
      */
     public function testMakeDefault()
     {
@@ -106,7 +105,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test deleting a payment method
      * 
-     * @group integrate-payment-methods
+     * @group payment-methods
      */
     public function testDelete()
     {
@@ -134,7 +133,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test deleting a primary payment method
      * 
-     * @group integrate-payment-methods
+     * @group payment-methods
      */
     public function testDeletePrimaryMethod()
     {
@@ -162,7 +161,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test listing payment methods
      * 
-     * @group integrate-payment-methods
+     * @group payment-methods
      */
     public function testList()
     {

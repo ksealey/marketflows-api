@@ -4,7 +4,7 @@
 
 use App\Model;
 use Faker\Generator as Faker;
-use App\Models\Campaign;
+use App\Models\Company\Campaign;
 
 $factory->define(Campaign::class, function (Faker $faker) {
     return [
