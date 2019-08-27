@@ -27,8 +27,7 @@ class PaymentMethodTest extends TestCase
         ], $this->authHeaders());
 
         $response->assertJson([
-            'message' => 'created',
-            'ok'      => true
+            'message' => 'created'
         ]);
 
         $response->assertJsonStructure([
@@ -57,8 +56,7 @@ class PaymentMethodTest extends TestCase
         $response = $this->json('GET', 'http://localhost/v1/payment-methods/' . $paymentMethod->id, [], $this->authHeaders());
 
         $response->assertJson([
-            'message' => 'success',
-            'ok'      => true
+            'message' => 'success'
         ]);
 
         $response->assertJsonStructure([
@@ -99,7 +97,6 @@ class PaymentMethodTest extends TestCase
 
         $response->assertJson([
             'message' => 'updated',
-            'ok'      => true,
         ]);
 
         $this->assertTrue(PaymentMethod::find($paymentMethod->id)->primary_method == false);
@@ -128,8 +125,7 @@ class PaymentMethodTest extends TestCase
         $response->assertStatus(200);
 
         $response->assertJson([
-            'message' => 'deleted',
-            'ok'      => true,
+            'message' => 'deleted'
         ]);
 
         $this->assertTrue(PaymentMethod::find($paymentMethod->id) == null);
@@ -157,12 +153,7 @@ class PaymentMethodTest extends TestCase
         $response->assertStatus(400);
 
         $response->assertJsonStructure([
-            'error',
-            'ok'
-        ]);
-
-        $response->assertJson([
-            'ok' => false
+            'error'
         ]);
 
         $this->assertTrue(PaymentMethod::find($paymentMethod->id) != null);

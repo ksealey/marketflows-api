@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use \App\Models\Company\AudioClip;
 use \App\Models\CampaignPhoneNumber;
 use \App\Models\CampaignPhoneNumberPool;
 use \App\Models\Campaign;
@@ -75,7 +76,7 @@ class PhoneNumberTest extends TestCase
             'number'       => '5005550006'
         ]);
 
-        $audioClip = factory(\App\Models\AudioClip::class)->create([
+        $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $user->company_id,
             'created_by' => $user->id
         ]);
@@ -120,7 +121,7 @@ class PhoneNumberTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $audioClip = factory(\App\Models\AudioClip::class)->create([
+        $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $user->company_id,
             'created_by' => $user->id
         ]);
@@ -182,7 +183,7 @@ class PhoneNumberTest extends TestCase
             'company_id' => $user->company_id,
             'created_by' => $user->id
         ]);
-        $newAudioClip = factory(\App\Models\AudioClip::class)->create([
+        $newAudioClip = factory(AudioClip::class)->create([
             'company_id'  => $user->company_id,
             'created_by' => $user->id
         ]);

@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use \App\Models\AudioClip;
+use \App\Models\Company\AudioClip;
 use \App\Models\PhoneNumber;
 use \App\Models\PhoneNumberPool;
 use \App\Models\Campaign;

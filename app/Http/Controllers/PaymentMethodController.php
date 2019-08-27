@@ -27,8 +27,7 @@ class PaymentMethodController extends Controller
         $validator = Validator::make($request->input(), $rules);
         if( $validator->fails() ){
             return response([
-                'error' => $validator->error()->first(),
-                'ok'    => false
+                'error' => $validator->error()->first()
             ], 400);
         }
 
@@ -41,13 +40,11 @@ class PaymentMethodController extends Controller
         }catch(Exception $e){
             return response([
                 'error' => 'Unable to add payment method - please try a different card',
-                'ok'    => false
             ], 400);
         }
 
         return response([
             'message'        => 'created',
-            'ok'             => true,
             'payment_method' => $paymentMethod
         ], 201);
     }
@@ -64,7 +61,6 @@ class PaymentMethodController extends Controller
     {
         return response([
             'message'        => 'success',
-            'ok'             => true,
             'payment_method' => $paymentMethod
         ], 200);
     }
@@ -91,7 +87,6 @@ class PaymentMethodController extends Controller
 
         return response([
             'message'        => 'updated',
-            'ok'             => true,
             'payment_method' => $paymentMethod
         ], 200);
     }
@@ -111,16 +106,14 @@ class PaymentMethodController extends Controller
         //  Do not allow deleting this card it's your primary payment method
         if( $paymentMethod->primary_method ){
             return response([
-                'error' => 'You cannot delete your primary payment method',
-                'ok'    => false
+                'error' => 'You cannot delete your primary payment method'
             ], 400);
         }
 
         $paymentMethod->delete();
 
         return response([
-            'message' => 'deleted',
-            'ok'      => true
+            'message' => 'deleted'        
         ], 200);
     }
 

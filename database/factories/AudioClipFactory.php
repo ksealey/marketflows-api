@@ -5,7 +5,7 @@
 use App\Model;
 use Faker\Generator as Faker;
 
-$factory->define(\App\Models\AudioClip::class, function (Faker $faker) {
+$factory->define(\App\Models\Company\AudioClip::class, function (Faker $faker) {
     return [
         'name'     => $faker->company,
         'path'     => '/audio_clips/' . mt_rand(9, 9999999) . '.mp3',

@@ -6,7 +6,7 @@ use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use \App\Models\AudioClip;
+use \App\Models\Company\AudioClip;
 use Storage;
 
 class AudioClipTest extends TestCase
@@ -22,36 +22,30 @@ class AudioClipTest extends TestCase
     {
         $user = $this->createUser();
 
-        $audioClip = factory(\App\Models\AudioClip::class)->create([
+        $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $user->company_id,
             'created_by' => $user->id
         ]);
 
-        $audioClip2 = factory(\App\Models\AudioClip::class)->create([
+        $audioClip2 = factory(AudioClip::class)->create([
             'company_id'  => $user->company_id,
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/audio-clips', [], $this->authHeaders());
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips', [], $this->authHeaders());
 
         $response->assertStatus(200);
 
-        $response->assertJsonStructure([
-            'audio_clips' => [
-                [
-                    'id'
-                ],
-                [
-                    'id'
-                ],
-            ]
-        ]);
-
         $response->assertJson([
-            'message'      => 'success',
-            'ok'           => true,
-            'result_count' => 2,
-            'total_count'  => 2
+            'message'         => 'success',
+            'audio_clips'     => [
+                ['id' => $audioClip->id],
+                ['id' => $audioClip2->id]
+            ],
+            'result_count'    => 2,
+            'limit'           => 25,
+            'page'            => 1,
+            'total_pages'     => 1
         ]);
     }
 
@@ -67,19 +61,19 @@ class AudioClipTest extends TestCase
         Storage::fake();
 
         $audioClipFile = UploadedFile::fake()->create('audio.mpeg', 2048); 
+        $name = 'My new audio clip';
 
-        $response = $this->json('POST', 'http://localhost/v1/audio-clips', [
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips', [
             'audio_clip' => $audioClipFile,
-            'name'       => 'My new audio clip'
+            'name'       => $name
         ], $this->authHeaders());
 
         $response->assertStatus(201);
 
-        $response->assertJsonStructure([
-            'message',
-            'ok',
+        $response->assertJson([
+            'message' => 'created',
             'audio_clip' => [
-                'id'
+                'name' => $name
             ]
         ]);
     }
@@ -93,20 +87,19 @@ class AudioClipTest extends TestCase
     {
         $user = $this->createUser();
 
-        $audioClip = factory(\App\Models\AudioClip::class)->create([
+        $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $user->company_id,
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/audio-clips/' . $audioClip->id, [], $this->authHeaders());
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips/' . $audioClip->id, [], $this->authHeaders());
 
         $response->assertStatus(200);
 
-        $response->assertJsonStructure([
-            'message',
-            'ok',
+        $response->assertJson([
+            'message' => 'success',
             'audio_clip' => [
-                'id'
+                'id'   => $audioClip->id
             ]
         ]);
     }
@@ -129,18 +122,16 @@ class AudioClipTest extends TestCase
 
         $newAudioClipFile = UploadedFile::fake()->create('audio.mpeg', 2048); 
         $newName = 'Updated audio file';
-        $response = $this->json('PUT', 'http://localhost/v1/audio-clips/' . $audioClip->id, [
+        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips/' . $audioClip->id, [
             'audio_clip' => $newAudioClipFile,
             'name'       => $newName
         ], $this->authHeaders());
-
         $response->assertStatus(200);
 
-        $response->assertJsonStructure([
-            'message',
-            'ok',
+        $response->assertJson([
+            'message' => 'updated',
             'audio_clip' => [
-                'id'
+                'name' => $newName
             ]
         ]);
 
@@ -163,13 +154,12 @@ class AudioClipTest extends TestCase
 
         Storage::fake();
 
-        $response = $this->json('DELETE', 'http://localhost/v1/audio-clips/' . $audioClip->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips/' . $audioClip->id, [], $this->authHeaders());
 
         $response->assertStatus(200);
 
-        $response->assertJsonStructure([
-            'message',
-            'ok',
+        $response->assertJson([
+            'message' => 'deleted'
         ]);
 
         Storage::assertMissing($audioClip->path);

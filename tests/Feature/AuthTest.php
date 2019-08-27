@@ -21,6 +21,7 @@ class AuthTest extends TestCase
      * A basic feature test example.
      *
      * @group auth
+     * @group 1
      * 
      * @return void
      */

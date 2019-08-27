@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Events\IncomingCallEvent;
 use App\Models\PhoneNumber;
 use App\Models\PhoneNumberPool;
-use App\Models\AudioClip;
+use App\Models\Company\AudioClip;
 use Twilio\TwiML;
 use Twilio\TwiML\VoiceResponse;
 use Validator;

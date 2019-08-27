@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Rules;
+namespace App\Rules\Company;
 
 use Illuminate\Contracts\Validation\Rule;
-use App\Models\AudioClip;
+use App\Models\Company\AudioClip;
 
 class AudioClipRule implements Rule
 {

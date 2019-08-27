@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use \App\Rules\AudioClipRule;
-use \App\Models\AudioClip;
+use \App\Rules\Company\AudioClipRule;
+use \App\Models\Company\AudioClip;
 use \App\Models\PhoneNumber;
 use \App\Models\PhoneNumberPool;
 use Validator;

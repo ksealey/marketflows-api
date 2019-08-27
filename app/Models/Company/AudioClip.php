@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -23,6 +23,10 @@ class AudioClip extends Model
 
     public function canBeDeleted()
     {
+        // 
+        // TODO: Make sure this audio clip is not attached to phone numbers
+        // ... 
+        //
         return true;
     }
 
