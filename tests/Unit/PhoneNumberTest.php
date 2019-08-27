@@ -5,11 +5,11 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use \App\Models\Campaign;
-use \App\Models\PhoneNumber;
-use \App\Models\PhoneNumberPool;
-use \App\Models\CampaignPhoneNumber;
-use \App\Models\CampaignPhoneNumberPool;
+use \App\Models\Company\Campaign;
+use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\PhoneNumberPool;
+use \App\Models\Company\CampaignPhoneNumber;
+use \App\Models\Company\CampaignPhoneNumberPool;
 
 class PhoneNumberTest extends TestCase
 {
@@ -54,7 +54,7 @@ class PhoneNumberTest extends TestCase
 
         //  Now try deleting the number
         $number = factory(PhoneNumber::class)->create([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id,
             'twilio_id'  => \str_random(40)
         ]);
@@ -96,14 +96,14 @@ class PhoneNumberTest extends TestCase
         $user = $this->createUser();
 
         $campaign    = factory(Campaign::class)->create([
-            'company_id'   => $user->company_id,
+            'company_id'   => $this->company->id,
             'created_by'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
             'ends_at'      => date('Y-m-d H:i:s', strtotime('now -10 minutes')),
         ]);
 
         $phone = factory(PhoneNumber::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'twilio_id'   => str_random(40),
             'created_by'  => $user->id
         ]);
@@ -132,26 +132,26 @@ class PhoneNumberTest extends TestCase
         $user = $this->createUser();
 
         $pool = factory(PhoneNumberPool::class)->create([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
         $phone = factory(PhoneNumber::class)->create([
-            'company_id'           => $user->company_id,
+            'company_id'           => $this->company->id,
             'created_by'           => $user->id,
             'phone_number_pool_id' => $pool->id,
             'twilio_id'            => str_random(40)
         ]);
 
         $phone2 = factory(PhoneNumber::class)->create([
-            'company_id'           => $user->company_id,
+            'company_id'           => $this->company->id,
             'created_by'           => $user->id,
             'phone_number_pool_id' => $pool->id,
             'twilio_id'            => str_random(40)
         ]);
 
         $campaign    = factory(Campaign::class)->create([
-            'company_id'   => $user->company_id,
+            'company_id'   => $this->company->id,
             'created_by'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
             'ends_at'      => date('Y-m-d H:i:s', strtotime('now +10 minutes')),

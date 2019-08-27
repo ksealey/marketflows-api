@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Contracts\CanBeDialed;
 use \App\Traits\IsDialed;
 use \App\Models\User;
-use \App\Models\Campaign;
-use \App\Models\CampaignPhoneNumber;
-use \App\Models\PhoneNumberPool;
+use \App\Models\Company\Campaign;
+use \App\Models\Company\CampaignPhoneNumber;
+use \App\Models\Company\PhoneNumberPool;
 use Twilio\Rest\Client as TwilioClient;
 
 class PhoneNumber extends Model implements CanBeDialed

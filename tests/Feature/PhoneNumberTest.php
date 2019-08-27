@@ -6,9 +6,12 @@ use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use \App\Models\Company\AudioClip;
-use \App\Models\CampaignPhoneNumber;
-use \App\Models\CampaignPhoneNumberPool;
-use \App\Models\Campaign;
+use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\PhoneNumberPool;
+use \App\Models\Company\Campaign;
+use \App\Models\Company\CampaignPhoneNumber;
+use \App\Models\Company\CampaignPhoneNumberPool;
+
 
 
 class PhoneNumberTest extends TestCase
@@ -24,38 +27,78 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $phone1 = factory(\App\Models\PhoneNumber::class)->create([
+        $phone1 = factory(PhoneNumber::class)->create([
             'company_id'  => $user->company_id,
             'twilio_id'   => str_random(40),
             'created_by'  => $user->id
         ]);
 
-        $phone2 = factory(\App\Models\PhoneNumber::class)->create([
+        $phone2 = factory(PhoneNumber::class)->create([
             'company_id'  => $user->company_id,
             'twilio_id'   => str_random(40),
             'created_by'  => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/phone-numbers', [], $this->authHeaders());
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers', [], $this->authHeaders());
+        $response->assertStatus(200);
+        $response->assertJson([
+            'message'               => 'success',
+            'phone_numbers'    => [
+                [
+                    'id' => $phone1->id
+                ],
+                [
+                    'id' => $phone2->id
+                ]
+            ],
+            'result_count'          => 2,
+            'limit'                 => 25,
+            'page'                  => 1,
+            'total_pages'           => 1
+        ]);
+    }
+
+    /**
+     * Test listing phone number with a filter
+     *
+     * @group phone-numbers
+     */
+    public function testListWithFilter()
+    {
+        $user = $this->createUser();
+
+        $phone1 = factory(PhoneNumber::class)->create([
+            'company_id'  => $this->company->id,
+            'twilio_id'   => str_random(40),
+            'created_by'  => $user->id
+        ]);
+
+        $phone2 = factory(PhoneNumber::class)->create([
+            'company_id'  => $this->company->id,
+            'twilio_id'   => str_random(40),
+            'created_by'  => $user->id
+        ]);
+
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers', [
+            'search' => $phone2->name
+        ], $this->authHeaders());
 
         $response->assertStatus(200);
 
-        $response->assertJsonStructure([
-            'phone_numbers' => [
-                [
-                    'id'
-                ],
-                [
-                    'id'
-                ],
-            ]
-        ]);
         $response->assertJson([
-            'message'      => 'success',
-            'result_count' => 2,
-            'total_count'  => 2
+            'message'               => 'success',
+            'phone_numbers'    => [
+                [
+                    'id' => $phone2->id
+                ]
+            ],
+            'result_count'          => 1,
+            'limit'                 => 25,
+            'page'                  => 1,
+            'total_pages'           => 1
         ]);
     }
+
 
     /**
      * Test creating a phone number
@@ -66,12 +109,12 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(\App\Models\PhoneNumberPool::class)->create([
+        $pool = factory(PhoneNumberPool::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id
         ]);
 
-        $phone = factory(\App\Models\PhoneNumber::class)->make([
+        $phone = factory(PhoneNumber::class)->make([
             'country_code' => '1',
             'number'       => '5005550006'
         ]);
@@ -81,7 +124,7 @@ class PhoneNumberTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/phone-numbers', [
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers', [
             'phone_number_pool' => $pool->id,
             'number'            => $phone->country_code . $phone->number,
             'name'              => $phone->name,
@@ -89,8 +132,6 @@ class PhoneNumberTest extends TestCase
             'forward_to_number' => $phone->forward_to_country_code . $phone->forward_to_number,
             'audio_clip'        => $audioClip->id
         ], $this->authHeaders());
-
-        $response->dump();
 
         $response->assertStatus(201);
 
@@ -116,7 +157,7 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(\App\Models\PhoneNumberPool::class)->create([
+        $pool = factory(PhoneNumberPool::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id
         ]);
@@ -126,7 +167,7 @@ class PhoneNumberTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $phone = factory(\App\Models\PhoneNumber::class)->create([
+        $phone = factory(PhoneNumber::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'phone_number_pool_id' =>$pool->id,
@@ -134,7 +175,7 @@ class PhoneNumberTest extends TestCase
             'audio_clip_id' => $audioClip->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/phone-numbers/' . $phone->id, [], $this->authHeaders());
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -162,24 +203,22 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(\App\Models\PhoneNumberPool::class)->create([
+        $pool = factory(PhoneNumberPool::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id
         ]);
 
-        $phone = factory(\App\Models\PhoneNumber::class)->create([
+        $phone = factory(PhoneNumber::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'phone_number_pool_id' =>$pool->id,
             'twilio_id'=> str_random(40)
         ]);
 
-        
-
         $newName   = 'UPDATED';
         $newSource = 'TRK_SOURCE_UPDATED';
         $newForwardTo = '8009099989';
-        $newPool = factory(\App\Models\PhoneNumberPool::class)->create([
+        $newPool = factory(PhoneNumberPool::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id
         ]);
@@ -188,7 +227,7 @@ class PhoneNumberTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('PUT', 'http://localhost/v1/phone-numbers/' . $phone->id, [
+        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [
             'name' => $newName,
             'source' => $newSource,
             'phone_number_pool' => $newPool->id,
@@ -221,20 +260,19 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(\App\Models\PhoneNumberPool::class)->create([
+        $pool = factory(PhoneNumberPool::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id
         ]);
 
-        $phone = factory(\App\Models\PhoneNumber::class)->create([
+        $phone = factory(PhoneNumber::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'phone_number_pool_id' =>$pool->id,
             'twilio_id'=> str_random(40)
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/phone-numbers/' . $phone->id, [], $this->authHeaders());
-
+        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
         $response->assertStatus(200);
 
         $response->assertJson([
@@ -251,7 +289,7 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $phone = factory(\App\Models\PhoneNumber::class)->create([
+        $phone = factory(PhoneNumber::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'twilio_id'=> str_random(40)
@@ -269,7 +307,7 @@ class PhoneNumberTest extends TestCase
             'phone_number_id' => $phone->id
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/phone-numbers/' . $phone->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
 
         $response->assertStatus(400);
 
@@ -288,12 +326,12 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(\App\Models\PhoneNumberPool::class)->create([
+        $pool = factory(PhoneNumberPool::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id
         ]);
 
-        $phone = factory(\App\Models\PhoneNumber::class)->create([
+        $phone = factory(PhoneNumber::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'phone_number_pool_id' => $pool->id,
@@ -312,7 +350,7 @@ class PhoneNumberTest extends TestCase
             'phone_number_pool_id' => $pool->id
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/phone-numbers/' . $phone->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
 
         $response->assertStatus(400);
 

@@ -175,20 +175,31 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                 Route::delete('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@delete')
                     ->middleware('can:delete,phoneNumberPool');
             });  
+
+            /*
+            |--------------------------------
+            | Handle phone numbers
+            |--------------------------------
+            */
+            Route::prefix('phone-numbers')->group(function(){
+                Route::get('/', 'Company\PhoneNumberController@list')
+                    ->middleware('can:list,\App\Models\Company\PhoneNumber');
+
+                Route::post('/', 'Company\PhoneNumberController@create')
+                    ->middleware('can:create,App\Models\Company\PhoneNumber');
+
+                Route::get('/{phoneNumber}', 'Company\PhoneNumberController@read')
+                    ->middleware('can:read,phoneNumber');
+
+                Route::put('/{phoneNumber}', 'Company\PhoneNumberController@update')
+                    ->middleware('can:update,phoneNumber');
+
+                Route::delete('/{phoneNumber}', 'Company\PhoneNumberController@delete')
+                    ->middleware('can:delete,phoneNumber');
+            });  
         }); 
     });
 
-
-   
-
-    //  Phone Numbers
-    Route::prefix('phone-numbers')->group(function(){
-        Route::post('/', 'PhoneNumberController@create');
-        Route::get('/{phoneNumber}', 'PhoneNumberController@read');
-        Route::put('/{phoneNumber}', 'PhoneNumberController@update');
-        Route::delete('/{phoneNumber}', 'PhoneNumberController@delete');
-        Route::get('/', 'PhoneNumberController@list');
-    });
 
      //  Campaigns
      Route::prefix('campaigns')->group(function(){

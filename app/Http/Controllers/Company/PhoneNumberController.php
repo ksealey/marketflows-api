@@ -1,12 +1,14 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Company;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Rules\PhoneNumberPoolRule;
+use App\Rules\Company\PhoneNumberPoolRule;
 use App\Rules\Company\AudioClipRule;
+use App\Models\Company;
 use App\Models\Company\AudioClip;
-use App\Models\PhoneNumber;
+use App\Models\Company\PhoneNumber;
 use Validator;
 use Exception;
 
@@ -16,43 +18,34 @@ class PhoneNumberController extends Controller
      * List phone numbers
      * 
      */
-    public function list(Request $request)
+    public function list(Request $request, Company $company)
     {
-        $rules = [
-            'start' => 'numeric',
-            'limit' => 'numeric',
-        ];
+        $limit  = intval($request->limit) ?: 25;
+        $page   = intval($request->page) ? intval($request->page) - 1 : 0;
+        $search = $request->search;
 
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' =>  $validator->errors()->first()
-            ], 400);
-        }
-
-        $user  = $request->user();
-        $query = PhoneNumber::where('company_id', $user->company_id);
-        if( $search = $request->search ){
+        $query = PhoneNumber::where('company_id', $company->id);
+        
+        if( $search ){
             $query->where(function($query) use($search){
-                $query->where('name', 'like', $search . '%')
-                      ->orWhere('number', 'like', $search . '%')
-                      ->orWhere('source', 'like', $search . '%')
-                      ->orWhere('forward_to_number', 'like', $search . '%');
+                $query->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('source', 'like', '%' . $search . '%')
+                      ->orWhere('forward_to_number', 'like', '%' . $search . '%');
             });
         }
 
-        $totalCount = $query->count();
-        
-        $query->offset($request->start ?: 0);
-        $query->limit($request->limit ?: 25);
-
-        $phoneNumbers = $query->get();
+        $resultCount = $query->count();
+        $records     = $query->offset($page * $limit)
+                             ->limit($limit)
+                             ->get();
 
         return response([
-            'phone_numbers' => $phoneNumbers,
-            'result_count'  => count($phoneNumbers),
-            'total_count'   => $totalCount,
-            'message'       => 'success'
+            'message'       => 'success',
+            'phone_numbers' => $records,
+            'result_count'  => $resultCount,
+            'limit'         => $limit,
+            'page'          => $page + 1,
+            'total_pages'   => ceil($resultCount / $limit)
         ]);
     }
 
@@ -60,18 +53,16 @@ class PhoneNumberController extends Controller
      * Create a phone number
      * 
      */
-    public function create(Request $request)
+    public function create(Request $request, Company $company)
     {
         $config = config('services.twilio');
-        $user   = $request->user();
-
         $rules = [
-            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($user->company_id)],
+            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company->id)],
             'number'            => 'bail|required|digits_between:10,13',
             'name'              => 'bail|required|max:255',
             'source'            => 'bail|required|max:255',
             'forward_to_number' => 'bail|required|digits_between:10,13',
-            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($user->company_id)],
+            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'            => 'boolean',
             'whisper_message'   => 'max:255',
             'whisper_language'  => 'in:' . implode(',', array_keys($config['languages'])),
@@ -85,13 +76,15 @@ class PhoneNumberController extends Controller
             ], 400);
         }
 
+        $user  = $request->user();
+
         //  Purchase a phone number
         try{
             $numData = PhoneNumber::purchase($request->number);
             $can     = $numData['capabilities'];
 
             $phoneNumber = PhoneNumber::create([
-                'company_id'                => $user->company_id,
+                'company_id'                => $company->id,
                 'created_by'                => $user->id,
                 'twilio_id'                 => $numData['sid'],
                 'country_code'              => $numData['country_code'],
@@ -126,16 +119,8 @@ class PhoneNumberController extends Controller
      * Read a phone number
      * 
      */
-    public function read(Request $request, PhoneNumber $phoneNumber)
+    public function read(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        $user = $request->user();
-
-        if( $phoneNumber->company_id != $user->company_id ){
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        }
-
         return response([
             'phone_number' => $phoneNumber
         ]);
@@ -145,23 +130,16 @@ class PhoneNumberController extends Controller
      * Update a phone number
      * 
      */
-    public function update(Request $request, PhoneNumber $phoneNumber)
+    public function update(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
         $config = config('services.twilio');
-        $user   = $request->user();
-
-        if( $phoneNumber->company_id != $user->company_id ){
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        }
-
+        
         $rules = [
-            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($user->company_id)],
+            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company->id)],
             'name'              => 'bail|required|max:255',
             'source'            => 'bail|required|max:255',
             'forward_to_number' => 'bail|required|digits_between:10,13',
-            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($user->company_id)],
+            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'            => 'boolean',
             'whisper_message'   => 'max:255',
             'whisper_language'  => 'in:' . implode(',', array_keys($config['languages'])),
@@ -196,16 +174,8 @@ class PhoneNumberController extends Controller
      * Delete a phone number
      * 
      */
-    public function delete(Request $request, PhoneNumber $phoneNumber)
+    public function delete(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        $user = $request->user();
-        
-        if( $phoneNumber->company_id != $user->company_id ){
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        }
-
         if( $phoneNumber->isInUse() ){
             return response([
                 'error' => 'This phone number is in use - please detach from all related entities and try again'

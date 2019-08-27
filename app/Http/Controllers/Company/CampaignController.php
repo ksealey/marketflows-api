@@ -1,16 +1,17 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Company;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\PhoneNumber;
-use App\Models\PhoneNumberPool;
-use App\Models\Campaign;
-use App\Models\CampaignPhoneNumberPool;
-use App\Models\CampaignPhoneNumber;
-use App\Rules\CampaignRule;
-use App\Rules\PhoneNumberPoolRule;
-use App\Rules\PhoneNumberRule;
+use App\Models\Company\PhoneNumber;
+use App\Models\Company\PhoneNumberPool;
+use App\Models\Company\Campaign;
+use App\Models\Company\CampaignPhoneNumberPool;
+use App\Models\Company\CampaignPhoneNumber;
+use App\Rules\Company\CampaignRule;
+use App\Rules\Company\PhoneNumberPoolRule;
+use App\Rules\Company\PhoneNumberRule;
 use App\Jobs\BuildAndPublishCompanyJs;
 use DateTime;
 use DateTimeZone;

@@ -27,7 +27,6 @@ class PhoneNumberPoolController extends Controller
         $page   = intval($request->page) ? intval($request->page) - 1 : 0;
         $search = $request->search;
         
-        $user  = $request->user();
         $query = PhoneNumberPool::where('company_id', $company->id);
         
         if( $search ){
@@ -64,14 +63,12 @@ class PhoneNumberPoolController extends Controller
     public function create(Request $request, Company $company)
     {
         $config = config('services.twilio');
-        $user   = $request->user();
-
         $rules = [
             'name'                      => 'bail|required|max:255',
             'source'                    => 'bail|required|max:255',
             'forward_to_country_code'   => 'bail|digits_between:1,4',
             'forward_to_number'         => 'bail|required|digits:10',
-            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($user->company_id)],
+            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'                    => 'boolean',
             'whisper_message'           => 'max:255',
             'whisper_language'          => 'in:' . implode(',', array_keys($config['languages'])),
@@ -85,8 +82,10 @@ class PhoneNumberPoolController extends Controller
             ], 400);
         }
 
+        $user = $request->user();
+        
         $phoneNumberPool = PhoneNumberPool::create([
-            'company_id'                => $user->company_id,
+            'company_id'                => $company->id,
             'created_by'                => $user->id,
             'name'                      => $request->name, 
             'source'                    => $request->source, 
@@ -134,7 +133,6 @@ class PhoneNumberPoolController extends Controller
     public function update(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
         $config = config('services.twilio');
-        $user   = $request->user();
         $rules = [
             'name'                      => 'bail|required|max:255',
             'source'                    => 'bail|required|max:255',
@@ -152,15 +150,6 @@ class PhoneNumberPoolController extends Controller
             return response([
                 'error' =>  $validator->errors()->first()
             ], 400);
-        }
-
-        if( $request->audio_clip ){
-            $audioClip = AudioClip::find($request->audio_clip);
-            if( ! $audioClip || $audioClip->company_id != $user->company_id ){
-                return response([
-                    'error' => 'Audio clip not found'
-                ], 400);
-            }
         }
 
         $phoneNumberPool->name                      = $request->name;

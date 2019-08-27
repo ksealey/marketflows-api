@@ -24,8 +24,7 @@ class AudioClipController extends Controller
         $page   = intval($request->page) ? intval($request->page) - 1 : 0;
         $search = $request->search;
         
-        $user  = $request->user();
-        $query = AudioClip::where('company_id', $company->id);
+        $query  = AudioClip::where('company_id', $company->id);
         
         if( $search )
             $query->where('name', 'like', '%' . $search . '%');

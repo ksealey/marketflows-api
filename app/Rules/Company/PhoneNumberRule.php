@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Rules;
+namespace App\Rules\Company;
 
 use Illuminate\Contracts\Validation\Rule;
 use App\Models\Company\PhoneNumber;
