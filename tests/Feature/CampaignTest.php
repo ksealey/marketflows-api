@@ -5,11 +5,14 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use \App\Models\PhoneNumber;
-use \App\Models\PhoneNumberPool;
-use \App\Models\Campaign;
-use \App\Models\CampaignPhoneNumber;
-use \App\Models\CampaignPhoneNumberPool;
+use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\PhoneNumberPool;
+use \App\Models\Company\Campaign;
+use \App\Models\Company\CampaignDomain;
+use \App\Models\Company\CampaignPhoneNumber;
+use \App\Models\Company\CampaignPhoneNumberPool;
+use \App\Jobs\BuildAndPublishCompanyJs;
+use Queue;
 
 class CampaignTest extends TestCase
 {
@@ -34,27 +37,63 @@ class CampaignTest extends TestCase
             'company_id' => $user->company_id
         ]);
 
-        $response = $this->json('GET', '/v1/campaigns', [], $this->authHeaders());
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns', [], $this->authHeaders());
         $response->assertStatus(200);
-        $response->assertJSON([
-            'campaigns' => [
-                [
-                    'id' => $campaign1->id
-                ],
-                [
-                    'id' => $campaign2->id
-                ]
+        $response->assertJSON([ 
+            'message'       => 'success',
+            'campaigns'     => [
+                ['id' => $campaign1->id],
+                ['id' => $campaign2->id],
             ],
-            'total_count' => 2
+            'result_count'  => 2,
+            'limit'         => 25,
+            'page'          => 1,
+            'total_pages'   => 1
         ]);
     }
 
     /**
-     * Test creating with a phone number
+     * Test listing with a filter
      *
      * @group campaigns
      */
-    public function testCreateWithPhone()
+    public function testListWithFilter()
+    {
+        $user     =  $this->createUser();
+
+        $campaign1 = factory(Campaign::class)->create([
+            'created_by' => $user->id,
+            'company_id' => $user->company_id
+        ]);
+
+        $campaign2 = factory(Campaign::class)->create([
+            'created_by' => $user->id,
+            'company_id' => $user->company_id
+        ]);
+
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns', [
+            'search' => $campaign2->name
+        ], $this->authHeaders());
+
+        $response->assertStatus(200);
+        $response->assertJSON([ 
+            'message'       => 'success',
+            'campaigns'     => [
+                ['id' => $campaign2->id],
+            ],
+            'result_count'  => 1,
+            'limit'         => 25,
+            'page'          => 1,
+            'total_pages'   => 1
+        ]);
+    }
+
+    /**
+     * Test creating a print campaign with a phone number
+     *
+     * @group campaigns
+     */
+    public function testCreatePrintCampaignWithPhone()
     {
         $myTZ = 'America/New_York';
 
@@ -71,43 +110,28 @@ class CampaignTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $campaign = factory(Campaign::class)->make();
+        $campaign = factory(Campaign::class)->make([
+            'type' => Campaign::TYPE_PRINT
+        ]);
 
         \Queue::fake();
         \Queue::assertNothingPushed();
 
-        $response = $this->json('POST', '/v1/campaigns', [
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
             'name'          => $campaign->name,
-            'type'          => Campaign::TYPE_WEB,
-            'starts_at'     => $campaign->starts_at,
-            'ends_at'       => $campaign->ends_at,
-            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id]
+            'type'          => $campaign->type,
+            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id],
+            'active'        => 1
         ], $this->authHeaders());
 
         $myTZ       = new \DateTimeZone($myTZ);
         $expectedTZ = new \DateTimeZone('UTC'); 
-
-        $utcStartsAt = new \DateTime($campaign->starts_at, $myTZ);
-        $utcEndsAt   = new \DateTime($campaign->ends_at, $myTZ);
-
-        $utcStartsAt->setTimezone($expectedTZ);
-        $utcEndsAt->setTimezone($expectedTZ);
 
         $response->assertStatus(201);
         $response->assertJSON([
             'campaign' => [
                 'name' => $campaign->name,
                 'type' => $campaign->type,
-                'starts_at' => $utcStartsAt->format('Y-m-d H:i:s'),
-                'ends_at'   => $utcEndsAt->format('Y-m-d H:i:s'),
-                'phone_numbers' => [
-                    [
-                        'id' => $phoneNumber1->id
-                    ],
-                    [
-                        'id' => $phoneNumber2->id
-                    ]
-                ]
             ]
         ]);
 
@@ -116,12 +140,182 @@ class CampaignTest extends TestCase
                                         ->count();
         
         $this->assertTrue($linkCount === 2);
+    }
 
-        //  Make sure the job to update JS went out
-        \Queue::assertPushed(\App\Jobs\BuildAndPublishCompanyJs::class, function ($job) use($user){
-            return $job->company->id == $user->company->id;
-        });
+    /**
+     * Test creating a print campaign with a phone number pool
+     *
+     * @group campaigns
+     */
+    public function testCreatePrintCampaignWithPhoneNumberPool()
+    {
+        $myTZ = 'America/New_York';
 
+        $user = $this->createUser([
+            'timezone' => $myTZ
+        ]);
+
+        $pool = factory(PhoneNumberPool::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+        $phoneNumber1 = factory(PhoneNumber::class)->create([
+            'phone_number_pool_id' => $pool->id,
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+        $phoneNumber2 = factory(PhoneNumber::class)->create([
+            'phone_number_pool_id' => $pool->id,
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+
+        $campaign = factory(Campaign::class)->make([
+            'type' => Campaign::TYPE_PRINT
+        ]);
+
+        \Queue::fake();
+        \Queue::assertNothingPushed();
+
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+            'name'              => $campaign->name,
+            'type'              => $campaign->type,
+            'phone_number_pool' => $pool->id,
+            'active'            => 1
+        ], $this->authHeaders());
+
+        $response->assertStatus(201);
+        $response->assertJSON([
+            'campaign' => [
+                'name' => $campaign->name,
+                'type' => $campaign->type
+            ]
+        ]);
+
+        //  Make sure no phone numbers are linked
+        $linkCount = CampaignPhoneNumber::whereIn('phone_number_id', [$phoneNumber1->id, $phoneNumber2->id])
+                                        ->count();
+        $this->assertTrue($linkCount === 0);
+
+        $responseData = json_decode($response->getContent());
+
+        $poolLinkCount = CampaignPhoneNumberPool::where('phone_number_pool_id', $pool->id)
+                                                ->where('campaign_id', $responseData->campaign->id)
+                                                ->count();
+        $this->assertTrue($poolLinkCount == 1);
+    }
+
+    /**
+     * Test creating a web campaign with a phone number will fail
+     *
+     * @group campaigns
+     */
+    public function testCreateWebCampaignWithPhoneNumberFails()
+    {
+        $myTZ = 'America/New_York';
+
+        $user = $this->createUser([
+            'timezone' => $myTZ
+        ]);
+
+        $phoneNumber = factory(PhoneNumber::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+
+        $campaign = factory(Campaign::class)->make([
+            'type' => Campaign::TYPE_WEB
+        ]);
+
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+            'name'          => $campaign->name,
+            'type'          => $campaign->type,
+            'phone_numbers' => [$phoneNumber->id],
+            'active'        => 1
+        ], $this->authHeaders());
+
+        $myTZ       = new \DateTimeZone($myTZ);
+        $expectedTZ = new \DateTimeZone('UTC'); 
+
+        $response->assertStatus(400);
+        $response->assertJSONStructure([
+            'error'
+        ]);
+    }
+
+    /**
+     * Test creating a web campaign with a phone number pool
+     *
+     * @group campaigns-
+     */
+    public function testCreateWebCampaignWithPhoneNumberPool()
+    {
+        Queue::fake();
+
+        $myTZ = 'America/New_York';
+
+        $user = $this->createUser([
+            'timezone' => $myTZ
+        ]);
+
+        $pool = factory(PhoneNumberPool::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id
+        ]);
+
+        $phoneNumber = factory(PhoneNumber::class)->create([
+            'company_id' => $user->company_id,
+            'created_by' => $user->id,
+            'phone_number_pool_id' => $pool->id
+        ]);
+
+        $campaign = factory(Campaign::class)->make([
+            'type' => Campaign::TYPE_WEB
+        ]);
+
+        $domains = ['cnn.com', 'www.google.com', 'gmail.com'];
+
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+            'name'              => $campaign->name,
+            'type'              => $campaign->type,
+            'phone_number_pool' => $pool->id,
+            'domains'           => $domains,
+            'active'            => 1
+        ], $this->authHeaders());
+
+        $response->assertStatus(201);
+        $response->assertJSON([
+            'campaign' => [
+                'created_by' => $user->id,
+                'name'       => $campaign->name,
+                'type'       => $campaign->type
+            ]
+        ]);
+
+        $responseData = json_decode($response->getContent());
+            
+        //  Make sure JS Web job was executed
+        Queue::assertPushed(BuildAndPublishCompanyJs::class);
+
+        //  Make sure domains where added
+        $campaignDomains = CampaignDomain::where('campaign_id', $responseData->campaign->id)->whereIn('domain', $domains)->get();
+        $this->assertTrue(count($campaignDomains) == count($domains));
+
+        $domains = ['cnn.com', 'bwick.com'];
+        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns/' . $responseData->campaign->id, [
+            'name'              => $campaign->name,
+            'type'              => $campaign->type,
+            'phone_number_pool' => $pool->id,
+            'domains'           => $domains,
+            'active'            => 1
+        ], $this->authHeaders());
+
+        $response->assertStatus(200);
+        $responseData = json_decode($response->getContent());
+        $campaignDomains = CampaignDomain::where('campaign_id', $responseData->campaign->id)->whereIn('domain', $domains)->get();
+        
+        $this->assertTrue(count($campaignDomains) == count($domains));
+        
     }
 
     /**
@@ -131,7 +325,6 @@ class CampaignTest extends TestCase
      */
     public function testCreateWithPhoneInUse()
     {
-    
         $user = $this->createUser();
 
         $phoneNumber1 = factory(PhoneNumber::class)->create([
@@ -155,12 +348,11 @@ class CampaignTest extends TestCase
 
         $campaign = factory(Campaign::class)->make();
 
-        $response = $this->json('POST', '/v1/campaigns', [
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns', [
             'name'          => $campaign->name,
-            'type'          => Campaign::TYPE_WEB,
-            'starts_at'     => $campaign->starts_at,
-            'ends_at'       => $campaign->ends_at,
-            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id]
+            'type'          => Campaign::TYPE_PRINT,
+            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id],
+            'active'        => 1,
         ], $this->authHeaders());
 
         $response->assertStatus(400);
@@ -170,65 +362,9 @@ class CampaignTest extends TestCase
     }
 
     /**
-     * Test creating with a phone pool
-     *
-     * @group campaigns
-     */
-    public function testCreateWithPhonePool()
-    {
-        $myTZ = 'America/New_York';
-
-        $user = $this->createUser([
-            'timezone' => $myTZ
-        ]);
-
-        $campaign    = factory(Campaign::class)->make();
-        $pool        = factory(PhoneNumberPool::class)->create([
-            'company_id' => $user->company_id,
-            'created_by' => $user->id
-        ]);
-
-        $response = $this->json('POST', '/v1/campaigns', [
-            'name'      => $campaign->name,
-            'type'      => Campaign::TYPE_WEB,
-            'starts_at' => $campaign->starts_at,
-            'ends_at'   => $campaign->ends_at,
-            'phone_number_pool' => $pool->id
-        ], $this->authHeaders());
-
-        $myTZ       = new \DateTimeZone($myTZ);
-        $expectedTZ = new \DateTimeZone('UTC'); 
-
-        $utcStartsAt = new \DateTime($campaign->starts_at, $myTZ);
-        $utcEndsAt   = new \DateTime($campaign->ends_at, $myTZ);
-
-        $utcStartsAt->setTimezone($expectedTZ);
-        $utcEndsAt->setTimezone($expectedTZ);
-
-        $response->assertStatus(201);
-        $response->assertJSON([
-            'campaign' => [
-                'name'                 => $campaign->name,
-                'type'                 => $campaign->type,
-                'starts_at'            => $utcStartsAt->format('Y-m-d H:i:s'),
-                'ends_at'              => $utcEndsAt->format('Y-m-d H:i:s'),
-                'phone_number_pool'    => [
-                    'id' => $pool->id
-                ]
-            ]
-        ]);
-
-        //  Make sure the phone number pool is linked
-        $linkCount = CampaignPhoneNumberPool::where('phone_number_pool_id', $pool->id)
-                                            ->count();
-        
-        $this->assertTrue($linkCount === 1);
-    }
-
-    /**
      * Test creating with a phone pool that is in use
      *
-     * @group campaigns-
+     * @group campaigns
      */
     public function testCreateWithPhonePoolInUse()
     {
@@ -254,11 +390,10 @@ class CampaignTest extends TestCase
 
         $campaign    = factory(Campaign::class)->make();
 
-        $response = $this->json('POST', '/v1/campaigns', [
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns', [
             'name'      => $campaign->name,
-            'type'      => Campaign::TYPE_WEB,
-            'starts_at' => $campaign->starts_at,
-            'ends_at'   => $campaign->ends_at,
+            'type'      => Campaign::TYPE_PRINT,
+            'active'    => 1,
             'phone_number_pool' => $pool->id
         ], $this->authHeaders());
 
@@ -288,11 +423,9 @@ class CampaignTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('POST', '/v1/campaigns', [
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns', [
             'name'      => $campaign->name,
             'type'      => $campaign->type,
-            'starts_at' => $campaign->starts_at,
-            'ends_at'   => $campaign->ends_at
         ], $this->authHeaders());
 
         $response->assertStatus(400);
@@ -324,16 +457,12 @@ class CampaignTest extends TestCase
             'phone_number_pool_id' => $pool->id
         ]);
     
-        $response = $this->json('GET', '/v1/campaigns/' . $campaign->id, [], $this->authHeaders());
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [], $this->authHeaders());
 
         $response->assertStatus(200);
         $response->assertJson([
             'campaign' => [
                 'id' => $campaign->id,
-                'phone_number_pool' => [
-                    'id' => $pool->id
-                ],
-                'phone_numbers' => []
             ]
         ]);
     }
@@ -377,7 +506,7 @@ class CampaignTest extends TestCase
             'phone_number_id' => $phoneNumber3->id
         ]);
     
-        $response = $this->json('GET', '/v1/campaigns/' . $campaign->id, [], $this->authHeaders());
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [], $this->authHeaders());
 
         $response->assertStatus(200);
         $response->assertJson([
@@ -433,29 +562,20 @@ class CampaignTest extends TestCase
             'phone_number_id' => $phoneNumber2->id
         ]);
 
-        $newCampaignData = factory(Campaign::class)->make();
+        $newCampaignData = factory(Campaign::class)->make([
+            'name' => $campaign->name . '_UPDATED'
+        ]);
     
-        $response = $this->json('PUT', '/v1/campaigns/' . $campaign->id, [
+        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [
             'name'      => $newCampaignData->name,
-            'type'      => $newCampaignData->type,
-            'starts_at' => $newCampaignData->starts_at,
-            'ends_at'   => $newCampaignData->ends_at,
-            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id]
+            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id],
+            'active'        => 1,
         ], $this->authHeaders());
 
         $response->assertStatus(200);
         $response->assertJson([
             'campaign' => [
-                'id' => $campaign->id,
-                'phone_number_pool' => null,
-                'phone_numbers' => [
-                    [
-                        'id' => $phoneNumber1->id
-                    ],
-                    [
-                        'id' => $phoneNumber2->id
-                    ]
-                ]
+                'id' => $campaign->id
             ]
         ]);
     }
@@ -472,7 +592,8 @@ class CampaignTest extends TestCase
         ]);
         $campaign    = factory(Campaign::class)->create([
             'company_id' => $user->company_id,
-            'created_by' => $user->id
+            'created_by' => $user->id,
+            'type'       => Campaign::TYPE_PRINT
         ]);
 
         $phoneNumber1 = factory(PhoneNumber::class)->create([
@@ -491,26 +612,23 @@ class CampaignTest extends TestCase
             'created_by' => $user->id
         ]);
     
-        $response = $this->json('PUT', '/v1/campaigns/' . $campaign->id, [
+        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [
             'name'      => $newCampaignData->name,
-            'type'      => $newCampaignData->type,
-            'starts_at' => $newCampaignData->starts_at,
-            'ends_at'   => $newCampaignData->ends_at,
+            'type'      => $campaign->type,
+            'active'    => 1,
             'phone_numbers' => [$phoneNumber2->id]
         ], $this->authHeaders());
 
         $response->assertStatus(200);
         $response->assertJson([
             'campaign' => [
-                'id' => $campaign->id,
-                'phone_number_pool' => null,
-                'phone_numbers' => [
-                    [
-                        'id' => $phoneNumber2->id
-                    ]
-                ]
+                'id' => $campaign->id
             ]
         ]);
+
+        $campaignPhones = CampaignPhoneNumber::where('campaign_id', $campaign->id)->get();
+        $this->assertTrue(count($campaignPhones) == 1);
+        $this->assertTrue($campaignPhones->first()->phone_number_id == $phoneNumber2->id);
     }
 
     /**
@@ -525,7 +643,8 @@ class CampaignTest extends TestCase
         ]);
         $campaign    = factory(Campaign::class)->create([
             'company_id' => $user->company_id,
-            'created_by' => $user->id
+            'created_by' => $user->id,
+            'type'       => Campaign::TYPE_PRINT
         ]);
         $phoneNumber1 = factory(PhoneNumber::class)->create([
             'company_id' => $user->company_id,
@@ -545,29 +664,25 @@ class CampaignTest extends TestCase
         $this->assertTrue(CampaignPhoneNumber::where('campaign_id', $campaign->id)->count() == 1);
         $this->assertTrue(CampaignPhoneNumberPool::where('campaign_id', $campaign->id)->count() == 0); 
         
-        $response = $this->json('PUT', '/v1/campaigns/' . $campaign->id, [
+        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [
             'name'      => $newCampaignData->name,
-            'type'      => $newCampaignData->type,
-            'starts_at' => $newCampaignData->starts_at,
-            'ends_at'   => $newCampaignData->ends_at,
-            'phone_number_pool' => $pool->id
+            'type'      => $campaign->type,
+            'phone_number_pool' => $pool->id,
+            'active' => 1
         ], $this->authHeaders());
-
         $response->assertStatus(200);
         $response->assertJson([
             'campaign' => [
-                'id' => $campaign->id,
-                'phone_number_pool' => [
-                    'id' => $pool->id
-                ],
-                'phone_numbers' => []
+                'id' => $campaign->id
             ]
         ]);
 
         //  Make sure the phone number links were deleted ... 
         $this->assertTrue(CampaignPhoneNumber::where('campaign_id', $campaign->id)->count() == 0);
         //  And that the new pool is attached
-        $this->assertTrue(CampaignPhoneNumberPool::where('campaign_id', $campaign->id)->count() == 1);
+        $campaignPools = CampaignPhoneNumberPool::where('campaign_id', $campaign->id)->get();
+        $this->assertTrue(count($campaignPools) == 1);
+        $this->assertTrue($campaignPools->first()->phone_number_pool_id == $pool->id);
     }
 
     /**
@@ -582,7 +697,8 @@ class CampaignTest extends TestCase
         ]);
         $campaign    = factory(Campaign::class)->create([
             'company_id' => $user->company_id,
-            'created_by' => $user->id
+            'created_by' => $user->id,
+            'type'       => Campaign::TYPE_PRINT
         ]);
         
 
@@ -610,30 +726,26 @@ class CampaignTest extends TestCase
         $this->assertTrue(CampaignPhoneNumber::where('campaign_id', $campaign->id)->count() == 0);
         $this->assertTrue(CampaignPhoneNumberPool::where('campaign_id', $campaign->id)->count() == 1);
 
-        $response = $this->json('PUT', '/v1/campaigns/' . $campaign->id, [
+        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [
             'name'      => $newCampaignData->name,
-            'type'      => $newCampaignData->type,
-            'starts_at' => $newCampaignData->starts_at,
-            'ends_at'   => $newCampaignData->ends_at,
-            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id]
+            'type'      => $campaign->type,
+            'phone_numbers' => [$phoneNumber1->id, $phoneNumber2->id],
+            'active' => 1
         ], $this->authHeaders());
-
         $response->assertStatus(200);
         $response->assertJson([
             'campaign' => [
-                'id' => $campaign->id,
-                'phone_number_pool' => null,
-                'phone_numbers' => [
-                    ['id' => $phoneNumber1->id],
-                    ['id' => $phoneNumber2->id]
-                ]
+                'id' => $campaign->id
             ]
         ]);
 
-        //  Make sure the phone number links were deleted ... 
-        $this->assertTrue(CampaignPhoneNumber::where('campaign_id', $campaign->id)->count() == 2);
-        //  And that the new pool is attached
+        //  Make sure the pool link was removed
         $this->assertTrue(CampaignPhoneNumberPool::where('campaign_id', $campaign->id)->count() == 0);
+        //  Make sure the phone number links were added
+        $campaignPhones = CampaignPhoneNumber::where('campaign_id', $campaign->id)->get();
+        $this->assertTrue(count($campaignPhones) == 2);
+        $this->assertTrue($campaignPhones->first()->phone_number_id == $phoneNumber1->id);
+        $this->assertTrue($campaignPhones->last()->phone_number_id == $phoneNumber2->id);
     }
 
     /**
@@ -660,7 +772,7 @@ class CampaignTest extends TestCase
             'phone_number_id' => $phoneNumber1->id
         ]);
     
-        $response = $this->json('DELETE', '/v1/campaigns/' . $campaign->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -692,7 +804,7 @@ class CampaignTest extends TestCase
             'phone_number_id' => $phoneNumber1->id
         ]);
     
-        $response = $this->json('DELETE', '/v1/campaigns/' . $campaign->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [], $this->authHeaders());
 
         $response->assertStatus(400);
 
@@ -703,42 +815,7 @@ class CampaignTest extends TestCase
         $this->assertTrue(Campaign::find($campaign->id) != null);
     }
 
-    /**
-     * Test deleting a campaign that is active with an end date
-     * 
-     * @group campaigns
-     */
-    public function testDeleteDatedCampaign()
-    {
-        $user        = $this->createUser();
-        $campaign    = factory(Campaign::class)->create([
-            'company_id'   => $user->company_id,
-            'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
-            'ends_at'      => date('Y-m-d H:i:s', strtotime('now +10 minutes')),
-        ]);
-
-        $phoneNumber1 = factory(PhoneNumber::class)->create([
-            'company_id' => $user->company_id,
-            'created_by' => $user->id
-        ]);
     
-        CampaignPhoneNumber::create([
-            'campaign_id'     => $campaign->id,
-            'phone_number_id' => $phoneNumber1->id
-        ]);
-    
-        $response = $this->json('DELETE', '/v1/campaigns/' . $campaign->id, [], $this->authHeaders());
-
-        $response->assertStatus(400);
-
-        $response->assertJSON([
-            'error' => 'You cannot delete active campaigns'
-        ]);
-
-        $this->assertTrue(Campaign::find($campaign->id) != null);
-    }
-
     /**
      * Test deleting a campaign that was active but is now ended
      * 
@@ -750,8 +827,7 @@ class CampaignTest extends TestCase
         $campaign    = factory(Campaign::class)->create([
             'company_id'   => $user->company_id,
             'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
-            'ends_at'      => date('Y-m-d H:i:s', strtotime('now -10 minutes')),
+            'activated_at' => null,
         ]);
 
         $phoneNumber1 = factory(PhoneNumber::class)->create([
@@ -764,7 +840,7 @@ class CampaignTest extends TestCase
             'phone_number_id' => $phoneNumber1->id
         ]);
     
-        $response = $this->json('DELETE', '/v1/campaigns/' . $campaign->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [], $this->authHeaders());
 
         $response->assertStatus(200);
 

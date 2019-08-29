@@ -19,8 +19,6 @@ class CreateCampaignsTable extends Migration
             $table->bigInteger('created_by')->unsigned();
             $table->string('name', 255)->nullable();
             $table->string('type', 32);
-            $table->dateTime('starts_at')->nullable();
-            $table->dateTime('ends_at')->nullable();
             $table->dateTime('activated_at')->nullable();
             $table->dateTime('suspended_at')->nullable();
             $table->timestamps();

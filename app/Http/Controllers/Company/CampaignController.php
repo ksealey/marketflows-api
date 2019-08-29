@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Campaign;
 use App\Models\Company\CampaignPhoneNumberPool;
 use App\Models\Company\CampaignPhoneNumber;
+use App\Models\Company\CampaignDomain;
 use App\Rules\Company\CampaignRule;
 use App\Rules\Company\PhoneNumberPoolRule;
 use App\Rules\Company\PhoneNumberRule;
@@ -21,100 +23,110 @@ use DB;
 class CampaignController extends Controller
 {
     /**
-     * List resources
+     * List phone numbers
      * 
+     * @param Illuminate\Http\Request $request      The incoming request
+     * @param Illuminate\Http\Company $company      The associated company
+     * 
+     * @return Illuminate\Http\Response
      */
-    public function list(Request $request)
+    public function list(Request $request, Company $company)
     {
-        $rules = [
-            'start' => 'numeric',
-            'limit' => 'numeric',
-        ];
+        $limit  = intval($request->limit) ?: 25;
+        $page   = intval($request->page) ? intval($request->page) - 1 : 0;
+        $search = $request->search;
 
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' =>  $validator->errors()->first()
-            ], 400);
-        }
-
-        $user  = $request->user();
-        $query = Campaign::where('company_id', $user->company_id);
-        if( $search = $request->search ){
-            $query->where(function($query) use($search){
-                $query->where('name', 'like', $search . '%');
-                //  Additional conditions here ...
-            });
-        }
-
-        $totalCount = $query->count();
+        $query = Campaign::where('company_id', $company->id);
         
-        $query->offset($request->start ?: 0);
-        $query->limit($request->limit ?: 25);
+        if( $search ){
+            $query->where('name', 'like', '%' . $search . '%');
+        }
 
-        $campaigns = $query->get();
+        $resultCount = $query->count();
+        $records     = $query->offset($page * $limit)
+                             ->limit($limit)
+                             ->get();
 
         return response([
-            'campaigns'    => $campaigns,
-            'result_count' => count($campaigns),
-            'total_count'  => $totalCount,
-            'message'      => 'success'
+            'message'       => 'success',
+            'campaigns'     => $records,
+            'result_count'  => $resultCount,
+            'limit'         => $limit,
+            'page'          => $page + 1,
+            'total_pages'   => ceil($resultCount / $limit)
         ]);
-
     }
 
     /**
      * Create new resource
      * 
+     * @param Illuminate\Http\Request $request      The incoming request
+     * @param Illuminate\Http\Company $company      The associated company
+     * 
+     * @return Illuminate\Http\Response
      */
-    public function create(Request $request)
+    public function create(Request $request, Company $company)
     {
-        $user  = $request->user();
-
         $rules = [
             'name'              => 'bail|required|max:255',
             'type'              => 'bail|required|in:' . implode(',', Campaign::types()),
-            'starts_at'         => 'bail|required|date',
-            'ends_at'           => ['bail', 'date'],
-            'phone_numbers'     => ['bail','required_without:phone_number_pool', new PhoneNumberRule($user->company_id)],
-            'phone_number_pool' => ['bail', 'numeric', 'required_without:phone_numbers',new PhoneNumberPoolRule($user->company_id)],
+            'phone_numbers'     => [
+                'bail', 
+                'array', 
+                'required_without:phone_number_pool', 
+                new PhoneNumberRule($company->id)
+            ],
+            'phone_numbers.*'   => 'numeric',
+            'phone_number_pool' => [
+                'bail', 
+                'numeric',
+                'required_without:phone_numbers',
+                'required_if:type,' . Campaign::TYPE_WEB, 
+                new PhoneNumberPoolRule($company->id)
+            ],
+            'active'            => 'required|bool',
         ]; 
 
         $validator = Validator::make($request->input(), $rules);
+
+        //  Require domains for web campaigns
+        $validator->sometimes('domains', 'required|array', function($input){
+            return $input->type == Campaign::TYPE_WEB;
+        });
+        $validator->sometimes('domains.*', ['required', 'max:1024', 'regex:/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/'], function($input){
+            return $input->type == Campaign::TYPE_WEB;
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' =>  $validator->errors()->first()
             ], 400);
-        }
-
-        $fromTZ = new DateTimeZone($user->timezone); 
-        $toTZ   = new DateTimeZone('UTC');
-
-        $startsAt = null;
-        if( $request->starts_at ){
-            $startsAt = new DateTime($request->starts_at, $fromTZ);
-            $startsAt->setTimezone($toTZ);
-            $startsAt = $startsAt->format('Y-m-d H:i:s');
-        }
-
-        $endsAt = null;
-        if( $request->ends_at ){
-            $endsAt = new DateTime($request->ends_at, $fromTZ);
-            $endsAt->setTimezone($toTZ);
-            $endsAt = $endsAt->format('Y-m-d H:i:s');
         }
         
         DB::beginTransaction();
 
         //  Make campaign
         $campaign = Campaign::create([
-            'company_id' => $user->company_id,
-            'created_by' => $user->id,
-            'name'       => $request->name,
-            'type'       => $request->type,
-            'starts_at'  => $startsAt,
-            'ends_at'    => $endsAt
+            'company_id'    => $company->id,
+            'created_by'    => $request->user()->id,
+            'name'          => $request->name,
+            'type'          => $request->type,
+            'activated_at'  => $request->active ? date('Y-m-d H:i:s') : null  
         ]);
+
+        //  Create campaign domains when it's web  
+        if( $request->type == Campaign::TYPE_WEB ){
+            $insert = [];
+            foreach( $request->domains as $domain ){
+                $insert[] = [
+                    'campaign_id'     => $campaign->id,
+                    'domain'          => $domain,
+                    'created_at'      => now(),
+                    'updated_at'      => now()
+                ];
+            }
+            CampaignDomain::insert($insert);
+        }
 
         //  Tie phone numbers
         if( $request->phone_number_pool ){
@@ -122,8 +134,6 @@ class CampaignController extends Controller
                 'campaign_id'           => $campaign->id,
                 'phone_number_pool_id'  => $request->phone_number_pool 
             ]);
-
-            $campaign->phone_number_pool = PhoneNumberPool::find($request->phone_number_pool);
         }elseif( $request->phone_numbers ){
             $insert         = [];
             $phoneNumberIds = is_string($request->phone_numbers) ? json_decode($request->phone_numbers) : $request->phone_numbers;
@@ -135,17 +145,13 @@ class CampaignController extends Controller
                     'updated_at'      => now()
                 ];
             } 
-            
             CampaignPhoneNumber::insert($insert);
-            
-            $campaign->phone_numbers = PhoneNumber::whereIn('id', $phoneNumberIds)
-                                                  ->get();
         }
 
         DB::commit();
 
-        if( $campaign->type == Campaign::TYPE_WEB )
-            BuildAndPublishCompanyJs::dispatch($user->company);
+        if( $campaign->type == Campaign::TYPE_WEB && $campaign->active() )
+            BuildAndPublishCompanyJs::dispatch($company);
 
         return response([
             'campaign' => $campaign
@@ -156,14 +162,8 @@ class CampaignController extends Controller
      * Read new resource
      * 
      */
-    public function read(Request $request, Campaign $campaign)
+    public function read(Request $request, Company $company, Campaign $campaign)
     {
-        $user = $request->user();
-        if( $campaign->company_id != $user->company_id )
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        
         $campaign->phone_numbers  = PhoneNumber::whereIn('id', function($query) use($campaign){
             $query->select('phone_number_id')
                   ->from('campaign_phone_numbers')
@@ -185,61 +185,58 @@ class CampaignController extends Controller
      * Update Resource
      * 
      */
-    public function update(Request $request, Campaign $campaign)
+    public function update(Request $request, Company $company, Campaign $campaign)
     {
-        $user = $request->user();
-        if( $campaign->company_id != $user->company_id )
+        if( $campaign->suspended_at ){
             return response([
-                'error' => 'Not found'
-            ], 404);
+                'error' => 'You cannot update a suspended campaign'
+            ], 400);
+        }
 
         $rules = [
             'name'              => 'bail|required|max:255',
-            'type'              => 'bail|required|in:' . implode(',', Campaign::types()),
-            'starts_at'         => 'bail|required|date',
-            'ends_at'           => ['bail', 'date'],
-            'phone_numbers'     => ['bail','required_without:phone_number_pool', new PhoneNumberRule($user->company_id, $campaign->id)],
-            'phone_number_pool' => ['bail', 'numeric', 'required_without:phone_numbers',new PhoneNumberPoolRule($user->company_id, $campaign->id)],
+            'phone_numbers'     => [
+                'bail', 
+                'array', 
+                'required_without:phone_number_pool', 
+                new PhoneNumberRule($company->id, $campaign->id)
+            ],
+            'phone_numbers.*'   => 'numeric',
+            'phone_number_pool' => [
+                'bail', 
+                'numeric',
+                'required_without:phone_numbers',
+                'required_if:type,' . Campaign::TYPE_WEB, 
+                new PhoneNumberPoolRule($company->id, $campaign->id)
+            ],
+            'active'            => 'required|bool'
         ]; 
 
         $validator = Validator::make($request->input(), $rules);
+
+        //  Require domains for web campaigns
+        $validator->sometimes('domains', 'required|array', function($input){
+            return $input->type == Campaign::TYPE_WEB;
+        });
+
+        $validator->sometimes('domains.*', ['required', 'string', 'max:1024', 'regex:/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/'], function($input){
+            return $input->type == Campaign::TYPE_WEB;
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' =>  $validator->errors()->first()
             ], 400);
         }
 
-        if( $campaign->suspended_at ){
-            return response([
-                'error' => 'You cannot update a suspended campaign'
-            ]);
-        }
-
-        $fromTZ = new DateTimeZone($user->timezone); 
-        $toTZ   = new DateTimeZone('UTC');
-
-        $startsAt = null;
-        if( $request->starts_at ){
-            $startsAt = new DateTime($request->starts_at, $fromTZ);
-            $startsAt->setTimezone($toTZ);
-            $startsAt = $startsAt->format('Y-m-d H:i:s');
-        }
-
-        $endsAt = null;
-        if( $request->ends_at ){
-            $endsAt = new DateTime($request->ends_at, $fromTZ);
-            $endsAt->setTimezone($toTZ);
-            $endsAt = $endsAt->format('Y-m-d H:i:s');
-        }
-        
         DB::beginTransaction();
 
         //  Update campaign
-        $campaign->name       = $request->name;
-        $campaign->type       = $request->type;
-        $campaign->starts_at  = $startsAt;
-        $campaign->ends_at    = $endsAt;
-        $campaign->save();
+        if( $campaign->name != $request->name){
+            $campaign->name = $request->name;
+            $campaign->save();
+        }
+        
 
         //  Update phone links
         if( $request->phone_number_pool ){
@@ -258,8 +255,6 @@ class CampaignController extends Controller
                 $phoneNumberPoolPivot->phone_number_pool_id = $request->phone_number_pool;
                 $phoneNumberPoolPivot->save();
             }
-            $campaign->phone_number_pool = PhoneNumberPool::find($request->phone_number_pool);
-            $campaign->phone_numbers     = [];
         }elseif( $request->phone_numbers ){
             $insertIds        = [];
             $phoneNumberIds   = is_string($request->phone_numbers) ? json_decode($request->phone_numbers) : $request->phone_numbers;
@@ -296,16 +291,28 @@ class CampaignController extends Controller
                 
                 CampaignPhoneNumber::insert($insert); 
             }
+        }
 
-            $campaign->phone_numbers = PhoneNumber::whereIn('id', $phoneNumberIds)
-                                                  ->get();
-            $campaign->phone_number_pool = null;
+        //  Update domains
+        if( $campaign->type == Campaign::TYPE_WEB ){
+            //   Remove domains from DB that are missing from request
+            CampaignDomain::where('campaign_id', $campaign->id)
+                            ->whereNotIn('domain', $request->domains)
+                            ->delete();
+
+            //  Add domains that are not found in DB
+            foreach( $request->domains as $domain ){
+                CampaignDomain::firstOrCreate([
+                    'campaign_id' => $campaign->id,
+                    'domain'      => $domain
+                ]);
+            }
         }
 
         DB::commit();
 
-        if( $campaign->type == Campaign::TYPE_WEB )
-            BuildAndPublishCompanyJs::dispatch($user->company);
+        if( $campaign->type == Campaign::TYPE_WEB && $campaign->active() )
+            BuildAndPublishCompanyJs::dispatch($company);
 
         return response([
             'campaign' => $campaign
@@ -317,16 +324,10 @@ class CampaignController extends Controller
      * Delete resource
      * 
      */
-    public function delete(Request $request, Campaign $campaign)
+    public function delete(Request $request, Company $company, Campaign $campaign)
     {
-        $user = $request->user();
-        if( $campaign->company_id != $user->company_id )
-            return response([
-                'error' => 'Not found'
-            ], 404);
-
         //  Do not allow users to delete active campaigns
-        if( $campaign->activated_at && (! $campaign->ends_at || $campaign->ends_at > date('Y-m-d H:i:s')) ){
+        if( $campaign->active() ){
             return response([
                 'error' => 'You cannot delete active campaigns'
             ], 400);

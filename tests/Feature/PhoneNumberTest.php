@@ -103,10 +103,12 @@ class PhoneNumberTest extends TestCase
     /**
      * Test creating a phone number
      *
-     * @group phone-numbers-
+     * @group phone-numbers
      */
     public function testCreate()
     {
+        PhoneNumber::testing();
+
         $user = $this->createUser();
 
         $pool = factory(PhoneNumberPool::class)->create([
@@ -124,7 +126,7 @@ class PhoneNumberTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers', [
+        $response = $this->json('POST', '/v1/companies/' . $this->company->id . '/phone-numbers', [
             'phone_number_pool' => $pool->id,
             'number'            => $phone->country_code . $phone->number,
             'name'              => $phone->name,
@@ -299,7 +301,6 @@ class PhoneNumberTest extends TestCase
             'company_id'   => $user->company_id,
             'created_by'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
-            'ends_at'      => date('Y-m-d H:i:s', strtotime('now +10 minutes')),
         ]);
     
         CampaignPhoneNumber::create([
@@ -342,7 +343,6 @@ class PhoneNumberTest extends TestCase
             'company_id'   => $user->company_id,
             'created_by'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
-            'ends_at'      => date('Y-m-d H:i:s', strtotime('now +10 minutes')),
         ]);
     
         CampaignPhoneNumberPool::create([

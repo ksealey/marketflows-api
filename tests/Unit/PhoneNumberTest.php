@@ -98,8 +98,7 @@ class PhoneNumberTest extends TestCase
         $campaign    = factory(Campaign::class)->create([
             'company_id'   => $this->company->id,
             'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
-            'ends_at'      => date('Y-m-d H:i:s', strtotime('now -10 minutes')),
+            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days'))
         ]);
 
         $phone = factory(PhoneNumber::class)->create([
@@ -153,8 +152,7 @@ class PhoneNumberTest extends TestCase
         $campaign    = factory(Campaign::class)->create([
             'company_id'   => $this->company->id,
             'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
-            'ends_at'      => date('Y-m-d H:i:s', strtotime('now +10 minutes')),
+            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days'))
         ]);
 
         //  Make sure they know they're not in use

@@ -32,7 +32,6 @@
         req.onreadystatechanged = function(){
 
         }
-        req.open({{route('session')}})
     }
 
 /*

@@ -19,10 +19,7 @@ class CampaignController extends Controller
     public function assignPhone(Request $request, Campaign $campaign)
     {
         // Make sure the campaign is active
-        if( !  $campaign->activated_at  
-            || $campaign->suspended_at 
-            || ($campaign->ends_at && $campaign->ends_at < date('Y-m-d H:i:s')) 
-        ){
+        if( ! $campaign->active() ){
             return response([
                 'error' => 'Campaign inactive'
             ], 400);

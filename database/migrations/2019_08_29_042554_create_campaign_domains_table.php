@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateWebsiteSessionsTable extends Migration
+class CreateCampaignDomainsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,9 +13,13 @@ class CreateWebsiteSessionsTable extends Migration
      */
     public function up()
     {
-        Schema::create('website_sessions', function (Blueprint $table) {
+        Schema::create('campaign_domains', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->bigInteger('campaign_id')->unsigned();
+            $table->string('domain', 1024);
             $table->timestamps();
+            $table->foreign('campaign_id')->references('id')->on('campaigns');
+
         });
     }
 
@@ -26,6 +30,6 @@ class CreateWebsiteSessionsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('website_sessions');
+        Schema::dropIfExists('campaign_domains');
     }
 }

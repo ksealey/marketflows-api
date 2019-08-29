@@ -230,8 +230,7 @@ class PhoneNumberPoolTest extends TestCase
         $campaign = factory(Campaign::class)->create([
             'company_id'   => $user->company_id,
             'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
-            'ends_at'      => date('Y-m-d H:i:s', strtotime('now +10 minutes')),
+            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 minutes'))
         ]);
     
         CampaignPhoneNumberPool::create([

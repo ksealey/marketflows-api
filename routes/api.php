@@ -196,29 +196,50 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
                 Route::delete('/{phoneNumber}', 'Company\PhoneNumberController@delete')
                     ->middleware('can:delete,phoneNumber');
-            });  
+            }); 
+            
+            /*
+            |--------------------------------
+            | Handle campaigns
+            |--------------------------------
+            */
+            Route::prefix('campaigns')->group(function(){
+                Route::get('/', 'Company\CampaignController@list')
+                    ->middleware('can:list,\App\Models\Company\Campaign');
+
+                Route::post('/', 'Company\CampaignController@create')
+                    ->middleware('can:create,App\Models\Company\Campaign');
+
+                Route::get('/{campaign}', 'Company\CampaignController@read')
+                    ->middleware('can:read,campaign');
+
+                Route::put('/{campaign}', 'Company\CampaignController@update')
+                    ->middleware('can:update,campaign');
+
+                Route::delete('/{campaign}', 'Company\CampaignController@delete')
+                    ->middleware('can:delete,campaign');
+
+                /*
+                |--------------------------------
+                | Campaign children endpoints
+                |--------------------------------
+                */
+                //
+                //
+                //
+                //
+            }); 
         }); 
     });
-
-
-     //  Campaigns
-     Route::prefix('campaigns')->group(function(){
-        Route::post('/', 'CampaignController@create');
-        Route::get('/{campaign}', 'CampaignController@read');
-        Route::put('/{campaign}', 'CampaignController@update');
-        Route::delete('/{campaign}', 'CampaignController@delete');
-        Route::get('/', 'CampaignController@list');
-     });
-     
 });
 
 Route::middleware('api')->group(function(){
     Route::prefix('incoming')->group(function(){
         Route::get('call', 'Incoming\CallController@handleCall')->name('incoming-call');
+        Route::get('call-status-changed', 'Incoming\CallController@handleCallStatusChanged')->name('call-status-changed');
+        Route::get('call-recorded', 'Incoming\CallController@handleRecordedCall')->name('call-status-changed');
         Route::get('sms', 'Incoming\CallController@handleSms')->name('incoming-sms');
         Route::get('mms', 'Incoming\CallController@handleMms')->name('incoming-mms');
-        Route::get('recorded-call', 'Incoming\CallController@handleRecordedCall')->name('recorded-call');
-        Route::get('call-status-changed', 'Incoming\CallController@handleCallStatusChanged');
         Route::get('whisper', 'Incoming\CallController@whisper')->name('whisper');
     });
 
@@ -228,9 +249,6 @@ Route::middleware('api')->group(function(){
             Route::put('/{userInvite}/{key}', 'UserInviteController@publicAccept');
         });
     });
-
-    Route::post('/sessions', 'SessionController@create')->name('session');
-    Route::post('/events', 'EventController@create')->name('event');
 });
 
 

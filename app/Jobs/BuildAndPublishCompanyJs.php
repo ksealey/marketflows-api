@@ -45,7 +45,7 @@ class BuildAndPublishCompanyJs implements ShouldQueue
         //  Invalidate existing file
         CDNHelper::invalidate($publicPath . '/*');
 
-        var_dump($content); exit;
+        //var_dump($content); exit;
 
         //  Trigger event
         event(new CompanyJsPublishedEvent($this->company));

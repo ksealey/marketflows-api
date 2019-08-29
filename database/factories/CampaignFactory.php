@@ -8,10 +8,8 @@ use App\Models\Company\Campaign;
 
 $factory->define(Campaign::class, function (Faker $faker) {
     return [
-        'name' => 'MY CAMPAIGN ' . date('U') ,
-        'type' => Campaign::TYPE_WEB,
-        'starts_at' => date('Y-m-d H:i:s', strtotime('yesterday')),
-        'ends_at' => date('Y-m-d H:i:s', strtotime('now + 2 days')),
-        'activated_at' => date('Y-m-d H:i:s')
+        'name'          => 'MY CAMPAIGN ' . mt_rand(999999, 999999999999),
+        'type'          => Campaign::TYPE_WEB,
+        'activated_at'  => date('Y-m-d H:i:s', strtotime('now - 10 minutes'))
     ];
 });

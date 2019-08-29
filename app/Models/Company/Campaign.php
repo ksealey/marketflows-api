@@ -20,8 +20,7 @@ class Campaign extends Model
         'created_by',
         'name',
         'type',
-        'starts_at',
-        'ends_at'
+        'activated_at'
     ];
 
     const TYPE_WEB   = 'WEB';
@@ -37,5 +36,11 @@ class Campaign extends Model
             self::TYPE_RADIO,
             self::TYPE_PRINT
         ];
+    }
+
+    public function active()
+    {
+        return $this->activated_at 
+            && ! $this->suspended_at;
     }
 }
