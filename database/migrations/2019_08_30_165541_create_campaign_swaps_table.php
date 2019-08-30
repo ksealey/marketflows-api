@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateCampaignSpendsTable extends Migration
+class CreateCampaignSwapsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,10 +13,12 @@ class CreateCampaignSpendsTable extends Migration
      */
     public function up()
     {
-        Schema::create('campaign_spends', function (Blueprint $table) {
+        Schema::create('campaign_swaps', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->bigInteger('campaign_id')->unsigned();
+            $table->json('rules');
             $table->timestamps();
-            $table->softDeletes();
+            $table->foreign('campaign_id')->references('id')->on('campaigns');
         });
     }
 
@@ -27,6 +29,6 @@ class CreateCampaignSpendsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('campaign_spends');
+        Schema::dropIfExists('campaign_swaps');
     }
 }

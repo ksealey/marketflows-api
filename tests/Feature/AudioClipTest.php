@@ -33,9 +33,7 @@ class AudioClipTest extends TestCase
         ]);
 
         $response = $this->json('GET', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips', [], $this->authHeaders());
-
         $response->assertStatus(200);
-
         $response->assertJson([
             'message'         => 'success',
             'audio_clips'     => [

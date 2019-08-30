@@ -11,6 +11,12 @@ class CampaignSpend extends Model
 
     protected $hidden = [
         'company_id',
-        'deleted_at'
+    ];
+
+    protected $fillable = [
+        'company_id',
+        'from_date',
+        'to_date',
+        'total'
     ];
 }

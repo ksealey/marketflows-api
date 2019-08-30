@@ -30,11 +30,10 @@ class AuthServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         Gate::guessPolicyNamesUsing(function ($modelClass) {
-            $pieces = explode('\\', $modelClass);
-
-            $policyName = '\App\Policies\\' . end($pieces) . 'Policy';
-
-            return $policyName;
+            $modelClass = trim($modelClass, '\\');
+            $modelClass = str_replace('\\Models\\', '\\Policies\\', $modelClass);
+            
+            return $modelClass . 'Policy';
         });
 
         Auth::viaRequest('auth_token', function ($request){
