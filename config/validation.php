@@ -16,6 +16,22 @@ return [
                 'OPERA',
                 'NETSCAPE',
                 'OTHER'
+            ],
+            'url_rules' => [
+                'drivers' => [
+                    'ENTRY_URL',
+                    'HAS_VISITED_URL',
+                    'CURRENT_URL'
+                ],
+                'types' => [
+                    'PATH',
+                    'PARAM'
+                ],
+                'condition_types' => [
+                    'EQUALS',
+                    'CONTAINS',
+                    'MATCHES'
+                ]
             ]
         ]
     ]

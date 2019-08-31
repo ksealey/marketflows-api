@@ -282,10 +282,11 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
                     Route::post('/targets','Company\Campaign\TargetController@create')
                          ->middleware('can:update,campaign');
 
-                    Route::delete('/targets/{campaignTarget}','Company\Campaign\TargetController@delete')
+                    Route::put('/targets/{target}','Company\Campaign\TargetController@update')
                          ->middleware('can:update,campaign');
-                
-                    
+
+                    Route::delete('/targets/{target}','Company\Campaign\TargetController@delete')
+                         ->middleware('can:update,campaign');
                 });
             }); 
         }); 

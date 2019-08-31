@@ -6,14 +6,14 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use \App\Models\Company;
 use \App\Models\Company\Campaign;
-use \App\Models\Company\CampaignDomain;
+use \App\Models\Company\CampaignTarget;
+use \App\Rules\Company\CampaignTargetRule;
 use Validator;
 
-class DomainController extends Controller
+class TargetController extends Controller
 {
-    protected $domainPattern = '/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/i';
     /**
-     * Create campaign spend
+     * Create campaign target
      * 
      * @param Request $request      
      * @param Company $company
@@ -23,80 +23,81 @@ class DomainController extends Controller
      */
     public function create(Request $request, Company $company, Campaign $campaign)
     {
+        //  Make suret this is a web campaign
         if( $campaign->type != Campaign::TYPE_WEB ){
             return response([
-                'error' => 'Only web campaigns can have associated domains'
+                'error' => 'Only web campaigns can have associated targets'
             ], 400);
         }
-        
+
         $rules = [
-            'domain' => [
-                'bail',
-                'required',
-                'regex:' . $this->domainPattern
-            ],
+           'rules' => [
+               'bail',
+               'required',
+               'json',
+                new CampaignTargetRule(),
+           ]
         ];
 
-        $messages = [
-            'domain.regex' => 'Domain format is invalid'
-        ];
-
-        $validator = Validator::make($request->input(), $rules, $messages);
+        $validator = Validator::make($request->input(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
         }
 
-        $campaignDomain = CampaignDomain::create([
+        if( CampaignTarget::where('campaign_id', $campaign->id)->count() > 0 ){
+            return response([
+                'error' => 'Campaigns can only have a single target'
+            ], 400);
+        }
+
+        $campaignTarget = CampaignTarget::create([
             'campaign_id' => $campaign->id,
-            'domain'      => $request->domain
+            'rules'       => $request->rules,
         ]);
 
         return response([
-            'message'           => 'created',
-            'campaign_domain'   => $campaignDomain,
+            'message'         => 'created',
+            'campaign_target' => $campaignTarget,
         ], 201);
     }
 
     /**
-     * Update campaign spend
+     * Update campaign target
      * 
      * @param Request $request      
      * @param Company $company
      * @param Campaign $campaign
-     * @param CampaignDomain $domain
+     * @param CampaignTarget $target
      * 
      * @return Response
      */
-    public function update(Request $request, Company $company, Campaign $campaign, CampaignDomain $domain)
+    public function update(Request $request, Company $company, Campaign $campaign, CampaignTarget $target)
     {
         $rules = [
-            'domain' => [
+            'rules' => [
                 'bail',
                 'required',
-                'regex:' . $this->domainPattern
-            ],
+                'json',
+                    new CampaignTargetRule(),
+            ]
         ];
 
-        $messages = [
-            'domain.regex' => 'Domain format is invalid'
-        ];
-
-        $validator = Validator::make($request->input(), $rules, $messages);
+        $validator = Validator::make($request->input(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
         }
 
-        $domain->domain = $request->domain;
-        $domain->save();
+        $target->rules = $request->rules;
+        $target->save();
 
         return response([
             'message'         => 'updated',
-            'campaign_domain' => $domain
-        ]);
+            'campaign_target' => $target,
+        ], 200);
     }
 
     /**
@@ -105,13 +106,13 @@ class DomainController extends Controller
      * @param Request $request      
      * @param Company $company
      * @param Campaign $campaign
-     * @param CampaignDomain $domain
+     * @param CampaignSpend $spend
      * 
      * @return Response
      */
-    public function delete(Request $request, Company $company, Campaign $campaign, CampaignDomain $domain)
+    public function delete(Request $request, Company $company, Campaign $campaign, CampaignTarget $target)
     {
-        $domain->delete();
+        $target->delete();
 
         return response([
             'message' => 'deleted'

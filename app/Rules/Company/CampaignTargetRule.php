@@ -67,7 +67,7 @@ class CampaignTargetRule implements Rule
 
         foreach( $target->BROWSERS as $browser ){
             if( ! in_array($browser, $config['browsers'] ) ){
-                $this->message = 'Invalid browser ' . $browser;
+                $this->message = 'Invalid browser';
 
                 return false;
             }
@@ -110,6 +110,83 @@ class CampaignTargetRule implements Rule
 
                 return false;
             }
+        }
+
+        if( ! isset($target->URL_RULES) ){
+            $this->message = 'Campaign target url rules required';
+
+            return false;
+        }else if( ! is_array($target->URL_RULES) ){
+            $this->message = 'Campaign target url rules should be an array of url rules';
+
+            return false;
+        }
+
+        foreach( $target->URL_RULES as $rule ){
+            //  Name
+            if( empty($rule->name) || ! is_string($rule->name) ){
+                $this->message = 'All campaign target url rules must have a name';
+
+                return false;
+            }
+
+            //  Driver
+            if( empty($rule->driver) ){
+                $this->message = 'All campaign target url rules must have a driver';
+
+                return false;
+            }elseif( ! in_array($rule->driver, $config['url_rules']['drivers']) ){
+                $this->message = 'Invalid url rule driver';
+
+                return false;
+            }
+
+            //  Type
+            if( empty($rule->type) ){
+                $this->message = 'All campaign target url rules must have a type';
+
+                return false;
+            }elseif( ! in_array($rule->type, $config['url_rules']['types']) ){
+                $this->message = 'Invalid url rule type';
+
+                return false;
+            }
+
+            //  Condition
+            if( empty($rule->condition) ){
+                $this->message = 'All campaign target url rules must have a condition';
+
+                return false;
+            }elseif( ! is_object($rule->condition) ){
+                $this->message = 'Invalid url rule condition';
+
+                return false;
+            }
+
+            if( empty($rule->condition->type) ){
+                $this->message = 'All campaign target url rule conditions must have a type';
+
+                return false;
+            }
+
+            if( ! in_array($rule->condition->type, $config['url_rules']['condition_types']) ){
+                $this->message = 'Invalid campaign target url rule condition type';
+
+                return false;
+            }
+
+            if( ! isset($rule->condition->key) || ! is_string($rule->condition->key) ){
+                $this->message = 'All campaign target url rule conditions must have a key';
+
+                return false;
+            }
+
+            if( ! isset($rule->condition->value) || ! is_string($rule->condition->value) ){
+                $this->message = 'All campaign target url rule conditions must have a value';
+
+                return false;
+            }
+
         }
 
         return true;
