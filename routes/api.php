@@ -254,10 +254,10 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
                     Route::post('/spends','Company\Campaign\SpendController@create')
                          ->middleware('can:update,campaign');
 
-                    Route::put('/spends','Company\Campaign\SpendController@update')
+                    Route::put('/spends/{campaignSpend}','Company\Campaign\SpendController@update')
                          ->middleware('can:update,campaign');
 
-                    Route::delete('/spends/{campaignDomain}','Company\Campaign\SpendController@delete')
+                    Route::delete('/spends/{campaignSpend}','Company\Campaign\SpendController@delete')
                          ->middleware('can:update,campaign');
                 
                     /*
