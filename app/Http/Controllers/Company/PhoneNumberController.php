@@ -57,7 +57,7 @@ class PhoneNumberController extends Controller
     {
         $config = config('services.twilio');
         $rules = [
-            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company->id)],
+            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company)],
             'number'            => 'bail|required|digits_between:10,13',
             'name'              => 'bail|required|max:255',
             'source'            => 'bail|required|max:255',
@@ -135,7 +135,7 @@ class PhoneNumberController extends Controller
         $config = config('services.twilio');
         
         $rules = [
-            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company->id)],
+            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company)],
             'name'              => 'bail|required|max:255',
             'source'            => 'bail|required|max:255',
             'forward_to_number' => 'bail|required|digits_between:10,13',

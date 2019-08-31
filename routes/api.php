@@ -230,21 +230,21 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
                     | Handle campaign phone numbers
                     |--------------------------------
                     */
-                    Route::post('/phone-numbers','Company\Campaign\PhoneNumberController@create')
-                         ->middleware('can:create,App\Models\Company\Campaign');
+                    Route::post('/phone-numbers','Company\Campaign\PhoneNumberController@add')
+                         ->middleware('can:update,campaign');
 
-                    Route::delete('/phone-numbers/{campaignPhoneNumber}','Company\Campaign\PhoneNumberController@delete')
-                         ->middleware('can:delete,campaign');
+                    Route::delete('/phone-numbers','Company\Campaign\PhoneNumberController@remove')
+                         ->middleware('can:update,campaign');
                     /*
                     |--------------------------------------
                     | Handle campaign phone number groups
                     |--------------------------------------
                     */
-                    Route::post('/phone-number-groups','Company\Campaign\PhoneNumberGroupController@create')
-                         ->middleware('can:create,App\Models\Company\Campaign');
+                    Route::post('/phone-number-pools','Company\Campaign\PhoneNumberPoolController@add')
+                         ->middleware('can:update,campaign');
 
-                    Route::delete('/phone-number-groups/{campaignPhoneNumberGroup}','Company\Campaign\PhoneNumberGroupController@delete')
-                         ->middleware('can:delete,campaign');
+                    Route::delete('/phone-number-pools','Company\Campaign\PhoneNumberPoolController@remove')
+                         ->middleware('can:update,campaign');
 
                     /*
                     |--------------------------------------
@@ -252,13 +252,13 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
                     |--------------------------------------
                     */
                     Route::post('/spends','Company\Campaign\SpendController@create')
-                         ->middleware('can:create,App\Models\Company\Campaign');
+                         ->middleware('can:update,campaign');
 
                     Route::put('/spends','Company\Campaign\SpendController@update')
                          ->middleware('can:update,campaign');
 
                     Route::delete('/spends/{campaignDomain}','Company\Campaign\SpendController@delete')
-                         ->middleware('can:delete,campaign');
+                         ->middleware('can:update,campaign');
                 
                     /*
                     |--------------------------------------
@@ -266,10 +266,10 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
                     |--------------------------------------
                     */
                     Route::post('/targets','Company\Campaign\TargetController@create')
-                         ->middleware('can:create,App\Models\Company\Campaign');
+                         ->middleware('can:update,campaign');
 
                     Route::delete('/targets/{campaignTarget}','Company\Campaign\TargetController@delete')
-                         ->middleware('can:delete,campaign');
+                         ->middleware('can:update,campaign');
                 
                     /*
                     |--------------------------------------
@@ -277,13 +277,13 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
                     |--------------------------------------
                     */
                     Route::post('/domains','Company\Campaign\DomainController@create')
-                         ->middleware('can:create,App\Models\Company\Campaign');
+                         ->middleware('can:update,campaign');
 
                     Route::put('/domains','Company\Campaign\DomainController@update')
                          ->middleware('can:update,campaign');
 
                     Route::delete('/domains/{campaignDomain}','Company\Campaign\DomainController@delete')
-                         ->middleware('can:delete,campaign');
+                         ->middleware('can:update,campaign');
                 });
             }); 
         }); 

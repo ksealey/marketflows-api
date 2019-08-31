@@ -3,13 +3,15 @@
 namespace App\Rules\Company;
 
 use Illuminate\Contracts\Validation\Rule;
+use App\Models\Company;
+use App\Models\Company\Campaign;
 use App\Models\Company\PhoneNumberPool;
 
 class PhoneNumberPoolRule implements Rule
 {
-    protected $companyId;
+    protected $company;
 
-    protected $campaignId;
+    protected $campaign;
 
     protected $message;
 
@@ -18,11 +20,11 @@ class PhoneNumberPoolRule implements Rule
      *
      * @return void
      */
-    public function __construct(int $companyId, $campaignId = null)
+    public function __construct(Company $company, $campaign = null)
     {
-        $this->companyId = $companyId;
+        $this->company  = $company;
 
-        $this->campaignId = $campaignId;
+        $this->campaign = $campaign;
     }
 
     /**
@@ -42,13 +44,13 @@ class PhoneNumberPoolRule implements Rule
             return false;
         }
 
-        if( $pool->company_id != $this->companyId ){
+        if( $pool->company_id != $this->company->id ){
             $this->message = 'Phone number pool invalid';
 
             return false;
         }
 
-        if( $pool->isInUseExcludingCampaign($this->campaignId) ){
+        if( $pool->isInUseExcludingCampaign($this->campaign ? $this->campaign->id : null) ){
             $this->message = 'Phone number pool in use';
 
             return false;

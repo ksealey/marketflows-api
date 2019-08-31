@@ -3,13 +3,15 @@
 namespace App\Rules\Company;
 
 use Illuminate\Contracts\Validation\Rule;
+use App\Models\Company;
+use App\Models\Company\Campaign;
 use App\Models\Company\PhoneNumber;
 
 class PhoneNumberRule implements Rule
 {
-    protected $companyId;
+    protected $company;
 
-    protected $campaignId;
+    protected $campaign;
 
     protected $message;
 
@@ -18,11 +20,11 @@ class PhoneNumberRule implements Rule
      *
      * @return void
      */
-    public function __construct($companyId, $campaignId = null)
+    public function __construct(Company $company, Campaign $campaign)
     {
-        $this->companyId = $companyId;
+        $this->company  = $company;
 
-        $this->campaignId = $campaignId;
+        $this->campaign = $campaign;
     }
 
     /**
@@ -34,20 +36,11 @@ class PhoneNumberRule implements Rule
      */
     public function passes($attribute, $value)
     {
-        if( is_string($value) )
-            $value = json_decode($value);
-        
-        if( ! is_array($value) ){
-            $this->message = 'Phone numbers field should contain an array of phone number ids';
-
-            return false;
-        }
-
-        $myPhones = PhoneNumber::where('company_id', $this->companyId)
+        $myPhones = PhoneNumber::where('company_id', $this->company->id)
                                 ->whereIn('id', $value)
                                 ->get();
         if( ! $myPhones ){
-            $this->message = 'Phone numbers invalid';
+            $this->message = 'The phone numbers provided are invalid';
 
             return false;
         }
@@ -56,15 +49,15 @@ class PhoneNumberRule implements Rule
         
         $diff = array_diff($value, $foundIds);
         if( count($diff) ){
-            $this->message = 'Phone numbers invalid | ' . implode(',', $diff);
+            $this->message = 'Some of the phone numbers provided are invalid.';
 
             return false;
         }
 
         //  Make sure they are not in use
-        $numbersInUse = PhoneNumber::numbersInUseExcludingCampaign($value, $this->campaignId);
+        $numbersInUse = PhoneNumber::numbersInUseExcludingCampaign($value, $this->campaign->id);
         if( count($numbersInUse) ){
-            $this->message = 'Phone numbers in use | ' . implode(',', $numbersInUse);
+            $this->message = 'Some of the numbers provided are already in use.';
 
             return false;
         }

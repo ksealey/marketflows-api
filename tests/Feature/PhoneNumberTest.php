@@ -13,7 +13,6 @@ use \App\Models\Company\CampaignPhoneNumber;
 use \App\Models\Company\CampaignPhoneNumberPool;
 
 
-
 class PhoneNumberTest extends TestCase
 {
     use \Tests\CreatesUser;

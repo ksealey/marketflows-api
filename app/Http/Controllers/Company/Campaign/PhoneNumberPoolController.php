@@ -6,11 +6,11 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use \App\Models\Company;
 use \App\Models\Company\Campaign;
-use \App\Models\Company\CampaignPhoneNumber;
-use \App\Rules\Company\PhoneNumberRule;
+use \App\Models\Company\CampaignPhoneNumberPool;
+use \App\Rules\Company\PhoneNumberPoolRule;
 use Validator;
 
-class PhoneNumberController extends Controller
+class PhoneNumberPoolController extends Controller
 {
     /**
      * Attach phone numbers to campaign
@@ -31,13 +31,11 @@ class PhoneNumberController extends Controller
         }
 
         $rules = [
-            'phone_numbers' => [
+            'phone_number_pool' => [
                 'bail',
                 'required', 
-                'array', 
-                new PhoneNumberRule($company, $campaign)
-            ],
-            'phone_numbers.*' => 'bail|required|numeric'
+                new PhoneNumberPoolRule($company, $campaign)
+            ]
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -47,18 +45,17 @@ class PhoneNumberController extends Controller
             ], 400);
         }
 
-        $now    = date('Y-m-d H:i:s');
-        $insert = [];
-        foreach( $request->phone_numbers as $phoneNumberId ){
-            $insert[] = [
-                'campaign_id'       => $campaign->id,
-                'phone_number_id'   => $phoneNumberId,
-                'created_at'        => $now,
-                'updated_at'        => $now
-            ];
+        //  Make sure there is not already a pool attached to this record
+        if( CampaignPhoneNumberPool::where('campaign_id', $campaign->id)->count() > 0 ){
+            return response([
+                'error' => 'Campaigns can only have a single phone numbr pool'
+            ], 400);
         }
 
-        CampaignPhoneNumber::insert($insert);
+        CampaignPhoneNumberPool::insert([
+            'campaign_id'          => $campaign->id,
+            'phone_number_pool_id' => $request->phone_number_pool
+        ]);
 
         return response([
             'message' => 'created'
@@ -77,13 +74,11 @@ class PhoneNumberController extends Controller
     public function remove(Request $request, Company $company, Campaign $campaign)
     {
         $rules = [
-            'phone_numbers' => [
+            'phone_number_pool' => [
                 'bail',
                 'required', 
-                'array', 
-                new PhoneNumberRule($company, $campaign)
-            ],
-            'phone_numbers.*' => 'bail|required|numeric'
+                new PhoneNumberPoolRule($company, $campaign)
+            ]
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -93,7 +88,7 @@ class PhoneNumberController extends Controller
             ], 400);
         }
 
-        CampaignPhoneNumber::whereIn('phone_number_id', $request->phone_numbers)
+        CampaignPhoneNumberPool::where('phone_number_pool_id', $request->phone_number_pool)
                            ->where('campaign_id', $campaign->id)
                            ->delete();
 

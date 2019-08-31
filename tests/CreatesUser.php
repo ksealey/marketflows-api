@@ -5,6 +5,7 @@ use \App\Models\Account;
 use \App\Models\Company;
 use \App\Models\User;
 use \App\Models\UserCompany;
+use \App\Models\Company\Campaign;
 
 trait CreatesUser
 {
@@ -32,6 +33,17 @@ trait CreatesUser
         ]);
 
         return $this->user;
+    }
+
+    public function createCampaign($fields = [])
+    {
+        $user = $this->user ?: $this->createUser();
+        
+        return factory(Campaign::class)->create(array_merge([
+            'company_id' => $this->company->id,
+            'created_by' => $user->id,
+            'type'       => Campaign::TYPE_PRINT
+        ], $fields));
     }
 
     public function authHeaders(array $additionalHeaders = [])
