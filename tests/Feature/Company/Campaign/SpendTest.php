@@ -65,9 +65,7 @@ class SpendTest extends TestCase
             'campaign_id' => $campaign->id,
         ]);
 
-        $updatedSpend = factory(CampaignSpend::class)->make([
-            'company_id' => $this->company->id
-        ]);
+        $updatedSpend = factory(CampaignSpend::class)->make();
 
         $response = $this->json('PUT', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/spends/' . $spend->id, [
             'from_date' => $updatedSpend->from_date,
@@ -84,10 +82,9 @@ class SpendTest extends TestCase
 
         $updatedFromDate->setTimezone($newTZ);
         $updatedToDate->setTimezone($newTZ);
-
         
         $response->assertJSON([
-            'message' => 'created',
+            'message' => 'updated',
             'campaign_spend' => [
                 'id'        => $spend->id,
                 'from_date' => $updatedFromDate->format('Y-m-d H:i:s'),
@@ -95,6 +92,8 @@ class SpendTest extends TestCase
                 'total'     => $updatedSpend->total,
             ]
         ]);
+
+        $this->assertTrue(CampaignSpend::where('campaign_id', $campaign->id)->count() == 1);
     }
 
     /**
@@ -117,5 +116,7 @@ class SpendTest extends TestCase
         $response->assertJSON([
             'message' => 'deleted'
         ]);
+
+        $this->assertTrue(CampaignSpend::where('campaign_id', $campaign->id)->count() == 0);
     }
 }

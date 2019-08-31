@@ -16,9 +16,9 @@ class SpendController extends Controller
    /**
      * Create campaign spend
      * 
-     * @param Request 
-     * @param Company
-     * @param Campaign
+     * @param Request $request      
+     * @param Company $company
+     * @param Campaign $campaign
      * 
      * @return Response
      */
@@ -63,14 +63,14 @@ class SpendController extends Controller
     /**
      * Update campaign spend
      * 
-     * @param Request 
-     * @param Company
-     * @param Campaign
-     * @param CampaignSpend
+     * @param Request $request      
+     * @param Company $company
+     * @param Campaign $campaign
+     * @param CampaignSpend $spend
      * 
      * @return Response
      */
-    public function update(Request $request, Company $company, Campaign $campaign, CampaignSpend $campaignSpend)
+    public function update(Request $request, Company $company, Campaign $campaign, CampaignSpend $spend)
     {
         $rules = [
             'from_date' => 'required|date',
@@ -95,29 +95,29 @@ class SpendController extends Controller
         $fromDate->setTimezone($newTZ);
         $toDate->setTimezone($newTZ);
 
-        $campaignSpend->from_date = $fromDate->format('Y-m-d H:i:s');
-        $campaignSpend->to_date   = $toDate->format('Y-m-d H:i:s');
-        $campaignSpend->total     = floatval($request->total);
+        $spend->from_date = $fromDate->format('Y-m-d H:i:s');
+        $spend->to_date   = $toDate->format('Y-m-d H:i:s');
+        $spend->total     = floatval($request->total);
 
         return response([
-            'message'        => 'created',
-            'campaign_spend' => $campaignSpend
+            'message'        => 'updated',
+            'campaign_spend' => $spend
         ]);
     }
 
     /**
      * Delete phone numbers from campaign
      * 
-     * @param Request 
-     * @param Company
-     * @param Campaign
-     * @param CampaignSpend
+     * @param Request $request      
+     * @param Company $company
+     * @param Campaign $campaign
+     * @param CampaignSpend $spend
      * 
      * @return Response
      */
-    public function delete(Request $request, Company $company, Campaign $campaign, CampaignSpend $campaignSpend)
+    public function delete(Request $request, Company $company, Campaign $campaign, CampaignSpend $spend)
     {
-        $campaignSpend->delete();
+        $spend->delete();
 
         return response([
             'message' => 'deleted'

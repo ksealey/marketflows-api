@@ -248,18 +248,32 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
 
                     /*
                     |--------------------------------------
-                    | Handle campaign spend
+                    | Handle campaign spends
                     |--------------------------------------
                     */
                     Route::post('/spends','Company\Campaign\SpendController@create')
                          ->middleware('can:update,campaign');
 
-                    Route::put('/spends/{campaignSpend}','Company\Campaign\SpendController@update')
+                    Route::put('/spends/{spend}','Company\Campaign\SpendController@update')
                          ->middleware('can:update,campaign');
 
-                    Route::delete('/spends/{campaignSpend}','Company\Campaign\SpendController@delete')
+                    Route::delete('/spends/{spend}','Company\Campaign\SpendController@delete')
                          ->middleware('can:update,campaign');
                 
+                    /*
+                    |--------------------------------------
+                    | Handle campaign domains (WEB Only)
+                    |--------------------------------------
+                    */
+                    Route::post('/domains','Company\Campaign\DomainController@create')
+                         ->middleware('can:update,campaign');
+
+                    Route::put('/domains/{domain}','Company\Campaign\DomainController@update')
+                         ->middleware('can:update,campaign');
+
+                    Route::delete('/domains/{domain}','Company\Campaign\DomainController@delete')
+                         ->middleware('can:update,campaign');
+
                     /*
                     |--------------------------------------
                     | Handle campaign targets (WEB Only)
@@ -271,19 +285,7 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
                     Route::delete('/targets/{campaignTarget}','Company\Campaign\TargetController@delete')
                          ->middleware('can:update,campaign');
                 
-                    /*
-                    |--------------------------------------
-                    | Handle campaign domains (WEB Only)
-                    |--------------------------------------
-                    */
-                    Route::post('/domains','Company\Campaign\DomainController@create')
-                         ->middleware('can:update,campaign');
-
-                    Route::put('/domains','Company\Campaign\DomainController@update')
-                         ->middleware('can:update,campaign');
-
-                    Route::delete('/domains/{campaignDomain}','Company\Campaign\DomainController@delete')
-                         ->middleware('can:update,campaign');
+                    
                 });
             }); 
         }); 
