@@ -22,7 +22,7 @@ trait IsDialed
             $this->number
         );
     }
-
+    
     public function forwardToPhoneNumber() : string
     {
         return $this->joinPhone(

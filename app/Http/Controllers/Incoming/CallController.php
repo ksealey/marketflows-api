@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Incoming;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Http\Controllers\Controller;
-use App\Models\PhoneNumber;
-use App\Models\PhoneNumberPool;
+use App\Models\Company\PhoneNumber;
+use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use Twilio\TwiML;
 use Twilio\TwiML\VoiceResponse;
@@ -39,10 +39,11 @@ class CallController extends Controller
         $dialedCountryCode = PhoneNumber::countryCode($request->Called);
         $dialedNumber      = PhoneNumber::phone($request->Called);
 
-        $phoneNumber = PhoneNumber::where('country_code', $dialedCountryCode)
-                                  ->where('number', $dialedNumber)
-                                  ->first();
+        $query = PhoneNumber::where('number', $dialedNumber); 
+        if( $dialedCountryCode )
+            $query->where('country_code', $dialedCountryCode);
         
+        $phoneNumber = $query->first();
         if( ! $phoneNumber ){
             //  Who are you?!?!
             $response->hangup();
@@ -76,11 +77,13 @@ class CallController extends Controller
         //  Should we have a whisper message?
         $numberConfig = [];
         if( $handler->whisper_message ){
-            $numberConfig['url'] = route('whisper', [
+            $numberConfig['url'] = route('incoming-call-whisper', [
                 'whisper_message'  => $handler->whisper_message,
                 'whisper_language' => $handler->whisper_language,
                 'whisper_voice'    => $handler->whisper_voice
             ]);
+
+            $numberConfig['method'] = 'GET';
         } 
 
         $dialCommand = $response->dial(null, $dialConfig);
@@ -121,7 +124,7 @@ class CallController extends Controller
      * 
      * @return Response
      */
-    public function handleWhisper(Request $request)
+    public function handleCallWhisper(Request $request)
     {
         $config = config('services.twilio');
 

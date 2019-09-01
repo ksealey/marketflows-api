@@ -1,7 +1,8 @@
 <?php
-namespace \Tests\Models;
+namespace Tests\Models;
+use Illuminate\Database\Eloquent\Model;
 
-class TwilioCall
+class TwilioCall extends Model
 {
 
 }

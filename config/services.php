@@ -46,10 +46,15 @@ return [
 
     'twilio' => [
         'languages' => [
-            'alice' => 'Alice'
+            'en'        => 'English (American)',
+            'en-gb'     => 'English (British)',
+            'es'        => 'Spanish',
+            'fr'        => 'French',
+            'de'        => 'German',
+            'it'        => 'Italian'
         ],
         'voices' => [
-            'en' => 'English'
+            'alice' => 'Alice'
         ]
     ]
 ];

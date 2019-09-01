@@ -306,14 +306,14 @@ Route::middleware('api')->group(function(){
         | Handle incoming calls
         |--------------------------------
         */
-        Route::prefix('call')->group(function(){
+        Route::prefix('calls')->group(function(){
             Route::get('/', 'Incoming\CallController@handleCall')
                  ->name('incoming-call');
 
             Route::get('/status-changed', 'Incoming\CallController@handleCallStatusChanged')
                  ->name('incoming-call-status-changed');
 
-            Route::get('/whisper', 'Incoming\CallController@handlWhisper')
+            Route::get('/whisper', 'Incoming\CallController@handleCallWhisper')
                  ->name('incoming-call-whisper');
         });
 
