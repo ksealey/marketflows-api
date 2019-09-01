@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Incoming;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Http\Controllers\Controller;
-use App\Events\IncomingCallEvent;
 use App\Models\PhoneNumber;
 use App\Models\PhoneNumberPool;
 use App\Models\Company\AudioClip;
@@ -34,8 +33,6 @@ class CallController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        event(new IncomingCallEvent($request->input()));
-
         $response = new VoiceResponse();
 
         //  Find out how to handle this call
@@ -54,7 +51,7 @@ class CallController extends Controller
         }
 
         $handler = $phoneNumber->phone_number_pool_id 
-                    ? PhoneNumberPool::find($phoneNumber->phone_number_pool_id ) 
+                    ? PhoneNumberPool::find( $phoneNumber->phone_number_pool_id ) 
                     : $phoneNumber;
 
         if( ! $handler ){
@@ -64,19 +61,19 @@ class CallController extends Controller
             return Response::xmlResponse($response);
         }
 
-        $dialConfig = [
-            'answerOnBridge' => 'true',
-            'record'         => $handler->recordingEnabled() ? 'true' : 'false'
-        ];
+        $dialConfig = ['answerOnBridge' => 'true'];
 
-        //  Play audio
+        //  Should we record?
+        $dialConfig['record'] = $handler->recordingEnabled() ? 'record-from-ringing' : 'do-not-record';
+
+        //  Should we play audio?
         if( $audioClipId = $handler->audioClipId() ){
             $audioClip = AudioClip::find($audioClipId);
             if( $audioClip )
                 $response->play($audioClip->getURL());
         }
 
-        //  Set up whisper
+        //  Should we have a whisper message?
         $numberConfig = [];
         if( $handler->whisper_message ){
             $numberConfig['url'] = route('whisper', [
@@ -84,7 +81,7 @@ class CallController extends Controller
                 'whisper_language' => $handler->whisper_language,
                 'whisper_voice'    => $handler->whisper_voice
             ]);
-        }        
+        } 
 
         $dialCommand = $response->dial(null, $dialConfig);
 
@@ -93,44 +90,14 @@ class CallController extends Controller
         return Response::xmlResponse($response);
     }
 
-    /*
-     * Handle response for a recorded call
+
+    /**
+     * Handle a call changing it's status
      * 
-     
-    public function handleRecordedCall(Request $request)
-    {
-        $rules = [
-            'forward_to_phone' => 'required|max:16',
-            'audio_clip_url'   => 'url'
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $response = new VoiceResponse();
-        if( $request->audio_clip_url )
-            $response->play(urldecode($request->audio_clip_url));
-
-        $config = [];
-        if( $request->whisper_message ){
-            $config['url'] = route('whisper', [
-                'message'  => $request->whisper_message,
-                'language' => $request->whisper_language,
-                'voice'    => $request->whisper_voice
-            ]);
-        }
-
-        $dialCommand = $response->dial();
-        $dialCommand->number($request->forward_to_phone, $config);
-
-        return Response::xmlResponse($response);
-    }
-
-    */
+     * @param Request $request
+     * 
+     * @return Response
+     */
     public function handleCallStatusChanged(Request $request)
     {
         $rules = [
@@ -145,22 +112,23 @@ class CallController extends Controller
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
-
-        event(new IncomingCallEvent($request->input()));
     }
 
     /**
-     * Whisper message
+     * Handle generating a whisper message
      * 
+     * @param Request $request
+     * 
+     * @return Response
      */
-    public function whisper(Request $request)
+    public function handleWhisper(Request $request)
     {
         $config = config('services.twilio');
 
         $rules = [
-            'whisper_message'   => 'max:255',
             'whisper_language'  => 'in:' . implode(',', array_keys($config['languages'])),
             'whisper_voice'     => 'in:' . implode(',', array_keys($config['voices'])),
+            'whisper_message'   => 'max:255',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -172,12 +140,11 @@ class CallController extends Controller
         $response = new VoiceResponse();
 
         $config = [];
-        if( $request->language )
+        if( $request->whisper_language )
             $config['language'] = $request->whisper_language;
 
-        if( $request->voice )
+        if( $request->whisper_voice )
             $config['voice'] = $request->whisper_voice;
-            
 
         $response->say($request->whisper_message, $config);
 

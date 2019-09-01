@@ -5,6 +5,8 @@ use \App\Models\Account;
 use \App\Models\Company;
 use \App\Models\User;
 use \App\Models\UserCompany;
+use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\Campaign;
 
 trait CreatesUser
@@ -45,6 +47,27 @@ trait CreatesUser
             'type'       => Campaign::TYPE_PRINT
         ], $fields));
     }
+
+    public function createPhoneNumber($fields = [])
+    {
+        $user = $this->user ?: $this->createUser();
+        
+        return factory(PhoneNumber::class)->create(array_merge([
+            'company_id' => $this->company->id,
+            'created_by' => $user->id,
+        ], $fields));
+    }
+
+    public function createPhoneNumberPool($fields = [])
+    {
+        $user = $this->user ?: $this->createUser();
+        
+        return factory(PhoneNumberPool::class)->create(array_merge([
+            'company_id' => $this->company->id,
+            'created_by' => $user->id
+        ], $fields));
+    }
+
 
     public function authHeaders(array $additionalHeaders = [])
     {

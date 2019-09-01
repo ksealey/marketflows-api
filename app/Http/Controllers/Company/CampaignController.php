@@ -8,18 +8,8 @@ use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Campaign;
-use App\Models\Company\CampaignPhoneNumberPool;
-use App\Models\Company\CampaignPhoneNumber;
-use App\Models\Company\CampaignDomain;
-use App\Rules\Company\CampaignRule;
-use App\Rules\Company\PhoneNumberPoolRule;
-use App\Rules\Company\PhoneNumberRule;
-use App\Rules\Company\CampaignTargetRule;
-use App\Jobs\BuildAndPublishCompanyJs;
-use DateTime;
-use DateTimeZone;
+use App\Rules\Company\CampaignNumberSwapRule;
 use Validator;
-use DB;
 
 class CampaignController extends Controller
 {
@@ -76,6 +66,10 @@ class CampaignController extends Controller
 
         $validator = Validator::make($request->input(), $rules);
 
+        $validator->sometimes('number_swap_rules', ['bail', 'required', 'json', new CampaignNumberSwapRule() ],function($input){
+            return $input->type == Campaign::TYPE_WEB;
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' =>  $validator->errors()->first()
@@ -83,11 +77,12 @@ class CampaignController extends Controller
         }
         
         $campaign = Campaign::create([
-            'company_id'    => $company->id,
-            'created_by'    => $request->user()->id,
-            'name'          => $request->name,
-            'type'          => $request->type,
-            'activated_at'  => $request->active ? date('Y-m-d H:i:s') : null  
+            'company_id'        => $company->id,
+            'created_by'        => $request->user()->id,
+            'name'              => $request->name,
+            'type'              => $request->type,
+            'number_swap_rules' => $request->number_swap_rules,
+            'activated_at'      => $request->active ? date('Y-m-d H:i:s') : null  
         ]);
 
         return response([
@@ -133,6 +128,11 @@ class CampaignController extends Controller
         ]; 
 
         $validator = Validator::make($request->input(), $rules);
+
+        $validator->sometimes('number_swap_rules', ['bail', 'required', 'json', new CampaignNumberSwapRule() ],function($input){
+            return $input->type == Campaign::TYPE_WEB;
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' =>  $validator->errors()->first()

@@ -20,7 +20,9 @@ class Campaign extends Model
         'created_by',
         'name',
         'type',
-        'activated_at'
+        'activated_at',
+        'suspended_at',
+        'number_swap_rules'
     ];
 
     const TYPE_WEB   = 'WEB';

@@ -2,19 +2,12 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
+use Tests\TestCase\Company;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use \App\Models\Company\PhoneNumber;
-use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\Campaign;
-use \App\Models\Company\CampaignDomain;
-use \App\Models\Company\CampaignPhoneNumber;
-use \App\Models\Company\CampaignPhoneNumberPool;
-use \App\Jobs\BuildAndPublishCompanyJs;
-use Queue;
 
-class CampaignTest extends TestCase
+class CampaignTest extends \Tests\TestCase
 {
     use \Tests\CreatesUser;
 
@@ -170,19 +163,155 @@ class CampaignTest extends TestCase
             'type' => Campaign::TYPE_WEB
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
-            'name'          => $campaign->name,
-            'type'          => $campaign->type,
-            'active'        => true
-        ], $this->authHeaders());
+        $numberSwapRules =  json_encode([
+            'number_format' => '(###) - ### ####',
+            'conditions'    => [
+                [
+                    'type'  => 'NUMBER_MATCHES',
+                    'value' => '8199928829'
+                ],
+                [
+                    'type'  => 'NUMBER_MATCHES',
+                    'value' => '8199928829,9039930039'
+                ]
+            ]
+        ]);
 
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+            'name'              => $campaign->name,
+            'type'              => $campaign->type,
+            'active'            => true,
+            'number_swap_rules' => $numberSwapRules
+        ], $this->authHeaders());
         $response->assertStatus(201);
         $response->assertJSON([
             'campaign' => [
                 'name' => $campaign->name,
                 'type' => Campaign::TYPE_WEB,
-                'activated_at' => $now
+                'activated_at' => $now,
+                'number_swap_rules' => $numberSwapRules
             ]
+        ]);
+    }
+
+    /**
+     * Test creating a web campaign with an invalid rule number format
+     *
+     * @group campaigns
+     */
+    public function testCreateWebCampaignWithInvalidRuleNumberFormat()
+    {
+        $this->createUser();
+        $now = date('Y-m-d H:i:s');
+
+        $campaign = factory(Campaign::class)->make([
+            'type' => Campaign::TYPE_WEB
+        ]);
+
+        $numberSwapRules =  json_encode([
+            'number_format' => '+# (###) - ### #### ####',
+            'conditions'    => [
+                [
+                    'type'  => 'NUMBER_MATCHES',
+                    'value' => '8199928829'
+                ],
+                [
+                    'type'  => 'NUMBER_MATCHES',
+                    'value' => '8199928829,9039930039'
+                ]
+            ]
+        ]);
+
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+            'name'              => $campaign->name,
+            'type'              => $campaign->type,
+            'active'            => true,
+            'number_swap_rules' => $numberSwapRules
+        ], $this->authHeaders());
+        $response->assertStatus(400);
+        $response->assertJSONStructure([
+            'error'
+        ]);
+    }
+
+    /**
+     * Test creating a web campaign with an invalid rule condition
+     *
+     * @group campaigns
+     */
+    public function testCreateWebCampaignWithInvalidRuleCondition()
+    {
+        $this->createUser();
+        $now = date('Y-m-d H:i:s');
+
+        $campaign = factory(Campaign::class)->make([
+            'type' => Campaign::TYPE_WEB
+        ]);
+
+        $numberSwapRules =  json_encode([
+            'number_format' => '+# (###) - ### ####',
+            'conditions'    => [
+                [
+                    'type'  => 'NUMBER_MATCHES',
+                    'value' => '8199928829'
+                ],
+                [
+                    'type'  => 'NUMBER_MATCHES',
+                    'value' => ['9039930039']
+                ]
+            ]
+        ]);
+
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+            'name'              => $campaign->name,
+            'type'              => $campaign->type,
+            'active'            => true,
+            'number_swap_rules' => $numberSwapRules
+        ], $this->authHeaders());
+
+        $response->assertStatus(400);
+        $response->assertJSONStructure([
+            'error'
+        ]);
+    }
+
+    /**
+     * Test creating a web campaign with an invalid rule condition type
+     *
+     * @group campaigns
+     */
+    public function testCreateWebCampaignWithInvalidRuleConditionType()
+    {
+        $this->createUser();
+        $now = date('Y-m-d H:i:s');
+
+        $campaign = factory(Campaign::class)->make([
+            'type' => Campaign::TYPE_WEB
+        ]);
+
+        $numberSwapRules =  json_encode([
+            'number_format' => '+# (###) - ### ####',
+            'conditions'    => [
+                [
+                    'type'  => 'NUMBER_MATCH',
+                    'value' => '8199928829'
+                ],
+                [
+                    'type'  => 'NUMBER_MATCHES',
+                    'value' => '9039930039'
+                ]
+            ]
+        ]);
+
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+            'name'              => $campaign->name,
+            'type'              => $campaign->type,
+            'active'            => true,
+            'number_swap_rules' => $numberSwapRules
+        ], $this->authHeaders());
+        $response->assertStatus(400);
+        $response->assertJSONStructure([
+            'error'
         ]);
     }
 

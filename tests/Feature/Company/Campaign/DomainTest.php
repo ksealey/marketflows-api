@@ -5,6 +5,7 @@ namespace Tests\Feature\Company\Campaign;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use \App\Models\Company\Campaign;
 use \App\Models\Company\CampaignDomain;
 
 class DomainTest extends TestCase
@@ -19,20 +20,44 @@ class DomainTest extends TestCase
     public function testCreate()
     {
         $user = $this->createUser();
-        $campaign = $this->createCampaign();
+        $campaign = $this->createCampaign([
+            'type' => Campaign::TYPE_WEB
+        ]);
 
         $domain = factory(CampaignDomain::class)->make();
 
         $response = $this->json('POST', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/domains', [
             'domain'     => $domain->domain
         ], $this->authHeaders());
-
         $response->assertStatus(201);
         $response->assertJSON([
             'message' => 'created',
             'campaign_domain' => [
                 'domain' => $domain->domain
             ]
+        ]);
+    }
+
+    /**
+     * Test creating a campaign domain with a non-web camapign
+     * 
+     * @group campaign-domains
+     */
+    public function testCreateWithNonWebCampaign()
+    {
+        $user = $this->createUser();
+        $campaign = $this->createCampaign([
+            'type' => Campaign::TYPE_PRINT
+        ]);
+
+        $domain = factory(CampaignDomain::class)->make();
+
+        $response = $this->json('POST', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/domains', [
+            'domain'     => $domain->domain
+        ], $this->authHeaders());
+        $response->assertStatus(400);
+        $response->assertJSON([
+            'error' => 'Only web campaigns can have associated domains'
         ]);
     }
 

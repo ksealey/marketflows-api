@@ -293,14 +293,45 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
     });
 });
 
+
 Route::middleware('api')->group(function(){
+    /*
+    |--------------------------------
+    | Handle incoming webhooks
+    |--------------------------------
+    */
     Route::prefix('incoming')->group(function(){
-        Route::get('call', 'Incoming\CallController@handleCall')->name('incoming-call');
-        Route::get('call-status-changed', 'Incoming\CallController@handleCallStatusChanged')->name('call-status-changed');
-        Route::get('call-recorded', 'Incoming\CallController@handleRecordedCall')->name('call-status-changed');
-        Route::get('sms', 'Incoming\CallController@handleSms')->name('incoming-sms');
-        Route::get('mms', 'Incoming\CallController@handleMms')->name('incoming-mms');
-        Route::get('whisper', 'Incoming\CallController@whisper')->name('whisper');
+        /*
+        |--------------------------------
+        | Handle incoming calls
+        |--------------------------------
+        */
+        Route::prefix('call')->group(function(){
+            Route::get('/', 'Incoming\CallController@handleCall')
+                 ->name('incoming-call');
+
+            Route::get('/status-changed', 'Incoming\CallController@handleCallStatusChanged')
+                 ->name('incoming-call-status-changed');
+
+            Route::get('/whisper', 'Incoming\CallController@handlWhisper')
+                 ->name('incoming-call-whisper');
+        });
+
+        /*
+        |--------------------------------
+        | Handle incoming sms
+        |--------------------------------
+        */
+        Route::get('sms', 'Incoming\SMSController@handleSms')
+             ->name('incoming-sms');
+
+        /*
+        |--------------------------------
+        | Handle incoming mms
+        |--------------------------------
+        */
+        Route::get('mms', 'Incoming\MMSController@handleMms')
+             ->name('incoming-mms');
     });
 
     Route::prefix('public')->group(function(){

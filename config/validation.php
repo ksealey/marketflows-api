@@ -33,6 +33,15 @@ return [
                     'MATCHES'
                 ]
             ]
+        ],
+        'campaign_number_swaps' => [
+            'condition_types' => [
+                'SELECTOR_MATCHES',
+                'NUMBER_MATCHES',
+                'NUMBER_NOT_MATCHES',
+                'ALL'
+            ]
         ]
+
     ]
 ];
