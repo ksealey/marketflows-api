@@ -32,8 +32,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -48,8 +48,8 @@ class CallTest extends TestCase
         $phone->save();
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -69,8 +69,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -88,8 +88,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -128,8 +128,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -144,8 +144,8 @@ class CallTest extends TestCase
         $pool->save();
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -165,8 +165,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -183,8 +183,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -214,8 +214,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -230,8 +230,8 @@ class CallTest extends TestCase
         $phone->save();
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -251,8 +251,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -269,8 +269,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -309,8 +309,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -325,8 +325,8 @@ class CallTest extends TestCase
         $pool->save();
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -346,8 +346,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -364,8 +364,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -407,8 +407,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -423,8 +423,8 @@ class CallTest extends TestCase
         $pool->save();
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -444,8 +444,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -462,8 +462,8 @@ class CallTest extends TestCase
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
             'CallSid'    => $incomingCall->CallSid,
-            'Called'     => $phone->phoneNumber(),
-            'Caller'     => $incomingCall->Caller,
+            'To'     => $phone->phoneNumber(),
+            'From'     => $incomingCall->From,
             'CallStatus' => $incomingCall->CallStatus
         ]);
 
@@ -528,6 +528,4 @@ class CallTest extends TestCase
         
         return $phone;
     }
-
-
 }

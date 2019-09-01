@@ -17,7 +17,7 @@ class CreatePaymentMethodsTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('created_by')->unsigned();
-            $table->string('stripe_id', 64);
+            $table->string('external_id', 64);
             $table->integer('last_4')->unsigned();
             $table->integer('exp_month')->unsigned();
             $table->integer('exp_year')->unsigned();

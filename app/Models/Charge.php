@@ -11,7 +11,7 @@ class Charge extends Model
     
     protected $fillable = [
         'payment_method_id',
-        'stripe_id',
+        'external_id',
         'amount',
         'description',
     ];

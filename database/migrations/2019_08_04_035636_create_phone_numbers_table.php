@@ -17,7 +17,7 @@ class CreatePhoneNumbersTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('created_by')->unsigned();
-            $table->string('twilio_id', 64);
+            $table->string('external_id', 64);
             $table->bigInteger('phone_number_pool_id')->unsigned()->nullable();
             $table->string('country_code', 16)->nullable();
             $table->string('number', 16)->index();

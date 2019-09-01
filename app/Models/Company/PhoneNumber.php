@@ -21,7 +21,7 @@ class PhoneNumber extends Model implements CanBeDialed
     protected $fillable = [
         'company_id',
         'created_by',
-        'twilio_id',
+        'external_id',
         'country_code',
         'number',
         'voice',
@@ -43,7 +43,7 @@ class PhoneNumber extends Model implements CanBeDialed
     protected $hidden = [
         'company_id',
         'created_by',
-        'twilio_id',
+        'external_id',
         'deleted_at'
     ];
 
@@ -129,7 +129,7 @@ class PhoneNumber extends Model implements CanBeDialed
     {
         if( env('APP_ENV') !== 'testing' ){
             self::client()
-                ->incomingPhoneNumbers($this->twilio_id)
+                ->incomingPhoneNumbers($this->external_id)
                 ->delete();
         }
 

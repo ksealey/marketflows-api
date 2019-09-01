@@ -86,7 +86,7 @@ class PhoneNumberController extends Controller
             $phoneNumber = PhoneNumber::create([
                 'company_id'                => $company->id,
                 'created_by'                => $user->id,
-                'twilio_id'                 => $numData['sid'],
+                'external_id'                 => $numData['sid'],
                 'country_code'              => $numData['country_code'],
                 'number'                    => $numData['number'],
                 'voice'                     => $can['voice'],

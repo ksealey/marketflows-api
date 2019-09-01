@@ -16,6 +16,6 @@ $factory->define(\App\Models\Company\PhoneNumber::class, function (Faker $faker)
         'voice'                     => true,
         'sms'                       => true,
         'mms'                       => true,
-        'twilio_id'                 => str_random(40)
+        'external_id'                 => str_random(40)
     ];
 });

@@ -28,13 +28,13 @@ class PhoneNumberTest extends TestCase
 
         $phone1 = factory(PhoneNumber::class)->create([
             'company_id'  => $user->company_id,
-            'twilio_id'   => str_random(40),
+            'external_id'   => str_random(40),
             'created_by'  => $user->id
         ]);
 
         $phone2 = factory(PhoneNumber::class)->create([
             'company_id'  => $user->company_id,
-            'twilio_id'   => str_random(40),
+            'external_id'   => str_random(40),
             'created_by'  => $user->id
         ]);
 
@@ -68,13 +68,13 @@ class PhoneNumberTest extends TestCase
 
         $phone1 = factory(PhoneNumber::class)->create([
             'company_id'  => $this->company->id,
-            'twilio_id'   => str_random(40),
+            'external_id'   => str_random(40),
             'created_by'  => $user->id
         ]);
 
         $phone2 = factory(PhoneNumber::class)->create([
             'company_id'  => $this->company->id,
-            'twilio_id'   => str_random(40),
+            'external_id'   => str_random(40),
             'created_by'  => $user->id
         ]);
 
@@ -172,7 +172,7 @@ class PhoneNumberTest extends TestCase
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'phone_number_pool_id' =>$pool->id,
-            'twilio_id'=> str_random(40),
+            'external_id'=> str_random(40),
             'audio_clip_id' => $audioClip->id
         ]);
 
@@ -213,7 +213,7 @@ class PhoneNumberTest extends TestCase
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'phone_number_pool_id' =>$pool->id,
-            'twilio_id'=> str_random(40)
+            'external_id'=> str_random(40)
         ]);
 
         $newName   = 'UPDATED';
@@ -270,7 +270,7 @@ class PhoneNumberTest extends TestCase
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'phone_number_pool_id' =>$pool->id,
-            'twilio_id'=> str_random(40)
+            'external_id'=> str_random(40)
         ]);
 
         $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
@@ -293,7 +293,7 @@ class PhoneNumberTest extends TestCase
         $phone = factory(PhoneNumber::class)->create([
             'company_id' => $user->company_id,
             'created_by' => $user->id,
-            'twilio_id'=> str_random(40)
+            'external_id'=> str_random(40)
         ]);
 
         $campaign    = factory(Campaign::class)->create([
@@ -335,7 +335,7 @@ class PhoneNumberTest extends TestCase
             'company_id' => $user->company_id,
             'created_by' => $user->id,
             'phone_number_pool_id' => $pool->id,
-            'twilio_id'=> str_random(40)
+            'external_id'=> str_random(40)
         ]);
 
         $campaign = factory(Campaign::class)->create([

@@ -27,7 +27,7 @@ class PaymentMethodTest extends TestCase
 
         //  Test creating a payment method
         $paymentMethod = PaymentMethod::createFromToken($stripeToken, $user);
-        $this->assertTrue($user->account->stripe_id != null);
+        $this->assertTrue($user->account->external_id != null);
         $this->assertTrue($paymentMethod != null);
         $this->assertTrue($paymentMethod->created_by == $user->id);
         $this->assertTrue($paymentMethod->hasRemoteResource() == true);
@@ -49,7 +49,7 @@ class PaymentMethodTest extends TestCase
         $this->assertTrue($charge->payment_method_id == $paymentMethod->id);
         $this->assertTrue($charge->amount == $amount);
         $this->assertTrue($charge->description == $description);
-        $this->assertTrue($charge->stripe_id != null);
+        $this->assertTrue($charge->external_id != null);
 
         //  Test a failed charge attempt
         $charge      = $paymentMethod2->charge($amount, $description);

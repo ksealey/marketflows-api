@@ -23,7 +23,7 @@ class PaymentMethod extends Model
 
     protected $hidden = [
         'account_id',
-        'stripe_id',
+        'external_id',
         'created_by',
         'deleted_at'
     ];
@@ -31,7 +31,7 @@ class PaymentMethod extends Model
     protected $fillable = [
         'account_id',
         'created_by',
-        'stripe_id',
+        'external_id',
         'last_4',
         'exp_year',
         'exp_month',
@@ -68,19 +68,19 @@ class PaymentMethod extends Model
 
         //  Create customer with source if not exists
         $account = $user->account;
-        if( ! $account->stripe_id ){
+        if( ! $account->external_id ){
             $primaryMethod = true; // Since there is no primary methon set this as true
             $customer = Customer::create([
                 'description' => $account->name,
                 'source'      => $stripeToken
             ]);
-            $account->stripe_id = $customer->id;
+            $account->external_id = $customer->id;
             $account->save();
             
             $card = $customer->sources->data[0];
         }else{
             $card = Customer::createSource(
-                $account->stripe_id,
+                $account->external_id,
                 ['source' => $stripeToken]
             );
         }
@@ -96,7 +96,7 @@ class PaymentMethod extends Model
         return self::create([
             'account_id'     => $user->account_id,
             'created_by'     => $user->id,
-            'stripe_id'      => $card->id,
+            'external_id'      => $card->id,
             'last_4'         => $card->last4,
             'exp_month'      => $card->exp_month,
             'exp_year'       => $card->exp_month,
@@ -113,14 +113,14 @@ class PaymentMethod extends Model
      */
     public function charge(float $amount, string $description)
     {
-        if( ! $this->stripe_id )
+        if( ! $this->external_id )
             return null;
 
         try{
             //  Create remote charge
             $stripeCharge = StripeCharge::create([
-                'customer'      => $this->account->stripe_id,
-                'source'        => $this->stripe_id,
+                'customer'      => $this->account->external_id,
+                'source'        => $this->external_id,
                 'amount'        => $amount * 100,
                 'currency'      => 'usd',
                 'description'   => $description
@@ -133,7 +133,7 @@ class PaymentMethod extends Model
             //  Create charge 
             return Charge::create([
                 'payment_method_id' => $this->id,
-                'stripe_id'         => $stripeCharge->id,
+                'external_id'         => $stripeCharge->id,
                 'amount'            => $amount,
                 'description'       => $description
             ]);
@@ -173,11 +173,11 @@ class PaymentMethod extends Model
     {
         Stripe::setApiKey(env('STRIPE_SK'));
 
-        if( ! $this->stripe_id )
+        if( ! $this->external_id )
             return null;
 
         try{
-            return StripePaymentMethod::retrieve($this->stripe_id);
+            return StripePaymentMethod::retrieve($this->external_id);
         }catch(Exception $e){
             return null;
         }

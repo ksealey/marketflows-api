@@ -56,7 +56,7 @@ class PhoneNumberTest extends TestCase
         $number = factory(PhoneNumber::class)->create([
             'company_id' => $this->company->id,
             'created_by' => $user->id,
-            'twilio_id'  => \str_random(40)
+            'external_id'  => \str_random(40)
         ]);
         $this->assertTrue(PhoneNumber::find($number->id) != null);
         $number->release();
@@ -103,7 +103,7 @@ class PhoneNumberTest extends TestCase
 
         $phone = factory(PhoneNumber::class)->create([
             'company_id'  => $this->company->id,
-            'twilio_id'   => str_random(40),
+            'external_id'   => str_random(40),
             'created_by'  => $user->id
         ]);
 
@@ -139,14 +139,14 @@ class PhoneNumberTest extends TestCase
             'company_id'           => $this->company->id,
             'created_by'           => $user->id,
             'phone_number_pool_id' => $pool->id,
-            'twilio_id'            => str_random(40)
+            'external_id'            => str_random(40)
         ]);
 
         $phone2 = factory(PhoneNumber::class)->create([
             'company_id'           => $this->company->id,
             'created_by'           => $user->id,
             'phone_number_pool_id' => $pool->id,
-            'twilio_id'            => str_random(40)
+            'external_id'            => str_random(40)
         ]);
 
         $campaign    = factory(Campaign::class)->create([

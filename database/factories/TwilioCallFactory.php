@@ -7,9 +7,18 @@ use Faker\Generator as Faker;
 
 $factory->define(\Tests\Models\TwilioCall::class, function (Faker $faker) {
     return [
-        'CallSid' => str_random(40),
-        'Called'  => $faker->e164PhoneNumber,
-        'Caller'  => $faker->e164PhoneNumber,
-        'CallStatus' => 'ringing'
+        'CallSid'       => str_random(40),
+        'CallStatus'    => 'ringing',
+        'To'            => $faker->e164PhoneNumber,
+        'ToCity'        => $faker->city,
+        'ToCountry'     => 'US',
+        'ToState'       => $faker->stateAbbr,
+        'ToZip'         => $faker->postcode,
+        'From'          => $faker->e164PhoneNumber,
+        'FromCity'      => $faker->city,
+        'FromCountry'   => 'US',
+        'FromState'     => $faker->stateAbbr,
+        'FromZip'       => $faker->postcode,
+        'Direction'     => 'inbound'
     ];
 });

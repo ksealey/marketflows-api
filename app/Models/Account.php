@@ -16,7 +16,7 @@ class Account extends Model
     ];
 
     protected $hidden = [
-        'stripe_id',
+        'external_id',
         'disabled_at',
         'deleted_at'
     ];

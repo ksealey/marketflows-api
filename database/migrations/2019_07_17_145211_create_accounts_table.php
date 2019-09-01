@@ -16,7 +16,7 @@ class CreateAccountsTable extends Migration
         Schema::create('accounts', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name', 255);
-            $table->string('stripe_id', 255)->nullable();
+            $table->string('external_id', 255)->nullable();
             $table->dateTime('disabled_at')->nullable();
             $table->timestamps();
             $table->softDeletes();

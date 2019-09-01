@@ -22,8 +22,8 @@ class CallController extends Controller
     {
         $rules = [
             'CallSid'       => 'required|max:64',
-            'Called'        => 'required|max:16',
-            'Caller'        => 'required|max:16',
+            'To'            => 'required|max:16',
+            'From'          => 'required|max:16',
             'CallStatus'    => 'required'
         ];
 
@@ -36,8 +36,8 @@ class CallController extends Controller
         $response = new VoiceResponse();
 
         //  Find out how to handle this call
-        $dialedCountryCode = PhoneNumber::countryCode($request->Called);
-        $dialedNumber      = PhoneNumber::phone($request->Called);
+        $dialedCountryCode = PhoneNumber::countryCode($request->To);
+        $dialedNumber      = PhoneNumber::phone($request->To);
 
         $query = PhoneNumber::where('number', $dialedNumber); 
         if( $dialedCountryCode )
@@ -105,8 +105,8 @@ class CallController extends Controller
     {
         $rules = [
             'CallSid'       => 'required|max:64',
-            'Called'        => 'required|max:16',
-            'Caller'        => 'required|max:16',
+            'To'        => 'required|max:16',
+            'From'        => 'required|max:16',
             'CallStatus'    => 'required'
         ];
 

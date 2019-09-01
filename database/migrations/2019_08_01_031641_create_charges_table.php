@@ -16,7 +16,7 @@ class CreateChargesTable extends Migration
         Schema::create('charges', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('payment_method_id')->unsigned();
-            $table->string('stripe_id', 64);
+            $table->string('external_id', 64);
             $table->decimal('amount', 16, 2);
             $table->string('description', 255);
             $table->timestamps();
