@@ -5,10 +5,11 @@ namespace App\Models\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company;
+use \App\Traits\HandlesStorage;
 
 class AudioClip extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HandlesStorage;
 
     protected $fillable = [
         'company_id',
@@ -29,20 +30,6 @@ class AudioClip extends Model
         // ... 
         //
         return true;
-    }
-
-    static public function fullStoragePath(Company $company)
-    {
-        return 'cdn/' . self::storagePath($company);
-    }
-
-    static public function storagePath(Company $company)
-    {
-        return 'accounts/' 
-                . $company->account_id 
-                . '/companies/' 
-                . $company->id 
-                . '/audio_clips';
     }
 
     public function getURL()

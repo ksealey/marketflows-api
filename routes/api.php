@@ -313,6 +313,9 @@ Route::middleware('api')->group(function(){
             Route::get('/status-changed', 'Incoming\CallController@handleCallStatusChanged')
                  ->name('incoming-call-status-changed');
 
+            Route::post('/recording-available', 'Incoming\CallController@handleRecordingAvailable')
+                 ->name('incoming-call-recording-available');
+
             Route::get('/whisper', 'Incoming\CallController@handleCallWhisper')
                  ->name('incoming-call-whisper');
         });

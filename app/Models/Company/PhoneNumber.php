@@ -6,17 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Contracts\CanBeDialed;
 use \App\Traits\IsDialed;
+use \App\Traits\HandlesPhoneNumbers;
 use \App\Models\User;
 use \App\Models\Company\Campaign;
 use \App\Models\Company\CampaignPhoneNumber;
 use \App\Models\Company\PhoneNumberPool;
-use Twilio\Rest\Client as TwilioClient;
 
 class PhoneNumber extends Model implements CanBeDialed
 {
-    use SoftDeletes, IsDialed;
-
-    static private $client;
+    use SoftDeletes, IsDialed, HandlesPhoneNumbers;
 
     protected $fillable = [
         'company_id',
@@ -46,6 +44,11 @@ class PhoneNumber extends Model implements CanBeDialed
         'external_id',
         'deleted_at'
     ];
+
+    public function company()
+    {
+        return $this->belongsTo('\App\Models\Company');
+    }
 
     /**
      * Search for a phone number
@@ -112,20 +115,7 @@ class PhoneNumber extends Model implements CanBeDialed
         ];
     }
 
-    static private function client($testing = false)
-    {
-        if( ! self::$client )
-            self::$client = new TwilioClient(env('TWILIO_SID'), env('TWILIO_TOKEN'));
-        
-        return self::$client;
-    }
-
-    static public function testing()
-    {
-        self::$client = new TwilioClient(env('TWILIO_TESTING_SID'), env('TWILIO_TESTING_TOKEN'));
-    }
-
-
+    
     /**
      * Release a phone number
      * 

@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Incoming;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\File;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use App\Models\Company\PhoneNumber\Call;
+use App\Models\Company\PhoneNumber\CallRecording;
 use App\Events\IncomingCallEvent;
 use App\Events\IncomingCallUpdatedEvent;
 use Twilio\TwiML\VoiceResponse;
 use Validator;
+use Storage;
+use DB;
 
 class CallController extends Controller
 {
@@ -99,8 +103,14 @@ class CallController extends Controller
         $dialConfig = ['answerOnBridge' => 'true'];
 
         //  Should we record?
-        $dialConfig['record'] = $handler->recordingEnabled() ? 'record-from-ringing' : 'do-not-record';
-
+        if( $handler->recordingEnabled() ){
+            $dialConfig['record']                       = 'record-from-ringing';
+            $dialConfig['recordingStatusCallback']      = route('incoming-call-recording-available');
+            $dialConfig['recordingStatusCallbackEvent'] = 'completed';
+        }else{
+            $dialConfig['record'] = 'do-not-record';
+        }
+        
         //  Should we play audio?
         if( $audioClipId = $handler->audioClipId() ){
             $audioClip = AudioClip::find($audioClipId);
@@ -201,5 +211,50 @@ class CallController extends Controller
         $response->say($request->whisper_message, $config);
 
         return Response::xmlResponse($response);
+    }
+
+    public function handleRecordingAvailable(Request $request)
+    {
+        $rules = [
+            'CallSid'           => 'required|max:64',
+            'RecordingSid'      => 'required|max:64',
+            'RecordingUrl'      => 'required',
+            'RecordingDuration' => 'required|numeric'
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+    
+        DB::beginTransaction();
+
+        $call = Call::where('external_id', $request->CallSid)->first();
+        if( ! $call ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
+        //  Download recording
+        $tempPath = storage_path() . '/' . str_random(40);
+        $data     = file_get_contents($request->RecordingUrl); 
+        file_put_contents($tempPath, $data);
+
+        //  Upload to remote path
+        $file = new File($tempPath);
+        $path = Storage::putFile(CallRecording::storagePath($call->phoneNumber->company, 'call_recordings'), $file);
+        unlink($tempPath);
+
+        //  Log record
+        CallRecording::create([
+            'call_id'       => $call->id,
+            'external_id'   => $request->RecordingSid,
+            'path'          => $path,
+            'duration'      => intval($request->RecordingDuration)
+        ]);
+
+        CallRecording::deleteRemoteRecording($request->RecordingSid);
     }
 }

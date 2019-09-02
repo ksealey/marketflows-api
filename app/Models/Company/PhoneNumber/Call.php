@@ -25,4 +25,9 @@ class Call extends Model
         'to_zip',
         'to_country'
     ];
+
+    public function phoneNumber()
+    {
+        return $this->belongsTo('\App\Models\Company\PhoneNumber');
+    }
 }
