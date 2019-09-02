@@ -11,7 +11,7 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use App\Models\Company\PhoneNumber\Call;
 
-class IncomingCallEvent
+class IncomingCallUpdatedEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -34,6 +34,6 @@ class IncomingCallEvent
      */
     public function broadcastOn()
     {
-        return new PrivateChannel('calls');
+        return new PrivateChannel('channel-name');
     }
 }

@@ -2,11 +2,10 @@
 
 namespace App\Listeners;
 
-use App\Events\IncomingCallEvent;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
-class IncomingCallListener
+class IncomingCallUpdatedListener
 {
     /**
      * Create the event listener.
@@ -21,15 +20,14 @@ class IncomingCallListener
     /**
      * Handle the event.
      *
-     * @param  IncomingCallEvent  $event
+     * @param  object  $event
      * @return void
      */
-    public function handle(IncomingCallEvent $event)
+    public function handle($event)
     {
         //  Fire webhooks
         //  ...
         //  
         //  
-        
     }
 }

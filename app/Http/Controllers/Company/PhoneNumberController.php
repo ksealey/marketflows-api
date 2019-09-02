@@ -86,7 +86,7 @@ class PhoneNumberController extends Controller
             $phoneNumber = PhoneNumber::create([
                 'company_id'                => $company->id,
                 'created_by'                => $user->id,
-                'external_id'                 => $numData['sid'],
+                'external_id'               => $numData['sid'],
                 'country_code'              => $numData['country_code'],
                 'number'                    => $numData['number'],
                 'voice'                     => $can['voice'],
@@ -96,7 +96,7 @@ class PhoneNumberController extends Controller
                 'name'                      => $request->name,
                 'source'                    => $request->source,
                 'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number),
-                'forward_to_number'         => PhoneNumber::phone($request->forward_to_number),
+                'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
                 'audio_clip_id'             => $request->audio_clip,
                 'recording_enabled_at'      => $request->record ? date('Y-m-d H:i:s') : null,
                 'whisper_message'           => $request->whisper_messsage,
@@ -157,7 +157,7 @@ class PhoneNumberController extends Controller
         $phoneNumber->source                    = $request->source;
         $phoneNumber->phone_number_pool_id      = $request->phone_number_pool;
         $phoneNumber->forward_to_country_code   = PhoneNumber::countryCode($request->forward_to_number) ?: null;
-        $phoneNumber->forward_to_number         = PhoneNumber::phone($request->forward_to_number) ?: null;
+        $phoneNumber->forward_to_number         = PhoneNumber::number($request->forward_to_number) ?: null;
         $phoneNumber->audio_clip_id             = $request->audio_clip;
         $phoneNumber->recording_enabled_at      = $request->record ? ($phoneNumber->recording_enabled_at ?: date('Y-m-d H:i:s')) : null;
         $phoneNumber->whisper_message           = $request->whisper_message;

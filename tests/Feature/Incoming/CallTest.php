@@ -12,6 +12,9 @@ use App\Models\Company\Campaign;
 use App\Models\Company\CampaignPhoneNumber;
 use App\Models\Company\CampaignPhoneNumberPool;
 use \Tests\Models\TwilioCall;
+use App\Events\IncomingCallEvent;
+use App\Events\IncomingCallUpdatedEvent;
+use App\Models\Company\PhoneNumber\Call;
 
 class CallTest extends TestCase
 {
@@ -24,35 +27,25 @@ class CallTest extends TestCase
      */
     public function testHandleIncomingPhoneCallForPrintCampaign()
     {
+        $this->expectsEvents(IncomingCallEvent::class);
+
         $phone = $this->createTestingPhone(null, [
             'type' => Campaign::TYPE_PRINT
         ]);
 
-        $incomingCall = factory(TwilioCall::class)->make();
+        $callData = $this->getCallData($phone);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
-
 
         //
         //  Try again with recording on
         //
         $phone->recording_enabled_at = date('Y-m-d H:i:s');
         $phone->save();
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
 
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
     
@@ -67,32 +60,19 @@ class CallTest extends TestCase
         $phone->audio_clip_id = $audioClip->id;
         $phone->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
         
         //
         //  Try again with whisper
         //
-    
         $phone->whisper_message  = 'Hello world';
         $phone->whisper_language = 'en';
         $phone->whisper_voice    = 'alice'; 
         $phone->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
             '<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing"><Number url="' . route('incoming-call-whisper',[
@@ -110,6 +90,8 @@ class CallTest extends TestCase
      */
     public function testHandleIncomingPhonePoolCallForPrintCampaign()
     {
+        $this->expectsEvents(IncomingCallEvent::class);
+
         $user = $this->createUser();
 
         $pool = factory(PhoneNumberPool::class)->create([
@@ -123,32 +105,20 @@ class CallTest extends TestCase
         ], [
             'type' => Campaign::TYPE_PRINT
         ]);
-       
-        $incomingCall = factory(TwilioCall::class)->make();
+      
+        $callData = $this->getCallData($phone);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
-
 
         //
         //  Try again with recording on
         //
         $pool->recording_enabled_at = date('Y-m-d H:i:s');
         $pool->save();
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
 
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
     
@@ -163,13 +133,7 @@ class CallTest extends TestCase
         $pool->audio_clip_id = $audioClip->id;
         $pool->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing"><Number>' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
 
@@ -181,13 +145,7 @@ class CallTest extends TestCase
         $pool->whisper_voice    = 'alice'; 
         $pool->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
             '<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing"><Number url="' . route('incoming-call-whisper',[
@@ -206,18 +164,15 @@ class CallTest extends TestCase
      */
     public function testHandleIncomingPhoneCallForRadioCampaign()
     {
+        $this->expectsEvents(IncomingCallEvent::class);
+
         $phone = $this->createTestingPhone(null, [
             'type' => Campaign::TYPE_RADIO
         ]);
 
-        $incomingCall = factory(TwilioCall::class)->make();
+        $callData = $this->getCallData($phone);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
 
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
@@ -228,12 +183,7 @@ class CallTest extends TestCase
         //
         $phone->recording_enabled_at = date('Y-m-d H:i:s');
         $phone->save();
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
 
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
@@ -249,12 +199,7 @@ class CallTest extends TestCase
         $phone->audio_clip_id = $audioClip->id;
         $phone->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
 
         $response->assertStatus(200);
         $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
@@ -267,12 +212,7 @@ class CallTest extends TestCase
         $phone->whisper_voice    = 'alice'; 
         $phone->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
 
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
@@ -291,6 +231,8 @@ class CallTest extends TestCase
      */
     public function testHandleIncomingPhonePoolCallForRadioCampaign()
     {
+        $this->expectsEvents(IncomingCallEvent::class);
+
         $user = $this->createUser();
 
         $pool = factory(PhoneNumberPool::class)->create([
@@ -305,31 +247,19 @@ class CallTest extends TestCase
             'type' => Campaign::TYPE_RADIO
         ]);
        
-        $incomingCall = factory(TwilioCall::class)->make();
+        $callData = $this->getCallData($phone);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
-
 
         //
         //  Try again with recording on
         //
         $pool->recording_enabled_at = date('Y-m-d H:i:s');
         $pool->save();
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
 
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
     
@@ -344,12 +274,7 @@ class CallTest extends TestCase
         $pool->audio_clip_id = $audioClip->id;
         $pool->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
 
         $response->assertStatus(200);
         $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing"><Number>' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
@@ -362,12 +287,7 @@ class CallTest extends TestCase
         $pool->whisper_voice    = 'alice'; 
         $pool->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
 
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
@@ -379,9 +299,6 @@ class CallTest extends TestCase
         );
     }
 
-
-
-
     /**
      * Test handling an incoming phone number pool call for a web campaign 
      * 
@@ -389,6 +306,8 @@ class CallTest extends TestCase
      */
     public function testHandleIncomingPhonePoolCallForWebCampaign()
     {
+        $this->expectsEvents(IncomingCallEvent::class);
+        
         $user = $this->createUser();
 
         $pool = factory(PhoneNumberPool::class)->create([
@@ -403,31 +322,19 @@ class CallTest extends TestCase
             'type' => Campaign::TYPE_WEB
         ]);
        
-        $incomingCall = factory(TwilioCall::class)->make();
+        $callData = $this->getCallData($phone);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
-
 
         //
         //  Try again with recording on
         //
         $pool->recording_enabled_at = date('Y-m-d H:i:s');
         $pool->save();
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
 
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
     
@@ -442,13 +349,7 @@ class CallTest extends TestCase
         $pool->audio_clip_id = $audioClip->id;
         $pool->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
         $response->assertStatus(200);
         $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing"><Number>' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
 
@@ -460,12 +361,7 @@ class CallTest extends TestCase
         $pool->whisper_voice    = 'alice'; 
         $pool->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', [
-            'CallSid'    => $incomingCall->CallSid,
-            'To'     => $phone->phoneNumber(),
-            'From'     => $incomingCall->From,
-            'CallStatus' => $incomingCall->CallStatus
-        ]);
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
 
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
@@ -475,6 +371,40 @@ class CallTest extends TestCase
                 'whisper_voice'   => $pool->whisper_voice
             ]) . '" method="GET">' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>')
         );
+    }
+
+    /**
+     * Test updating call status
+     * 
+     * @group incoming-calls-
+     */
+    public function testIncomingCallUpdated()
+    {
+        $this->expectsEvents(IncomingCallUpdatedEvent::class);
+        
+        $phone = $this->createTestingPhone(null, [
+            'type' => Campaign::TYPE_RADIO
+        ]);
+
+        $callData = $this->getCallData($phone);
+
+        //  Send original call
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response->assertStatus(200);
+
+        //  Send updated call
+        $callData['CallDuration'] = mt_rand(10, 999);
+        $callData['CallStatus']   = 'completed';
+
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls/status-changed', $callData);
+        
+        //  Make sure it went ok
+        $response->assertStatus(200);
+        $call = Call::where('external_id', $callData['CallSid'])->first();
+
+        $this->assertTrue($call != null);
+        $this->assertTrue($call->status == $callData['CallStatus']);
+        $this->assertTrue($call->duration == $callData['CallDuration']);
     }
 
     /**
@@ -498,7 +428,6 @@ class CallTest extends TestCase
 
         $response->assertSee('<Response><Say language="' . $lang . '" voice="' . $voice . '">' . $message . '</Say></Response>');
     }
-
 
     public function createTestingPhone($phoneFields = [], $campaignFields = [])
     {
@@ -527,5 +456,26 @@ class CallTest extends TestCase
         }
         
         return $phone;
+    }
+
+    public function getCallData($phone)
+    {
+        $incomingCall = factory(TwilioCall::class)->make();
+
+        return [
+            'CallSid'       => $incomingCall->CallSid,
+            'CallStatus'    => $incomingCall->CallStatus,
+            'Direction'     => $incomingCall->Direction,
+            'To'            => $phone->phoneNumber(),
+            'From'          => $incomingCall->From,
+            'ToCity'        => $incomingCall->ToCity,
+            'ToCountry'     => $incomingCall->ToCountry,
+            'ToState'       => $incomingCall->ToState,
+            'ToZip'         => $incomingCall->ToZip,
+            'FromCity'      => $incomingCall->FromCity,
+            'FromCountry'   => $incomingCall->FromCountry,
+            'FromState'     => $incomingCall->FromState,
+            'FromZip'       => $incomingCall->FromZip,
+        ];
     }
 }

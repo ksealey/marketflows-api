@@ -18,6 +18,9 @@ class EventServiceProvider extends ServiceProvider
         'App\Events\IncomingCallEvent' => [
             'App\Listeners\IncomingCallListener',
         ],
+        'App\Events\IncomingCallUpdatedEvent' => [
+            'App\Listeners\IncomingCallUpdatedListener',
+        ],
         'App\Events\CompanyJsPublishedEvent' => [
             'App\Listeners\CompanyJsPublishedListener',
         ],

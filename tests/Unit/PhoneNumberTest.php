@@ -83,7 +83,7 @@ class PhoneNumberTest extends TestCase
         $phone = '+' . $countryCode . $number;
 
         $this->assertTrue(PhoneNumber::countryCode($phone) == $countryCode);
-        $this->assertTrue(PhoneNumber::phone($phone) == $number);
+        $this->assertTrue(PhoneNumber::number($phone) == $number);
     }
 
     /**

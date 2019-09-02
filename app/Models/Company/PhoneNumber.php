@@ -93,16 +93,21 @@ class PhoneNumber extends Model implements CanBeDialed
 
         $num = $client->incomingPhoneNumbers
                          ->create([
-                            'phoneNumber' => $phone,
-                            'voiceUrl'    => route('incoming-call'),
-                            'smsUrl'      => route('incoming-sms'),
-                            'mmsUrl'      => route('incoming-mms')
+                            'phoneNumber'           => $phone,
+                            'voiceUrl'              => route('incoming-call'),
+                            'voiceMethod'           => 'GET',
+                            'statusCallback'        => route('incoming-call-status-changed'),
+                            'statusCallbackMethod'  => 'GET',
+                            'smsUrl'                => route('incoming-sms'),
+                            'smsMethod'             => 'GET',
+                            'mmsUrl'                => route('incoming-mms'),
+                            'mmsMethod'             => 'GET'
                         ]);
-
+                        
         return [
             'sid'          => $num->sid,
             'country_code' => self::countryCode($num->phoneNumber),
-            'number'       => self::phone($num->phoneNumber),
+            'number'       => self::number($num->phoneNumber),
             'capabilities' => $num->capabilities
         ];
     }
@@ -143,7 +148,7 @@ class PhoneNumber extends Model implements CanBeDialed
         return preg_replace('/[^0-9]+/', '', $phoneStr);
     }
 
-    static public function phone($phoneStr)
+    static public function number($phoneStr)
     {
         $phone = self::cleanPhone($phoneStr); 
 
@@ -155,7 +160,7 @@ class PhoneNumber extends Model implements CanBeDialed
     static public function countryCode($phoneStr)
     {
         $fullPhone = self::cleanPhone($phoneStr);
-        $phone     = self::phone($phoneStr);
+        $phone     = self::number($phoneStr);
 
         $len = strlen($fullPhone) - strlen($phone);
 

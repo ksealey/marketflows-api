@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Incoming;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use App\Http\Controllers\Controller;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
-use Twilio\TwiML;
+use App\Models\Company\PhoneNumber\Call;
+use App\Events\IncomingCallEvent;
+use App\Events\IncomingCallUpdatedEvent;
 use Twilio\TwiML\VoiceResponse;
 use Validator;
 
@@ -22,9 +24,18 @@ class CallController extends Controller
     {
         $rules = [
             'CallSid'       => 'required|max:64',
+            'CallStatus'    => 'required|max:64',
+            'Direction'     => 'required|max:64',
             'To'            => 'required|max:16',
+            'ToCity'        => 'max:255',
+            'ToState'       => 'max:255',
+            'ToZip'         => 'max:16',
+            'ToCountry'     => 'max:255',
             'From'          => 'required|max:16',
-            'CallStatus'    => 'required'
+            'FromCity'      => 'max:255',
+            'FromState'     => 'max:255',
+            'FromZip'       => 'max:16',
+            'FromCountry'   => 'max:255'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -37,7 +48,7 @@ class CallController extends Controller
 
         //  Find out how to handle this call
         $dialedCountryCode = PhoneNumber::countryCode($request->To);
-        $dialedNumber      = PhoneNumber::phone($request->To);
+        $dialedNumber      = PhoneNumber::number($request->To);
 
         $query = PhoneNumber::where('number', $dialedNumber); 
         if( $dialedCountryCode )
@@ -50,6 +61,29 @@ class CallController extends Controller
 
             return Response::xmlResponse($response);
         }
+
+        //  Create call record
+        $call = Call::create([
+            'phone_number_id'   => $phoneNumber->id,
+            'external_id'       => $request->CallSid,
+            'direction'         => $request->Direction,
+            'status'            => $request->CallStatus,
+            'from_country_code' => PhoneNumber::countryCode($request->From) ?: null,
+            'from_number'       => PhoneNumber::number($request->From),
+            'from_city'         => $request->FromCity ?: null,
+            'from_state'        => $request->FromState ?: null,
+            'from_zip'          => $request->FromZip ?: null,
+            'from_country'      => $request->FromCountry ?: null,
+            'to_country_code'   => PhoneNumber::countryCode($request->To) ?: null,
+            'to_number'         => PhoneNumber::number($request->To),
+            'to_city'           => $request->ToCity ?: null,
+            'to_state'          => $request->ToState ?: null,
+            'to_zip'            => $request->ToZip ?: null,
+            'to_country'        => $request->ToCountry ?: null,
+        ]);
+
+        //  Let the rest of the system know it happened
+        event(new IncomingCallEvent($call));
 
         $handler = $phoneNumber->phone_number_pool_id 
                     ? PhoneNumberPool::find( $phoneNumber->phone_number_pool_id ) 
@@ -93,7 +127,6 @@ class CallController extends Controller
         return Response::xmlResponse($response);
     }
 
-
     /**
      * Handle a call changing it's status
      * 
@@ -105,9 +138,8 @@ class CallController extends Controller
     {
         $rules = [
             'CallSid'       => 'required|max:64',
-            'To'        => 'required|max:16',
-            'From'        => 'required|max:16',
-            'CallStatus'    => 'required'
+            'CallStatus'    => 'required|max:64',
+            'CallDuration'  => 'numeric'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -115,6 +147,23 @@ class CallController extends Controller
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
+
+        $call = Call::where('external_id', $request->CallSid)
+                    ->first();
+
+        if( ! $call ){
+            return response([
+                'error' => 'Not found',
+            ], 404);
+        }
+
+        //  Update call
+        $call->status   = $request->CallStatus;
+        $call->duration = $request->CallDuration;
+        $call->save();
+
+        //  And let the rest of the system know it happened
+        event(new IncomingCallUpdatedEvent($call));
     }
 
     /**
