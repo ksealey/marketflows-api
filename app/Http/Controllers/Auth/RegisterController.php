@@ -88,8 +88,22 @@ class RegisterController extends Controller
 
             //  Create company
             $company = Company::create([
-                'account_id' => $account->id,
-                'name'       => $request->company_name
+                'account_id'        => $account->id,
+                'name'              => $request->company_name,
+                'webhook_actions'   => json_encode([ //  Add empty webhook actions
+                    'calls.started' => [
+                        'url'    => '',
+                        'method' => 'POST'
+                    ],
+                    'calls.updated' => [
+                        'url'    => '',
+                        'method' => 'POST'
+                    ],
+                    'calls.completed' => [
+                        'url'    => '',
+                        'method' => 'POST'
+                    ]
+                ])
             ]);
 
             //  Ship with a sample role for reporting

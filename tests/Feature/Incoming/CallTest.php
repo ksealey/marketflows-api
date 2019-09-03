@@ -12,6 +12,7 @@ use App\Models\Company\AudioClip;
 use App\Models\Company\Campaign;
 use App\Models\Company\CampaignPhoneNumber;
 use App\Models\Company\CampaignPhoneNumberPool;
+use App\Models\Company\WebhookCall;
 use \Tests\Models\TwilioCall;
 use \Tests\Models\TwilioRecording;
 use App\Events\IncomingCallEvent;
@@ -49,7 +50,7 @@ class CallTest extends TestCase
         $phone->recording_enabled_at = date('Y-m-d H:i:s');
         $phone->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData); 
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
     
@@ -401,8 +402,6 @@ class CallTest extends TestCase
         $callData['CallStatus']   = 'completed';
 
         $response = $this->json('GET', 'http://localhost/v1/incoming/calls/status-changed', $callData);
-        
-        //  Make sure it went ok
         $response->assertStatus(200);
         $call = Call::where('external_id', $callData['CallSid'])->first();
 
@@ -414,7 +413,7 @@ class CallTest extends TestCase
     /**
      * Test handling a recording
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testIncomingCallRecordingAvailable()
     {
@@ -454,6 +453,51 @@ class CallTest extends TestCase
         $this->assertTrue($recording != null);
 
         $this->assertTrue($recording->path != null);
+    }
+
+    /**
+     * Test that webhooks are being fired and logs
+     * 
+     * @group incoming-calls
+     */
+    public function testWebhooksFiresAndLogsCall()
+    {
+        $user = $this->createUser();
+
+        $companyWebhookActions = json_decode($this->company->webhook_actions, true);
+
+        $phone = $this->createTestingPhone(null, [
+            'type' => Campaign::TYPE_RADIO
+        ]);
+
+        $callData = $this->getCallData($phone);
+
+        //  Send original call
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response->assertStatus(200);
+
+        //  Send updated call
+        $callData['CallDuration'] = mt_rand(10, 999);
+        $callData['CallStatus']   = 'answered';
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls/status-changed', $callData);
+        $response->assertStatus(200);
+
+        //  Send completed call
+        $callData['CallDuration'] = mt_rand(10, 999);
+        $callData['CallStatus']   = 'completed';
+        $response = $this->json('GET', 'http://localhost/v1/incoming/calls/status-changed', $callData);
+        $response->assertStatus(200);
+
+        //  Make sure the webhooks were fired
+        $webhookCalls = WebhookCall::where('company_id', $this->company->id)->get();
+        $this->assertTrue( count($webhookCalls) === 3 );
+
+        foreach( $webhookCalls as $webhookCall ){
+            $webhookAction = $companyWebhookActions[$webhookCall->webhook_action_id];
+            $this->assertTrue( $webhookCall->status_code != null );
+            $this->assertTrue( $webhookCall->url ==  $webhookAction['url'] );
+            $this->assertTrue( $webhookCall->method ==  $webhookAction['method'] );
+        }
     }
 
     /**

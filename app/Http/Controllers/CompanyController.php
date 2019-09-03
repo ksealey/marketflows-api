@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use \App\Models\Company;
 use \App\Models\User;
 use \App\Models\UserCompany;
+use \App\Rules\CompanyWebhookActionsRule;
 use Validator;
 
 class CompanyController extends Controller
@@ -40,7 +41,8 @@ class CompanyController extends Controller
     public function create(Request $request)
     {
         $rules = [
-            'name' => 'required|max:255'
+            'name'            => 'required|max:255',
+            'webhook_actions' => ['required', 'json', new CompanyWebhookActionsRule()]
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -53,8 +55,9 @@ class CompanyController extends Controller
         $user = $request->user();
 
         $company = Company::create([
-            'account_id' => $user->account_id,
-            'name'       => $request->name,
+            'account_id'        => $user->account_id,
+            'name'              => $request->name,
+            'webhook_actions'   => $request->webhook_actions
         ]);
 
         return response([
@@ -73,7 +76,11 @@ class CompanyController extends Controller
 
     public function update(Request $request, Company $company)
     {
-        $rules = ['name' => 'required|max:255'];
+        $rules = [
+            'name'            => 'required|max:255',
+            'webhook_actions' => ['required', 'json', new CompanyWebhookActionsRule()]
+        ];
+        
         $validator = Validator::make($request->input(), $rules);
         if( $validator->fails() ){
             return response([
@@ -81,7 +88,8 @@ class CompanyController extends Controller
             ], 400);
         }
 
-        $company->name = $request->name;
+        $company->name            = $request->name;
+        $company->webhook_actions = $request->webhook_actions;
         $company->save();
 
         return response([

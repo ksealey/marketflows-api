@@ -89,15 +89,17 @@ class CompanyTest extends TestCase
         $company = factory(Company::class)->make();
 
         $response = $this->json('POST', 'http://localhost/v1/companies', [
-            'name' => $company->name
+            'name' => $company->name,
+            'webhook_actions' => $company->webhook_actions,
         ], $this->authHeaders());
-
+        
         $response->assertStatus(201);
 
         $response->assertJSON([
             'message' => 'created',
             'company' => [
-                'name' => $company->name
+                'name' => $company->name,
+                'webhook_actions' => $company->webhook_actions
             ]
         ]);
     }
@@ -111,19 +113,16 @@ class CompanyTest extends TestCase
     {
         $user    = $this->createUser();
         $company = factory(Company::class)->create([
-            'account_id' => $user->account_id
+            'account_id' => $user->account_id,
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $company->id, [
-            'name' => $company->name
-        ], $this->authHeaders());
-
+        $response = $this->json('GET', 'http://localhost/v1/companies/' . $company->id, [], $this->authHeaders());
         $response->assertStatus(200);
 
         $response->assertJSON([
             'message' => 'success',
             'company' => [
-                'name' => $company->name
+                'name' => $company->name,
             ]
         ]);
     }
@@ -140,9 +139,27 @@ class CompanyTest extends TestCase
             'account_id' => $user->account_id
         ]);
 
-        $updatedCompany = factory(Company::class)->make();
+        $updatedCompany = factory(Company::class)->make([
+            'webhook_actions' => json_encode([
+                'calls.started' => [
+                    'url'    => 'https://anothersite.com/calls/created',
+                    'method' => 'GET',
+                ],
+                'calls.updated' => [
+                    
+                    'url'    => 'https://anothersite.com/calls/updated',
+                    'method' => 'GET',
+                ],
+                'calls.completed' => [
+                    'url'    => 'https://anothersite.com/calls/completed',
+                    'method' => 'GET',
+                ]
+            ])
+        ]);
+
         $response = $this->json('PUT', 'http://localhost/v1/companies/' . $company->id, [
-            'name' => $updatedCompany->name
+            'name'            => $updatedCompany->name,
+            'webhook_actions' => $updatedCompany->webhook_actions
         ], $this->authHeaders());
 
         $response->assertStatus(200);
@@ -151,7 +168,8 @@ class CompanyTest extends TestCase
             'message' => 'success',
             'company' => [
                 'id'   => $company->id,
-                'name' => $updatedCompany->name
+                'name' => $updatedCompany->name,
+                'webhook_actions' => $updatedCompany->webhook_actions
             ]
         ]);
     }

@@ -18,6 +18,7 @@ class CreateCompaniesTable extends Migration
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('created_by')->unsigned()->nullable();
             $table->string('name', 255);
+            $table->json('webhook_actions')->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('account_id')->references('id')->on('accounts');

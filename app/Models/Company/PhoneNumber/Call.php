@@ -26,6 +26,10 @@ class Call extends Model
         'to_country'
     ];
 
+    protected $hidden = [
+        'external_id'
+    ];
+
     public function phoneNumber()
     {
         return $this->belongsTo('\App\Models\Company\PhoneNumber');

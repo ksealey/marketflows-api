@@ -20,6 +20,7 @@ class CreateCallRecordingsTable extends Migration
             $table->integer('duration')->unsigned();
             $table->string('path', 255);
             $table->timestamps();
+            $table->foreign('call_id')->references('id')->on('calls');
         });
     }
 

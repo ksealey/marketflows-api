@@ -43,5 +43,12 @@ return [
             ]
         ]
 
+    ],
+    'webhook_actions' => [
+        'actions' => [
+            'calls.started',
+            'calls.updated',
+            'calls.completed'
+        ]
     ]
 ];

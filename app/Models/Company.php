@@ -15,6 +15,7 @@ class Company extends Model
         'account_id',
         'created_by',
         'name',
+        'webhook_actions'
     ];
 
     protected $hidden = [
