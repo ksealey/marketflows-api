@@ -11,5 +11,6 @@ $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $fa
         'source'                    => 'TRK_SOURCE_POOL',
         'forward_to_country_code'   => 1,
         'forward_to_number'         => substr($faker->e164PhoneNumber, -10),
+        'auto_provision_enabled_at' => date('Y-m-d H:i:s')
     ];
 });

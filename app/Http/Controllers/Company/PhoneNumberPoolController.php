@@ -70,9 +70,10 @@ class PhoneNumberPoolController extends Controller
             'forward_to_number'         => 'bail|required|digits:10',
             'audio_clip'                => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'                    => 'boolean',
+            'auto_provision'            => 'boolean',
             'whisper_message'           => 'max:255',
             'whisper_language'          => 'in:' . implode(',', array_keys($config['languages'])),
-            'whisper_voice'             => 'in:' . implode(',', array_keys($config['voices'])),      
+            'whisper_voice'             => 'in:' . implode(',', array_keys($config['voices']))     
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -95,7 +96,8 @@ class PhoneNumberPoolController extends Controller
             'recording_enabled_at'      => $request->record ? date('Y-m-d H:i:s') : null,
             'whisper_message'           => $request->whisper_message,
             'whisper_language'          => $request->whisper_language,
-            'whisper_voice'             => $request->whisper_voice
+            'whisper_voice'             => $request->whisper_voice,
+            'auto_provision_enabled_at' => $request->auto_provision ? date('Y-m-d H:i:s') : null
         ]);
 
         return response([
@@ -140,6 +142,7 @@ class PhoneNumberPoolController extends Controller
             'forward_to_number'         => 'bail|required|digits:10',
             'audio_clip'                => ['bail', 'numeric', new AudioClipRule($phoneNumberPool->company_id)],
             'record'                    => 'boolean',
+            'auto_provision'            => 'boolean',
             'whisper_message'           => 'max:255',
             'whisper_language'          => 'in:' . implode(',', array_keys($config['languages'])),
             'whisper_voice'             => 'in:' . implode(',', array_keys($config['voices'])), 
@@ -157,6 +160,7 @@ class PhoneNumberPoolController extends Controller
         $phoneNumberPool->forward_to_country_code   = $request->forward_to_country_code;
         $phoneNumberPool->forward_to_number         = $request->forward_to_number;
         $phoneNumberPool->recording_enabled_at      = $request->record ? ($phoneNumberPool->recording_enabled_at ?: date('Y-m-d H:i:s')) : null;
+        $phoneNumberPool->auto_provision_enabled_at = $request->auto_provision ? ($phoneNumberPool->auto_provision_enabled_at ?: date('Y-m-d H:i:s')) : null;
         $phoneNumberPool->whisper_message           = $request->whisper_message;
         $phoneNumberPool->whisper_language          = $request->whisper_language;
         $phoneNumberPool->whisper_voice             = $request->whisper_voice;

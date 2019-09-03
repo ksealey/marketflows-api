@@ -21,9 +21,10 @@ class PhoneNumberPool extends Model implements CanBeDialed
         'forward_to_number',
         'audio_clip_id',
         'recording_enabled_at',
+        'auto_provision_enabled_at',
         'whisper_message',
         'whisper_language',
-        'whisper_voice',
+        'whisper_voice'
     ];
 
     protected $hidden = [

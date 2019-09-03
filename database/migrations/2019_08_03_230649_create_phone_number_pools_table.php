@@ -23,6 +23,7 @@ class CreatePhoneNumberPoolsTable extends Migration
             $table->string('forward_to_number', 16)->nullable();
             $table->bigInteger('audio_clip_id')->unsigned()->nullable();
             $table->dateTime('recording_enabled_at')->nullable();
+            $table->dateTime('auto_provision_enabled_at')->nullable();
             $table->string('whisper_message', 255)->nullable();
             $table->string('whisper_language', 32)->nullable();
             $table->string('whisper_voice', 64)->nullable();
