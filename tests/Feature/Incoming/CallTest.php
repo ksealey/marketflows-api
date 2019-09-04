@@ -11,7 +11,6 @@ use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use App\Models\Company\Campaign;
 use App\Models\Company\CampaignPhoneNumber;
-use App\Models\Company\CampaignPhoneNumberPool;
 use App\Models\Company\WebhookCall;
 use \Tests\Models\TwilioCall;
 use \Tests\Models\TwilioRecording;
@@ -537,10 +536,8 @@ class CallTest extends TestCase
         $campaign = $this->createCampaign($campaignFields ?: []);
 
         if( $phone->phone_number_pool_id ){
-            CampaignPhoneNumberPool::create([
-                'campaign_id'          => $campaign->id,
-                'phone_number_pool_id' => $phone->phone_number_pool_id
-            ]);
+            $campaign->phone_number_pool_id = $phone->phone_number_pool_id;
+            $campaign->save();
         }else{
             CampaignPhoneNumber::create([
                 'campaign_id'     => $campaign->id,

@@ -42,6 +42,8 @@ class PhoneNumber extends Model implements CanBeDialed
         'company_id',
         'created_by',
         'external_id',
+        'assigned_session_id',
+        'last_assigned_at',
         'deleted_at'
     ];
 
@@ -189,14 +191,15 @@ class PhoneNumber extends Model implements CanBeDialed
         //  Look through a link via pool 
         $numbersInLinkedPools = PhoneNumber::whereIn('phone_number_pool_id', function($query) use($numbers, $excludingCampaignId){
             $query->select('phone_number_pool_id')
-                  ->from('campaign_phone_number_pools')
+                  ->from('campaigns')
+                  ->whereNotNull('activated_at')
                   ->whereIn('phone_number_pool_id', function($query) use($numbers){
                     $query->select('phone_number_pool_id')
                         ->from('phone_numbers')
                         ->whereIn('id', $numbers);
                 });
             if( $excludingCampaignId )
-                $query->where('campaign_id', '!=', $excludingCampaignId);
+                $query->where('campaigns.id', '!=', $excludingCampaignId);
         })->get(); 
         
         if( count($numbersInLinkedPools) )

@@ -39,7 +39,7 @@ trait FiresWebhooks
      * 
      * @param Company   $company        The company we're firing this webhook for
      * @param string    $webhookId      The webhook's identifier
-    * @param int        $resourceId     The associated resource's id
+     * @param int        $resourceId     The associated resource's id
      * @param callable  $data           A callable variable used to get the data that will be posted
      * @param mixed     $onSuccess      Callable to be executed on successful request
      * @param mixed     $onError        Callable to be executed on request error

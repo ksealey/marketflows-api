@@ -4,7 +4,7 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use \App\Models\Company\CampaignPhoneNumberPool;
+use \App\Models\Company\Campaign;
 use \App\Contracts\CanBeDialed;
 use \App\Traits\IsDialed;
 
@@ -37,12 +37,12 @@ class PhoneNumberPool extends Model implements CanBeDialed
 
     public function isInUse($campaignId = null)
     {
-        $query = CampaignPhoneNumberPool::where('phone_number_pool_id', $this->id);
+        $query = Campaign::where('phone_number_pool_id', $this->id);
+        
         if( $campaignId )
             $query->where('campaign_id', '!=', $campaignId);
-        $linkCount = $query->count();
 
-        return $linkCount ? true : false;
+        return $query->count() ? true : false;
     }
 
     public function isInUseExcludingCampaign($campaignId = null)

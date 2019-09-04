@@ -185,7 +185,7 @@ class PhoneNumberPoolController extends Controller
     {
         if( $phoneNumberPool->isInUse() ){
             return response([
-                'error' => 'This phone number pool is in use - please detach from all related entities and try again'
+                'error' => 'This phone number pool is in use'
             ], 400);
         }
 

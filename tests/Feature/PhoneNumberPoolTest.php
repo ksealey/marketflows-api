@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use \App\Models\Company\CampaignPhoneNumberPool;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Campaign;
@@ -230,18 +229,14 @@ class PhoneNumberPoolTest extends TestCase
         $campaign = factory(Campaign::class)->create([
             'company_id'   => $user->company_id,
             'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 minutes'))
-        ]);
-    
-        CampaignPhoneNumberPool::create([
-            'campaign_id'          => $campaign->id,
+            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 minutes')),
             'phone_number_pool_id' => $pool->id
         ]);
 
         $response = $this->json('DELETE',  'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools/' . $pool->id, [], $this->authHeaders());
         $response->assertStatus(400);
         $response->assertJson([
-            'error' => 'This phone number pool is in use - please detach from all related entities and try again'
+            'error' => 'This phone number pool is in use'
         ]);
     }
 }

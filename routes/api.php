@@ -28,6 +28,11 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
     Route::post('/reset-password/{userId}/{key}', 'Auth\LoginController@handleResetPassword');  
 });
 
+/*
+|----------------------------------------
+| Handle authenticated user api calls
+|----------------------------------------
+*/
 Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
     /*
     |--------------------------------
@@ -235,16 +240,6 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
 
                     Route::delete('/phone-numbers','Company\Campaign\PhoneNumberController@remove')
                          ->middleware('can:update,campaign');
-                    /*
-                    |--------------------------------------
-                    | Handle campaign phone number groups
-                    |--------------------------------------
-                    */
-                    Route::post('/phone-number-pools','Company\Campaign\PhoneNumberPoolController@add')
-                         ->middleware('can:update,campaign');
-
-                    Route::delete('/phone-number-pools','Company\Campaign\PhoneNumberPoolController@remove')
-                         ->middleware('can:update,campaign');
 
                     /*
                     |--------------------------------------
@@ -337,14 +332,32 @@ Route::middleware('api')->group(function(){
              ->name('incoming-mms');
     });
 
+    /*
+    |--------------------------------
+    | Handle public api routes
+    |--------------------------------
+    */
     Route::prefix('public')->group(function(){
+        /*
+        |--------------------------------
+        | Handle public user invites
+        |--------------------------------
+        */
         Route::prefix('user-invites')->group(function(){
             Route::get('/{userInvite}/{key}', 'UserInviteController@publicRead');
             Route::put('/{userInvite}/{key}', 'UserInviteController@publicAccept');
         });
+
+        /*
+        |-----------------------------------------
+        | Handle public user session generation
+        |------------------------------------------
+        */
+        Route::prefix('sessions')->group(function(){
+            Route::post('/', 'SessionController@create');
+            Route::delete('/{sessionId}', 'SessionController@delete');
+        });
     });
 });
-
-
 
 

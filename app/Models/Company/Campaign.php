@@ -20,6 +20,7 @@ class Campaign extends Model
         'created_by',
         'name',
         'type',
+        'phone_number_pool_id',
         'activated_at',
         'suspended_at',
         'number_swap_rules'

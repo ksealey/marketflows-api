@@ -79,6 +79,8 @@ class AudioClipController extends Controller
                 'path'        => $filePath,
                 'mime_type'   => $file->getMimeType()
             ]);
+
+            $this->logUserEvent($user, 'audio-clips.create', $audioClip);
         }catch(Exception $e){
             DB::rollBack();
 
@@ -86,6 +88,8 @@ class AudioClipController extends Controller
                 'error' => 'Unable to upload file',
             ], 400);
         }
+
+        DB::commit();
 
         return response([
             'message'       => 'created',
@@ -130,8 +134,12 @@ class AudioClipController extends Controller
             if( $file = $request->audio_clip )
                 Storage::put($audioClip->path, $file);
 
+            $old = clone $audioClip;
+
             $audioClip->name = $request->name;
             $audioClip->save();
+
+            $this->logUserEvent($request->user(), 'audio-clips.update', $old, $audioClip);
         }catch(Exception $e){
             DB::rollBack();
 
@@ -139,6 +147,7 @@ class AudioClipController extends Controller
                 'error' => 'Unable to upload file',
             ], 400);
         }
+        DB::commit();
 
         return response([
             'message'    => 'updated',
@@ -157,6 +166,8 @@ class AudioClipController extends Controller
         Storage::delete($audioClip->path);
         
         $audioClip->delete();
+
+        $this->logUserEvent($request->user(), 'audio-clips.delete', $audioClip);
 
         return response([
             'message' => 'deleted',

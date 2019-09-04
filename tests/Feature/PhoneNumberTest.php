@@ -10,8 +10,6 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\Campaign;
 use \App\Models\Company\CampaignPhoneNumber;
-use \App\Models\Company\CampaignPhoneNumberPool;
-
 
 class PhoneNumberTest extends TestCase
 {
@@ -342,13 +340,9 @@ class PhoneNumberTest extends TestCase
             'company_id'   => $user->company_id,
             'created_by'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
-        ]);
-    
-        CampaignPhoneNumberPool::create([
-            'campaign_id'          => $campaign->id,
             'phone_number_pool_id' => $pool->id
         ]);
-
+    
         $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
 
         $response->assertStatus(400);

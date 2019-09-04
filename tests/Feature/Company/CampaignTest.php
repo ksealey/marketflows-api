@@ -156,11 +156,14 @@ class CampaignTest extends \Tests\TestCase
      */
     public function testCreateWebCampaign()
     {
-        $this->createUser();
-        $now = date('Y-m-d H:i:s');
+        $pool        = $this->createPhoneNumberPool();
+        $phoneNumber = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ]);
 
         $campaign = factory(Campaign::class)->make([
-            'type' => Campaign::TYPE_WEB
+            'type'                  => Campaign::TYPE_WEB,
+            'phone_number_pool_id'  => $pool->id,
         ]);
 
         $numberSwapRules =  json_encode([
@@ -181,15 +184,17 @@ class CampaignTest extends \Tests\TestCase
             'name'              => $campaign->name,
             'type'              => $campaign->type,
             'active'            => true,
-            'number_swap_rules' => $numberSwapRules
+            'number_swap_rules' => $numberSwapRules,
+            'phone_number_pool' => $pool->id
         ], $this->authHeaders());
         $response->assertStatus(201);
         $response->assertJSON([
             'campaign' => [
                 'name' => $campaign->name,
                 'type' => Campaign::TYPE_WEB,
-                'activated_at' => $now,
-                'number_swap_rules' => $numberSwapRules
+                'activated_at' => date('Y-m-d H:i:s'),
+                'number_swap_rules' => $numberSwapRules,
+                'phone_number_pool_id' => $pool->id,
             ]
         ]);
     }

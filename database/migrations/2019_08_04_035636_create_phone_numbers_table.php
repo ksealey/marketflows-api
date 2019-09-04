@@ -33,8 +33,8 @@ class CreatePhoneNumbersTable extends Migration
             $table->string('whisper_message', 255)->nullable();
             $table->string('whisper_language', 32)->nullable();
             $table->string('whisper_voice', 64)->nullable();
-            $table->dateTime('last_assigned_at', 6)->nullable();
-            $table->boolean('assigned')->default(0);
+            $table->string('assigned_session_id', 255)->nullable()->index();
+            $table->dateTime('last_assigned_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');

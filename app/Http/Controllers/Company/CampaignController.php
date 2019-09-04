@@ -9,6 +9,7 @@ use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Campaign;
 use App\Rules\Company\CampaignNumberSwapRule;
+use \App\Rules\Company\PhoneNumberPoolRule;
 use Validator;
 
 class CampaignController extends Controller
@@ -61,12 +62,15 @@ class CampaignController extends Controller
         $rules = [
             'name'              => 'bail|required|max:255',
             'type'              => 'bail|required|in:' . implode(',', Campaign::types()),
-            'active'            => 'required|bool',
+            'active'            => 'required|bool'
         ]; 
 
         $validator = Validator::make($request->input(), $rules);
 
         $validator->sometimes('number_swap_rules', ['bail', 'required', 'json', new CampaignNumberSwapRule() ],function($input){
+            return $input->type == Campaign::TYPE_WEB;
+        });
+        $validator->sometimes('phone_number_pool', ['bail', 'required', 'json', new PhoneNumberPoolRule($company) ],function($input){
             return $input->type == Campaign::TYPE_WEB;
         });
 
@@ -81,6 +85,7 @@ class CampaignController extends Controller
             'created_by'        => $request->user()->id,
             'name'              => $request->name,
             'type'              => $request->type,
+            'phone_number_pool_id' => $request->phone_number_pool ?: null,
             'number_swap_rules' => $request->number_swap_rules,
             'activated_at'      => $request->active ? date('Y-m-d H:i:s') : null  
         ]);
@@ -95,22 +100,7 @@ class CampaignController extends Controller
      * 
      */
     public function read(Request $request, Company $company, Campaign $campaign)
-    {
-        //  Determine if we should add detailed information
-        if( $request->detailed ){
-            $campaign->phone_numbers  = PhoneNumber::whereIn('id', function($query) use($campaign){
-                $query->select('phone_number_id')
-                      ->from('campaign_phone_numbers')
-                      ->where('campaign_id', $campaign->id);
-            })->get();
-    
-            $campaign->phone_number_pool = PhoneNumberPool::whereIn('id', function($query) use($campaign){
-                $query->select('phone_number_pool_id')
-                      ->from('campaign_phone_number_pools')
-                      ->where('campaign_id', $campaign->id);
-            })->first();
-        }
-        
+    {   
         return response([
             'campaign' => $campaign
         ]);
@@ -124,12 +114,19 @@ class CampaignController extends Controller
     {
         $rules = [
             'name'   => 'bail|required|max:255',
-            'active' => 'required|bool'
+            'active' => 'required|bool',
+            'phone_number_pool' => [
+                'bail',
+                new PhoneNumberPoolRule($company)
+            ]
         ]; 
 
         $validator = Validator::make($request->input(), $rules);
 
         $validator->sometimes('number_swap_rules', ['bail', 'required', 'json', new CampaignNumberSwapRule() ],function($input){
+            return $input->type == Campaign::TYPE_WEB;
+        });
+        $validator->sometimes('phone_number_pool', ['bail', 'required', 'json', new PhoneNumberPoolRule($company, $campaign) ],function($input){
             return $input->type == Campaign::TYPE_WEB;
         });
 
@@ -139,8 +136,9 @@ class CampaignController extends Controller
             ], 400);
         }
 
-        $campaign->name         = $request->name;
-        $campaign->activated_at = boolval($request->active) 
+        $campaign->name                 = $request->name;
+        $campaign->phone_number_pool_id = $request->phone_number_pool ?: null;
+        $campaign->activated_at         = boolval($request->active) 
                                 ? ($campaign->activated_at ?: date('Y-m-d H:i:s')) 
                                 : null;
         $campaign->save();

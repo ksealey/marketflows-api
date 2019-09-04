@@ -9,7 +9,6 @@ use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\CampaignPhoneNumber;
-use \App\Models\Company\CampaignPhoneNumberPool;
 
 class PhoneNumberTest extends TestCase
 {
@@ -164,11 +163,9 @@ class PhoneNumberTest extends TestCase
         $numbersInUse = PhoneNumber::numbersInUse($numberArr);
         $this->assertTrue(count($numbersInUse) == 0);
 
-        //  Put it in use
-        $link = CampaignPhoneNumberPool::create([
-            'campaign_id'          => $campaign->id,
-            'phone_number_pool_id' => $pool->id
-        ]);
+        //  Add pool to campaign
+        $campaign->phone_number_pool_id = $pool->id;
+        $campaign->save();
 
         $this->assertTrue($pool->isInUse() === true);
         $this->assertTrue($phone->isInUse() === true);
@@ -183,11 +180,6 @@ class PhoneNumberTest extends TestCase
         $numbersInUse = PhoneNumber::numbersInUse($numberArr);
         $this->assertTrue(count($numbersInUse) == 1);
         $this->assertTrue(in_array($phone->id, $numbersInUse));
-
-        //  Remove link and check that they know they're no longer in use
-        $link->delete();
-        $this->assertTrue($pool->isInUse() === false);
-        $this->assertTrue($phone->isInUse() === false);
     }
 
 }
