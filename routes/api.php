@@ -139,6 +139,28 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
         Route::prefix('/{company}')->group(function(){
             /*
             |--------------------------------
+            | Handle web source fields
+            |--------------------------------
+            */
+            Route::prefix('web-source-fields')->group(function(){
+                Route::get('/', 'Company\WebSourceFieldController@list')
+                    ->middleware('can:list,\App\Models\Company\WebSourceField');
+
+                Route::post('/', 'Company\WebSourceFieldController@create')
+                    ->middleware('can:create,\App\Models\Company\WebSourceField');
+
+                Route::get('/{webSourceField}', 'Company\WebSourceFieldController@read')
+                    ->middleware('can:read,webSourceField');
+
+                Route::put('/{webSourceField}', 'Company\WebSourceFieldController@update')
+                    ->middleware('can:update,webSourceField');;
+
+                Route::delete('/{webSourceField}', 'Company\WebSourceFieldController@delete')
+                    ->middleware('can:delete,webSourceField');
+            });
+
+            /*
+            |--------------------------------
             | Handle audio clips
             |--------------------------------
             */
