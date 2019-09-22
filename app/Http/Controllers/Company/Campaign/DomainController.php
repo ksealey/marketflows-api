@@ -12,6 +12,7 @@ use Validator;
 class DomainController extends Controller
 {
     protected $domainPattern = '/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/i';
+    
     /**
      * Create campaign spend
      * 

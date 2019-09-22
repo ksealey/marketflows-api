@@ -107,7 +107,6 @@ class LoginController extends Controller
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first(),
-                'ok'    => false
             ], 400);
         }
 
@@ -116,7 +115,6 @@ class LoginController extends Controller
         if( ! $user ){
             return response([
                 'error' => 'User not found',
-                'ok'    => false
             ], 400);
         }
 

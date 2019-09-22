@@ -124,7 +124,6 @@ class AudioClipController extends Controller
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first(),
-                'ok'    => false
             ], 400);
         }
 

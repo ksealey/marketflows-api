@@ -1,11 +1,15 @@
 <?php
 namespace App\Helpers;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ClientException;
+
 class InsightsClient
 {
     private $httpClient;
 
-    private $endpoint = 'insights.marketflows.io';
+    private $endpoint = 'http://localhost:3000';
 
     public function request($method, $path, $params = [], $headers = [])
     {
@@ -13,10 +17,12 @@ class InsightsClient
 
         $request['headers'] = $headers;
 
-        $this->httpClient->request($method, $this->endpoint . '/' . trim($path, '/'), [
+        return $this->client()->request($method, $this->endpoint . '/' . trim($path, '/'), [
             'query'   => $params,
             'headers' => $params,
         ]);
+
+        return json_decode($response->getBody());
     }
 
     public function client()
@@ -27,14 +33,17 @@ class InsightsClient
         return $this->httpClient;
     }
 
-    public function session($params)
+    public function session()
     {
         //
-        //  Store over http
-        //  ...
-        //  
-        
-        return $params;
+        //  Crate over http
+        //
+        $response = $this->request('POST', '/sessions');
+
+        if( $response->getStatusCode() !== 201 )
+            return null;
+
+        return json_decode($response->getBody(), true);
     }
 
 }

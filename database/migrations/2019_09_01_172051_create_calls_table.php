@@ -32,6 +32,7 @@ class CreateCallsTable extends Migration
             $table->string('to_zip', 16)->index()->nullable();
             $table->string('to_country', 255)->nullable();
             $table->integer('duration')->unsigned()->nullable();
+            $table->string('source', 255)->nullable();
             $table->timestamps();
             $table->index(['created_at', 'updated_at']);
         });

@@ -223,6 +223,19 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
 
                 Route::delete('/{phoneNumber}', 'Company\PhoneNumberController@delete')
                     ->middleware('can:delete,phoneNumber');
+
+                /*
+                |--------------------------------
+                | Handle calls
+                |--------------------------------
+                */
+                Route::prefix('/{phoneNumber}')->group(function(){
+                    Route::get('/calls', 'Company\PhoneNumber\CallController@list')
+                        ->middleware('can:read,phoneNumber');
+
+                    Route::get('/calls/{call}', 'Company\PhoneNumber\CallController@read')
+                        ->middleware('can:read,phoneNumber');
+                });
             }); 
             
             /*

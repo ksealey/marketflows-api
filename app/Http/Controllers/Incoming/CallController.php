@@ -13,6 +13,7 @@ use App\Models\Company\PhoneNumber\Call;
 use App\Models\Company\PhoneNumber\CallRecording;
 use App\Events\IncomingCallEvent;
 use App\Events\IncomingCallUpdatedEvent;
+use App\Helpers\InsightsClient;
 use Twilio\TwiML\VoiceResponse;
 use Validator;
 use Storage;
@@ -66,6 +67,12 @@ class CallController extends Controller
             return Response::xmlResponse($response);
         }
 
+        //  Can we get some campaign data ?????
+
+
+        //  Find entity associated to phone number
+        $insightsClient = new InsightsClient();
+
         //  Create call record
         $call = Call::create([
             'phone_number_id'   => $phoneNumber->id,
@@ -84,6 +91,19 @@ class CallController extends Controller
             'to_state'          => $request->ToState ?: null,
             'to_zip'            => $request->ToZip ?: null,
             'to_country'        => $request->ToCountry ?: null,
+            //
+            //  This data should be stamped into call
+            //
+            'campaign_type' => '',
+            'campaign_name' => '',
+            /*
+            'source'            => json_encode([
+                'entry_url'         => '',
+                'last_visited_url'  => '',
+                //  Capture custom params
+                //  //
+            ])
+            */
         ]);
 
         //  Let the rest of the system know it happened
