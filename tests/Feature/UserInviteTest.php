@@ -18,7 +18,7 @@ class UserInviteTest extends TestCase
     /**
      * Test inviting a user
      *
-     * @group invite
+     * @group user-invites
      * 
      * @return void
      */
@@ -50,7 +50,7 @@ class UserInviteTest extends TestCase
      /**
      * Test getting an invite 
      *
-     * @group invite
+     * @group user-invites
      * 
      * @return void
      */
@@ -81,7 +81,7 @@ class UserInviteTest extends TestCase
     /**
      * Test deleting an invite 
      *
-     * @group invite
+     * @group user-invites
      * 
      * @return void
      */
@@ -111,7 +111,7 @@ class UserInviteTest extends TestCase
     /**
      * Test getting an invite as a public user
      *
-     * @group invite
+     * @group user-invites
      * 
      * @return void
      */
@@ -141,7 +141,7 @@ class UserInviteTest extends TestCase
     /**
      * Test getting an invite as a public user
      *
-     * @group invite
+     * @group user-invites
      * 
      * @return void
      */
@@ -168,7 +168,7 @@ class UserInviteTest extends TestCase
     /**
      * Test accepting an invite as a public user
      *
-     * @group invite
+     * @group user-invites
      * 
      * @return void
      */
@@ -212,9 +212,5 @@ class UserInviteTest extends TestCase
         $this->assertTrue($user != null);
         $this->assertTrue(count($user->companies) == 1);
         $this->assertTrue($user->companies[0]->id == $this->company->id);        
-
-
     }
-
-
 }

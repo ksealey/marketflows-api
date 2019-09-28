@@ -6,6 +6,7 @@ use \App\Models\Company;
 use \App\Models\User;
 use \App\Models\UserCompany;
 use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\Campaign;
 
@@ -48,11 +49,50 @@ trait CreatesUser
         ], $fields));
     }
 
-    public function createPhoneNumber($fields = [])
+    /**
+     * Create a web campaign
+     * 
+     */
+    public function createWebCampaign($phoneNumberCount = 2)
     {
         $user = $this->user ?: $this->createUser();
         
+        $pool = factory(PhoneNumberPool::class)->create(array_merge([
+            'company_id' => $this->company->id,
+            'created_by' => $user->id
+        ]));
+
+        $campaign = $this->createCampaign([
+            'type' => Campaign::TYPE_WEB
+        ]);
+
+        $phoneNumbers = [];
+        for($i = 0; $i < $phoneNumberCount; $i++){
+            $phoneNumber = factory(PhoneNumber::class)->create([
+                'campaign_id'=> $campaign->id,
+                'company_id' => $this->company->id,
+                'created_by' => $user->id,
+                'phone_number_pool_id' => $pool->id
+            ]);
+
+            $phoneNumbers[] = $phoneNumber;
+        }
+        
+        return [
+            'pool'          => $pool,
+            'campaign'      => $campaign,
+            'phone_numbers' => $phoneNumbers
+        ];
+    }
+
+    public function createPhoneNumber($fields = [])
+    {
+        $user = $this->user ?: $this->createUser();
+
+        $config = $this->createPhoneNumberConfig();
+
         return factory(PhoneNumber::class)->create(array_merge([
+            'phone_number_config_id' => $config->id,
             'company_id' => $this->company->id,
             'created_by' => $user->id,
         ], $fields));
@@ -62,9 +102,21 @@ trait CreatesUser
     {
         $user = $this->user ?: $this->createUser();
         
+        $config = $this->createPhoneNumberConfig();
+
         return factory(PhoneNumberPool::class)->create(array_merge([
+            'phone_number_config_id' => $config->id,
             'company_id' => $this->company->id,
             'created_by' => $user->id
+        ], $fields));
+    }
+
+    public function createPhoneNumberConfig($fields = []){
+        $user = $this->user ?: $this->createUser();
+
+        return factory(PhoneNumberConfig::class)->create(array_merge([
+            'company_id'  => $user->company_id,
+            'created_by'  => $user->id,
         ], $fields));
     }
 

@@ -31,9 +31,7 @@ class PhoneNumberPoolController extends Controller
         
         if( $search ){
             $query->where(function($query) use($search){
-                $query->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('source', 'like', '%' . $search . '%')
-                      ->orWhere('forward_to_number', 'like', '%' . $search . '%');
+                $query->where('name', 'like', '%' . $search . '%');
             });
         }
 
@@ -65,15 +63,7 @@ class PhoneNumberPoolController extends Controller
         $config = config('services.twilio');
         $rules = [
             'name'                      => 'bail|required|max:255',
-            'source'                    => 'bail|required|max:255',
-            'forward_to_country_code'   => 'bail|digits_between:1,4',
-            'forward_to_number'         => 'bail|required|digits:10',
-            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($company->id)],
-            'record'                    => 'boolean',
             'auto_provision'            => 'boolean',
-            'whisper_message'           => 'max:255',
-            'whisper_language'          => 'in:' . implode(',', array_keys($config['languages'])),
-            'whisper_voice'             => 'in:' . implode(',', array_keys($config['voices']))     
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -89,14 +79,6 @@ class PhoneNumberPoolController extends Controller
             'company_id'                => $company->id,
             'created_by'                => $user->id,
             'name'                      => $request->name, 
-            'source'                    => $request->source, 
-            'forward_to_country_code'   => $request->forward_to_country_code,
-            'forward_to_number'         => $request->forward_to_number,
-            'audio_clip_id'             => $request->audio_clip,
-            'recording_enabled_at'      => $request->record ? date('Y-m-d H:i:s') : null,
-            'whisper_message'           => $request->whisper_message,
-            'whisper_language'          => $request->whisper_language,
-            'whisper_voice'             => $request->whisper_voice,
             'auto_provision_enabled_at' => $request->auto_provision ? date('Y-m-d H:i:s') : null
         ]);
 
@@ -138,14 +120,6 @@ class PhoneNumberPoolController extends Controller
         $rules = [
             'name'                      => 'bail|required|max:255',
             'source'                    => 'bail|required|max:255',
-            'forward_to_country_code'   => 'bail|digits_between:1,4',
-            'forward_to_number'         => 'bail|required|digits:10',
-            'audio_clip'                => ['bail', 'numeric', new AudioClipRule($phoneNumberPool->company_id)],
-            'record'                    => 'boolean',
-            'auto_provision'            => 'boolean',
-            'whisper_message'           => 'max:255',
-            'whisper_language'          => 'in:' . implode(',', array_keys($config['languages'])),
-            'whisper_voice'             => 'in:' . implode(',', array_keys($config['voices'])), 
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -155,15 +129,8 @@ class PhoneNumberPoolController extends Controller
             ], 400);
         }
 
-        $phoneNumberPool->name                      = $request->name;
-        $phoneNumberPool->source                    = $request->source;
-        $phoneNumberPool->forward_to_country_code   = $request->forward_to_country_code;
-        $phoneNumberPool->forward_to_number         = $request->forward_to_number;
-        $phoneNumberPool->recording_enabled_at      = $request->record ? ($phoneNumberPool->recording_enabled_at ?: date('Y-m-d H:i:s')) : null;
-        $phoneNumberPool->auto_provision_enabled_at = $request->auto_provision ? ($phoneNumberPool->auto_provision_enabled_at ?: date('Y-m-d H:i:s')) : null;
-        $phoneNumberPool->whisper_message           = $request->whisper_message;
-        $phoneNumberPool->whisper_language          = $request->whisper_language;
-        $phoneNumberPool->whisper_voice             = $request->whisper_voice;
+        $phoneNumberPool->name   = $request->name;
+        $phoneNumberPool->source = $request->source;
         $phoneNumberPool->save();
 
         return response([

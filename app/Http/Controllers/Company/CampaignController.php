@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
@@ -70,9 +71,6 @@ class CampaignController extends Controller
         $validator->sometimes('number_swap_rules', ['bail', 'required', 'json', new CampaignNumberSwapRule() ],function($input){
             return $input->type == Campaign::TYPE_WEB;
         });
-        $validator->sometimes('phone_number_pool', ['bail', 'required', 'json', new PhoneNumberPoolRule($company) ],function($input){
-            return $input->type == Campaign::TYPE_WEB;
-        });
 
         if( $validator->fails() ){
             return response([
@@ -81,11 +79,11 @@ class CampaignController extends Controller
         }
         
         $campaign = Campaign::create([
+            'uuid'              => Str::uuid(),
             'company_id'        => $company->id,
             'created_by'        => $request->user()->id,
             'name'              => $request->name,
             'type'              => $request->type,
-            'phone_number_pool_id' => $request->phone_number_pool ?: null,
             'number_swap_rules' => $request->number_swap_rules,
             'activated_at'      => $request->active ? date('Y-m-d H:i:s') : null  
         ]);
@@ -114,11 +112,7 @@ class CampaignController extends Controller
     {
         $rules = [
             'name'   => 'bail|required|max:255',
-            'active' => 'required|bool',
-            'phone_number_pool' => [
-                'bail',
-                new PhoneNumberPoolRule($company)
-            ]
+            'active' => 'required|bool'
         ]; 
 
         $validator = Validator::make($request->input(), $rules);
@@ -126,19 +120,15 @@ class CampaignController extends Controller
         $validator->sometimes('number_swap_rules', ['bail', 'required', 'json', new CampaignNumberSwapRule() ],function($input){
             return $input->type == Campaign::TYPE_WEB;
         });
-        $validator->sometimes('phone_number_pool', ['bail', 'required', 'json', new PhoneNumberPoolRule($company, $campaign) ],function($input){
-            return $input->type == Campaign::TYPE_WEB;
-        });
-
+    
         if( $validator->fails() ){
             return response([
                 'error' =>  $validator->errors()->first()
             ], 400);
         }
 
-        $campaign->name                 = $request->name;
-        $campaign->phone_number_pool_id = $request->phone_number_pool ?: null;
-        $campaign->activated_at         = boolval($request->active) 
+        $campaign->name         = $request->name;
+        $campaign->activated_at = boolval($request->active) 
                                 ? ($campaign->activated_at ?: date('Y-m-d H:i:s')) 
                                 : null;
         $campaign->save();
@@ -158,7 +148,7 @@ class CampaignController extends Controller
         //  Do not allow users to delete active campaigns
         if( $campaign->active() ){
             return response([
-                'error' => 'You cannot delete active campaigns'
+                'error' => 'You cannot delete an active campaign'
             ], 400);
         }
 

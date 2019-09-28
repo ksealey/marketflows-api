@@ -18,19 +18,17 @@ class CallTest extends TestCase
      */
     public function testListCalls()
     {
-        $phoneNumber = $this->createPhoneNumber([
-            'source' => 'TRACKING_SOURCE_' . mt_rand(999999, 999999999)
-        ]);
+        $phoneNumber = $this->createPhoneNumber();
         
         $call = factory(Call::class)->create([
             'phone_number_id' => $phoneNumber->id,
-            'source'          => $phoneNumber->source,
+            'source'          => $phoneNumber->getSource(),
             'to_number'       => $phoneNumber->number
         ]);
 
         $call2 = factory(Call::class)->create([
             'phone_number_id' => $phoneNumber->id,
-            'source'          => $phoneNumber->source,
+            'source'          => $phoneNumber->getSource(),
             'to_number'       => $phoneNumber->number
         ]);
 
@@ -62,13 +60,11 @@ class CallTest extends TestCase
      */
     public function testReadCall()
     {
-        $phoneNumber = $this->createPhoneNumber([
-            'source' => 'TRACKING_SOURCE_' . mt_rand(999999, 999999999)
-        ]);
+        $phoneNumber = $this->createPhoneNumber();
         
         $call = factory(Call::class)->create([
             'phone_number_id' => $phoneNumber->id,
-            'source'          => $phoneNumber->source,
+            'source'          => $phoneNumber->getSource(),
             'to_number'       => $phoneNumber->number
         ]);
 

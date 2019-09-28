@@ -15,9 +15,9 @@ class CreateCampaignsTable extends Migration
     {
         Schema::create('campaigns', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->string('uuid', 128)->index();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('created_by')->unsigned();
-            $table->bigInteger('phone_number_pool_id')->unsigned()->nullable();
             $table->string('name', 255)->nullable();
             $table->string('type', 32);
             $table->json('number_swap_rules')->nullable();
@@ -26,7 +26,6 @@ class CreateCampaignsTable extends Migration
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');
-            $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
             $table->foreign('created_by')->references('id')->on('users');
         });
     }

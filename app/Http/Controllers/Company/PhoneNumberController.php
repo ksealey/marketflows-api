@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use App\Rules\Company\PhoneNumberPoolRule;
-use App\Rules\Company\AudioClipRule;
+use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
-use App\Models\Company\AudioClip;
 use App\Models\Company\PhoneNumber;
 use Validator;
 use Exception;
@@ -28,9 +28,7 @@ class PhoneNumberController extends Controller
         
         if( $search ){
             $query->where(function($query) use($search){
-                $query->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('source', 'like', '%' . $search . '%')
-                      ->orWhere('forward_to_number', 'like', '%' . $search . '%');
+                $query->where('name', 'like', '%' . $search . '%');
             });
         }
 
@@ -58,15 +56,9 @@ class PhoneNumberController extends Controller
         $config = config('services.twilio');
         $rules = [
             'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company)],
+            'phone_number_config'=>['bail', 'required', 'numeric', new PhoneNumberConfigRule($company)],
             'number'            => 'bail|required|digits_between:10,13',
             'name'              => 'bail|required|max:255',
-            'source'            => 'bail|required|max:255',
-            'forward_to_number' => 'bail|required|digits_between:10,13',
-            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($company->id)],
-            'record'            => 'boolean',
-            'whisper_message'   => 'max:255',
-            'whisper_language'  => 'in:' . implode(',', array_keys($config['languages'])),
-            'whisper_voice'     => 'in:' . implode(',', array_keys($config['voices'])),
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -84,8 +76,10 @@ class PhoneNumberController extends Controller
             $can     = $numData['capabilities'];
 
             $phoneNumber = PhoneNumber::create([
+                'uuid'                      => Str::uuid(),
                 'company_id'                => $company->id,
                 'created_by'                => $user->id,
+                'phone_number_config_id'    => $request->phone_number_config,
                 'external_id'               => $numData['sid'],
                 'country_code'              => $numData['country_code'],
                 'number'                    => $numData['number'],
@@ -94,14 +88,6 @@ class PhoneNumberController extends Controller
                 'mms'                       => $can['mms'],
                 'phone_number_pool_id'      => $request->phone_number_pool,
                 'name'                      => $request->name,
-                'source'                    => $request->source,
-                'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number),
-                'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
-                'audio_clip_id'             => $request->audio_clip,
-                'recording_enabled_at'      => $request->record ? date('Y-m-d H:i:s') : null,
-                'whisper_message'           => $request->whisper_messsage,
-                'whisper_language'          => $request->whisper_language,
-                'whisper_voice'             => $request->whisper_voice
             ]);
         }catch(Exception $e){
             throw $e;
@@ -136,14 +122,8 @@ class PhoneNumberController extends Controller
         
         $rules = [
             'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company)],
+            'phone_number_config'=>['bail', 'required', 'numeric', new PhoneNumberConfigRule($company)],
             'name'              => 'bail|required|max:255',
-            'source'            => 'bail|required|max:255',
-            'forward_to_number' => 'bail|required|digits_between:10,13',
-            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($company->id)],
-            'record'            => 'boolean',
-            'whisper_message'   => 'max:255',
-            'whisper_language'  => 'in:' . implode(',', array_keys($config['languages'])),
-            'whisper_voice'     => 'in:' . implode(',', array_keys($config['voices'])),
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -154,15 +134,8 @@ class PhoneNumberController extends Controller
         }
 
         $phoneNumber->name                      = $request->name;
-        $phoneNumber->source                    = $request->source;
         $phoneNumber->phone_number_pool_id      = $request->phone_number_pool;
-        $phoneNumber->forward_to_country_code   = PhoneNumber::countryCode($request->forward_to_number) ?: null;
-        $phoneNumber->forward_to_number         = PhoneNumber::number($request->forward_to_number) ?: null;
-        $phoneNumber->audio_clip_id             = $request->audio_clip;
-        $phoneNumber->recording_enabled_at      = $request->record ? ($phoneNumber->recording_enabled_at ?: date('Y-m-d H:i:s')) : null;
-        $phoneNumber->whisper_message           = $request->whisper_message;
-        $phoneNumber->whisper_language          = $request->whisper_language;
-        $phoneNumber->whisper_voice             = $request->whisper_voice;
+        $phoneNumber->phone_number_config_id    = $request->phone_number_config;
         $phoneNumber->save();
 
         return response([

@@ -9,14 +9,15 @@ use \App\Traits\IsDialed;
 use \App\Traits\HandlesPhoneNumbers;
 use \App\Models\User;
 use \App\Models\Company\Campaign;
-use \App\Models\Company\CampaignPhoneNumber;
 use \App\Models\Company\PhoneNumberPool;
+use \App\Models\Company\PhoneNumberConfig;
 
 class PhoneNumber extends Model implements CanBeDialed
 {
     use SoftDeletes, IsDialed, HandlesPhoneNumbers;
 
     protected $fillable = [
+        'uuid',
         'company_id',
         'created_by',
         'external_id',
@@ -26,26 +27,21 @@ class PhoneNumber extends Model implements CanBeDialed
         'sms',
         'mms',
         'phone_number_pool_id',
+        'phone_number_config_id',
+        'campaign_id',
         'name',
-        'source',
-        'forward_to_country_code',
-        'forward_to_number',
-        'audio_clip_id',
-        'recording_enabled_at',
-        'whisper_message',
-        'whisper_language',
-        'whisper_voice',
-        'assigned'
+        'assigned_at'
     ];
 
     protected $hidden = [
         'company_id',
         'created_by',
         'external_id',
-        'assigned_session_id',
         'last_assigned_at',
         'deleted_at'
     ];
+
+    
 
     public function company()
     {
@@ -159,57 +155,63 @@ class PhoneNumber extends Model implements CanBeDialed
         return substr($fullPhone, 0, $len);
     }
 
+    /**
+     * Determine if this phone number is in use
+     * 
+     * @return boolean
+     */
     public function isInUse()
     {
-        $linkCount = CampaignPhoneNumber::where('phone_number_id', $this->id)->count();
-
-        if( $linkCount )
-            return true;
-
-        if( ! $this->phone_number_pool_id )
-            return false;
-        
-        $pool = PhoneNumberPool::find($this->phone_number_pool_id);
-        
-        return $pool ? $pool->isInUse() : false;
+        //  If not attached to a pool
+        return $this->campaign_id || $this->phone_number_pool_id  ? true : false;
     }
 
-    static public function numbersInUse(array $numbers = [], $excludingCampaignId = null)
+    /**
+     * Given a list of number ids, return the phone number ids of records in use
+     * This included phone numbers attached to a campaign or a phone number pool
+     * 
+     * @param array $numberIds    An array of phone number ids
+     */
+    static public function numbersInUse(array $numberIds = [], $excludingCampaignId = null)
     {
-        if( ! count($numbers) )
-            return [];
+        if( count($numberIds) ){
+            $query = PhoneNumber::whereIn('id', $numberIds)
+                                ->where(function($q){
+                                    $q->where(function($q){
+                                        //  Where not attached to a pool, but attached to a campaign
+                                        $q->whereNull('phone_number_pool_id')
+                                          ->whereNotNull('campaign_id');
+                                    })
+                                    ->orWhere(function($q){
+                                        //  Where attached to a pool
+                                        $q->whereNotNull('phone_number_pool_id');
+                                    });
+                                });
 
-        //  Looks for a direct link
-        $query = CampaignPhoneNumber::whereIn('phone_number_id', $numbers);
-        if( $excludingCampaignId )
-            $query->where('campaign_id', '!=', $excludingCampaignId);
-        $numberLinks = $query->get();
-
-        if( count($numberLinks) )
-            return array_column($numberLinks->toArray(), 'phone_number_id');
-     
-        //  Look through a link via pool 
-        $numbersInLinkedPools = PhoneNumber::whereIn('phone_number_pool_id', function($query) use($numbers, $excludingCampaignId){
-            $query->select('phone_number_pool_id')
-                  ->from('campaigns')
-                  ->whereNotNull('activated_at')
-                  ->whereIn('phone_number_pool_id', function($query) use($numbers){
-                    $query->select('phone_number_pool_id')
-                        ->from('phone_numbers')
-                        ->whereIn('id', $numbers);
-                });
             if( $excludingCampaignId )
-                $query->where('campaigns.id', '!=', $excludingCampaignId);
-        })->get(); 
-        
-        if( count($numbersInLinkedPools) )
-            return array_column($numbersInLinkedPools->toArray(), 'id');
-        
+                $query->where('campaign_id', '!=', $excludingCampaignId);
+
+            $phoneNumbersInUse = $query->get();
+
+            if( count($phoneNumbersInUse) )
+                return array_column($phoneNumbersInUse->toArray(), 'id');
+        }
+     
         return [];
     }
 
-    static public function numbersInUseExcludingCampaign(array $numbers = [], $campaignId = null)
+    public function getSource()
     {
-        return self::numbersInUse($numbers, $campaignId);
+        $configId = $this->phone_number_config_id;
+        if( $this->phone_number_pool_id ){
+            $pool = PhoneNumberPool::find($this->phone_number_pool_id);
+
+            if( $pool )
+                $configId = $pool->phone_number_config_id;
+        }
+
+        $phoneNumberConfig = PhoneNumberConfig::find($configId);
+
+        return $phoneNumberConfig ? $phoneNumberConfig->source : '';
     }
 }

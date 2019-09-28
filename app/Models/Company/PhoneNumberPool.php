@@ -15,38 +15,25 @@ class PhoneNumberPool extends Model implements CanBeDialed
     protected $fillable = [
         'company_id',
         'created_by',
-        'name', 
-        'source', 
-        'forward_to_country_code',
-        'forward_to_number',
-        'audio_clip_id',
-        'recording_enabled_at',
-        'auto_provision_enabled_at',
-        'whisper_message',
-        'whisper_language',
-        'whisper_voice'
+        'campaign_id',
+        'phone_number_config_id',
+        'name'
     ];
 
     protected $hidden = [
         'company_id',
         'created_by',
-        'deleted_at',
-        'audio_clip_id',
-        'recording_enabled_at'
+        'deleted_at'
     ];
 
-    public function isInUse($campaignId = null)
+    public function isInUse($excludingCampaignId = null)
     {
-        $query = Campaign::where('phone_number_pool_id', $this->id);
+        if( ! $this->campaign_id )
+            return false;
+
+        if( $excludingCampaignId && $excludingCampaignId == $this->campaign_id)
+            return  false;
         
-        if( $campaignId )
-            $query->where('campaign_id', '!=', $campaignId);
-
-        return $query->count() ? true : false;
-    }
-
-    public function isInUseExcludingCampaign($campaignId = null)
-    {
-        return $this->isInUse($campaignId);
+        return true;
     }
 }

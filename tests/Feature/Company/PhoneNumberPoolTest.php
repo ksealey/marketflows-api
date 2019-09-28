@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Company;
 
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -11,7 +11,7 @@ use \App\Models\Company\Campaign;
 
 class PhoneNumberPoolTest extends TestCase
 {
-    use \Tests\CreatesUser;
+    use \Tests\CreatesUser, RefreshDatabase;
 
     /**
      * Test listing phone number pools
@@ -22,12 +22,12 @@ class PhoneNumberPoolTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(PhoneNumberPool::class)->create([
+        $pool = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
 
-        $pool2 = factory(PhoneNumberPool::class)->create([
+        $pool2 = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
@@ -61,12 +61,12 @@ class PhoneNumberPoolTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(PhoneNumberPool::class)->create([
+        $pool = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
 
-        $pool2 = factory(PhoneNumberPool::class)->create([
+        $pool2 = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
@@ -105,14 +105,14 @@ class PhoneNumberPoolTest extends TestCase
             'created_by'  =>  $user->id
         ]);
 
+        $config = $this->createPhoneNumberConfig();
+
         $pool = factory(PhoneNumberPool::class)->make();
 
         $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools', [
-            'audio_clip'                => $audioClip->id,
-            'name'                      => $pool->name,
-            'source'                    => $pool->source,
-            'forward_to_country_code'   => $pool->forward_to_country_code,
-            'forward_to_number'         => $pool->forward_to_number,
+            'audio_clip' => $audioClip->id,
+            'name'       => $pool->name,
+            'phone_number_config' => $config->id
         ], $this->authHeaders());
 
         $response->assertStatus(201);
@@ -134,7 +134,7 @@ class PhoneNumberPoolTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(PhoneNumberPool::class)->create([
+        $pool = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
             'created_by'  =>  $user->id
         ]);
@@ -160,18 +160,18 @@ class PhoneNumberPoolTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(PhoneNumberPool::class)->create([
+        $pool = $this->createPhoneNumberPool([
             'company_id'  => $user->company_id,
             'created_by' => $user->id
         ]);
 
         $updatedPool = factory(PhoneNumberPool::class)->make();
 
+        $config = $this->createPhoneNumberConfig();
+
         $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools/' . $pool->id, [
-            'name'                      => $updatedPool->name,
-            'source'                    => $updatedPool->source,
-            'forward_to_country_code'   => $updatedPool->forward_to_country_code,
-            'forward_to_number'         => $updatedPool->forward_to_number,
+            'name'   => $updatedPool->name,
+            'phone_number_config' => $config->id
         ], $this->authHeaders());
 
         $response->assertStatus(200);
@@ -181,7 +181,6 @@ class PhoneNumberPoolTest extends TestCase
             'phone_number_pool' => [
                 'id'     => $pool->id,
                 'name'   => $updatedPool->name,
-                'source' => $updatedPool->source
             ]
         ]);
 
@@ -197,7 +196,7 @@ class PhoneNumberPoolTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = factory(PhoneNumberPool::class)->create([
+        $pool = $this->createPhoneNumberPool([
             'company_id'  => $user->company_id,
             'created_by' => $user->id
         ]);

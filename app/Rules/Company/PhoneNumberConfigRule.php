@@ -4,27 +4,21 @@ namespace App\Rules\Company;
 
 use Illuminate\Contracts\Validation\Rule;
 use App\Models\Company;
-use App\Models\Company\Campaign;
-use App\Models\Company\PhoneNumberPool;
+use App\Models\Company\PhoneNumberConfig;
 
-class PhoneNumberPoolRule implements Rule
+class PhoneNumberConfigRule implements Rule
 {
     protected $company;
 
-    protected $campaign;
-
     protected $message;
-
     /**
      * Create a new rule instance.
      *
      * @return void
      */
-    public function __construct(Company $company, $campaign = null)
+    public function __construct(Company $company)
     {
-        $this->company  = $company;
-
-        $this->campaign = $campaign;
+        $this->company = $company;
     }
 
     /**
@@ -36,26 +30,20 @@ class PhoneNumberPoolRule implements Rule
      */
     public function passes($attribute, $value)
     {
-        $pool = PhoneNumberPool::find($value);
+        $config = PhoneNumberConfig::find($value);
 
-        if( ! $pool ){
-            $this->message = 'Phone number pool does not exist';
-
-            return false;
-        }
-
-        if( $pool->company_id != $this->company->id ){
-            $this->message = 'Phone number pool invalid';
+        if( ! $config ){
+            $this->message = 'Phone number config does not exist';
 
             return false;
         }
 
-        if( $pool->isInUse($this->campaign ? $this->campaign->id : null) ){
-            $this->message = 'Phone number pool in use';
+        if( $config->company_id != $this->company->id ){
+            $this->message = 'Phone number config invalid';
 
             return false;
         }
-       
+
         return true;
     }
 

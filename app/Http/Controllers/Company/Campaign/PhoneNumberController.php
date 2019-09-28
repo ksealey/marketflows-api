@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use \App\Models\Company;
 use \App\Models\Company\Campaign;
-use \App\Models\Company\CampaignPhoneNumber;
+use \App\Models\Company\PhoneNumber;
 use \App\Rules\Company\PhoneNumberRule;
 use Validator;
 
@@ -48,17 +48,10 @@ class PhoneNumberController extends Controller
         }
 
         $now    = date('Y-m-d H:i:s');
-        $insert = [];
-        foreach( $request->phone_numbers as $phoneNumberId ){
-            $insert[] = [
-                'campaign_id'       => $campaign->id,
-                'phone_number_id'   => $phoneNumberId,
-                'created_at'        => $now,
-                'updated_at'        => $now
-            ];
-        }
-
-        CampaignPhoneNumber::insert($insert);
+        PhoneNumber::whereIn('id', $request->phone_numbers)
+                   ->update([
+                       'campaign_id' => $campaign->id
+                   ]);
 
         return response([
             'message' => 'created'
@@ -93,9 +86,10 @@ class PhoneNumberController extends Controller
             ], 400);
         }
 
-        CampaignPhoneNumber::whereIn('phone_number_id', $request->phone_numbers)
-                           ->where('campaign_id', $campaign->id)
-                           ->delete();
+        PhoneNumber::whereIn('id', $request->phone_numbers)
+                   ->update([
+                       'campaign_id' => null
+                   ]);
 
         return response([
             'message' => 'deleted'

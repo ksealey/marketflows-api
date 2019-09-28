@@ -183,6 +183,28 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
 
             /*
             |--------------------------------
+            | Handle phone number configs
+            |--------------------------------
+            */
+            Route::prefix('phone-number-configs')->group(function(){
+                Route::get('/', 'Company\PhoneNumberConfigController@list')
+                    ->middleware('can:list,\App\Models\Company\PhoneNumberConfig');
+
+                Route::post('/', 'Company\PhoneNumberConfigController@create')
+                    ->middleware('can:create,App\Models\Company\PhoneNumberConfig');
+
+                Route::get('/{phoneNumberConfig}', 'Company\PhoneNumberConfigController@read')
+                    ->middleware('can:read,phoneNumberConfig');
+
+                Route::put('/{phoneNumberConfig}', 'Company\PhoneNumberConfigController@update')
+                    ->middleware('can:update,phoneNumberConfig');
+
+                Route::delete('/{phoneNumberConfig}', 'Company\PhoneNumberConfigController@delete')
+                    ->middleware('can:delete,phoneNumberConfig');
+            }); 
+
+            /*
+            |--------------------------------
             | Handle phone number pools
             |--------------------------------
             */
@@ -382,16 +404,16 @@ Route::middleware('api')->group(function(){
             Route::get('/{userInvite}/{key}', 'UserInviteController@publicRead');
             Route::put('/{userInvite}/{key}', 'UserInviteController@publicAccept');
         });
+    });
 
-        /*
-        |-----------------------------------------
-        | Handle public user session generation
-        |------------------------------------------
-        */
-        Route::prefix('sessions')->group(function(){
-            Route::post('/', 'SessionController@create');
-            Route::delete('/{sessionId}', 'SessionController@delete');
-        });
+    /*
+    |-----------------------------------------
+    | Handle web sessions
+    |------------------------------------------
+    */
+    Route::middleware('throttle:30,1')->prefix('web-sessions')->group(function(){
+        Route::post('/', 'WebSessionController@create');
+        Route::post('/{sessionUUID}/end', 'WebSessionController@end');
     });
 });
 

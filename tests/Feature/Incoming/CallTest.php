@@ -10,7 +10,6 @@ use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use App\Models\Company\Campaign;
-use App\Models\Company\CampaignPhoneNumber;
 use App\Models\Company\WebhookCall;
 use \Tests\Models\TwilioCall;
 use \Tests\Models\TwilioRecording;
@@ -528,22 +527,13 @@ class CallTest extends TestCase
 
         PhoneNumber::where('number', $number)->delete();
 
+        $campaign = $this->createCampaign($campaignFields ?: []);
+
         $phone = $this->createPhoneNumber(array_merge([
+            'campaign_id'       => $phone->phone_number_pool_id ? null : $campaign->id,
             'number'            => $number,
             'forward_to_number' => $fNumber
         ], $phoneFields ?: []));
-
-        $campaign = $this->createCampaign($campaignFields ?: []);
-
-        if( $phone->phone_number_pool_id ){
-            $campaign->phone_number_pool_id = $phone->phone_number_pool_id;
-            $campaign->save();
-        }else{
-            CampaignPhoneNumber::create([
-                'campaign_id'     => $campaign->id,
-                'phone_number_id' => $phone->id
-            ]);
-        }
         
         return $phone;
     }

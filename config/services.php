@@ -56,5 +56,10 @@ return [
         'voices' => [
             'alice' => 'Alice'
         ]
+    ],
+
+    'insights' => [
+        'endpoint' => env('INSIGHTS_ENDPOINT'),
+        'port'     => env('INSIGHTS_PORT')
     ]
 ];

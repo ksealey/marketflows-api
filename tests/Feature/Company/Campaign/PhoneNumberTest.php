@@ -7,7 +7,6 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Campaign;
-use App\Models\Company\CampaignPhoneNumber;
 
 class PhoneNumberTest extends TestCase
 {
@@ -22,12 +21,12 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $phoneNumber = factory(PhoneNumber::class)->create([
+        $phoneNumber = $this->createPhoneNumber([
             'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
-        $phoneNumber2 = factory(PhoneNumber::class)->create([
+        $phoneNumber2 = $this->createPhoneNumber([
             'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
@@ -47,7 +46,10 @@ class PhoneNumberTest extends TestCase
             'message' => 'created',
         ]);
 
-        $this->assertTrue(CampaignPhoneNumber::where('campaign_id', $campaign->id)->count() === 2);
+        $phoneNumbers = PhoneNumber::whereIn('id', [$phoneNumber->id, $phoneNumber2->id])->get();
+        foreach( $phoneNumbers as $phone ){
+            $this->assertTrue($phone->campaign_id == $campaign->id);
+        }
     }
 
     /**
@@ -59,12 +61,12 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $phoneNumber = factory(PhoneNumber::class)->create([
+        $phoneNumber = $this->createPhoneNumber([
             'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
-        $phoneNumber2 = factory(PhoneNumber::class)->create([
+        $phoneNumber2 = $this->createPhoneNumber([
             'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
@@ -86,7 +88,10 @@ class PhoneNumberTest extends TestCase
             'error',
         ]);
 
-        $this->assertTrue(CampaignPhoneNumber::where('campaign_id', $campaign->id)->count() === 0);
+        $phoneNumbers = PhoneNumber::whereIn('id', [$phoneNumber->id, $phoneNumber2->id])->get();
+        foreach( $phoneNumbers as $phone ){
+            $this->assertTrue($phone->campaign_id == null);
+        }
     }
 
     /**
@@ -98,26 +103,18 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $phoneNumber = factory(PhoneNumber::class)->create([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id
-        ]);
-
-        $phoneNumber2 = factory(PhoneNumber::class)->create([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id
-        ]);
-
         $campaign = $this->createCampaign();
 
-        CampaignPhoneNumber::create([
+        $phoneNumber = $this->createPhoneNumber([
             'campaign_id' => $campaign->id,
-            'phone_number_id' => $phoneNumber->id,
+            'company_id' => $this->company->id,
+            'created_by' => $user->id
         ]);
 
-        CampaignPhoneNumber::create([
+        $phoneNumber2 = $this->createPhoneNumber([
             'campaign_id' => $campaign->id,
-            'phone_number_id' => $phoneNumber2->id,
+            'company_id' => $this->company->id,
+            'created_by' => $user->id
         ]);
         
         $response = $this->json('DELETE','http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/phone-numbers', [
@@ -133,6 +130,9 @@ class PhoneNumberTest extends TestCase
             'message' => 'deleted',
         ]);
 
-        $this->assertTrue(CampaignPhoneNumber::where('campaign_id', $campaign->id)->count() === 0);
+        $phoneNumbers = PhoneNumber::whereIn('id', [$phoneNumber->id, $phoneNumber2->id])->get();
+        foreach( $phoneNumbers as $phone ){
+            $this->assertTrue($phone->campaign_id == null);
+        }
     }
 }

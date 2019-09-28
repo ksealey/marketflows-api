@@ -55,7 +55,7 @@ class PhoneNumberRule implements Rule
         }
 
         //  Make sure they are not in use
-        $numbersInUse = PhoneNumber::numbersInUseExcludingCampaign($value, $this->campaign->id);
+        $numbersInUse = PhoneNumber::numbersInUse($value, $this->campaign->id);
         if( count($numbersInUse) ){
             $this->message = 'Some of the numbers provided are already in use.';
 
