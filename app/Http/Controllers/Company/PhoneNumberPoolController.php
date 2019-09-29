@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use \App\Rules\Company\AudioClipRule;
 use \App\Models\Company;
+use App\Rules\Company\PhoneNumberConfigRule;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
@@ -62,8 +63,9 @@ class PhoneNumberPoolController extends Controller
     {
         $config = config('services.twilio');
         $rules = [
-            'name'                      => 'bail|required|max:255',
-            'auto_provision'            => 'boolean',
+            'phone_number_config'   => ['bail', 'required', 'numeric', new PhoneNumberConfigRule($company)],
+            'name'                  => 'bail|required|max:255',
+            'auto_provision'        => 'boolean',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -78,6 +80,7 @@ class PhoneNumberPoolController extends Controller
         $phoneNumberPool = PhoneNumberPool::create([
             'company_id'                => $company->id,
             'created_by'                => $user->id,
+            'phone_number_config_id'    => $request->phone_number_config,
             'name'                      => $request->name, 
             'auto_provision_enabled_at' => $request->auto_provision ? date('Y-m-d H:i:s') : null
         ]);
@@ -118,8 +121,8 @@ class PhoneNumberPoolController extends Controller
     {
         $config = config('services.twilio');
         $rules = [
-            'name'                      => 'bail|required|max:255',
-            'source'                    => 'bail|required|max:255',
+            'phone_number_config'   => ['bail', 'required', 'numeric', new PhoneNumberConfigRule($company)],
+            'name'                  => 'bail|required|max:255',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -129,8 +132,8 @@ class PhoneNumberPoolController extends Controller
             ], 400);
         }
 
-        $phoneNumberPool->name   = $request->name;
-        $phoneNumberPool->source = $request->source;
+        $phoneNumberPool->name                   = $request->name;
+        $phoneNumberPool->phone_number_config_id = $request->phone_number_config;
         $phoneNumberPool->save();
 
         return response([

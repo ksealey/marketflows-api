@@ -196,10 +196,7 @@ class PhoneNumberPoolTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = $this->createPhoneNumberPool([
-            'company_id'  => $user->company_id,
-            'created_by' => $user->id
-        ]);
+        $pool = $this->createPhoneNumberPool();
 
         $response = $this->json('DELETE',  'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools/' . $pool->id, [], $this->authHeaders());
         $response->assertStatus(200);
@@ -218,19 +215,13 @@ class PhoneNumberPoolTest extends TestCase
      */
     public function testDeletePhonePoolLinkedToCampaign()
     {
-        $user = $this->createUser();
+        $campaign = $this->createCampaign();
 
-        $pool = factory(PhoneNumberPool::class)->create([
-            'company_id' => $user->company_id,
-            'created_by' => $user->id
+        $pool = $this->createPhoneNumberPool([
+            'campaign_id' => $campaign->id
         ]);
 
-        $campaign = factory(Campaign::class)->create([
-            'company_id'   => $user->company_id,
-            'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 minutes')),
-            'phone_number_pool_id' => $pool->id
-        ]);
+        
 
         $response = $this->json('DELETE',  'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools/' . $pool->id, [], $this->authHeaders());
         $response->assertStatus(400);

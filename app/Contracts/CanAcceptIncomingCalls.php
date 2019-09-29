@@ -1,7 +1,9 @@
 <?php
 namespace App\Contracts;
 
-interface CanBeDialed
+use \App\Models\Company\PhoneNumberConfig; 
+
+interface CanAcceptIncomingCalls
 {
     /**
      * Return the id of the audio clip attached
@@ -17,14 +19,20 @@ interface CanBeDialed
     public function recordingEnabled() : bool;
 
     /**
-     * Get the formatted number
+     * Determine the source of a call
      * 
      */
-    public function phoneNumber() : string;
+    public function source() : string;
 
     /**
      * Get the formatted number that a call should be forwarded to
      * 
      */
     public function forwardToPhoneNumber() : string;
+
+    /**
+     * Get configuration
+     * 
+     */
+    public function getPhoneNumberConfig() : PhoneNumberConfig;
 }

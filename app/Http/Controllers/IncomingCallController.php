@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Incoming;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\File;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Models\Company\Campaign;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
@@ -19,7 +19,7 @@ use Validator;
 use Storage;
 use DB;
 
-class CallController extends Controller
+class IncomingCallController extends Controller
 {
     /**
      * Entry point for all new incoming calls
@@ -48,7 +48,7 @@ class CallController extends Controller
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
-
+        
         $response = new VoiceResponse();
 
         //  Find out how to handle this call
@@ -67,54 +67,62 @@ class CallController extends Controller
             return Response::xmlResponse($response);
         }
 
-        //  Can we get some campaign data ?????
+        $pool = null;
+        if( $phoneNumber->phone_number_pool_id )
+            $pool = PhoneNumberPool::find($phoneNumber->phone_number_pool_id);
+        
+        //  Find campaign, even if deleted
+        $campaign = null;
+        if( $pool ){
+            $campaign = Campaign::where('id', $pool->campaign_id)
+                                ->withTrashed()
+                                ->first();
+        }else{
+            $campaign = Campaign::where('id', $phoneNumber->campaign_id)
+                                ->withTrashed()
+                                ->first();
+        }
 
-
-        //  Find entity associated to phone number
-        $insightsClient = new InsightsClient();
-
-        //  Create call record
+        //  Try to get the config
+        $phoneNumberConfig = $phoneNumber->getPhoneNumberConfig();
+        
+        //  Log call
         $call = Call::create([
-            'phone_number_id'   => $phoneNumber->id,
-            'external_id'       => $request->CallSid,
-            'direction'         => $request->Direction,
-            'status'            => $request->CallStatus,
-            'from_country_code' => PhoneNumber::countryCode($request->From) ?: null,
-            'from_number'       => PhoneNumber::number($request->From),
-            'from_city'         => $request->FromCity ?: null,
-            'from_state'        => $request->FromState ?: null,
-            'from_zip'          => $request->FromZip ?: null,
-            'from_country'      => $request->FromCountry ?: null,
-            'to_country_code'   => PhoneNumber::countryCode($request->To) ?: null,
-            'to_number'         => PhoneNumber::number($request->To),
-            'to_city'           => $request->ToCity ?: null,
-            'to_state'          => $request->ToState ?: null,
-            'to_zip'            => $request->ToZip ?: null,
-            'to_country'        => $request->ToCountry ?: null,
+            'phone_number_id'       => $phoneNumber->id,
+            'phone_number_pool_id'  => $pool ? $pool->id : null,
+            'phone_number_config_id'=> $phoneNumberConfig->id,
+            'campaign_id'           => ($campaign ? $campaign->id : null),
+            'external_id'           => $request->CallSid,
+            'direction'             => $request->Direction,
+            'status'                => $request->CallStatus,
+            'from_country_code'     => PhoneNumber::countryCode($request->From) ?: null,
+            'from_number'           => PhoneNumber::number($request->From),
+            'from_city'             => $request->FromCity ?: null,
+            'from_state'            => $request->FromState ?: null,
+            'from_zip'              => $request->FromZip ?: null,
+            'from_country'          => $request->FromCountry ?: null,
+            'to_country_code'       => PhoneNumber::countryCode($request->To) ?: null,
+            'to_number'             => PhoneNumber::number($request->To),
+            'to_city'               => $request->ToCity ?: null,
+            'to_state'              => $request->ToState ?: null,
+            'to_zip'                => $request->ToZip ?: null,
+            'to_country'            => $request->ToCountry ?: null,
+            
             //
             //  This data should be stamped into call
             //
-            'campaign_type' => '',
-            'campaign_name' => '',
-            /*
-            'source'            => json_encode([
-                'entry_url'         => '',
-                'last_visited_url'  => '',
-                //  Capture custom params
-                //  //
-            ])
-            */
+            'stamped_campaign_type'                 => ($campaign ? $campaign->type : null),
+            'stamped_campaign_name'                 => ($campaign ? $campaign->name : null),
+            'stamped_source'                        => $phoneNumberConfig ? $phoneNumberConfig->source : null,
+            'stamped_forward_to_country_code'       => $phoneNumberConfig ? $phoneNumberConfig->stamped_forward_to_country_code : null,
+            'stamped_forward_to_number'             => $phoneNumberConfig ? $phoneNumberConfig->forward_to_number : null,
         ]);
 
         //  Let the rest of the system know it happened
         event(new IncomingCallEvent($call));
-
-        $handler = $phoneNumber->phone_number_pool_id 
-                    ? PhoneNumberPool::find( $phoneNumber->phone_number_pool_id ) 
-                    : $phoneNumber;
-
-        if( ! $handler ){
-            //  Phone pool was deleted?
+        
+        //  For whatever reason we could not find out what action to take   
+        if( ! $phoneNumberConfig ){
             $response->hangup();
 
             return Response::xmlResponse($response);
@@ -123,7 +131,7 @@ class CallController extends Controller
         $dialConfig = ['answerOnBridge' => 'true'];
 
         //  Should we record?
-        if( $handler->recordingEnabled() ){
+        if( $phoneNumberConfig->recordingEnabled() ){
             $dialConfig['record']                       = 'record-from-ringing';
             $dialConfig['recordingStatusCallback']      = route('incoming-call-recording-available');
             $dialConfig['recordingStatusCallbackEvent'] = 'completed';
@@ -132,7 +140,7 @@ class CallController extends Controller
         }
         
         //  Should we play audio?
-        if( $audioClipId = $handler->audioClipId() ){
+        if( $audioClipId = $phoneNumberConfig->audioClipId() ){
             $audioClip = AudioClip::find($audioClipId);
             if( $audioClip )
                 $response->play($audioClip->getURL());
@@ -140,11 +148,11 @@ class CallController extends Controller
 
         //  Should we have a whisper message?
         $numberConfig = [];
-        if( $handler->whisper_message ){
+        if( $phoneNumberConfig->whisper_message ){
             $numberConfig['url'] = route('incoming-call-whisper', [
-                'whisper_message'  => $handler->whisper_message,
-                'whisper_language' => $handler->whisper_language,
-                'whisper_voice'    => $handler->whisper_voice
+                'whisper_message'  => $phoneNumberConfig->whisper_message,
+                'whisper_language' => $phoneNumberConfig->whisper_language,
+                'whisper_voice'    => $phoneNumberConfig->whisper_voice
             ]);
 
             $numberConfig['method'] = 'GET';
@@ -152,7 +160,7 @@ class CallController extends Controller
 
         $dialCommand = $response->dial(null, $dialConfig);
 
-        $dialCommand->number($handler->forwardToPhoneNumber(), $numberConfig);
+        $dialCommand->number($phoneNumberConfig->forwardToPhoneNumber(), $numberConfig);
 
         return Response::xmlResponse($response);
     }
@@ -257,24 +265,18 @@ class CallController extends Controller
             ], 404);
         }
 
-        //  Download recording
-        $tempPath = storage_path() . '/' . str_random(40);
-        $data     = file_get_contents($request->RecordingUrl); 
-        file_put_contents($tempPath, $data);
-
-        //  Upload to remote path
-        $file = new File($tempPath);
-        $path = Storage::putFile(CallRecording::storagePath($call->phoneNumber->company, 'call_recordings'), $file);
-        unlink($tempPath);
+        $storagePath = CallRecording::moveRecording(
+            $request->RecordingUrl, 
+            $request->RecordingSid, 
+            $call->phoneNumber->company
+        );
 
         //  Log record
         CallRecording::create([
             'call_id'       => $call->id,
             'external_id'   => $request->RecordingSid,
-            'path'          => $path,
+            'path'          => $storagePath,
             'duration'      => intval($request->RecordingDuration)
         ]);
-
-        CallRecording::deleteRemoteRecording($request->RecordingSid);
     }
 }

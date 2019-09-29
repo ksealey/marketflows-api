@@ -31,6 +31,11 @@ class PhoneNumberConfig extends Model
         'deleted_at'
     ];
 
+    public function company()
+    {
+        return $this->belongsTo('\App\Models\Company');
+    }
+
     public function isInUse()
     {
         if( PhoneNumber::where('phone_number_config_id', $this->id)->count() )
@@ -41,4 +46,27 @@ class PhoneNumberConfig extends Model
 
         return false;
     }
+
+    public function forwardToPhoneNumber()
+    {
+        return  ($this->forward_to_country_code ? '+' . $this->forward_to_country_code : '') 
+                . $this->forward_to_number;
+    }
+
+    public function recordingEnabled()
+    {
+        return $this->recording_enabled_at ? true : false;
+    }
+
+    public function source()
+    {
+        return $this->source;
+    }
+
+    public function audioClipId()
+    {
+        return $this->audio_clip_id;
+    }
+
+
 }

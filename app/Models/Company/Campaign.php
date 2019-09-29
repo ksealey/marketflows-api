@@ -32,6 +32,11 @@ class Campaign extends Model
     const TYPE_RADIO = 'RADIO';
     const TYPE_PRINT = 'PRINT';
 
+    public function company()
+    {
+        return $this->belongsTo('\App\Models\Company');
+    }
+    
     static public function types()
     {
         return [

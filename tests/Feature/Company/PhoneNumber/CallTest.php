@@ -22,13 +22,13 @@ class CallTest extends TestCase
         
         $call = factory(Call::class)->create([
             'phone_number_id' => $phoneNumber->id,
-            'source'          => $phoneNumber->getSource(),
+            'source'          => $phoneNumber->source(),
             'to_number'       => $phoneNumber->number
         ]);
 
         $call2 = factory(Call::class)->create([
             'phone_number_id' => $phoneNumber->id,
-            'source'          => $phoneNumber->getSource(),
+            'source'          => $phoneNumber->source(),
             'to_number'       => $phoneNumber->number
         ]);
 
@@ -64,7 +64,7 @@ class CallTest extends TestCase
         
         $call = factory(Call::class)->create([
             'phone_number_id' => $phoneNumber->id,
-            'source'          => $phoneNumber->getSource(),
+            'source'          => $phoneNumber->source(),
             'to_number'       => $phoneNumber->number
         ]);
 

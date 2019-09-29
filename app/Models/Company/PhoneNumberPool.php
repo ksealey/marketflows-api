@@ -5,12 +5,13 @@ namespace App\Models\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\Company\Campaign;
-use \App\Contracts\CanBeDialed;
-use \App\Traits\IsDialed;
+use \App\Models\Company\PhoneNumberConfig;
+use \App\Contracts\CanAcceptIncomingCalls;
+use \App\Traits\AcceptsIncomingCalls;
 
-class PhoneNumberPool extends Model implements CanBeDialed
+class PhoneNumberPool extends Model implements CanAcceptIncomingCalls
 {
-    use SoftDeletes, IsDialed;
+    use SoftDeletes, AcceptsIncomingCalls;
 
     protected $fillable = [
         'company_id',
@@ -26,6 +27,11 @@ class PhoneNumberPool extends Model implements CanBeDialed
         'deleted_at'
     ];
 
+    public function company()
+    {
+        return $this->belongsTo('\App\Models\Company');
+    }
+
     public function isInUse($excludingCampaignId = null)
     {
         if( ! $this->campaign_id )
@@ -35,5 +41,10 @@ class PhoneNumberPool extends Model implements CanBeDialed
             return  false;
         
         return true;
+    }
+
+    public function getPhoneNumberConfig() : PhoneNumberConfig
+    {
+        return PhoneNumberConfig::find($this->phone_number_config_id);
     }
 }

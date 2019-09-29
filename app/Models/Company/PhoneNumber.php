@@ -4,17 +4,17 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use \App\Contracts\CanBeDialed;
-use \App\Traits\IsDialed;
+use \App\Contracts\CanAcceptIncomingCalls;
+use \App\Traits\AcceptsIncomingCalls;
 use \App\Traits\HandlesPhoneNumbers;
 use \App\Models\User;
 use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumberConfig;
 
-class PhoneNumber extends Model implements CanBeDialed
+class PhoneNumber extends Model implements CanAcceptIncomingCalls
 {
-    use SoftDeletes, IsDialed, HandlesPhoneNumbers;
+    use SoftDeletes, AcceptsIncomingCalls, HandlesPhoneNumbers;
 
     protected $fillable = [
         'uuid',
@@ -40,8 +40,6 @@ class PhoneNumber extends Model implements CanBeDialed
         'last_assigned_at',
         'deleted_at'
     ];
-
-    
 
     public function company()
     {
@@ -85,6 +83,8 @@ class PhoneNumber extends Model implements CanBeDialed
      * Purchase a new phone number
      *
      * @param string $phone
+     * 
+     * @return array
      */
     static public function purchase(string $phone)
     {
@@ -112,7 +112,6 @@ class PhoneNumber extends Model implements CanBeDialed
             'capabilities' => $num->capabilities
         ];
     }
-
     
     /**
      * Release a phone number
@@ -131,11 +130,19 @@ class PhoneNumber extends Model implements CanBeDialed
         return $this;
     }
 
+    /**
+     * Clean a phone number
+     * 
+     */
     static public function cleanPhone($phoneStr)
     {
         return preg_replace('/[^0-9]+/', '', $phoneStr);
     }
 
+    /**
+     * Pull phone number segment of a phone number
+     * 
+     */
     static public function number($phoneStr)
     {
         $phone = self::cleanPhone($phoneStr); 
@@ -145,6 +152,10 @@ class PhoneNumber extends Model implements CanBeDialed
         return substr($phone, $neg);
     }
 
+    /**
+     * Pull country code segment of a phone number
+     * 
+     */
     static public function countryCode($phoneStr)
     {
         $fullPhone = self::cleanPhone($phoneStr);
@@ -171,6 +182,8 @@ class PhoneNumber extends Model implements CanBeDialed
      * This included phone numbers attached to a campaign or a phone number pool
      * 
      * @param array $numberIds    An array of phone number ids
+     * 
+     * @return array
      */
     static public function numbersInUse(array $numberIds = [], $excludingCampaignId = null)
     {
@@ -199,19 +212,30 @@ class PhoneNumber extends Model implements CanBeDialed
      
         return [];
     }
-
-    public function getSource()
+    
+    /**
+     * Get a phone number's config
+     * 
+     * @return \App\Models\Company\PhoneNumberConfig
+     */
+    public function getPhoneNumberConfig() : PhoneNumberConfig
     {
-        $configId = $this->phone_number_config_id;
         if( $this->phone_number_pool_id ){
             $pool = PhoneNumberPool::find($this->phone_number_pool_id);
-
             if( $pool )
-                $configId = $pool->phone_number_config_id;
+                return $pool->getPhoneNumberConfig();
         }
+        
+        return PhoneNumberConfig::find($this->phone_number_config_id);
+    }
 
-        $phoneNumberConfig = PhoneNumberConfig::find($configId);
-
-        return $phoneNumberConfig ? $phoneNumberConfig->source : '';
+    /**
+     * Get a formatted phone number
+     * 
+     */
+    public function formattedPhoneNumber() : string
+    {
+        return  ($this->country_code ? '+' . $this->country_code : '') 
+                . $this->number;
     }
 }

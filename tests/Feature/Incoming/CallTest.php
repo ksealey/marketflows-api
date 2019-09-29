@@ -11,8 +11,6 @@ use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use App\Models\Company\Campaign;
 use App\Models\Company\WebhookCall;
-use \Tests\Models\TwilioCall;
-use \Tests\Models\TwilioRecording;
 use App\Events\IncomingCallEvent;
 use App\Events\IncomingCallUpdatedEvent;
 use App\Models\Company\PhoneNumber\Call;
@@ -21,7 +19,7 @@ use Storage;
 
 class CallTest extends TestCase
 {
-    use \Tests\CreatesUser;
+    use \Tests\CreatesUser, WithFaker;
 
     /**
      * Test handling an incoming phone call for a print campaign tied to a single phone number
@@ -32,25 +30,32 @@ class CallTest extends TestCase
     {
         $this->expectsEvents(IncomingCallEvent::class);
 
-        $phone = $this->createTestingPhone(null, [
-            'type' => Campaign::TYPE_PRINT
+        $config = $this->createPhoneNumberConfig([
+            'recording_enabled_at' => null,
+            'whisper_message'      => null
         ]);
 
-        $callData = $this->getCallData($phone);
+        $phone          = $this->createPhoneNumber([], $config);
+        $incomingCall   = $this->generateIncomingCall($phone->formattedPhoneNumber());
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' . $phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
 
         //
         //  Try again with recording on
         //
-        $phone->recording_enabled_at = date('Y-m-d H:i:s');
-        $phone->save();
+        $config->recording_enabled_at = date('Y-m-d H:i:s');
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData); 
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall); 
         $response->assertStatus(200);
-        $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $phone->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
     
         //
         //  Try again with audio clip
@@ -60,34 +65,44 @@ class CallTest extends TestCase
             'created_by' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
-        $phone->audio_clip_id = $audioClip->id;
-        $phone->save();
+        $config->audio_clip_id = $audioClip->id;
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Play>' 
+            . $audioClip->getURL() 
+            . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $phone->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
         
         //
         //  Try again with whisper
         //
-        $phone->whisper_message  = 'Hello world';
-        $phone->whisper_language = 'en';
-        $phone->whisper_voice    = 'alice'; 
-        $phone->save();
+        $config->whisper_message  = 'Hello world';
+        $config->whisper_language = 'en';
+        $config->whisper_voice    = 'alice'; 
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
             '<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number url="' . route('incoming-call-whisper',[
-                'whisper_message' => $phone->whisper_message,
-                'whisper_language'=> $phone->whisper_language,
-                'whisper_voice'   => $phone->whisper_voice
-            ]) . '" method="GET">' . $phone->forwardToPhoneNumber() . '</Number></Dial></Response>')
+                'whisper_message' => $config->whisper_message,
+                'whisper_language'=> $config->whisper_language,
+                'whisper_voice'   => $config->whisper_voice
+            ]) . '" method="GET">' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>')
         );
     }
 
     /**
      * Test handling an incoming phone number pool call for a print campaign 
+     * 
+     * We want to make sure the actions are being drven by the pool's config changes
      * 
      * @group incoming-calls
      */
@@ -95,35 +110,46 @@ class CallTest extends TestCase
     {
         $this->expectsEvents(IncomingCallEvent::class);
 
-        $user = $this->createUser();
-
-        $pool = factory(PhoneNumberPool::class)->create([
-            'company_id' => $user->company_id,
-            'created_by' => $user->id,
-            'forward_to_number' => env('TWILIO_TESTING_FORWARD_NUMBER')
-        ]);
-
-        $phone = $this->createTestingPhone([
-            'phone_number_pool_id' => $pool->id
-        ], [
+        $campaign = $this->createCampaign([
             'type' => Campaign::TYPE_PRINT
         ]);
-      
-        $callData = $this->getCallData($phone);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $config = $this->createPhoneNumberConfig([
+            'forward_to_number'    => $this->getTestForwardPhone(),
+            'recording_enabled_at' => null,
+            'whisper_message'      => null
+        ]);
+
+        $pool = $this->createPhoneNumberPool([
+            'phone_number_config_id' => $config->id,
+            'campaign_id'            => $campaign->id,
+        ]);
+
+        $phone = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ], $this->createPhoneNumberConfig());
+
+        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
 
         //
         //  Try again with recording on
         //
-        $pool->recording_enabled_at = date('Y-m-d H:i:s');
-        $pool->save();
+        $config->recording_enabled_at = date('Y-m-d H:i:s');
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $pool->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
     
         //
         //  Try again with audio clip
@@ -133,29 +159,37 @@ class CallTest extends TestCase
             'created_by' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
-        $pool->audio_clip_id = $audioClip->id;
-        $pool->save();
+        $config->audio_clip_id = $audioClip->id;
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Play>' 
+            . $audioClip->getURL() 
+            . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $config->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
 
         //
         //  Try again with whisper
         //
-        $pool->whisper_message  = 'Hello world';
-        $pool->whisper_language = 'en';
-        $pool->whisper_voice    = 'alice'; 
-        $pool->save();
+        $config->whisper_message  = 'Hello world';
+        $config->whisper_language = 'en';
+        $config->whisper_voice    = 'alice'; 
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
             '<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number url="' . route('incoming-call-whisper',[
-                'whisper_message' => $pool->whisper_message,
-                'whisper_language'=> $pool->whisper_language,
-                'whisper_voice'   => $pool->whisper_voice
-            ]) . '" method="GET">' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>')
+                'whisper_message' => $config->whisper_message,
+                'whisper_language'=> $config->whisper_language,
+                'whisper_voice'   => $config->whisper_voice
+            ]) . '" method="GET">' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>')
         );
     }
 
@@ -169,27 +203,45 @@ class CallTest extends TestCase
     {
         $this->expectsEvents(IncomingCallEvent::class);
 
-        $phone = $this->createTestingPhone(null, [
+        $campaign = $this->createCampaign([
             'type' => Campaign::TYPE_RADIO
         ]);
 
-        $callData = $this->getCallData($phone);
+        $config = $this->createPhoneNumberConfig([
+            'forward_to_number'    => $this->getTestForwardPhone(),
+            'recording_enabled_at' => null,
+            'whisper_message'      => null
+        ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $phone = $this->createPhoneNumber([], $config);
+
+        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
 
         $response->assertStatus(200);
-        $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' 
+            . $phone->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
 
 
         //
         //  Try again with recording on
         //
-        $phone->recording_enabled_at = date('Y-m-d H:i:s');
-        $phone->save();
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $config->recording_enabled_at = date('Y-m-d H:i:s');
+        $config->save();
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
 
         $response->assertStatus(200);
-        $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $phone->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
     
         //
         //  Try again with audio clip
@@ -199,36 +251,53 @@ class CallTest extends TestCase
             'created_by' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
-        $phone->audio_clip_id = $audioClip->id;
-        $phone->save();
+        $config->audio_clip_id = $audioClip->id;
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
-
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' .$phone->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Play>' 
+            . $audioClip->getURL() 
+            . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $phone->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
         
         //
         //  Try again with whisper
         //
-        $phone->whisper_message  = 'Hello world';
-        $phone->whisper_language = 'en';
-        $phone->whisper_voice    = 'alice'; 
-        $phone->save();
+        $config->whisper_message  = 'Hello world';
+        $config->whisper_language = 'en';
+        $config->whisper_voice    = 'alice'; 
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
 
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
-            '<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number url="' . route('incoming-call-whisper',[
-                'whisper_message' => $phone->whisper_message,
-                'whisper_language'=> $phone->whisper_language,
-                'whisper_voice'   => $phone->whisper_voice
-            ]) . '" method="GET">' . $phone->forwardToPhoneNumber() . '</Number></Dial></Response>')
-        );
+            '<Response><Play>' 
+            . $audioClip->getURL() 
+            . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number url="' 
+            . route('incoming-call-whisper', [
+                'whisper_message' => $config->whisper_message,
+                'whisper_language'=> $config->whisper_language,
+                'whisper_voice'   => $config->whisper_voice
+            ]) 
+            . '" method="GET">' 
+            . $config->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        ));
     }
 
     /**
      * Test handling an incoming phone number pool call for a radio campaign 
+     * 
+     * We want to make sure the actions are being drven by the pool's config changes
      * 
      * @group incoming-calls
      */
@@ -236,35 +305,49 @@ class CallTest extends TestCase
     {
         $this->expectsEvents(IncomingCallEvent::class);
 
-        $user = $this->createUser();
-
-        $pool = factory(PhoneNumberPool::class)->create([
-            'company_id' => $user->company_id,
-            'created_by' => $user->id,
-            'forward_to_number' => env('TWILIO_TESTING_FORWARD_NUMBER')
-        ]);
-
-        $phone = $this->createTestingPhone([
-            'phone_number_pool_id' => $pool->id
-        ], [
+        $campaign = $this->createCampaign([
             'type' => Campaign::TYPE_RADIO
         ]);
-       
-        $callData = $this->getCallData($phone);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $config = $this->createPhoneNumberConfig([
+            'recording_enabled_at' => null,
+            'whisper_message'      => null
+        ]);
+
+        $pool = $this->createPhoneNumberPool([
+            'phone_number_config_id' => $config->id,
+            'campaign_id'            => $campaign->id,
+        ]);
+
+        $phone = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ], $this->createPhoneNumberConfig());
+       
+        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' 
+            . $pool->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
 
         //
         //  Try again with recording on
         //
-        $pool->recording_enabled_at = date('Y-m-d H:i:s');
-        $pool->save();
+        $config->recording_enabled_at = date('Y-m-d H:i:s');
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $pool->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
     
         //
         //  Try again with audio clip
@@ -274,31 +357,39 @@ class CallTest extends TestCase
             'created_by' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
-        $pool->audio_clip_id = $audioClip->id;
-        $pool->save();
+        $config->audio_clip_id = $audioClip->id;
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
 
         $response->assertStatus(200);
-        $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Play>' 
+            . $audioClip->getURL() 
+            . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $pool->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
 
         //
         //  Try again with whisper
         //
-        $pool->whisper_message  = 'Hello world';
-        $pool->whisper_language = 'en';
-        $pool->whisper_voice    = 'alice'; 
-        $pool->save();
+        $config->whisper_message  = 'Hello world';
+        $config->whisper_language = 'en';
+        $config->whisper_voice    = 'alice'; 
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
 
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
             '<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number url="' . route('incoming-call-whisper',[
-                'whisper_message' => $pool->whisper_message,
-                'whisper_language'=> $pool->whisper_language,
-                'whisper_voice'   => $pool->whisper_voice
-            ]) . '" method="GET">' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>')
+                'whisper_message' => $config->whisper_message,
+                'whisper_language'=> $config->whisper_language,
+                'whisper_voice'   => $config->whisper_voice
+            ]) . '" method="GET">' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>')
         );
     }
 
@@ -310,34 +401,42 @@ class CallTest extends TestCase
     public function testHandleIncomingPhonePoolCallForWebCampaign()
     {
         $this->expectsEvents(IncomingCallEvent::class);
-        
-        $user = $this->createUser();
 
-        $pool = factory(PhoneNumberPool::class)->create([
-            'company_id' => $user->company_id,
-            'created_by' => $user->id,
-            'forward_to_number' => env('TWILIO_TESTING_FORWARD_NUMBER')
-        ]);
-
-        $phone = $this->createTestingPhone([
-            'phone_number_pool_id' => $pool->id
-        ], [
+        $campaign = $this->createCampaign([
             'type' => Campaign::TYPE_WEB
         ]);
-       
-        $callData = $this->getCallData($phone);
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $config = $this->createPhoneNumberConfig([
+            'recording_enabled_at' => null,
+            'whisper_message'      => null
+        ]);
+
+        $pool = $this->createPhoneNumberPool([
+            'phone_number_config_id' => $config->id,
+            'campaign_id'            => $campaign->id,
+        ]);
+
+        $phone = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ], $this->createPhoneNumberConfig());
+       
+        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' 
+            . $pool->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
 
         //
         //  Try again with recording on
         //
-        $pool->recording_enabled_at = date('Y-m-d H:i:s');
-        $pool->save();
+        $config->recording_enabled_at = date('Y-m-d H:i:s');
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
         $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' .$pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
     
@@ -349,30 +448,38 @@ class CallTest extends TestCase
             'created_by' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
-        $pool->audio_clip_id = $audioClip->id;
-        $pool->save();
+        $config->audio_clip_id = $audioClip->id;
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
-        $response->assertSee('<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>');
+        $response->assertSee(
+            '<Response><Play>' 
+            . $audioClip->getURL() 
+            . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' 
+            . route('incoming-call-recording-available') 
+            . '" recordingStatusCallbackEvent="completed"><Number>' 
+            . $pool->forwardToPhoneNumber() 
+            . '</Number></Dial></Response>'
+        );
 
         //
         //  Try again with whisper
         //
-        $pool->whisper_message  = 'Hello world';
-        $pool->whisper_language = 'en';
-        $pool->whisper_voice    = 'alice'; 
-        $pool->save();
+        $config->whisper_message  = 'Hello world';
+        $config->whisper_language = 'en';
+        $config->whisper_voice    = 'alice'; 
+        $config->save();
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
 
         $response->assertStatus(200);
         $response->assertSee(str_replace('&', '&amp;', 
             '<Response><Play>' . $audioClip->getURL() . '</Play><Dial answerOnBridge="true" record="record-from-ringing" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number url="' . route('incoming-call-whisper',[
-                'whisper_message' => $pool->whisper_message,
-                'whisper_language'=> $pool->whisper_language,
-                'whisper_voice'   => $pool->whisper_voice
-            ]) . '" method="GET">' . $pool->forwardToPhoneNumber() . '</Number></Dial></Response>')
+                'whisper_message' => $config->whisper_message,
+                'whisper_language'=> $config->whisper_language,
+                'whisper_voice'   => $config->whisper_voice
+            ]) . '" method="GET">' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>')
         );
     }
 
@@ -385,27 +492,41 @@ class CallTest extends TestCase
     {
         $this->expectsEvents(IncomingCallUpdatedEvent::class);
         
-        $phone = $this->createTestingPhone(null, [
+        $campaign = $this->createCampaign([
             'type' => Campaign::TYPE_RADIO
         ]);
 
-        $callData = $this->getCallData($phone);
+        $config = $this->createPhoneNumberConfig([
+            'recording_enabled_at' => null,
+            'whisper_message'      => null
+        ]);
+
+        $pool = $this->createPhoneNumberPool([
+            'phone_number_config_id' => $config->id,
+            'campaign_id'            => $campaign->id,
+        ]);
+
+        $phone = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ], $this->createPhoneNumberConfig());
+       
+        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
 
         //  Send original call
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
 
         //  Send updated call
-        $callData['CallDuration'] = mt_rand(10, 999);
-        $callData['CallStatus']   = 'completed';
+        $incomingCall['CallDuration'] = mt_rand(10, 999);
+        $incomingCall['CallStatus']   = 'completed';
 
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls/status-changed', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls/status-changed', $incomingCall);
         $response->assertStatus(200);
-        $call = Call::where('external_id', $callData['CallSid'])->first();
+        $call = Call::where('external_id', $incomingCall['CallSid'])->first();
 
         $this->assertTrue($call != null);
-        $this->assertTrue($call->status == $callData['CallStatus']);
-        $this->assertTrue($call->duration == $callData['CallDuration']);
+        $this->assertTrue($call->status == $incomingCall['CallStatus']);
+        $this->assertTrue($call->duration == $incomingCall['CallDuration']);
     }
 
     /**
@@ -415,42 +536,42 @@ class CallTest extends TestCase
      */
     public function testIncomingCallRecordingAvailable()
     {
-        $user = $this->createUser();
+        Storage::fake();
 
-        $phone = $this->createTestingPhone(null, [
+        $campaign = $this->createCampaign([
             'type' => Campaign::TYPE_RADIO
         ]);
 
-        $callData = $this->getCallData($phone);
+        $config = $this->createPhoneNumberConfig([
+            'recording_enabled_at' => null,
+            'whisper_message'      => null
+        ]);
+
+        $pool = $this->createPhoneNumberPool([
+            'phone_number_config_id' => $config->id,
+            'campaign_id'            => $campaign->id,
+        ]);
+
+        $phone = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ], $this->createPhoneNumberConfig());
+
+        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
 
         //  Send call
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
 
-        //  Upload file as recording
-        $path = 'temp/audio.mp3';
-        Storage::put($path, 'mp3Data....' , 'public');
-
-        $twilioRecording = factory(TwilioRecording::class)->make([
-            'CallSid'      => $callData['CallSid'],
-            'RecordingUrl' => trim(env('AWS_URL'), '/') . '/' . trim($path, '/')
-        ]);
-
-        CallRecording::testing();
+        $twilioRecording = $this->generateReadyRecording($incomingCall['CallSid']);
 
         //  Send recording available alert
-        $response = $this->json('POST', 'http://localhost/v1/incoming/calls/recording-available', [
-            'CallSid'           => $twilioRecording->CallSid,
-            'RecordingSid'      => $twilioRecording->RecordingSid,
-            'RecordingUrl'      => $twilioRecording->RecordingUrl,
-            'RecordingDuration' => $twilioRecording->RecordingDuration
-        ]);
+        $response = $this->json('POST', 'http://localhost/v1/incoming-calls/recording-available', $twilioRecording);
 
         //  Make sure the new recording exists
-        $recording = CallRecording::where('external_id', $twilioRecording->RecordingSid)->first();
+        $recording = CallRecording::where('external_id', $twilioRecording['RecordingSid'])->first();
         $this->assertTrue($recording != null);
 
-        $this->assertTrue($recording->path != null);
+        Storage::assertExists($recording->path);
     }
 
     /**
@@ -464,26 +585,24 @@ class CallTest extends TestCase
 
         $companyWebhookActions = json_decode($this->company->webhook_actions, true);
 
-        $phone = $this->createTestingPhone(null, [
-            'type' => Campaign::TYPE_RADIO
-        ]);
+        $phone = $this->createPhoneNumber();
 
-        $callData = $this->getCallData($phone);
+        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
 
         //  Send original call
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls', $callData);
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
 
         //  Send updated call
-        $callData['CallDuration'] = mt_rand(10, 999);
-        $callData['CallStatus']   = 'answered';
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls/status-changed', $callData);
+        $incomingCall['CallDuration'] = mt_rand(10, 999);
+        $incomingCall['CallStatus']   = 'answered';
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls/status-changed', $incomingCall);
         $response->assertStatus(200);
 
         //  Send completed call
-        $callData['CallDuration'] = mt_rand(10, 999);
-        $callData['CallStatus']   = 'completed';
-        $response = $this->json('GET', 'http://localhost/v1/incoming/calls/status-changed', $callData);
+        $incomingCall['CallDuration'] = mt_rand(10, 999);
+        $incomingCall['CallStatus']   = 'completed';
+        $response = $this->json('GET', 'http://localhost/v1/incoming-calls/status-changed', $incomingCall);
         $response->assertStatus(200);
 
         //  Make sure the webhooks were fired
@@ -522,7 +641,7 @@ class CallTest extends TestCase
 
     public function createTestingPhone($phoneFields = [], $campaignFields = [])
     {
-        $number  = env('TWILIO_TESTING_NUMBER');
+        $number  = $this->getTestFromPhone();
         $fNumber = env('TWILIO_TESTING_FORWARD_NUMBER');
 
         PhoneNumber::where('number', $number)->delete();
@@ -530,32 +649,67 @@ class CallTest extends TestCase
         $campaign = $this->createCampaign($campaignFields ?: []);
 
         $phone = $this->createPhoneNumber(array_merge([
-            'campaign_id'       => $phone->phone_number_pool_id ? null : $campaign->id,
-            'number'            => $number,
-            'forward_to_number' => $fNumber
+            'number' => $number,
         ], $phoneFields ?: []));
         
         return $phone;
     }
 
-    public function getCallData($phone)
+    public function getTestFromPhone()
     {
-        $incomingCall = factory(TwilioCall::class)->make();
+        return env('TWILIO_TESTING_NUMBER');
+    }
 
-        return [
-            'CallSid'       => $incomingCall->CallSid,
-            'CallStatus'    => $incomingCall->CallStatus,
-            'Direction'     => $incomingCall->Direction,
-            'To'            => $phone->phoneNumber(),
-            'From'          => $incomingCall->From,
-            'ToCity'        => $incomingCall->ToCity,
-            'ToCountry'     => $incomingCall->ToCountry,
-            'ToState'       => $incomingCall->ToState,
-            'ToZip'         => $incomingCall->ToZip,
-            'FromCity'      => $incomingCall->FromCity,
-            'FromCountry'   => $incomingCall->FromCountry,
-            'FromState'     => $incomingCall->FromState,
-            'FromZip'       => $incomingCall->FromZip,
-        ];
+    public function getTestForwardPhone()
+    {
+        return env('TWILIO_TESTING_FORWARD_NUMBER');
+    }
+
+    /**
+     * Generate a fake incoming call
+     * 
+     */
+    public function generateIncomingCall($toPhone, $with = [])
+    {
+        $faker = $this->faker();
+
+        return array_merge([
+            'CallSid'       => str_random(40),
+            'CallStatus'    => 'ringing',
+            'To'            => $toPhone,
+            'ToCity'        => $faker->city,
+            'ToCountry'     => 'US',
+            'ToState'       => $faker->stateAbbr,
+            'ToZip'         => $faker->postcode,
+            'From'          => $faker->e164PhoneNumber,
+            'FromCity'      => $faker->city,
+            'FromCountry'   => 'US',
+            'FromState'     => $faker->stateAbbr,
+            'FromZip'       => $faker->postcode,
+            'Direction'     => 'inbound'
+        ], $with); 
+    }
+
+    /**
+     * Generate a fake ready recording
+     * 
+     */
+    public function generateReadyRecording($callSid, $with = [])
+    {
+        $faker  = $this->faker();
+        $path   = 'temp/' . str_random(32) . '.mp3';
+
+        Storage::put($path, str_random(100, 999) , 'public');
+
+        return array_merge([
+            'CallSid'               => $callSid,
+            'RecordingSid'          => str_random(40),
+            'RecordingStatus'       => 'completed',
+            'RecordingDuration'     => mt_rand(9, 999),
+            'RecordingChannels'     => mt_rand(1, 2),
+            'RecordingStartTime'    => date('U'),
+            'RecordingSource'       => 'DialVerb',
+            'RecordingUrl'          => trim(env('AWS_URL'), '/') . '/' . trim($path, '/')
+        ], $with);
     }
 }

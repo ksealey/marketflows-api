@@ -349,45 +349,44 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
 Route::middleware('api')->group(function(){
     /*
     |--------------------------------
-    | Handle incoming webhooks
+    | Handle incoming actions
     |--------------------------------
     */
-    Route::prefix('incoming')->group(function(){
-        /*
-        |--------------------------------
-        | Handle incoming calls
-        |--------------------------------
-        */
-        Route::prefix('calls')->group(function(){
-            Route::get('/', 'Incoming\CallController@handleCall')
-                 ->name('incoming-call');
 
-            Route::get('/status-changed', 'Incoming\CallController@handleCallStatusChanged')
-                 ->name('incoming-call-status-changed');
+    /*
+    |--------------------------------
+    | Handle incoming calls
+    |--------------------------------
+    */
+    Route::prefix('incoming-calls')->group(function(){
+        Route::get('/', 'IncomingCallController@handleCall')
+                ->name('incoming-call');
 
-            Route::post('/recording-available', 'Incoming\CallController@handleRecordingAvailable')
-                 ->name('incoming-call-recording-available');
+        Route::get('/status-changed', 'IncomingCallController@handleCallStatusChanged')
+                ->name('incoming-call-status-changed');
 
-            Route::get('/whisper', 'Incoming\CallController@handleCallWhisper')
-                 ->name('incoming-call-whisper');
-        });
+        Route::post('/recording-available', 'IncomingCallController@handleRecordingAvailable')
+                ->name('incoming-call-recording-available');
 
-        /*
-        |--------------------------------
-        | Handle incoming sms
-        |--------------------------------
-        */
-        Route::get('sms', 'Incoming\SMSController@handleSms')
-             ->name('incoming-sms');
-
-        /*
-        |--------------------------------
-        | Handle incoming mms
-        |--------------------------------
-        */
-        Route::get('mms', 'Incoming\MMSController@handleMms')
-             ->name('incoming-mms');
+        Route::get('/whisper', 'IncomingCallController@handleCallWhisper')
+                ->name('incoming-call-whisper');
     });
+
+    /*
+    |--------------------------------
+    | Handle incoming sms
+    |--------------------------------
+    */
+    Route::get('incoming-sms', 'IncomingSMSController@handleSms')
+            ->name('incoming-sms');
+
+    /*
+    |--------------------------------
+    | Handle incoming mms
+    |--------------------------------
+    */
+    Route::get('incoming-mms', 'IncomingMMSController@handleMms')
+            ->name('incoming-mms');
 
     /*
     |--------------------------------

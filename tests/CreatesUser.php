@@ -57,23 +57,21 @@ trait CreatesUser
     {
         $user = $this->user ?: $this->createUser();
         
-        $pool = factory(PhoneNumberPool::class)->create(array_merge([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id
-        ]));
-
         $campaign = $this->createCampaign([
             'type' => Campaign::TYPE_WEB
         ]);
 
+        $config = $this->createPhoneNumberConfig();
+
+        $pool = $this->createPhoneNumberPool([
+            'campaign_id' => $campaign->id
+        ],  $config);
+
         $phoneNumbers = [];
         for($i = 0; $i < $phoneNumberCount; $i++){
-            $phoneNumber = factory(PhoneNumber::class)->create([
-                'campaign_id'=> $campaign->id,
-                'company_id' => $this->company->id,
-                'created_by' => $user->id,
+            $phoneNumber = $this->createPhoneNumber([
                 'phone_number_pool_id' => $pool->id
-            ]);
+            ],  $config);
 
             $phoneNumbers[] = $phoneNumber;
         }
@@ -85,16 +83,17 @@ trait CreatesUser
         ];
     }
 
-    public function createPhoneNumber($fields = [])
+    public function createPhoneNumber($fields = [], $config = null)
     {
         $user = $this->user ?: $this->createUser();
 
-        $config = $this->createPhoneNumberConfig();
+        if( ! $config )
+            $config = $this->createPhoneNumberConfig();
 
         return factory(PhoneNumber::class)->create(array_merge([
             'phone_number_config_id' => $config->id,
-            'company_id' => $this->company->id,
-            'created_by' => $user->id,
+            'company_id'             => $this->company->id,
+            'created_by'             => $user->id,
         ], $fields));
     }
 
