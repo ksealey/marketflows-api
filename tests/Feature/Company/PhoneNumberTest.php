@@ -102,6 +102,8 @@ class PhoneNumberTest extends TestCase
      */
     public function testCreate()
     {
+        $magicNumbers = config('services.twilio.magic_numbers');
+
         PhoneNumber::testing();
 
         $user = $this->createUser();
@@ -113,7 +115,7 @@ class PhoneNumberTest extends TestCase
 
         $phone = factory(PhoneNumber::class)->make([
             'country_code' => '1',
-            'number'       => '5005550006'
+            'number'       =>  $magicNumbers['available']
         ]);
 
         $audioClip = factory(AudioClip::class)->create([

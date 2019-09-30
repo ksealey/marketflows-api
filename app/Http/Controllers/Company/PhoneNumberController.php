@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use App\Rules\Company\PhoneNumberPoolRule;
 use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
@@ -72,20 +72,19 @@ class PhoneNumberController extends Controller
 
         //  Purchase a phone number
         try{
-            $numData = PhoneNumber::purchase($request->number);
-            $can     = $numData['capabilities'];
+            $purchasedPhone = PhoneNumber::purchase($request->number);
 
             $phoneNumber = PhoneNumber::create([
                 'uuid'                      => Str::uuid(),
                 'company_id'                => $company->id,
                 'created_by'                => $user->id,
                 'phone_number_config_id'    => $request->phone_number_config,
-                'external_id'               => $numData['sid'],
-                'country_code'              => $numData['country_code'],
-                'number'                    => $numData['number'],
-                'voice'                     => $can['voice'],
-                'sms'                       => $can['sms'],
-                'mms'                       => $can['mms'],
+                'external_id'               => $purchasedPhone->sid,
+                'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
+                'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
+                'voice'                     => $purchasedPhone->capabilities['voice'],
+                'sms'                       => $purchasedPhone->capabilities['sms'],
+                'mms'                       => $purchasedPhone->capabilities['mms'],
                 'phone_number_pool_id'      => $request->phone_number_pool,
                 'name'                      => $request->name,
             ]);

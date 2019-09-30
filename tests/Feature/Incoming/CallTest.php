@@ -36,7 +36,7 @@ class CallTest extends TestCase
         ]);
 
         $phone          = $this->createPhoneNumber([], $config);
-        $incomingCall   = $this->generateIncomingCall($phone->formattedPhoneNumber());
+        $incomingCall   = $this->generateIncomingCall($phone->e164Format());
 
         $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
@@ -129,7 +129,7 @@ class CallTest extends TestCase
             'phone_number_pool_id' => $pool->id
         ], $this->createPhoneNumberConfig());
 
-        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+        $incomingCall = $this->generateIncomingCall($phone->e164Format());
 
         $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
@@ -215,7 +215,7 @@ class CallTest extends TestCase
 
         $phone = $this->createPhoneNumber([], $config);
 
-        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+        $incomingCall = $this->generateIncomingCall($phone->e164Format());
 
         $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
 
@@ -225,7 +225,6 @@ class CallTest extends TestCase
             . $phone->forwardToPhoneNumber() 
             . '</Number></Dial></Response>'
         );
-
 
         //
         //  Try again with recording on
@@ -323,7 +322,7 @@ class CallTest extends TestCase
             'phone_number_pool_id' => $pool->id
         ], $this->createPhoneNumberConfig());
        
-        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+        $incomingCall = $this->generateIncomingCall($phone->e164Format());
 
         $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
@@ -420,7 +419,7 @@ class CallTest extends TestCase
             'phone_number_pool_id' => $pool->id
         ], $this->createPhoneNumberConfig());
        
-        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+        $incomingCall = $this->generateIncomingCall($phone->e164Format());
 
         $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
         $response->assertStatus(200);
@@ -510,7 +509,7 @@ class CallTest extends TestCase
             'phone_number_pool_id' => $pool->id
         ], $this->createPhoneNumberConfig());
        
-        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+        $incomingCall = $this->generateIncomingCall($phone->e164Format());
 
         //  Send original call
         $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
@@ -556,7 +555,7 @@ class CallTest extends TestCase
             'phone_number_pool_id' => $pool->id
         ], $this->createPhoneNumberConfig());
 
-        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+        $incomingCall = $this->generateIncomingCall($phone->e164Format());
 
         //  Send call
         $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);
@@ -587,7 +586,7 @@ class CallTest extends TestCase
 
         $phone = $this->createPhoneNumber();
 
-        $incomingCall = $this->generateIncomingCall($phone->formattedPhoneNumber());
+        $incomingCall = $this->generateIncomingCall($phone->e164Format());
 
         //  Send original call
         $response = $this->json('GET', 'http://localhost/v1/incoming-calls', $incomingCall);

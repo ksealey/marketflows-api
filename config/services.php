@@ -55,6 +55,11 @@ return [
         ],
         'voices' => [
             'alice' => 'Alice'
+        ],
+        'magic_numbers' => [
+            'unavailable'   => '+15005550000',
+            'invalid'       => '+15005550001',
+            'available'     => '+15005550006'
         ]
     ],
 

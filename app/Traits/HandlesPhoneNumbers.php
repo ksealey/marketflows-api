@@ -3,6 +3,7 @@ namespace App\Traits;
 
 use App\Models\Company;
 use Twilio\Rest\Client as TwilioClient;
+use App;
 
 trait HandlesPhoneNumbers
 {
@@ -10,18 +11,13 @@ trait HandlesPhoneNumbers
 
     static private $testing = false;
 
-    static private function client($testing = false)
+    static private function client()
     {
-        if( ! self::$client )
-            self::$client = new TwilioClient(env('TWILIO_SID'), env('TWILIO_TOKEN'));
-        
-        return self::$client;
+        return new TwilioClient(env('TWILIO_SID'), env('TWILIO_TOKEN'));
     }
 
-    static public function testing()
+    static public function testClient()
     {
-        self::$testing = true;
-        
-        self::$client = new TwilioClient(env('TWILIO_TESTING_SID'), env('TWILIO_TESTING_TOKEN'));
+        return new TwilioClient(env('TWILIO_TESTING_SID'), env('TWILIO_TESTING_TOKEN'));
     }
 }

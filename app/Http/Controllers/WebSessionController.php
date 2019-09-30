@@ -167,7 +167,7 @@ class WebSessionController extends Controller
                                                  
                 $phoneNumberPool = PhoneNumberPool::find($campaign->id);
 
-                $phoneNumber = $phoneNumberPool ? $phoneNumberPool->assignPhone() : null;
+                $phoneNumber = $phoneNumberPool ? $phoneNumberPool->assignPhone($request->cookie('mkf_phone_uuid')) : null;
             }
         }
 

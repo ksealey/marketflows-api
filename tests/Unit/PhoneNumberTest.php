@@ -8,18 +8,40 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberPool;
+use \App\Models\Company\PhoneNumberPoolProvisionRule;
 
 class PhoneNumberTest extends TestCase
 {
     use \Tests\CreatesUser;
 
     /**
+     * Test searching for a phone numbers
+     * 
+     * @group unit-phone-numbers
+     */
+    public function testSearchAvailablePhoneNumbers()
+    {
+        $provisionRule    = factory(PhoneNumberPoolProvisionRule::class)->make();
+
+        $numbersAvailable = PhoneNumber::listAvailable($provisionRule->country, $provisionRule->area_code, 1, 5);
+
+        $this->assertTrue(count($numbersAvailable) == 5);
+
+        foreach( $numbersAvailable as $number ){
+            $this->assertTrue(preg_match('/^(\+1' .$provisionRule->area_code . ')/', $number->phoneNumber) == true);
+        }
+    }
+
+
+    /**
      * Test searching available phone numbers
      *
-     * @group phone-numbers-
+     * @group phone-numbers
      */
     public function testPhoneNumberLookups()
     {
+        $magicNumbers = config('services.twilio.magic_numbers');
+
         $user = $this->createUser();
 
         //  Test searching a toll free number with no area code
@@ -47,7 +69,7 @@ class PhoneNumberTest extends TestCase
         //  Now test purchasing an available phone number
         PhoneNumber::testing();
 
-        $numberData = PhoneNumber::purchase('15005550006');
+        $numberData = PhoneNumber::purchase($magicNumbers['available']);
         $this->assertTrue($numberData != null);
 
         //  Now try deleting the number
@@ -62,11 +84,11 @@ class PhoneNumberTest extends TestCase
 
         //  Now an unavailable one ...
         $this->expectException(\Twilio\Exceptions\RestException::class);
-        PhoneNumber::purchase('15005550000');
+        PhoneNumber::purchase($magicNumbers['unavailable']);
 
         //  Finally, an invalid one ...
         $this->expectException(\Twilio\Exceptions\RestException::class);
-        PhoneNumber::purchase('15005550001');
+        PhoneNumber::purchase($magicNumbers['invalid']);
     }
 
     /**

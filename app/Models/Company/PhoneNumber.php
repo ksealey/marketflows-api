@@ -11,15 +11,23 @@ use \App\Models\User;
 use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumberConfig;
+use App;
 
 class PhoneNumber extends Model implements CanAcceptIncomingCalls
 {
     use SoftDeletes, AcceptsIncomingCalls, HandlesPhoneNumbers;
 
+    const TYPE_LOCAL     = 1;
+    const TYPE_TOLL_FREE = 2;
+
+    const ERROR_CODE_INVALID     = 21421;
+    const ERROR_CODE_UNAVAILABLE = 21422;
+    
     protected $fillable = [
         'uuid',
         'company_id',
         'created_by',
+        'auto_provisioned_by',
         'external_id',
         'country_code',
         'number',
@@ -27,6 +35,7 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
         'sms',
         'mms',
         'phone_number_pool_id',
+        'phone_number_pool_provision_rule_id',
         'phone_number_config_id',
         'campaign_id',
         'name',
@@ -80,6 +89,31 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
     }
 
     /**
+     * Given a set of requirements, find available phone numbers
+     * 
+     * 
+     */
+    static public function listAvailable($country = 'US', $areaCode = null, $type = 1, $limit = 20)
+    {
+        $client = self::client(); // Always use prop creds to do lookups
+        $query  = $client->availablePhoneNumbers($country);
+
+        $config = [];
+        if( $type == self::TYPE_LOCAL ){
+            $query = $query->local;
+            
+            $config['areaCode'] = $areaCode;
+        }
+
+        if( $type == self::TYPE_TOLL_FREE )
+            $query = $query->tollFree;
+
+        $numbers = $query->read($config, $limit);
+
+        return $numbers ?: [];
+    }
+
+    /**
      * Purchase a new phone number
      *
      * @param string $phone
@@ -88,29 +122,21 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
      */
     static public function purchase(string $phone)
     {
-        $client = self::client();
+        $client = App::environment(['prod', 'production']) ? self::client() : self::testClient(); // Use test creds fr purchase
 
-        $rootActionPath = trim(env('APP_API_URL'), '/') . '/incoming';
-
-        $num = $client->incomingPhoneNumbers
-                         ->create([
-                            'phoneNumber'           => $phone,
-                            'voiceUrl'              => route('incoming-call'),
-                            'voiceMethod'           => 'GET',
-                            'statusCallback'        => route('incoming-call-status-changed'),
-                            'statusCallbackMethod'  => 'GET',
-                            'smsUrl'                => route('incoming-sms'),
-                            'smsMethod'             => 'GET',
-                            'mmsUrl'                => route('incoming-mms'),
-                            'mmsMethod'             => 'GET'
-                        ]);
-                        
-        return [
-            'sid'          => $num->sid,
-            'country_code' => self::countryCode($num->phoneNumber),
-            'number'       => self::number($num->phoneNumber),
-            'capabilities' => $num->capabilities
-        ];
+        return $client->incomingPhoneNumbers
+                        ->create([
+                        'phoneNumber'           => $phone,
+                        'voiceUrl'              => route('incoming-call'),
+                        'voiceMethod'           => 'GET',
+                        'statusCallback'        => route('incoming-call-status-changed'),
+                        'statusCallbackMethod'  => 'GET',
+                        'smsUrl'                => route('incoming-sms'),
+                        'smsMethod'             => 'GET',
+                        'mmsUrl'                => route('incoming-mms'),
+                        'mmsMethod'             => 'GET'
+                    ]);
+        
     }
     
     /**
@@ -233,7 +259,7 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
      * Get a formatted phone number
      * 
      */
-    public function formattedPhoneNumber() : string
+    public function e164Format()
     {
         return  ($this->country_code ? '+' . $this->country_code : '') 
                 . $this->number;
