@@ -8,6 +8,7 @@ class CampaignDomain extends Model
 {
     protected $fillable = [
         'campaign_id',
-        'domain'
+        'domain',
+        'uuid'
     ];
 }

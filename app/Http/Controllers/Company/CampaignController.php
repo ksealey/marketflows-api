@@ -146,7 +146,7 @@ class CampaignController extends Controller
     public function delete(Request $request, Company $company, Campaign $campaign)
     {
         //  Do not allow users to delete active campaigns
-        if( $campaign->active() ){
+        if( $campaign->isActive() ){
             return response([
                 'error' => 'You cannot delete an active campaign'
             ], 400);

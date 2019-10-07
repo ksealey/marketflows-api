@@ -20,6 +20,8 @@ class WebSession extends Model
         'web_profile_identity_id',
         'web_device_id',
         'campaign_id',
+        'campaign_domain_id',
+        'phone_number_pool_id',
         'phone_number_id',
         'ip'
     ];

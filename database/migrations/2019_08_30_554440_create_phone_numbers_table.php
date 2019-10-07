@@ -30,8 +30,8 @@ class CreatePhoneNumbersTable extends Migration
             $table->boolean('sms')->default(0);
             $table->boolean('mms')->default(0);
             $table->string('name', 255);
-            $table->dateTime('assigned_at')->nullable();
-            $table->dateTime('last_assigned_at')->nullable();
+            $table->dateTime('assigned_at', 6)->nullable();
+            $table->dateTime('last_assigned_at', 6)->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');

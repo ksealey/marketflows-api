@@ -16,8 +16,7 @@ class CreateWebDevicesTable extends Migration
         Schema::create('web_devices', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('uuid', 128)->index();
-            $table->bigInteger('web_profile_id')->unsigned();
-            $table->string('fingerprint', 128)->index();
+            $table->bigInteger('web_profile_identity_id')->unsigned();
             $table->string('ip', 32)->index();
             $table->integer('width')->unsigned()->nullable();
             $table->integer('height')->unsigned()->nullable();
@@ -29,7 +28,7 @@ class CreateWebDevicesTable extends Migration
             $table->string('browser_version', 128)->nullable();
             $table->string('browser_engine', 128)->nullable();
             $table->timestamps();
-            $table->foreign('web_profile_id')->references('id')->on('web_profiles');
+            $table->foreign('web_profile_identity_id')->references('id')->on('web_profile_identities');
         });
     }
 

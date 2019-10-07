@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Company\Campaign;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
 use \App\Models\Company;
 use \App\Models\Company\Campaign;
@@ -50,6 +51,7 @@ class DomainController extends Controller
         }
 
         $campaignDomain = CampaignDomain::create([
+            'uuid'        => Str::uuid(),
             'campaign_id' => $campaign->id,
             'domain'      => $request->domain
         ]);

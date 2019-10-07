@@ -1,3 +1,5 @@
+<?php var_dump($_SERVER['HTTP_USER_AGENT']); exit; ?>
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -95,5 +97,8 @@
                 </div>
             </div>
         </div>
+        <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+
+        <script src="http://localhost/my-js"></script>
     </body>
 </html>

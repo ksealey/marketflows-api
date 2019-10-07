@@ -19,12 +19,17 @@ class CreateWebSessionsTable extends Migration
             $table->bigInteger('web_profile_identity_id')->unsigned();
             $table->bigInteger('web_device_id')->unsigned();
             $table->bigInteger('campaign_id')->unsigned()->nullable();
+            $table->bigInteger('campaign_domain_id')->unsigned()->nullable();
+            $table->bigInteger('phone_number_pool_id')->unsigned()->nullable();
             $table->bigInteger('phone_number_id')->unsigned()->nullable();
             $table->string('ip', 32)->nullable();
+            $table->dateTime('ended_at')->nullable();
             $table->timestamps();
             $table->foreign('web_profile_identity_id')->references('id')->on('web_profile_identities');
             $table->foreign('web_device_id')->references('id')->on('web_devices');
             $table->foreign('campaign_id')->references('id')->on('campaigns');
+            $table->foreign('campaign_domain_id')->references('id')->on('campaign_domains');
+            $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
         });
     }

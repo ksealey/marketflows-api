@@ -15,6 +15,7 @@ class CreateCampaignDomainsTable extends Migration
     {
         Schema::create('campaign_domains', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->uuid('uuid');
             $table->bigInteger('campaign_id')->unsigned();
             $table->string('domain', 1024);
             $table->timestamps();

@@ -307,8 +307,8 @@ class PhoneNumberTest extends TestCase
 
         $pool = $this->createPhoneNumberPool([
             'campaign_id' => $campaign->id,
-            'company_id' => $user->company_id,
-            'created_by' => $user->id
+            'company_id'  => $user->company_id,
+            'created_by'  => $user->id
         ]);
 
         $phone = $this->createPhoneNumber([

@@ -8,6 +8,7 @@ class WebDevice extends Model
 {
     protected $fillable = [
         'uuid',
+        'web_profile_identity_id',
         'web_profile_id',
         'fingerprint',
         'ip',

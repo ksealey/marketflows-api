@@ -47,7 +47,7 @@ class Campaign extends Model
         ];
     }
 
-    public function active()
+    public function isActive()
     {
         return $this->activated_at 
             && ! $this->suspended_at;

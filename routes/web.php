@@ -11,8 +11,13 @@
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
+Route::get('/', function (Request $request) {
+    //var_dump($_COOKIE); exit;
+    return view('welcome')->withCookie(cookie('tester', 'MF Value', 0, '/'));
+});
+
+Route::get('/my-js', function(){
+    return 'setTimeout(function(){console.log(Cookies.get());}, 500);';
 });
 
 Route::get('companies/{companyId}/js/main.js', function(Request $request, $companyId){

@@ -17,7 +17,7 @@ class CreateWebProfileIdentitiesTable extends Migration
             $table->bigIncrements('id');
             $table->string('uuid', 128)->index();
             $table->bigInteger('web_profile_id')->unsigned();
-            $table->string('domain', 255);
+            $table->bigInteger('campaign_domain_id')->unsigned()->nullable();
             $table->string('external_id', 128)->nullable()->index();
             $table->string('first_name', 255)->nullable();
             $table->string('last_name', 255)->nullable();
@@ -35,6 +35,7 @@ class CreateWebProfileIdentitiesTable extends Migration
             $table->decimal('location_lng', 16, 8)->nullable()->index();
             $table->timestamps();
             $table->foreign('web_profile_id')->references('id')->on('web_profiles');
+            $table->foreign('campaign_domain_id')->references('id')->on('campaign_domains');
         });
     }
 

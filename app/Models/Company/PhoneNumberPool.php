@@ -12,6 +12,7 @@ use \App\Models\Company\PhoneNumberPoolProvisionRule;
 use \App\Contracts\CanAcceptIncomingCalls;
 use \App\Traits\AcceptsIncomingCalls;
 use Exception;
+use DateTime;
 use stdClass;
 
 class PhoneNumberPool extends Model implements CanAcceptIncomingCalls
@@ -59,7 +60,7 @@ class PhoneNumberPool extends Model implements CanAcceptIncomingCalls
      * Assign a phone number
      * 
      */
-    public function assignPhone($preferredPhoneUUID = null)
+    public function assignPhoneNumber($preferredPhoneUUID = null, $overrideNumber = null)
     {
         //  If there is a preffered phone number see if we can get it
         $phoneNumber = null;
@@ -82,19 +83,24 @@ class PhoneNumberPool extends Model implements CanAcceptIncomingCalls
         //  No phone nunmbers where available at the time,
         //  Try to buy a new phone number
         if( ! $phoneNumber )
-            $phoneNumber = $this->autoProvisionPhone();
+            $phoneNumber = $this->autoProvisionPhone($overrideNumber);
 
         //  If we STILL don't have a phone number, we'll have to have user's share a phone number
         if( ! $phoneNumber ){
-            $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)
-                                        ->orderBy('last_assigned_at', 'ASC')
-                                        ->first();
+            $query = PhoneNumber::where('phone_number_pool_id', $this->id);
+
+            if( $preferredPhoneUUID )
+                $query = $query->where('uuid', $preferredPhoneUUID);
+            else
+                $query = $query->orderBy('last_assigned_at', 'ASC');
+                
+            $phoneNumber = $query->first();
         }
 
         if( $phoneNumber ){
-            $now = date('Y-m-d H:i:s');
-            $phoneNumber->last_assigned_at = $now;
-            $phoneNumber->assigned_at      = $now;
+            $now = new DateTime();
+            $phoneNumber->last_assigned_at = $now->format('Y-m-d H:i:s.u');
+            $phoneNumber->assigned_at      = $now->format('Y-m-d H:i:s.u');
             $phoneNumber->save();
         }
 
@@ -113,7 +119,7 @@ class PhoneNumberPool extends Model implements CanAcceptIncomingCalls
         //  First make sure we're even allowed to do this
         if( ! $this->auto_provision_enabled_at )
             return null;
-        
+    
         //  This user has auto-provisioning on,
         //  Make sure we haven't exceeded our limit of phone numbers
         $currentPhoneCount = PhoneNumber::where('phone_number_pool_id', $this->id)
