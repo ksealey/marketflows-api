@@ -16,7 +16,7 @@ class SpendTest extends TestCase
     /**
      * Test creating a campaign spend
      * 
-     * @group campaign-spends
+     * @group feature-campaign-spends
      */
     public function testCreate()
     {
@@ -25,7 +25,10 @@ class SpendTest extends TestCase
 
         $spend = factory(CampaignSpend::class)->make();
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/spends', [
+        $response = $this->json('POST', route('create-campaign-spend', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [
             'from_date' => $spend->from_date,
             'to_date'   => $spend->to_date,
             'total'     => $spend->total
@@ -54,7 +57,7 @@ class SpendTest extends TestCase
     /**
      * Test updating a campaign spend
      * 
-     * @group campaign-spends
+     * @group feature-campaign-spends
      */
     public function testUpdate()
     {
@@ -67,7 +70,11 @@ class SpendTest extends TestCase
 
         $updatedSpend = factory(CampaignSpend::class)->make();
 
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/spends/' . $spend->id, [
+        $response = $this->json('PUT', route('update-campaign-spend', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id,
+            'spend'    => $spend->id
+        ]), [
             'from_date' => $updatedSpend->from_date,
             'to_date'   => $updatedSpend->to_date,
             'total'     => $updatedSpend->total
@@ -99,7 +106,7 @@ class SpendTest extends TestCase
     /**
      * Test deleting a campaign spend
      * 
-     * @group campaign-spends
+     * @group feature-campaign-spends
      */
     public function testDelete()
     {
@@ -110,7 +117,11 @@ class SpendTest extends TestCase
             'campaign_id' => $campaign->id,
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/spends/' . $spend->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-campaign-spend', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id,
+            'spend'    => $spend->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
 
         $response->assertJSON([

@@ -17,25 +17,27 @@ class PhoneNumberTest extends TestCase
     /**
      * Test listing phone number
      *
-     * @group phone-numbers
+     * @group feature-phone-numbers
      */
     public function testList()
     {
         $user = $this->createUser();
 
         $phone1 = $this->createPhoneNumber([
-            'company_id'  => $user->company_id,
-            'external_id'   => str_random(40),
+            'company_id'  => $this->company->id,
+            'external_id' => str_random(40),
             'created_by'  => $user->id
         ]);
 
         $phone2 = $this->createPhoneNumber([
-            'company_id'  => $user->company_id,
-            'external_id'   => str_random(40),
+            'company_id'  => $this->company->id,
+            'external_id' => str_random(40),
             'created_by'  => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-phone-numbers', [
+            'company' => $this->company->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJson([
             'message'               => 'success',
@@ -57,7 +59,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test listing phone number with a filter
      *
-     * @group phone-numbers
+     * @group feature-phone-numbers
      */
     public function testListWithFilter()
     {
@@ -75,7 +77,9 @@ class PhoneNumberTest extends TestCase
             'created_by'  => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers', [
+        $response = $this->json('GET', route('list-phone-numbers', [
+            'company' => $this->company->id
+        ]), [
             'search' => $phone2->name
         ], $this->authHeaders());
         $response->assertStatus(200);
@@ -98,36 +102,36 @@ class PhoneNumberTest extends TestCase
     /** 
      * Test creating a phone number
      *
-     * @group phone-numbers
+     * @group feature-phone-numbers
      */
     public function testCreate()
     {
         $magicNumbers = config('services.twilio.magic_numbers');
 
-        PhoneNumber::testing();
-
         $user = $this->createUser();
 
         $pool = $this->createPhoneNumberPool([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
         $phone = factory(PhoneNumber::class)->make([
             'country_code' => '1',
-            'number'       =>  $magicNumbers['available']
+            'number'       =>  substr($magicNumbers['available'], -10)
         ]);
 
         $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
-            'created_by' => $user->id
+            'company_id'  => $this->company->id,
+            'created_by'  => $user->id
         ]);
 
-        $response = $this->json('POST', '/v1/companies/' . $this->company->id . '/phone-numbers', [
-            'phone_number_pool' => $pool->id,
+        $response = $this->json('POST', route('create-phone-number', [
+            'company' => $this->company->id
+        ]), [
+            'phone_number_pool'   => $pool->id,
             'phone_number_config' => $pool->phone_number_config_id,
-            'number'            => $phone->country_code . $phone->number,
-            'name'              => $phone->name
+            'number'              => $phone->country_code . $phone->number,
+            'name'                => $phone->name
         ], $this->authHeaders());
 
         $response->assertStatus(201);
@@ -145,30 +149,33 @@ class PhoneNumberTest extends TestCase
     /**
      * Test reading a phone number
      *
-     * @group phone-numbers
+     * @group feature-phone-numbers
      */
     public function testRead()
     {
         $user = $this->createUser();
 
         $pool = $this->createPhoneNumberPool([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
         $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by' => $user->id
         ]);
 
         $phone = $this->createPhoneNumber([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id,
             'phone_number_pool_id' =>$pool->id,
             'external_id'=> str_random(40),
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-phone-number', [
+            'company'     => $this->company->id,
+            'phoneNumber' => $phone->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -186,19 +193,19 @@ class PhoneNumberTest extends TestCase
     /**
      * Test updating a phone number
      *
-     * @group phone-numbers
+     * @group feature-phone-numbers
      */
     public function testUpdate()
     {
         $user = $this->createUser();
 
         $pool = $this->createPhoneNumberPool([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
         $phone = $this->createPhoneNumber([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id,
             'phone_number_pool_id' =>$pool->id,
             'external_id'=> str_random(40)
@@ -206,12 +213,15 @@ class PhoneNumberTest extends TestCase
 
         $newName   = 'UPDATED';
         $newPool = $this->createPhoneNumberPool([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
 
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [
+        $response = $this->json('PUT', route('update-phone-number', [
+            'company'     => $this->company->id,
+            'phoneNumber' => $phone->id
+        ]), [
             'name' => $newName,
             'phone_number_config' => $phone->phone_number_config_id,
             'phone_number_pool' => $newPool->id,
@@ -232,24 +242,27 @@ class PhoneNumberTest extends TestCase
     /**
      * Test deleting a phone number
      *
-     * @group phone-numbers
+     * @group feature-phone-numbers
      */
     public function testDelete()
     {
         $user = $this->createUser();
 
         $pool = $this->createPhoneNumberPool([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
         $phone = $this->createPhoneNumber([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id,
             'external_id'=> str_random(40)
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-phone-number', [
+            'company'     => $this->company->id,
+            'phoneNumber' => $phone->id
+        ]), [], $this->authHeaders());
         
         $response->assertStatus(200);
 
@@ -261,26 +274,29 @@ class PhoneNumberTest extends TestCase
     /**
      * Test deleting a phone number that is linked to a campaign
      *
-     * @group phone-numbers
+     * @group feature-phone-numbers
      */
     public function testDeletePhoneLinkedToCampaign()
     {
         $user = $this->createUser();
 
         $campaign    = $this->createCampaign([
-            'company_id'   => $user->company_id,
+            'company_id'   => $this->company->id,
             'created_by'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
         ]);
 
         $phone = $this->createPhoneNumber([
             'campaign_id'=> $campaign->id,
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id,
             'external_id'=> str_random(40)
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-phone-number', [
+            'company'     => $this->company->id,
+            'phoneNumber' => $phone->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(400);
 
@@ -293,32 +309,35 @@ class PhoneNumberTest extends TestCase
     /**
      * Test deleting a phone number that is linked to a campaign via pool
      *
-     * @group phone-numbers
+     * @group feature-phone-numbers
      */
     public function testDeletePhoneLinkedToCampaignViaPool()
     {
         $user = $this->createUser();
 
         $campaign = $this->createCampaign([
-            'company_id'   => $user->company_id,
+            'company_id'   => $this->company->id,
             'created_by'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
         ]);
 
         $pool = $this->createPhoneNumberPool([
             'campaign_id' => $campaign->id,
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
 
         $phone = $this->createPhoneNumber([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id,
             'phone_number_pool_id' => $pool->id,
             'external_id'=> str_random(40)
         ]);
     
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-numbers/' . $phone->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-phone-number', [
+            'company'     => $this->company->id,
+            'phoneNumber' => $phone->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(400);
 

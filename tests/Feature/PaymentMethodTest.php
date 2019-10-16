@@ -14,14 +14,14 @@ class PaymentMethodTest extends TestCase
     /**
      * Test creating a payment method
      * 
-     * @group payment-methods
+     * @group feature-payment-methods
      */
     public function testCreate()
     {
         $user         = $this->createUser();
         $stripeToken  = 'tok_visa';
 
-        $response = $this->json('POST', 'http://localhost/v1/payment-methods', [
+        $response = $this->json('POST', route('create-payment-method'), [
             'token' => $stripeToken
         ], $this->authHeaders());
 
@@ -41,7 +41,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test showing a payment method
      * 
-     * @group payment-methods
+     * @group feature-payment-methods
      */
     public function testRead()
     {
@@ -52,7 +52,9 @@ class PaymentMethodTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/payment-methods/' . $paymentMethod->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-payment-method', [
+            'paymentMethod' => $paymentMethod->id
+        ]), [], $this->authHeaders());
 
         $response->assertJson([
             'message' => 'success'
@@ -70,7 +72,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test setting payment method as default
      * 
-     * @group payment-methods
+     * @group feature-payment-methods
      */
     public function testMakeDefault()
     {
@@ -91,7 +93,9 @@ class PaymentMethodTest extends TestCase
         $this->assertTrue($paymentMethod->primary_method == true);
         $this->assertTrue($paymentMethod2->primary_method == false);
 
-        $response = $this->json('PUT', 'http://localhost/v1/payment-methods/' . $paymentMethod2->id . '/make-default', [], $this->authHeaders());
+        $response = $this->json('PUT', route('update-payment-method', [
+            'paymentMethod' => $paymentMethod2->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
 
         $response->assertJson([
@@ -105,7 +109,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test deleting a payment method
      * 
-     * @group payment-methods
+     * @group feature-payment-methods
      */
     public function testDelete()
     {
@@ -119,7 +123,9 @@ class PaymentMethodTest extends TestCase
 
         $this->assertTrue(PaymentMethod::find($paymentMethod->id) != null);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/payment-methods/' . $paymentMethod->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-payment-method', [
+            'paymentMethod' => $paymentMethod->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -133,7 +139,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test deleting a primary payment method
      * 
-     * @group payment-methods
+     * @group feature-payment-methods
      */
     public function testDeletePrimaryMethod()
     {
@@ -147,7 +153,9 @@ class PaymentMethodTest extends TestCase
 
         $this->assertTrue(PaymentMethod::find($paymentMethod->id) != null);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/payment-methods/' . $paymentMethod->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-payment-method', [
+            'paymentMethod' => $paymentMethod->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(400);
 
@@ -161,7 +169,7 @@ class PaymentMethodTest extends TestCase
     /**
      * Test listing payment methods
      * 
-     * @group payment-methods
+     * @group feature-payment-methods
      */
     public function testList()
     {
@@ -185,7 +193,7 @@ class PaymentMethodTest extends TestCase
             'primary_method' => true
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/payment-methods', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-payment-methods'), [], $this->authHeaders());
 
         $response->assertStatus(200);
         $response->assertJsonStructure([

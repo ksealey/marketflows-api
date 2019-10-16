@@ -19,8 +19,6 @@ class User extends Authenticatable
         'account_id',
         'company_id',
         'role_id',
-        'is_admin',
-        'is_client',
         'timezone',
         'first_name',
         'last_name',
@@ -50,50 +48,40 @@ class User extends Authenticatable
         'deleted_at'
     ];
 
-    public function createEmailVerification()
-    {
-        return EmailVerification::create([
-            'user_id'       => $this->id,  
-            'key'           => str_random(40),
-            'expires_at'    => date('Y-m-d H:i:s', strtotime('now +24 hours'))
-        ]);
-    }
-
+    /**
+     * Get the user's account relationship
+     * 
+     */
     public function account()
     {
         return $this->belongsTo('\App\Models\Account');
     }
 
-    public function company()
-    {
-        return $this->belongsTo('\App\Models\Company');
-    }
-
+    /**
+     * Get the user's companies
+     * 
+     */
     public function companies()
     {
         return $this->belongsToMany('App\Models\Company', 'user_companies');
     }
 
+    /**
+     * Get the user's role
+     * 
+     */
     public function role()
     {
         return $this->belongsTo('\App\Models\Role');
     }
 
+    /**
+     * Determine if a user can take an action
+     * 
+     */
     public function canDoAction($action)
     {
         list($requestedModule, $requestedAction) = explode('.', $action);
-
-        if( $this->is_admin )
-            return true;
-
-        //  Only allow the following for clients
-        //  Reporting
-        //      - read
-        if( $this->is_client ){
-            if( $action == 'reporting.read' )
-                return true;
-            return false;
-        }
 
         //  This user can't do a thing...
         if( ! $myRole = $this->role )
@@ -104,9 +92,9 @@ class User extends Authenticatable
             return false;
 
         $policyRules = json_decode($myPolicy);
-        if( ! $policyRules || empty($policyRules->can) )
+        if( ! $policyRules || empty($policyRules->policy) )
             return false;
-
+        
         foreach( $policyRules->policy as $rule ){
             $myModule = trim(strtolower($rule->module));
             //  Module found
@@ -126,6 +114,10 @@ class User extends Authenticatable
         return false;
     }
 
+    /**
+     * Determine if a user can take action on behalf of a company
+     * 
+     */
     public function canDoCompanyAction(Company $company, $action)
     {
         foreach($this->companies as $myCompany){

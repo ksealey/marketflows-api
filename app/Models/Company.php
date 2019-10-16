@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Company\Campaign;
 
 class Company extends Model
 {
@@ -23,4 +24,18 @@ class Company extends Model
         'created_by',
         'deleted_at'
     ];
+
+    /**
+     * Check if this company is in use
+     * 
+     * @return bool
+     */
+    public function isInUse()
+    {
+        $activeCampaignCount = Campaign::where('company_id', $this->id)
+                                       ->whereNotNull('activated_at')
+                                       ->count();
+        
+        return $activeCampaignCount ? true : false;
+    }
 }

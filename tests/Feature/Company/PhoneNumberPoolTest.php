@@ -16,12 +16,13 @@ class PhoneNumberPoolTest extends TestCase
     /**
      * Test listing phone number pools
      *
-     * @group phone-number-pools
+     * @group feature-phone-number-pools
      */
     public function testList()
     {
         $user = $this->createUser();
 
+        
         $pool = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
             'created_by'  => $user->id
@@ -32,7 +33,9 @@ class PhoneNumberPoolTest extends TestCase
             'created_by'  => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-phone-number-pools', [
+            'company' => $this->company->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
 
         $response->assertJson([
@@ -55,7 +58,7 @@ class PhoneNumberPoolTest extends TestCase
     /**
      * Test listing phone number pools with a filter
      *
-     * @group phone-number-pools
+     * @group feature-phone-number-pools
      */
     public function testListWithFilter()
     {
@@ -71,7 +74,9 @@ class PhoneNumberPoolTest extends TestCase
             'created_by'  => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools', [
+        $response = $this->json('GET', route('list-phone-number-pools', [
+            'company' => $this->company->id
+        ]), [
             'search' => $pool2->name
         ], $this->authHeaders());
 
@@ -94,7 +99,7 @@ class PhoneNumberPoolTest extends TestCase
     /**
      * Test creating an phone number pool
      * 
-     * @group phone-number-pools
+     * @group feature-phone-number-pools
      */
     public function testCreate()
     {
@@ -109,7 +114,9 @@ class PhoneNumberPoolTest extends TestCase
 
         $pool = factory(PhoneNumberPool::class)->make();
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools', [
+        $response = $this->json('POST', route('create-phone-number-pool', [
+            'company' => $this->company->id
+        ]), [
             'audio_clip' => $audioClip->id,
             'name'       => $pool->name,
             'phone_number_config' => $config->id
@@ -128,7 +135,7 @@ class PhoneNumberPoolTest extends TestCase
     /**
      * Test reading an phone number pool
      * 
-     * @group phone-number-pools
+     * @group feature-phone-number-pools
      */
     public function testRead()
     {
@@ -139,7 +146,10 @@ class PhoneNumberPoolTest extends TestCase
             'created_by'  =>  $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools/' . $pool->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-phone-number-pool', [
+            'company'         => $this->company->id,
+            'phoneNumberPool' => $pool->id,
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -154,14 +164,14 @@ class PhoneNumberPoolTest extends TestCase
     /**
      * Test updating an phone number pool
      * 
-     * @group phone-number-pools
+     * @group feature-phone-number-pools
      */
     public function testUpdate()
     {
         $user = $this->createUser();
 
         $pool = $this->createPhoneNumberPool([
-            'company_id'  => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
@@ -169,7 +179,10 @@ class PhoneNumberPoolTest extends TestCase
 
         $config = $this->createPhoneNumberConfig();
 
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools/' . $pool->id, [
+        $response = $this->json('PUT', route('update-phone-number-pool', [
+            'company'         => $this->company->id,
+            'phoneNumberPool' => $pool->id,
+        ]), [
             'name'   => $updatedPool->name,
             'phone_number_config' => $config->id
         ], $this->authHeaders());
@@ -190,7 +203,7 @@ class PhoneNumberPoolTest extends TestCase
     /**
      * Test deleting a phone number pool
      * 
-     * @group phone-number-pools
+     * @group feature-phone-number-pools
      */
     public function testDelete()
     {
@@ -198,7 +211,10 @@ class PhoneNumberPoolTest extends TestCase
 
         $pool = $this->createPhoneNumberPool();
 
-        $response = $this->json('DELETE',  'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools/' . $pool->id, [], $this->authHeaders());
+        $response = $this->json('DELETE',  route('delete-phone-number-pool', [
+            'company'         => $this->company->id,
+            'phoneNumberPool' => $pool->id,
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJson([
             'message' => 'deleted',
@@ -211,7 +227,7 @@ class PhoneNumberPoolTest extends TestCase
     /**
      * Test deleting a phone number pool that is linked to a campaign
      *
-     * @group phone-number-pools
+     * @group feature-phone-number-pools
      */
     public function testDeletePhonePoolLinkedToCampaign()
     {
@@ -221,9 +237,10 @@ class PhoneNumberPoolTest extends TestCase
             'campaign_id' => $campaign->id
         ]);
 
-        
-
-        $response = $this->json('DELETE',  'http://localhost/v1/companies/' . $this->company->id . '/phone-number-pools/' . $pool->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-phone-number-pool', [
+            'company'         => $this->company->id,
+            'phoneNumberPool' => $pool->id,
+        ]), [], $this->authHeaders());
         $response->assertStatus(400);
         $response->assertJson([
             'error' => 'This phone number pool is in use'

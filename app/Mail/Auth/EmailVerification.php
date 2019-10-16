@@ -6,13 +6,16 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Models\Auth\EmailVerification as EmailVerificationRecord;
 use App\Models\User;
 
 class EmailVerification extends Mailable
 {
     use Queueable, SerializesModels;
 
-    protected $user;
+    public $user;
+
+    public $verification;
 
     /** 
      * Create a new message instance.
@@ -22,6 +25,12 @@ class EmailVerification extends Mailable
     public function __construct(User $user)
     {
         $this->user = $user;
+
+        $this->verification = EmailVerificationRecord::create([
+            'user_id'       => $this->user->id,  
+            'key'           => str_random(40),
+            'expires_at'    => date('Y-m-d H:i:s', strtotime('now +24 hours'))
+        ]);
     }
 
     /**
@@ -31,10 +40,9 @@ class EmailVerification extends Mailable
      */
     public function build()
     {
-        $this->user->createEmailVerification();
-
         return $this->view('mail.auth.email-verification', [
-            'user' => $this->user
+            'user'          => $this->user,
+            'verification'  => $this->verification
         ]);
     }
 }

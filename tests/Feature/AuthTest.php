@@ -20,8 +20,7 @@ class AuthTest extends TestCase
     /**
      * A basic feature test example.
      *
-     * @group auth
-     * @group 1
+     * @group feature-auth
      * 
      * @return void
      */
@@ -29,11 +28,11 @@ class AuthTest extends TestCase
     {
         Mail::fake();
 
-        $company = factory(\App\Models\Company::class)->make();
+        $account = factory(\App\Models\Account::class)->make();
         $user    = factory(\App\Models\User::class)->make();
 
         $data = [
-            'company_name' => $company->name,
+            'account_name' => $account->name,
             'first_name'   => $user->first_name,
             'last_name'    => $user->last_name,
             'email'        => $user->email,
@@ -44,8 +43,7 @@ class AuthTest extends TestCase
             'password'     => 'Password1!'
         ];
 
-        $response = $this->json('POST', 'http://localhost/v1/auth/register', $data);
-
+        $response = $this->json('POST', route('auth-register'), $data);
         // Make sure the request was successful
         $response->assertJsonStructure([
             'message',
@@ -59,21 +57,21 @@ class AuthTest extends TestCase
         $response->assertStatus(201);
 
         //  Make sure the account, company and user was created
-        $user = User::find(json_decode($response->getContent())->user->id);
-        $this->assertTrue( $user != null);
-        $this->assertTrue( $user->account != null );
-        $this->assertTrue( $user->company != null );
-        $this->assertTrue(count($user->companies) == 1);
-        $this->assertTrue($user->companies[0]->id == $user->company->id);   
+        $userRecord = User::find(json_decode($response->getContent())->user->id);
+        $this->assertTrue($userRecord != null);
+        $this->assertTrue($userRecord->account != null);
 
         //  Test Email verification sent
-        Mail::assertQueued(\App\Mail\Auth\EmailVerification::class);
+        Mail::assertQueued(\App\Mail\Auth\EmailVerification::class, function($mail) use($userRecord){
+            return $mail->user->id == $userRecord->id 
+                && $mail->verification->user_id == $userRecord->id;
+        });
     }
 
     /**
      * Test a successful login
      * 
-     * @group auth
+     * @group feature-auth
      * 
      * @return void
      */
@@ -81,7 +79,7 @@ class AuthTest extends TestCase
     {
         $user = $this->createUser();
 
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password'
         ]);
@@ -99,7 +97,7 @@ class AuthTest extends TestCase
     /**
      * Test a failed login
      * 
-     * @group auth
+     * @group feature-auth
      * 
      * @return void
      */
@@ -108,7 +106,7 @@ class AuthTest extends TestCase
         $user = $this->createUser();
 
         //  Wrong email
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email . '_dne',
             'password'  => 'password'
         ]);
@@ -118,7 +116,7 @@ class AuthTest extends TestCase
         $response->assertStatus(400);
 
         //  Wrong password
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password1'
         ]);
@@ -128,7 +126,7 @@ class AuthTest extends TestCase
         $response->assertStatus(400);
         
         //  Again...
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password1'
         ]);
@@ -138,7 +136,7 @@ class AuthTest extends TestCase
         $response->assertStatus(400);
         
         //  And again...
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password1'
         ]);
@@ -148,7 +146,7 @@ class AuthTest extends TestCase
         $response->assertStatus(400);
         
         //  And lock account...
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password1'
         ]);
@@ -158,7 +156,7 @@ class AuthTest extends TestCase
         $response->assertStatus(400);
 
         //  And make sure user can't login...
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password1'
         ]);
@@ -166,7 +164,7 @@ class AuthTest extends TestCase
         $response->assertStatus(400);
 
         //  Even with valid credentials...
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password'
         ]);
@@ -177,7 +175,7 @@ class AuthTest extends TestCase
     /**
      * Test a login attempts reset on valid login
      * 
-     * @group auth
+     * @group feature-auth
      * 
      * @return void
      */
@@ -186,7 +184,7 @@ class AuthTest extends TestCase
         $user = $this->createUser(); 
 
         //  Wrong password
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password1'
         ]);
@@ -200,7 +198,7 @@ class AuthTest extends TestCase
         $this->assertTrue($u->last_login_at == null);
         
         //  Right password
-        $response = $this->json('POST', 'https://localhost/v1/auth/login', [
+        $response = $this->json('POST', route('auth-login'), [
             'email'     => $user->email,
             'password'  => 'password'
         ]);
@@ -215,7 +213,7 @@ class AuthTest extends TestCase
     /**
      * Test requesting a password reset
      * 
-     * @group auth
+     * @group feature-auth
      */
     public function testRequestPasswordReset()
     {
@@ -223,7 +221,7 @@ class AuthTest extends TestCase
 
         $user = $this->createUser();
 
-        $response = $this->json('POST', 'http://localhost/v1/auth/reset-password', [
+        $response = $this->json('POST', route('auth-reset-password'), [
             'email' => $user->email
         ]);
 
@@ -244,7 +242,8 @@ class AuthTest extends TestCase
      * Test resetting the password from password reset
      * 
      * @depends testRequestPasswordReset
-     * @group auth
+     * @group feature-auth
+     * 
      */
     public function testGetResettingPassword($passwordReset)
     {
@@ -254,10 +253,14 @@ class AuthTest extends TestCase
 
         $currentPassword = $user->password_hash;
 
-        $response = $this->post('http://localhost/v1/auth/reset-password/' . $passwordReset->user_id . '/' . $passwordReset->key, [
+        $response = $this->post(route('auth-handle-reset-password', [
+            'userId' => $passwordReset->user_id ,
+            'key'    => $passwordReset->key,
+        ]), [
             'password' => 'Password1!'
         ]);
 
+        
         //  Make sure response is ok
         $response->assertStatus(200);
         $response->assertJsonStructure([

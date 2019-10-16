@@ -16,23 +16,25 @@ class AudioClipTest extends TestCase
     /**
      * Test listing audio clips
      *
-     * @group audio-clips
+     * @group feature-audio-clips
      */
     public function testList()
     {
         $user = $this->createUser();
 
         $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
-            'created_by' => $user->id
+            'company_id'  => $this->company->id,
+            'created_by'  => $user->id
         ]);
 
         $audioClip2 = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-audio-clips', [
+            'company' => $this->company->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJson([
             'message'         => 'success',
@@ -50,7 +52,7 @@ class AudioClipTest extends TestCase
     /**
      * Test creating an audio clip
      * 
-     * @group audio-clips
+     * @group feature-audio-clips
      */
     public function testCreate()
     {
@@ -59,9 +61,11 @@ class AudioClipTest extends TestCase
         Storage::fake();
 
         $audioClipFile = UploadedFile::fake()->create('audio.mpeg', 2048); 
-        $name = 'My new audio clip';
+        $name          = 'My new audio clip';
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips', [
+        $response = $this->json('POST', route('create-audio-clip', [
+            'company' => $this->company->id
+        ]), [
             'audio_clip' => $audioClipFile,
             'name'       => $name
         ], $this->authHeaders());
@@ -79,18 +83,21 @@ class AudioClipTest extends TestCase
     /**
      * Test reading an audio clip
      * 
-     * @group audio-clips
+     * @group feature-audio-clips
      */
     public function testRead()
     {
         $user = $this->createUser();
 
         $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips/' . $audioClip->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-audio-clip', [
+            'company' => $this->company->id,
+            'audioClip' => $audioClip->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -105,14 +112,14 @@ class AudioClipTest extends TestCase
     /**
      * Test updating an audio clip
      * 
-     * @group audio-clips
+     * @group feature-audio-clips
      */
     public function testUpdate()
     {
         $user = $this->createUser();
 
         $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
@@ -120,7 +127,10 @@ class AudioClipTest extends TestCase
 
         $newAudioClipFile = UploadedFile::fake()->create('audio.mpeg', 2048); 
         $newName = 'Updated audio file';
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips/' . $audioClip->id, [
+        $response = $this->json('PUT', route('update-audio-clip', [
+            'company' => $this->company->id,
+            'audioClip'=> $audioClip->id
+        ]), [
             'audio_clip' => $newAudioClipFile,
             'name'       => $newName
         ], $this->authHeaders());
@@ -139,20 +149,23 @@ class AudioClipTest extends TestCase
     /**
      * Test deleting an audio clip
      * 
-     * @group audio-clips
+     * @group feature-audio-clips
      */
     public function testDelete()
     {
         $user = $this->createUser();
 
         $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
         Storage::fake();
 
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $user->company_id . '/audio-clips/' . $audioClip->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-audio-clip', [
+            'company'   => $this->company->id,
+            'audioClip' => $audioClip->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 

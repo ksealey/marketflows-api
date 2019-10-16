@@ -16,7 +16,7 @@ class UserTest extends TestCase
     /**
      * Test viewing a user
      *
-     * @group users
+     * @group feature-users
      */
     public function testRead()
     {
@@ -24,10 +24,11 @@ class UserTest extends TestCase
 
         $otherUser = factory(User::class)->create([
             'account_id' => $user->account_id,
-            'company_id' => $user->company_id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/users/' . $otherUser->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-user', [
+            'user' => $otherUser->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJSON([
             'user' => [
@@ -39,7 +40,7 @@ class UserTest extends TestCase
     /**
      * Test updating a user
      *
-     * @group users
+     * @group feature-users
      */
     public function testUpdate()
     {
@@ -47,7 +48,6 @@ class UserTest extends TestCase
 
         $otherUser = factory(User::class)->create([
             'account_id' => $user->account_id,
-            'company_id' => $this->company->id
         ]);
 
         $userCompany = UserCompany::create([
@@ -70,7 +70,9 @@ class UserTest extends TestCase
         ]);
 
         $companyIds = [$anotherCompany1->id, $anotherCompany2->id];
-        $response = $this->json('PUT', 'http://localhost/v1/users/' . $otherUser->id, [
+        $response = $this->json('PUT', route('update-user', [
+            'user' => $otherUser->id
+        ]), [
             'first_name'   => $updatedUser->first_name,
             'last_name'    => $updatedUser->last_name,
             'email'        => $updatedUser->email,
@@ -98,7 +100,6 @@ class UserTest extends TestCase
 
         $user = User::find($otherUser->id);
         $this->assertTrue($user != null);
-        $this->assertTrue($user->company_id == $anotherCompany2->id);
         $this->assertTrue(UserCompany::find($userCompany->id) == null);
 
         $userCompanies = UserCompany::where('user_id', $otherUser->id)
@@ -112,7 +113,7 @@ class UserTest extends TestCase
     /**
      * Test viewing a user
      *
-     * @group users
+     * @group feature-users
      */
     public function testDelete()
     {
@@ -120,10 +121,11 @@ class UserTest extends TestCase
 
         $otherUser = factory(User::class)->create([
             'account_id' => $user->account_id,
-            'company_id' => $user->company_id
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/users/' . $otherUser->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-user', [
+            'user' => $otherUser->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJSON([
             'message' => 'deleted'
@@ -133,7 +135,7 @@ class UserTest extends TestCase
     /**
      * Test changing a password
      *
-     * @group users
+     * @group feature-users
      */
     public function testChangePassword()
     {
@@ -141,10 +143,11 @@ class UserTest extends TestCase
 
         $otherUser = factory(User::class)->create([
             'account_id' => $user->account_id,
-            'company_id' => $user->company_id
         ]);
 
-        $response = $this->json('PUT', 'http://localhost/v1/users/' . $otherUser->id . '/change-password', [
+        $response = $this->json('PUT', route('change-user-password', [
+            'user' => $otherUser->id
+        ]), [
             'password' => 'Password1!'
         ], $this->authHeaders());
         $response->assertStatus(200);
@@ -156,13 +159,15 @@ class UserTest extends TestCase
     /**
      * Test changing your own password
      *
-     * @group users
+     * @group feature-users
      */
     public function testChangeOwnPassword()
     {
         $user = $this->createUser();
 
-        $response = $this->json('PUT', 'http://localhost/v1/users/' . $user->id . '/change-password', [
+        $response = $this->json('PUT', route('change-user-password', [
+            'user' => $user->id
+        ]), [
             'password' => 'Password1!'
         ], $this->authHeaders());
         $response->assertStatus(200);

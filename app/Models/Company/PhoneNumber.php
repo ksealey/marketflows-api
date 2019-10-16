@@ -122,20 +122,20 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
      */
     static public function purchase(string $phone)
     {
-        $client = App::environment(['prod', 'production']) ? self::client() : self::testClient(); // Use test creds fr purchase
+        $client = App::environment(['prod', 'production']) ? self::client() : self::testClient(); // Use test creds for purchase
 
         return $client->incomingPhoneNumbers
-                        ->create([
-                        'phoneNumber'           => $phone,
-                        'voiceUrl'              => route('incoming-call'),
-                        'voiceMethod'           => 'GET',
-                        'statusCallback'        => route('incoming-call-status-changed'),
-                        'statusCallbackMethod'  => 'GET',
-                        'smsUrl'                => route('incoming-sms'),
-                        'smsMethod'             => 'GET',
-                        'mmsUrl'                => route('incoming-mms'),
-                        'mmsMethod'             => 'GET'
-                    ]);
+                      ->create([
+                            'phoneNumber'           => $phone,
+                            'voiceUrl'              => route('incoming-call'),
+                            'voiceMethod'           => 'GET',
+                            'statusCallback'        => route('incoming-call-status-changed'),
+                            'statusCallbackMethod'  => 'GET',
+                            'smsUrl'                => route('incoming-sms'),
+                            'smsMethod'             => 'GET',
+                            'mmsUrl'                => route('incoming-mms'),
+                            'mmsMethod'             => 'GET'
+                        ]);
         
     }
     

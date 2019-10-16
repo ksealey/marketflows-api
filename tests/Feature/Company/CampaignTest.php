@@ -14,7 +14,7 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test listing
      *
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testList()
     {
@@ -23,17 +23,19 @@ class CampaignTest extends \Tests\TestCase
 
         $campaign1 = factory(Campaign::class)->create([
             'created_by'    => $user->id,
-            'company_id'    => $user->company_id,
+            'company_id'    => $this->company->id,
             'activated_at'  => $now
         ]);
 
         $campaign2 = factory(Campaign::class)->create([
             'created_by'    => $user->id,
-            'company_id'    => $user->company_id,
+            'company_id'    => $this->company->id,
             'activated_at'  => $now
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-campaigns', [
+            'company' => $this->company->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJSON([ 
             'message'       => 'success',
@@ -51,7 +53,7 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test listing with a filter
      *
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testListWithFilter()
     {
@@ -60,17 +62,19 @@ class CampaignTest extends \Tests\TestCase
 
         $campaign1 = factory(Campaign::class)->create([
             'created_by' => $user->id,
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'activated_at'  => $now
         ]);
 
         $campaign2 = factory(Campaign::class)->create([
             'created_by' => $user->id,
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'activated_at'  => $now
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns', [
+        $response = $this->json('GET', route('list-campaigns', [
+            'company' => $this->company->id
+        ]), [
             'search' => $campaign2->name
         ], $this->authHeaders());
 
@@ -93,7 +97,7 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test creating a print campaign
      *
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testCreatePrintCampaign()
     {
@@ -104,7 +108,9 @@ class CampaignTest extends \Tests\TestCase
             'type' => Campaign::TYPE_PRINT
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+        $response = $this->json('POST', route('create-campaign', [
+            'company' => $this->company->id
+        ]), [
             'name'          => $campaign->name,
             'type'          => $campaign->type,
             'active'        => 1
@@ -122,18 +128,19 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test creating a radio campaign
      *
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testCreateRadioCampaign()
     {
         $this->createUser();
-        $now = date('Y-m-d H:i:s');
 
         $campaign = factory(Campaign::class)->make([
             'type' => Campaign::TYPE_RADIO
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+        $response = $this->json('POST', route('create-campaign', [
+            'company' => $this->company->id
+        ]), [
             'name'          => $campaign->name,
             'type'          => $campaign->type,
             'active'        => 1
@@ -143,8 +150,7 @@ class CampaignTest extends \Tests\TestCase
         $response->assertJSON([
             'campaign' => [
                 'name' => $campaign->name,
-                'type' => Campaign::TYPE_RADIO,
-                'activated_at' => $now
+                'type' => Campaign::TYPE_RADIO
             ]
         ]);
     }
@@ -152,7 +158,7 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test creating a web campaign
      *
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testCreateWebCampaign()
     {
@@ -179,7 +185,9 @@ class CampaignTest extends \Tests\TestCase
             ]
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+        $response = $this->json('POST', route('create-campaign', [
+            'company' => $this->company->id
+        ]), [
             'name'              => $campaign->name,
             'type'              => $campaign->type,
             'active'            => true,
@@ -199,7 +207,7 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test creating a web campaign with an invalid rule number format
      *
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testCreateWebCampaignWithInvalidRuleNumberFormat()
     {
@@ -224,7 +232,9 @@ class CampaignTest extends \Tests\TestCase
             ]
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+        $response = $this->json('POST', route('create-campaign', [
+            'company' => $this->company->id
+        ]), [
             'name'              => $campaign->name,
             'type'              => $campaign->type,
             'active'            => true,
@@ -239,7 +249,7 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test creating a web campaign with an invalid rule condition
      *
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testCreateWebCampaignWithInvalidRuleCondition()
     {
@@ -264,7 +274,9 @@ class CampaignTest extends \Tests\TestCase
             ]
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+        $response = $this->json('POST', route('create-campaign', [
+            'company' => $this->company->id
+        ]), [
             'name'              => $campaign->name,
             'type'              => $campaign->type,
             'active'            => true,
@@ -280,7 +292,7 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test creating a web campaign with an invalid rule condition type
      *
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testCreateWebCampaignWithInvalidRuleConditionType()
     {
@@ -305,7 +317,9 @@ class CampaignTest extends \Tests\TestCase
             ]
         ]);
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id. '/campaigns', [
+        $response = $this->json('POST', route('create-campaign', [
+            'company' => $this->company->id
+        ]), [
             'name'              => $campaign->name,
             'type'              => $campaign->type,
             'active'            => true,
@@ -320,7 +334,7 @@ class CampaignTest extends \Tests\TestCase
     /**
      * Test viewing a campaign
      * 
-     * @group campaigns
+     * @group feature-campaigns
      */
     public function testRead()
     {
@@ -328,13 +342,16 @@ class CampaignTest extends \Tests\TestCase
         $now  = date('Y-m-d H:i:s');
 
         $campaign    = factory(Campaign::class)->create([
-            'company_id'   => $user->company_id,
+            'company_id'   => $this->company->id,
             'created_by'   => $user->id,
             'type'         => Campaign::TYPE_WEB,
             'activated_at' => $now,
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-campaign', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
         $response->assertJson([
@@ -357,14 +374,17 @@ class CampaignTest extends \Tests\TestCase
         $now  = date('Y-m-d H:i:s');
 
         $campaign    = factory(Campaign::class)->create([
-            'company_id' => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id,
             'activated_at' => $now
         ]);
 
         $newCampaignName = $campaign->name . '_UPDATED_' . mt_rand(999,999999);
     
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [
+        $response = $this->json('PUT', route('update-campaign', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [
             'name'   => $newCampaignName,
             'active' => 1,
         ], $this->authHeaders());
@@ -389,12 +409,15 @@ class CampaignTest extends \Tests\TestCase
         $user = $this->createUser();
         
         $campaign    = factory(Campaign::class)->create([
-            'company_id'   => $user->company_id,
+            'company_id'   => $this->company->id,
             'created_by'   => $user->id,
             'activated_at' => null
         ]);
     
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-campaign', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -413,12 +436,15 @@ class CampaignTest extends \Tests\TestCase
         $now  = date('Y-m-d H:i:s');
         
         $campaign    = factory(Campaign::class)->create([
-            'company_id'   => $user->company_id,
+            'company_id'   => $this->company->id,
             'created_by'   => $user->id,
             'activated_at' => $now
         ]);
     
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-campaign', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(400);
 

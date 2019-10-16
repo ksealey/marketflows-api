@@ -15,7 +15,7 @@ class DomainTest extends TestCase
     /**
      * Test creating a campaign domain
      * 
-     * @group campaign-domains
+     * @group feature-campaign-domains
      */
     public function testCreate()
     {
@@ -26,7 +26,10 @@ class DomainTest extends TestCase
 
         $domain = factory(CampaignDomain::class)->make();
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/domains', [
+        $response = $this->json('POST', route('create-campaign-domain', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [
             'domain'     => $domain->domain
         ], $this->authHeaders());
         $response->assertStatus(201);
@@ -41,7 +44,7 @@ class DomainTest extends TestCase
     /**
      * Test creating a campaign domain with a non-web camapign
      * 
-     * @group campaign-domains
+     * @group feature-campaign-domains
      */
     public function testCreateWithNonWebCampaign()
     {
@@ -52,7 +55,10 @@ class DomainTest extends TestCase
 
         $domain = factory(CampaignDomain::class)->make();
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/domains', [
+        $response = $this->json('POST', route('create-campaign-domain', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [
             'domain'     => $domain->domain
         ], $this->authHeaders());
         $response->assertStatus(400);
@@ -64,7 +70,7 @@ class DomainTest extends TestCase
     /**
      * Test updating a campaign domain
      * 
-     * @group campaign-domains
+     * @group feature-campaign-domains
      */
     public function testUpdate()
     {
@@ -77,7 +83,11 @@ class DomainTest extends TestCase
 
         $updatedDomain = factory(CampaignDomain::class)->make();
 
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/domains/' . $domain->id, [
+        $response = $this->json('PUT', route('update-campaign-domain', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id,
+            'domain'   => $domain->id
+        ]), [
             'domain' => $updatedDomain->domain
         ], $this->authHeaders());
 
@@ -97,7 +107,7 @@ class DomainTest extends TestCase
     /**
      * Test deleting a campaign domain
      * 
-     * @group campaign-domains
+     * @group feature-campaign-domains
      */
     public function testDelete()
     {
@@ -108,7 +118,11 @@ class DomainTest extends TestCase
             'campaign_id' => $campaign->id,
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/domains/' . $domain->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-campaign-domain', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id,
+            'domain'   => $domain->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 

@@ -15,17 +15,16 @@ class RoleTest extends TestCase
     /**
      * Test creating a record
      *
-     * @group roles
+     * @group feature-roles
      */
     public function testCreate()
     {
         $user = $this->createUser();
         $role = factory(Role::class)->make();
-        $response = $this->json('POST', 'http://localhost/v1/roles', [
+        $response = $this->json('POST', route('create-role'), [
             'name'   => $role->name,
             'policy' => $role->policy
         ], $this->authHeaders());
-
         $response->assertStatus(201);
 
         $response->assertJsonStructure([
@@ -39,13 +38,13 @@ class RoleTest extends TestCase
     /**
      * Test creating a record with an invalid policy
      *
-     * @group roles
+     * @group feature-roles
      */
     public function testCreateWithInvalidPolicy()
     {
         $user = $this->createUser();
         $role = factory(Role::class)->make();
-        $response = $this->json('POST', 'http://localhost/v1/roles', [
+        $response = $this->json('POST', route('create-role'), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -72,7 +71,7 @@ class RoleTest extends TestCase
         ]);
 
         //  Try with the module missing
-        $response = $this->json('POST', 'http://localhost/v1/roles', [
+        $response = $this->json('POST', route('create-role'), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -90,7 +89,7 @@ class RoleTest extends TestCase
         ]);
 
         //  Try with permissions missing
-        $response = $this->json('POST', 'http://localhost/v1/roles', [
+        $response = $this->json('POST', route('create-role'), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -106,7 +105,7 @@ class RoleTest extends TestCase
         ]);
 
          //  Try with invalid permissions
-         $response = $this->json('POST', 'http://localhost/v1/roles', [
+         $response = $this->json('POST', route('create-role'), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -123,7 +122,7 @@ class RoleTest extends TestCase
         ]);
 
          //  Try with an empty array
-         $response = $this->json('POST', 'http://localhost/v1/roles', [
+         $response = $this->json('POST', route('create-role'), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -142,7 +141,7 @@ class RoleTest extends TestCase
     /**
      * Test viewing a record
      *
-     * @group roles
+     * @group feature-roles
      */
     public function testRead()
     {
@@ -151,7 +150,9 @@ class RoleTest extends TestCase
             'account_id' =>  $user->account_id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/roles/' . $role->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-role', [
+            'role' => $role->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -167,7 +168,7 @@ class RoleTest extends TestCase
     /**
      * Test updating a record
      *
-     * @group roles
+     * @group feature-roles
      */
     public function testUpdate()
     {
@@ -189,7 +190,9 @@ class RoleTest extends TestCase
             ])
         ]);
 
-        $response = $this->json('PUT', 'http://localhost/v1/roles/' . $role->id, [
+        $response = $this->json('PUT', route('update-role', [
+            'role' => $role->id
+        ]), [
             'name'   => $roleUpdate->name,
             'policy' => $roleUpdate->policy
         ], $this->authHeaders());
@@ -208,7 +211,7 @@ class RoleTest extends TestCase
     /**
      * Test updating a record with an invalid policy
      *
-     * @group roles
+     * @group feature-roles
      */
     public function testUpdateWithInvalidPolicy()
     {
@@ -218,7 +221,9 @@ class RoleTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('PUT', 'http://localhost/v1/roles/' . $role->id, [
+        $response = $this->json('PUT', route('update-role', [
+            'role' => $role->id
+        ]), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -245,7 +250,9 @@ class RoleTest extends TestCase
         ]);
 
         //  Try with the module missing
-        $response = $this->json('PUT', 'http://localhost/v1/roles/' . $role->id, [
+        $response = $this->json('PUT', route('update-role', [
+            'role' => $role->id
+        ]), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -263,7 +270,9 @@ class RoleTest extends TestCase
         ]);
 
         //  Try with permissions missing
-        $response = $this->json('PUT', 'http://localhost/v1/roles/' . $role->id, [
+        $response = $this->json('PUT', route('update-role', [
+            'role' => $role->id
+        ]), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -279,7 +288,9 @@ class RoleTest extends TestCase
         ]);
 
         //  Try with invalid permissions
-        $response = $this->json('PUT', 'http://localhost/v1/roles/' . $role->id, [
+        $response = $this->json('PUT', route('update-role', [
+            'role' => $role->id
+        ]), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -296,7 +307,9 @@ class RoleTest extends TestCase
         ]);
 
         //  Try with an empty array
-        $response = $this->json('PUT', 'http://localhost/v1/roles/' . $role->id, [
+        $response = $this->json('PUT', route('update-role', [
+            'role' => $role->id
+        ]), [
             'name'   => $role->name,
             'policy' => json_encode([
                 'policy' => [
@@ -315,7 +328,7 @@ class RoleTest extends TestCase
     /**
      * Test deleting a record
      *
-     * @group roles
+     * @group feature-roles
      */
     public function testDelete()
     {
@@ -326,7 +339,9 @@ class RoleTest extends TestCase
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/roles/' . $role->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-role', [
+            'role' => $role->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJson([
             'message' => 'deleted'

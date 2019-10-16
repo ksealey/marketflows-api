@@ -15,7 +15,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test adding phone numbers to a campaign
      *
-     * @group campaign-phone-numbers
+     * @group feature-campaign-phone-numbers
      */
     public function testAdd()
     {
@@ -33,7 +33,10 @@ class PhoneNumberTest extends TestCase
 
         $campaign = $this->createCampaign();
         
-        $response = $this->json('POST','http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/phone-numbers', [
+        $response = $this->json('POST', route('add-campaign-phone-number', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [
             'phone_numbers' => [
                 $phoneNumber->id, 
                 $phoneNumber2->id
@@ -55,7 +58,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test adding phone numbers to a web campaign fails
      *
-     * @group campaign-phone-numbers
+     * @group feature-campaign-phone-numbers
      */
     public function testAddToWebCampaignFails()
     {
@@ -75,7 +78,10 @@ class PhoneNumberTest extends TestCase
             'type' => Campaign::TYPE_WEB
         ]);
         
-        $response = $this->json('POST','http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/phone-numbers', [
+        $response = $this->json('POST', route('add-campaign-phone-number', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [
             'phone_numbers' => [
                 $phoneNumber->id, 
                 $phoneNumber2->id
@@ -97,7 +103,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test removing phone numbers from a campaign
      *
-     * @group campaign-phone-numbers
+     * @group feature-campaign-phone-numbers
      */
     public function testRemove()
     {
@@ -117,7 +123,10 @@ class PhoneNumberTest extends TestCase
             'created_by' => $user->id
         ]);
         
-        $response = $this->json('DELETE','http://localhost/v1/companies/' . $campaign->company_id . '/campaigns/' . $campaign->id . '/phone-numbers', [
+        $response = $this->json('DELETE', route('remove-campaign-phone-number', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [
             'phone_numbers' => [
                 $phoneNumber->id, 
                 $phoneNumber2->id

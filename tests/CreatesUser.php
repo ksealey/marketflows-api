@@ -4,6 +4,7 @@ namespace Tests;
 use \App\Models\Account;
 use \App\Models\Company;
 use \App\Models\User;
+use \App\Models\Role;
 use \App\Models\UserCompany;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
@@ -21,14 +22,16 @@ trait CreatesUser
     public function createUser(array $fields = [])
     {
         $this->account = factory(Account::class)->create();
+        
+        $this->user = factory(User::class)->create(array_merge([
+            'account_id' => $this->account->id,
+            'role_id'    => Role::createAdminRole($this->account)->id
+        ], $fields));
+
         $this->company = factory(Company::class)->create([
+            'created_by' => $this->user->id,
             'account_id' => $this->account->id
         ]);
-        $this->user =  factory(User::class)->create(array_merge([
-            'account_id' => $this->account->id,
-            'company_id' => $this->company->id,
-            'is_admin'   => true
-        ], $fields));
 
         UserCompany::create([
             'user_id' => $this->user->id,
@@ -114,11 +117,10 @@ trait CreatesUser
         $user = $this->user ?: $this->createUser();
 
         return factory(PhoneNumberConfig::class)->create(array_merge([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by'  => $user->id,
         ], $fields));
     }
-
 
     public function authHeaders(array $additionalHeaders = [])
     {

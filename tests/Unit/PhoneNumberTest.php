@@ -36,7 +36,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test searching available phone numbers
      *
-     * @group phone-numbers
+     * @group unit-phone-numbers
      */
     public function testPhoneNumberLookups()
     {
@@ -67,8 +67,6 @@ class PhoneNumberTest extends TestCase
         }
 
         //  Now test purchasing an available phone number
-        PhoneNumber::testing();
-
         $numberData = PhoneNumber::purchase($magicNumbers['available']);
         $this->assertTrue($numberData != null);
 
@@ -94,7 +92,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test cleaning phone numbers
      *
-     * @group phone-numbers-
+     * @group unit-phone-numbers
      */
     public function testPhoneNumberCanClean()
     {
@@ -143,7 +141,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test checking if a phone number is in use
      *
-     * @group phone-numbers
+     * @group unit-phone-numbers
      */
     public function testPhoneNumberPoolIsUse()
     {

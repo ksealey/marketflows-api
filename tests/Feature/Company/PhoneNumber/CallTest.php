@@ -14,7 +14,7 @@ class CallTest extends TestCase
     /**
      * Test listing calls
      * 
-     * @group calls
+     * @group feature-calls
      */
     public function testListCalls()
     {
@@ -32,7 +32,10 @@ class CallTest extends TestCase
             'to_number'       => $phoneNumber->number
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $phoneNumber->company_id . '/phone-numbers/' . $phoneNumber->id . '/calls', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-calls', [
+            'company' => $phoneNumber->company_id,
+            'phoneNumber' => $phoneNumber->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -56,7 +59,7 @@ class CallTest extends TestCase
     /**
      * Test read call
      * 
-     * @group calls
+     * @group feature-calls
      */
     public function testReadCall()
     {
@@ -68,7 +71,11 @@ class CallTest extends TestCase
             'to_number'       => $phoneNumber->number
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $phoneNumber->company_id . '/phone-numbers/' . $phoneNumber->id . '/calls/' . $call->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-call', [
+            'company'     => $phoneNumber->company_id,
+            'phoneNumber' => $phoneNumber->id,
+            'call'        => $call->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 

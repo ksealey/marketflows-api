@@ -16,7 +16,7 @@ class CreateCompaniesTable extends Migration
         Schema::create('companies', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
-            $table->bigInteger('created_by')->unsigned()->nullable();
+            $table->bigInteger('created_by')->unsigned();
             $table->string('name', 255);
             $table->integer('phone_number_max_allowed')->nullable();
             $table->json('webhook_actions')->nullable();

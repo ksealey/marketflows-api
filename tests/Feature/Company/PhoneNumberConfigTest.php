@@ -15,23 +15,25 @@ class PhoneNumberConfigTest extends TestCase
     /**
      * Test listing phone number configs
      * 
-     * @group phone-number-configs
+     * @group feature-phone-number-configs
      */
     public function testList()
     {
         $user = $this->createUser();
 
         $config1 = factory(PhoneNumberConfig::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
 
         $config2 = factory(PhoneNumberConfig::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-configs', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-phone-number-configs', [
+            'company' => $this->company->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJson([
             'message' => 'success',
@@ -53,23 +55,25 @@ class PhoneNumberConfigTest extends TestCase
     /**
      * Test listing phone number with a filter
      *
-     * @group phone-number-configs
+     * @group feature-phone-number-configs
      */
     public function testListWithFilter()
     {
         $user = $this->createUser();
 
         $config1 = factory(PhoneNumberConfig::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
 
         $config2 = factory(PhoneNumberConfig::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by'  => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-configs', [
+        $response = $this->json('GET', route('list-phone-number-configs', [
+            'company' => $this->company->id
+        ]), [
             'search' => $config2->name
         ], $this->authHeaders());
 
@@ -92,7 +96,7 @@ class PhoneNumberConfigTest extends TestCase
     /**
      * Test creating a phone number config
      * 
-     * @group phone-number-configs
+     * @group feature-phone-number-configs
      */
     public function testCreate()
     {
@@ -101,7 +105,7 @@ class PhoneNumberConfigTest extends TestCase
         $config = factory(PhoneNumberConfig::class)->make();
 
         $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by' => $user->id
         ]);
 
@@ -121,8 +125,8 @@ class PhoneNumberConfigTest extends TestCase
             'phone_number_config' => [
                 'name'              => $config->name,
                 'source'            => $config->source,
-                'forward_to_number'     => $config->forward_to_number,
-                'audio_clip_id'        => $audioClip->id,
+                'forward_to_number' => $config->forward_to_number,
+                'audio_clip_id'     => $audioClip->id,
                 'whisper_message'   => $config->whisper_message,
                 'whisper_language'  => $config->whisper_language,
                 'whisper_voice'     => $config->whisper_voice,    
@@ -133,18 +137,21 @@ class PhoneNumberConfigTest extends TestCase
      /**
      * Test reading a phone number config
      * 
-     * @group phone-number-configs
+     * @group feature-phone-number-configs
      */
     public function testRead()
     {
         $user = $this->createUser();
 
         $config = factory(PhoneNumberConfig::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id' => $this->company->id,
             'created_by' => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-configs/' . $config->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-phone-number-config', [
+            'company'           => $this->company->id,
+            'phoneNumberConfig' => $config->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -163,25 +170,28 @@ class PhoneNumberConfigTest extends TestCase
     /**
      * Test updating a phone number config
      * 
-     * @group phone-number-configs
+     * @group feature-phone-number-configs
      */
     public function testUpdate()
     {
         $user = $this->createUser();
 
         $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by' => $user->id
         ]);
 
         $config = factory(PhoneNumberConfig::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by' => $user->id,
         ]);
 
         $newConfig = factory(PhoneNumberConfig::class)->make();
 
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-configs/' . $config->id, [
+        $response = $this->json('PUT', route('update-phone-number-config', [
+            'company'           => $this->company->id,
+            'phoneNumberConfig' => $config->id
+        ]), [
             'name'              => $newConfig->name,
             'source'            => $newConfig->source,
             'forward_to_number' => $newConfig->forward_to_number,
@@ -211,14 +221,14 @@ class PhoneNumberConfigTest extends TestCase
     /**
      * Test deleting a phone number config when in use
      * 
-     * @group phone-number-configs
+     * @group feature-phone-number-configs
      */
     public function testCannotDeleteWhenInUse()
     {
         $user  = $this->createUser();
 
         $config = factory(PhoneNumberConfig::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by'  => $user->id,
         ]);
 
@@ -226,7 +236,10 @@ class PhoneNumberConfigTest extends TestCase
             'phone_number_config_id' => $config->id
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-configs/' . $config->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-phone-number-config', [
+            'company'           => $this->company->id,
+            'phoneNumberConfig' => $config->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(400);
 
@@ -238,18 +251,21 @@ class PhoneNumberConfigTest extends TestCase
     /**
      * Test deleting a phone number config
      * 
-     * @group phone-number-configs
+     * @group feature-phone-number-configs
      */
     public function testDelete()
     {
         $user  = $this->createUser();
 
         $config = factory(PhoneNumberConfig::class)->create([
-            'company_id'  => $user->company_id,
+            'company_id'  => $this->company->id,
             'created_by'  => $user->id,
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-configs/' . $config->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-phone-number-config', [
+            'company'           => $this->company->id,
+            'phoneNumberConfig' => $config->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 

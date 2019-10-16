@@ -20,7 +20,3 @@ Artisan::command('inspire', function () {
 Artisan::command('clear:password-resets', function () {
     \App\Models\Auth\PasswordReset::where('expires_at', '<', date('Y-m-d H:i:s'))->delete();
 })->describe('Clear expired password resets');
-
-Artisan::command('clear:invites', function () {
-    \App\Models\Auth\UserInvite::where('expires_at', '<', date('Y-m-d H:i:s'))->delete();
-})->describe('Clear expired invites');

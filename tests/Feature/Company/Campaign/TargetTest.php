@@ -15,7 +15,7 @@ class TargetTest extends TestCase
    /**
     * Test creating a campaign target 
     *
-    * @group campaign-targets
+    * @group feature-campaign-targets
     */
     public function testCreate()
     {
@@ -25,7 +25,10 @@ class TargetTest extends TestCase
 
         $target = factory(CampaignTarget::class)->make();
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id . '/targets', [
+        $response = $this->json('POST', route('create-campaign-target', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id
+        ]), [
             'rules' => $target->rules
         ], $this->authHeaders());
 
@@ -42,7 +45,7 @@ class TargetTest extends TestCase
    /**
     * Test creating a campaign target on a non-web campaign
     *
-    * @group campaign-targets
+    * @group feature-campaign-targets
     */
     public function testCreateFailsWhenNotWebCampaign()
     {
@@ -52,7 +55,11 @@ class TargetTest extends TestCase
 
         $target = factory(CampaignTarget::class)->make();
 
-        $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id . '/targets', [
+        $response = $this->json('POST', route('create-campaign-target', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id,
+            'target'   => $target->id
+        ]), [
             'rules' => $target->rules
         ], $this->authHeaders());
 
@@ -65,7 +72,7 @@ class TargetTest extends TestCase
     /**
     * Test updating a campaign target 
     *
-    * @group campaign-targets
+    * @group feature-campaign-targets
     */
     public function testUpdate()
     {
@@ -104,7 +111,11 @@ class TargetTest extends TestCase
             ])
         ]);
 
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id . '/targets/' . $target->id, [
+        $response = $this->json('PUT', route('update-campaign-target', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id,
+            'target'   => $target->id
+        ]), [
             'rules' => $updatedTarget->rules
         ], $this->authHeaders());
 
@@ -124,7 +135,7 @@ class TargetTest extends TestCase
      /**
     * Test deleting a campaign target 
     *
-    * @group campaign-targets
+    * @group feature-campaign-targets
     */
     public function testDelete()
     {
@@ -136,7 +147,11 @@ class TargetTest extends TestCase
             'campaign_id' => $campaign->id,
         ]);
 
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $this->company->id . '/campaigns/' . $campaign->id . '/targets/' . $target->id, [
+        $response = $this->json('DELETE', route('delete-campaign-target', [
+            'company' => $this->company->id,
+            'campaign' => $campaign->id,
+            'target'   => $target->id
+        ]), [
            
         ], $this->authHeaders());
 

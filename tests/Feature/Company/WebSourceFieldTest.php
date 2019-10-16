@@ -5,6 +5,7 @@ namespace Tests\Feature\Company;
 use \Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use \App\Models\Company;
 use \App\Models\Company\WebSourceField;
 
 class WebSourceFieldTest extends TestCase
@@ -14,7 +15,7 @@ class WebSourceFieldTest extends TestCase
     /**
      * Test listing resources
      * 
-     * @group web-source-fields
+     * @group feature-web-source-fields
      */
     public function testList()
     {
@@ -28,7 +29,9 @@ class WebSourceFieldTest extends TestCase
             'company_id' => $this->company->id
         ]); 
 
-        $response = $this->json('GET', '/v1/companies/' . $this->company->id . '/web-source-fields', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-web-source-fields', [
+            'company'        => $this->company->id,
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
@@ -38,13 +41,13 @@ class WebSourceFieldTest extends TestCase
                     'label' => $field1->label,
                     'url_parameter' => $field1->url_parameter,
                     'default_value' => $field1->default_value,
-                    'direct_value' => $field1->direct_value,
+                    'direct_value'  => $field1->direct_value,
                 ],
                 [
                     'label' => $field2->label,
                     'url_parameter' => $field2->url_parameter,
                     'default_value' => $field2->default_value,
-                    'direct_value' => $field2->direct_value,
+                    'direct_value'  => $field2->direct_value,
                 ]
             ]
         ]);
@@ -53,7 +56,7 @@ class WebSourceFieldTest extends TestCase
     /**
      * Test creating
      * 
-     * @group web-source-fields
+     * @group feature-web-source-fields
      */
     public function testCreate()
     {
@@ -68,7 +71,9 @@ class WebSourceFieldTest extends TestCase
             'direct_value'  => $field->direct_value,
         ];
         
-        $response = $this->json('POST', '/v1/companies/' . $this->company->id . '/web-source-fields', $params, $this->authHeaders());
+        $response = $this->json('POST', route('create-web-source-field', [
+            'company' => $this->company->id
+        ]), $params, $this->authHeaders());
         $response->assertStatus(201);
         $response->assertJSON([
             'web_source_field' => $params
@@ -78,26 +83,28 @@ class WebSourceFieldTest extends TestCase
     /**
      * Test creating fails with duplicate label
      * 
-     * @group web-source-fields
+     * @group feature-web-source-fields
      */
     public function testCreateFailsWithDuplicateLabel()
     {
         $user = $this->createUser();
 
-        $exisingField = factory(WebSourceField::class)->create([
+        $existingField = factory(WebSourceField::class)->create([
             'company_id' => $this->company->id
         ]);
 
         $field = factory(WebSourceField::class)->make();
 
         $params = [
-            'label'         => $exisingField->label,
+            'label'         => $existingField->label,
             'url_parameter' => $field->url_parameter,
             'default_value' => $field->default_value,
             'direct_value'  => $field->direct_value,
         ];
         
-        $response = $this->json('POST', '/v1/companies/' . $this->company->id . '/web-source-fields', $params, $this->authHeaders());
+        $response = $this->json('POST', route('create-web-source-field', [
+            'company' => $this->company->id
+        ]), $params, $this->authHeaders());
         $response->assertStatus(400);
         $response->assertJSONStructure([
             'error'
@@ -107,7 +114,7 @@ class WebSourceFieldTest extends TestCase
     /**
      * Test creating happens with duplicate label on other company
      * 
-     * @group web-source-fields
+     * @group feature-web-source-fields
      */
     public function testCreateHappensWithDuplicateLabelOnOtherCompany()
     {
@@ -115,20 +122,27 @@ class WebSourceFieldTest extends TestCase
 
         $user = $this->createUser();
 
-        $exisingField = factory(WebSourceField::class)->create([
-            'company_id' => $otherUser->company_id
+        $otherCompany = factory(Company::class)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $user->id
+        ]);
+
+        $existingField = factory(WebSourceField::class)->create([
+            'company_id' => $otherCompany->id,
         ]);
 
         $field = factory(WebSourceField::class)->make();
 
         $params = [
-            'label'         => $exisingField->label,
+            'label'         => $existingField->label,
             'url_parameter' => $field->url_parameter,
             'default_value' => $field->default_value,
             'direct_value'  => $field->direct_value,
         ];
         
-        $response = $this->json('POST', '/v1/companies/' . $this->company->id . '/web-source-fields', $params, $this->authHeaders());
+        $response = $this->json('POST', route('create-web-source-field', [
+            'company' => $this->company->id
+        ]), $params, $this->authHeaders());
         $response->assertStatus(201);
         $response->assertJSON([
             'web_source_field' => $params
@@ -138,7 +152,7 @@ class WebSourceFieldTest extends TestCase
     /**
      * Test read
      * 
-     * @group web-source-fields
+     * @group feature-web-source-fields
      */
     public function testRead()
     {
@@ -148,7 +162,10 @@ class WebSourceFieldTest extends TestCase
             'company_id' => $this->company->id
         ]);
         
-        $response = $this->json('GET', '/v1/companies/' . $this->company->id . '/web-source-fields/' . $exisingField->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-web-source-field', [
+            'company'        => $this->company->id,
+            'webSourceField' => $exisingField->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJSON([
             'web_source_field' => [
@@ -164,30 +181,58 @@ class WebSourceFieldTest extends TestCase
     /**
      * Test update
      * 
-     * @group web-source-fields
+     * @group feature-web-source-fields
      */
     public function testUpdate()
     {
         $user = $this->createUser();
 
-        $exisingField = factory(WebSourceField::class)->create([
+        $existingField = factory(WebSourceField::class)->create([
             'company_id' => $this->company->id
         ]);
 
         $field = factory(WebSourceField::class)->make();
 
         $params = [
-            'id'            => $exisingField->id,
+            'id'            => $existingField->id,
             'label'         => $field->label,
             'url_parameter' => $field->url_parameter,
             'default_value' => $field->default_value,
-            'direct_value'  => $exisingField->direct_value,
+            'direct_value'  => $existingField->direct_value,
         ];
         
-        $response = $this->json('PUT', '/v1/companies/' . $this->company->id . '/web-source-fields/' . $exisingField->id, $params, $this->authHeaders());
+        $response = $this->json('PUT', route('update-web-source-field', [
+            'company' => $this->company->id,
+            'webSourceField' => $existingField->id
+        ]), $params, $this->authHeaders());
+
         $response->assertStatus(200);
         $response->assertJSON([
             'web_source_field' => $params
+        ]);
+    }
+
+    /**
+     * Test deleting
+     * 
+     * @group feature-web-source-fields
+     */
+    public function testDelete()
+    {
+        $user = $this->createUser();
+
+        $existingField = factory(WebSourceField::class)->create([
+            'company_id' => $this->company->id
+        ]);
+
+        $response = $this->json('DELETE', route('delete-web-source-field', [
+            'company'        => $this->company->id,
+            'webSourceField' => $existingField->id
+        ]), [], $this->authHeaders());
+
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'message' => 'deleted'
         ]);
     }
 }

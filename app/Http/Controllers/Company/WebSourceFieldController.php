@@ -58,7 +58,7 @@ class WebSourceFieldController extends Controller
             'label'         => $request->label,
             'url_parameter' => $request->url_parameter ?: null,
             'default_value' => $request->default_value ?: null,
-            'direct_value'  => $request->direct_value ?: null,
+            'direct_value'  => $request->direct_value  ?: null,
         ]);
 
         return response([
@@ -109,7 +109,7 @@ class WebSourceFieldController extends Controller
         $webSourceField->label         = $request->label;
         $webSourceField->url_parameter = $request->url_parameter ?: null;
         $webSourceField->default_value = $request->default_value ?: null;
-        $webSourceField->direct_value  = $request->direct_value ?: null;
+        $webSourceField->direct_value  = $request->direct_value  ?: null;
         $webSourceField->save();
 
         return response([

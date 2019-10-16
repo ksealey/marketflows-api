@@ -131,7 +131,7 @@ class WebSessionTest extends TestCase
     /**
      * Test creating a web session with an existing identity
      *
-     * @group feature-web-sessions-
+     * @group feature-web-sessions
      */
     public function testCreateSessionWithExistingProfileIdentity()
     {
@@ -225,6 +225,64 @@ class WebSessionTest extends TestCase
         $this->assertTrue($session->web_device_id == $device->id);
     }
 
+    /**
+     * Test creating a web session with an existing device
+     *
+     * @group feature-web-sessions-
+     */
+    public function testCreateSessionRotatesPhoneNumbers()
+    {
+        $profile         = factory(WebProfile::class)->create();
+        $profileIdentity = factory(WebProfileIdentity::class)->create([
+            'web_profile_id' => $profile->id
+        ]); 
+        $device  = factory(WebDevice::class)->create([
+            'web_profile_identity_id' => $profileIdentity->id
+        ]);
+        $campaign = $this->createCampaign([
+            'activated_at' => date('Y-m-d H:i:s'),
+            'type'         => Campaign::TYPE_WEB
+        ]);
+
+        $campaignDomain = factory(CampaignDomain::class)->create([
+            'campaign_id' => $campaign->id,        
+        ]);
+
+        $pool   = $this->createPhoneNumberPool([
+            'campaign_id'              => $campaign->id,
+            'auto_provision_enabled_at' => null
+        ]);
+
+        $phoneNumber = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ]);
+
+        $phoneNumber2 = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ]);
+
+        $phoneNumber3 = $this->createPhoneNumber([
+            'phone_number_pool_id' => $pool->id
+        ]);
+
+        $response = $this->call('POST', $this->endpoint, [
+            'campaign_domain_uuid' => $campaignDomain->uuid
+        ], [
+            'mkf_pi_uuid' => $profileIdentity->uuid,
+            'mkf_device_uuid' => $device->uuid
+        ]);
+
+        $this->assertHasRequiredCookies($response);
+
+        $session  = WebSession::orderBy('id', 'DESC')->first();
+    
+        $this->assertTrue($session->campaign_id == $campaign->id);
+        $this->assertTrue($session->campaign_domain_id == $campaignDomain->id);
+        $this->assertTrue($session->phone_number_pool_id == $pool->id);
+        $this->assertTrue($session->phone_number_id == $phoneNumber->id);
+        $this->assertTrue($session->web_profile_identity_id == $profileIdentity->id);
+        $this->assertTrue($session->web_device_id == $device->id);
+    }
 
     public function assertHasRequiredCookies($response)
     {

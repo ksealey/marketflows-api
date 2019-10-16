@@ -15,7 +15,7 @@ class CompanyTest extends TestCase
     /**
      * Test listing records
      * 
-     * @group companies
+     * @group feature-companies
      */
     public function testList()
     {
@@ -24,11 +24,12 @@ class CompanyTest extends TestCase
         $companies = [];
         for($i = 0; $i < 3; $i++){
             $companies[] = factory(Company::class)->create([
-                'account_id' => $user->account_id
+                'account_id' => $user->account_id,
+                'created_by' => $user->id
             ]);
         }
 
-        $response = $this->json('GET', 'http://localhost/v1/companies', [], $this->authHeaders());
+        $response = $this->json('GET', route('list-companies'), [], $this->authHeaders());
         $response->assertStatus(200);
         
         $response->assertJson([
@@ -37,7 +38,7 @@ class CompanyTest extends TestCase
             'page'         => 1,
             'total_pages'  => 1,
             'companies'    => [
-                ['id' => $user->company_id],
+                ['id' => $this->company->id],
                 ['id' => $companies[0]->id],
                 ['id' => $companies[1]->id],
                 ['id' => $companies[2]->id]
@@ -48,7 +49,7 @@ class CompanyTest extends TestCase
     /**
      * Test listing records with a filter
      * 
-     * @group companies
+     * @group feature-companies
      */
     public function testListWithFilter()
     {
@@ -57,11 +58,12 @@ class CompanyTest extends TestCase
         $companies = [];
         for($i = 0; $i < 3; $i++){
             $companies[] = factory(Company::class)->create([
-                'account_id' => $user->account_id
+                'account_id' => $user->account_id,
+                'created_by' => $user->id
             ]);
         }
 
-        $response = $this->json('GET', 'http://localhost/v1/companies', [
+        $response = $this->json('GET', route('list-companies'), [
             'search' => $companies[0]->name,
             'limit'  => 5,
             'page'   => 1
@@ -81,14 +83,14 @@ class CompanyTest extends TestCase
     /**
      * Test creating a record
      *
-     * @group companies
+     * @group feature-companies
      */
     public function testCreate()
     {
         $user    = $this->createUser();
         $company = factory(Company::class)->make();
 
-        $response = $this->json('POST', 'http://localhost/v1/companies', [
+        $response = $this->json('POST', route('create-company'), [
             'name' => $company->name,
             'webhook_actions' => $company->webhook_actions,
         ], $this->authHeaders());
@@ -107,16 +109,19 @@ class CompanyTest extends TestCase
     /**
      * Test reading a record
      *
-     * @group companies
+     * @group feature-companies
      */
     public function testRead()
     {
         $user    = $this->createUser();
         $company = factory(Company::class)->create([
             'account_id' => $user->account_id,
+            'created_by' => $user->id
         ]);
 
-        $response = $this->json('GET', 'http://localhost/v1/companies/' . $company->id, [], $this->authHeaders());
+        $response = $this->json('GET', route('read-company', [
+            'company' => $company->id
+        ]), [], $this->authHeaders());
         $response->assertStatus(200);
 
         $response->assertJSON([
@@ -130,13 +135,14 @@ class CompanyTest extends TestCase
     /**
      * Test updating a record
      *
-     * @group companies
+     * @group feature-companies
      */
     public function testUpdate()
     {
         $user    = $this->createUser();
         $company = factory(Company::class)->create([
-            'account_id' => $user->account_id
+            'account_id' => $user->account_id,
+            'created_by' => $user->id
         ]);
 
         $updatedCompany = factory(Company::class)->make([
@@ -157,7 +163,9 @@ class CompanyTest extends TestCase
             ])
         ]);
 
-        $response = $this->json('PUT', 'http://localhost/v1/companies/' . $company->id, [
+        $response = $this->json('PUT', route('update-company', [
+            'company' => $company->id
+        ]), [
             'name'            => $updatedCompany->name,
             'webhook_actions' => $updatedCompany->webhook_actions
         ], $this->authHeaders());
@@ -177,17 +185,20 @@ class CompanyTest extends TestCase
     /**
      * Test deleting a record
      *
-     * @group companies
+     * @group feature-companies
      */
     public function testDelete()
     {
         $user    = $this->createUser();
         $company = factory(Company::class)->create([
-            'account_id' => $user->account_id
+            'account_id' => $user->account_id,
+            'created_by' => $user->id
         ]);
 
         $updatedCompany = factory(Company::class)->make();
-        $response = $this->json('DELETE', 'http://localhost/v1/companies/' . $company->id, [], $this->authHeaders());
+        $response = $this->json('DELETE', route('delete-company', [
+            'company' =>  $company->id
+        ]), [], $this->authHeaders());
 
         $response->assertStatus(200);
 
