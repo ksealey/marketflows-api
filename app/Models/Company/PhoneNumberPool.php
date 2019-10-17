@@ -151,7 +151,7 @@ class PhoneNumberPool extends Model implements CanAcceptIncomingCalls
     }
 
     /**
-     * Provision a phone number using gived rule
+     * Provision a phone number using given rule
      * 
      * @param PhoneNumberPoolProvisionRule $provisionRule   The rule to be used
      * @param string $overrideNumber                        A number that will override any rules given

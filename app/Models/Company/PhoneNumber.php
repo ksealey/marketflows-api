@@ -264,4 +264,17 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
         return  ($this->country_code ? '+' . $this->country_code : '') 
                 . $this->number;
     }
+
+    /**
+     * Allow a number to be put be re-used
+     * 
+     */
+    public function unassign()
+    {
+        $this->assigned_at = null;
+
+        $this->save();
+
+        return $this;
+    }
 }

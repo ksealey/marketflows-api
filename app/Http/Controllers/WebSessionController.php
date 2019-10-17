@@ -13,6 +13,7 @@ use App\Models\Company\Campaign;
 use App\Models\Company\CampaignDomain;
 use App\Models\Company\PhoneNumberPool;
 use Validator;
+use Cookie;
 
 class WebSessionController extends Controller
 {
@@ -201,5 +202,32 @@ class WebSessionController extends Controller
                ->withCookie(cookie($this->sessionHistoryKey, $sessionHistory, $longCookieLifetime, '/')) // Store forever, but only on the requesting website
                ->withCookie(cookie($this->profileIdentityUUIDKey, $profileIdentity->uuid, $longCookieLifetime, '/', $cookieDomain)) // Store forever on this domain
                ->withCookie(cookie($this->deviceUUIDKey, $device->uuid, $longCookieLifetime, '/', $cookieDomain)); // Store forever on this domain
+    }
+
+    /**
+     * End an active session
+     * 
+     */
+    public function end(Request $request, $sessionUUID)
+    {
+        $session = Session::where('uuid', $sessionUUID)->first();
+        if( ! $session )
+            return reponse([
+                'error' => 'Not found'
+            ], 404);
+
+        // Unassign the phone number
+        if( $session->phone_number_id ){
+            $phoneNumber = Phone::find($session->phone_number_id);
+            $phoneNumber->unassign();
+        }
+
+        //  Queue the removal of the session cookies
+        Cookie::queue(Cookie::forget($this->sessionUUIDKey));
+        Cookie::queue(Cookie::forget($this->sessionPhoneKey));
+
+        return response([
+            'message' => 'ok'
+        ]);
     }
 }

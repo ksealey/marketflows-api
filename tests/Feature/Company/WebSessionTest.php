@@ -228,7 +228,7 @@ class WebSessionTest extends TestCase
     /**
      * Test creating a web session with an existing device
      *
-     * @group feature-web-sessions-
+     * @group feature-web-sessions
      */
     public function testCreateSessionRotatesPhoneNumbers()
     {

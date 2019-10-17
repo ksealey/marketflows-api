@@ -447,7 +447,7 @@ Route::middleware('api')->group(function(){
     */
     Route::middleware('throttle:30,1')->prefix('web-sessions')->group(function(){
         Route::post('/', 'WebSessionController@create');
-        Route::post('/{sessionUUID}/end', 'WebSessionController@end');
+        Route::any('/{sessionUUID}/end', 'WebSessionController@end');
     });
 });
 
