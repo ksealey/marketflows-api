@@ -78,11 +78,7 @@ class LoginController extends Controller
         $user->auth_token     = str_random(128);
         $user->save();
 
-        return response([
-            'message'       => 'success',
-            'auth_token'    => $user->auth_token,
-            'user'          => $user,
-        ], 200);
+        return $this->authenticatedResponse($user);
     }
 
     /**
@@ -184,10 +180,21 @@ class LoginController extends Controller
         //  Delete password reset
         $passwordReset->delete();
 
+        return $this->authenticatedResponse($user);
+    }
+
+    private function authenticatedResponse($user)
+    {
+        $cookieDomain = env('COOKIE_DOMAIN');
+
+        $aYearFromNow = 60 * 24 * 365;
+
         return response([
             'message'       => 'success',
             'auth_token'    => $user->auth_token, 
-            'user'          => $user
-        ]);
+            'user'          => $user->profile()
+        ])
+        ->cookie('auth_token', $user->auth_token, $aYearFromNow, '/', $cookieDomain, env('SECURE_COOKIES'))
+        ->cookie('user', json_encode($user->profile()), $aYearFromNow, '/', $cookieDomain, env('SECURE_COOKIES'), false);
     }
 }

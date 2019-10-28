@@ -38,16 +38,22 @@ class AuthServiceProvider extends ServiceProvider
 
         Auth::viaRequest('auth_token', function ($request){
             //  Check headers for bearer token
-            $auth = $request->header('Authorization');
-            if( ! $auth )
-                return null;
-            
-            $segments = explode(' ', $auth);
-            if( count($segments) !== 2 )
-                return null;
+            $authToken = null;
+            if( $auth = $request->header('Authorization') ){
+                $segments = explode(' ', $auth);
+                if( count($segments) !== 2 )
+                    return null;
 
-            list($tokenType, $authToken) = $segments; 
-            if( strtoupper($tokenType) !== 'BEARER' )
+                list($tokenType, $authToken) = $segments; 
+                if( strtoupper($tokenType) !== 'BEARER' )
+                    return null;
+            }
+            
+            //  Check cookies for auth token if not found in header
+            if( ! $authToken )
+                $authToken = $request->cookie('auth_token');
+
+            if( ! $authToken )
                 return null;
         
             return User::where('auth_token', $authToken)->first();

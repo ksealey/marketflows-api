@@ -11,20 +11,73 @@
 |
 */
 
-Route::get('/', function (Request $request) {
-    //var_dump($_COOKIE); exit;
-    return view('welcome')->withCookie(cookie('tester', 'MF Value', 0, '/'));
+Route::get('/', function(){
+    return view('site.index', [
+        'pageKey' => 'home'
+    ]);
+})->name('home');
+
+/**
+ * Features
+ * 
+ */
+Route::prefix('features')->group(function(){
+    $pageKey = 'features';
+    
+    Route::get('/', function() use($pageKey){
+        return view('site.features.index',[
+            'pageKey' => $pageKey
+        ]);
+    })->name('features');
+
+    Route::get('/call-tracking', function() use($pageKey){
+        return view('site.features.call-tracking', [
+            'pageKey' => $pageKey
+        ]);
+    })->name('features-call-tracking');
+
+    Route::get('/analytics', function() use($pageKey){
+        return view('site.features.analytics', [
+            'pageKey' => $pageKey
+        ]);
+    })->name('features-analytics');
+
+    Route::get('/reporting', function() use($pageKey){
+        return view('site.features.reporting', [
+            'pageKey' => $pageKey
+        ]);
+    })->name('features-reporting');
 });
 
-Route::get('/my-js', function(){
-    return 'setTimeout(function(){console.log(Cookies.get());}, 500);';
-});
+/**
+ * Pricing
+ * 
+ */
+Route::get('/pricing', function(){
+    return view('site.pricing', [
+        'pageKey' => 'pricing'
+    ]);
+})->name('pricing');
 
-Route::get('companies/{companyId}/js/main.js', function(Request $request, $companyId){
-    $company = \App\Models\Company::find($companyId);
+/**
+ * Registration
+ * 
+ */
+Route::get('/register', function(){
+    return view('auth.register', [
+        'pageKey' => 'register'
+    ]);
+})->name('register');
 
-    return trim(strip_tags(view('js.main', ['company'=>$company])->render()));
-});
+/**
+ * Login
+ * 
+ */
+Route::get('/login', function(){
+    return view('auth.login', [
+        'pageKey' => 'login'
+    ]);
+})->name('login');
 
 
 

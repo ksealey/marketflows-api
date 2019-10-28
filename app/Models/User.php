@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\EmailVerification;
 use App\Models\Company;
+use Cookie;
 
 class User extends Authenticatable
 {
@@ -126,5 +127,19 @@ class User extends Authenticatable
         }
 
         return false;
+    }
+
+    public function profile()
+    {
+        $myAccount = $this->account;
+        $myRole    = $this->role;
+
+        return [
+            'account'    => $myAccount,
+            'first_name' => $this->first_name,
+            'last_name'  => $this->last_name,
+            'email'      => $this->email,
+            'role'       => $myRole,
+        ];
     }
 }
