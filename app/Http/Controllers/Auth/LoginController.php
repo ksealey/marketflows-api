@@ -9,11 +9,14 @@ use App\Models\Auth\PasswordReset;
 use App\Mail\Auth\PasswordReset as PasswordResetEmail;
 use Validator;
 use DateTime;
-use DateTimeZone;
 use Mail;
 
 class LoginController extends Controller
 {
+    /**
+     * Log a user in
+     * 
+     */
     public function login(Request $request)
     {
         $rules = [
@@ -43,11 +46,8 @@ class LoginController extends Controller
 
         //  Block disabled users
         if( $user->disabled_until && date('U', strtotime($user->disabled_until)) > date('U')){
-            $lockedUntil = new DateTime($user->disabled_until);
-            $lockedUntil->setTimeZone(new DateTimeZone($user->timezone));
-
             return response([
-                'error' => 'Account disabled - try again after ' . $lockedUntil->format('m/d/Y g:ia')
+                'error' => 'Account disabled - try again later'
             ], 400);
         }
         
@@ -56,7 +56,7 @@ class LoginController extends Controller
 
             //  If we have another failed attempt, lock for a longer period
             if( $user->login_attempts > 3 ){
-                $lockedHours = $user->login_attempts * 2;
+                $lockedHours          = $user->login_attempts * 2;
                 $user->disabled_until = date('Y-m-d H:i:s', strtotime('now +' . $lockedHours . ' hours'));
                 $user->save();
 
@@ -183,6 +183,10 @@ class LoginController extends Controller
         return $this->authenticatedResponse($user);
     }
 
+    /**
+     * Send a response with cookies needed for authentication
+     * 
+     */
     private function authenticatedResponse($user)
     {
         $cookieDomain = env('COOKIE_DOMAIN');

@@ -38,6 +38,12 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
 |----------------------------------------
 */
 Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
+    Route::get('/me', function(Request $request){
+        return response([
+            'user' => $request->user()
+        ]);
+    })->name('me');
+
     /*
     |--------------------------------
     | Handle roles

@@ -11,6 +11,10 @@ use DB;
 
 class UserController extends Controller
 {
+    /**
+     * View a user
+     * 
+     */
     public function read(User $user)
     {
         return response([
@@ -18,16 +22,16 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Update a user
+     * 
+     */
     public function update(Request $request, User $user)
     {
         $rules = [
             'first_name'            => 'bail|required|min:2|max:64',
             'last_name'             => 'bail|required|min:2|max:64',
             'email'                 => 'bail|required|email|max:255',
-            'country_code'          => 'bail|digits_between:1,6',
-            'area_code'             => 'bail|digits_between:1,6',
-            'phone'                 => 'bail|required|digits_between:10,16',
-            'timezone'              => 'bail|required|timezone',
             'role'                  => 'numeric',
             'companies'             => 'required|array',
             'companies.*'           => 'numeric',
@@ -108,10 +112,6 @@ class UserController extends Controller
         $user->first_name   = $request->first_name;
         $user->last_name    = $request->last_name;
         $user->email        = $request->email;
-        $user->country_code = $request->country_code;
-        $user->area_code    = $request->area_code;
-        $user->phone        = $request->phone;
-        $user->timezone     = $request->timezone;
         $user->role_id      = $request->role;
         $user->save();
 

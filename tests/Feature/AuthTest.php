@@ -10,6 +10,7 @@ use \App\Models\Account;
 use \App\Models\Company;
 use \App\Models\AccountCompany;
 use \App\Models\User;
+use \App\Models\Application;
 
 
 
@@ -36,10 +37,6 @@ class AuthTest extends TestCase
             'first_name'   => $user->first_name,
             'last_name'    => $user->last_name,
             'email'        => $user->email,
-            'country_code' => $user->country_code,
-            'area_code'    => $user->area_code,
-            'phone'        => $user->phone,
-            'timezone'     => $user->timezone,
             'password'     => 'Password1!'
         ];
 
@@ -282,5 +279,143 @@ class AuthTest extends TestCase
     }
 
 
+    /**
+     * Test making a request as an application
+     * 
+     * @group feature-auth
+     * 
+     */
+    public function testApplicationRequest()
+    {
+        $user = $this->createUser();
+
+        $app  = factory(Application::class)->create([
+            'user_id'      => $user->id,
+            'activated_at' => date('Y-m-d H:i:s')
+        ]);
+
+        $response = $this->json('GET', route('me'), [], [
+            'Authorization' => 'Basic ' . base64_encode($app->key . ':' . 'password')
+        ]);
+
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            'user' => [
+                'id'         => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email
+            ]
+        ]);
+    }
+
+    /**
+     * Test making a request as an application  with wrong credentials
+     * 
+     * @group feature-auth
+     * 
+     */
+    public function testApplicationRequestFailing()
+    {
+        $user = $this->createUser();
+
+        $app  = factory(Application::class)->create([
+            'user_id'      => $user->id,
+            'activated_at' => date('Y-m-d H:i:s')
+        ]);
+
+        $response = $this->json('GET', route('me'), [], [
+            'Authorization' => 'Basic ' . base64_encode($app->key . ':' . 'password1')
+        ]);
+
+        $response->assertStatus(401);
+
+        $response->assertJSON([
+            'message' => 'Unauthenticated.'
+        ]);
+    }
+
+    /**
+     * Test making a request as an application that has been disabled
+     * 
+     * @group feature-auth
+     * 
+     */
+     public function testApplicationRequestFailingForDisable()
+     {
+         $user = $this->createUser();
+ 
+         $app  = factory(Application::class)->create([
+             'user_id'      => $user->id,
+             'disabled_at' => date('Y-m-d H:i:s')
+         ]);
+ 
+         $response = $this->json('GET', route('me'), [], [
+             'Authorization' => 'Basic ' . base64_encode($app->key . ':' . 'password')
+         ]);
+ 
+         $response->assertStatus(401);
+ 
+         $response->assertJSON([
+             'message' => 'Unauthenticated.'
+         ]);
+ 
+     }
+
+    /**
+     * Test making a request as an application that has not been activated
+     * 
+     * @group feature-auth
+     * 
+     */
+     public function testApplicationLoginFailingForInactive()
+     {
+         $user = $this->createUser();
+ 
+         $app  = factory(Application::class)->create([
+             'user_id'      => $user->id,
+             'activated_at' => null
+         ]);
+ 
+         $response = $this->json('GET', route('me'), [], [
+             'Authorization' => 'Basic ' . base64_encode($app->key . ':' . 'password')
+         ]);
+ 
+         $response->assertStatus(401);
+ 
+         $response->assertJSON([
+             'message' => 'Unauthenticated.'
+         ]);
+ 
+     }
+     /**
+     * Test making a request as an application that is active, with a disabled user
+     * 
+     * @group feature-auth
+     * 
+     */
+     public function testApplicationLoginFailingForDisabledUser()
+     {
+         $user = $this->createUser([
+             'disabled_until' => date('Y-m-d H:i:s')
+         ]);
+ 
+         $app  = factory(Application::class)->create([
+             'user_id'      => $user->id,
+             'activated_at' => date('Y-m-d H:i:s')
+         ]);
+ 
+         $response = $this->json('GET', route('me'), [], [
+             'Authorization' => 'Basic ' . base64_encode($app->key . ':' . 'password')
+         ]);
+ 
+         $response->assertStatus(401);
+ 
+         $response->assertJSON([
+             'message' => 'Unauthenticated.'
+         ]);
+ 
+     }
     
 }

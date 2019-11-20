@@ -76,10 +76,6 @@ class UserTest extends TestCase
             'first_name'   => $updatedUser->first_name,
             'last_name'    => $updatedUser->last_name,
             'email'        => $updatedUser->email,
-            'country_code' => $updatedUser->country_code,
-            'area_code'    => $updatedUser->area_code,
-            'phone'        => $updatedUser->phone,
-            'timezone'     => $updatedUser->timezone,
             'companies'    => $companyIds
         ], $this->authHeaders());
 
@@ -91,10 +87,6 @@ class UserTest extends TestCase
                 'first_name'   => $updatedUser->first_name,
                 'last_name'    => $updatedUser->last_name,
                 'email'        => $updatedUser->email,
-                'country_code' => $updatedUser->country_code,
-                'area_code'    => $updatedUser->area_code,
-                'phone'        => $updatedUser->phone,
-                'timezone'     => $updatedUser->timezone,
             ]
         ]);
 

@@ -4,15 +4,17 @@
         <title>@yield('title')</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="/vendor/fontawesome/css/all.css" rel="stylesheet"/>
-        <link href="https://fonts.googleapis.com/css?family=Hind:400,500,700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
         <link rel="stylesheet" type="text/css" href="/css/normalize.css"/>
         <link rel="stylesheet" type="text/css" href="/css/site.css"/>
     </head>
     <body>
         <header>
             <div class="header-container">
-                <img/>
+                <a href="/">
+                    <img src="/images/logo-2.png" id="header-logo"/>
+                </a>
             </div>
             <!--Mobile menu button-->
             <div class="header-container mobile">
@@ -32,20 +34,14 @@
                         <ul class="sub-menu">
                             <li>
                                 <a href="{{ route('features-call-tracking') }}">
-                                    <i class="fas fa-phone-volume"></i>
+                                    <i class="material-icons">phone</i>
                                     <span>Call Tracking</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="{{ route('features-analytics') }}">
-                                    <i class="fas fa-chart-area"></i>
-                                    <span>Analytics</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('features-reporting') }}">
-                                    <i class="far fa-chart-bar"></i>                                    
-                                    <span>Advanced Reporting</span>
+                                <a href="{{ route('features-call-tracking') }}">
+                                <i class="material-icons">chat_bubble_outline</i>
+                                    <span>SMS Tracking</span>
                                 </a>
                             </li>
                         </ul>
@@ -62,8 +58,8 @@
                 </ul>
             </div>
         </header>
-        <div  >
-
+        <div>
+            @yield('content')
         </div>
         <footer>
 
@@ -72,6 +68,7 @@
         <script>
             $('#mobile-menu-button').click(function(){
                 $(this).toggleClass('open');
+                
                 $('.navigation-container').toggleClass('open');
             });
         </script>

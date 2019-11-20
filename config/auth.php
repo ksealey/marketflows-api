@@ -43,8 +43,7 @@ return [
 
         'api' => [
             'driver'   => 'auth_token',
-            
-        ],
+        ]
     ],
 
     /*

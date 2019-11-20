@@ -20,14 +20,9 @@ class CreateUsersTable extends Migration
             $table->string('first_name', 64);
             $table->string('last_name', 64);
             $table->string('email', 255)->unique();
-            $table->string('country_code', 8)->nullable();
-            $table->string('area_code', 8);
-            $table->string('phone', 16);
             $table->string('password_hash', 255);
             $table->string('auth_token', 255);
             $table->dateTime('email_verified_at')->nullable();
-            $table->dateTime('phone_verified_at')->nullable();
-            $table->string('timezone', 255);
             $table->dateTime('last_login_at')->nullable();
             $table->dateTime('password_reset_at')->nullable();
             $table->dateTime('disabled_until')->nullable();

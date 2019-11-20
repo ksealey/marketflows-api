@@ -1,5 +1,5 @@
 body{
-    font-family: 'Hind', sans-serif;
+    font-family: 'Roboto', sans-serif;
 }
 
 /**
@@ -23,10 +23,10 @@ header{
 }
 
 #header-logo{
-    vertical-align: middle;
-    display: inline-block;
-    width: 50%;
-    height: 50px;
+    max-width: 160px;
+    height: auto;
+    margin-left: 10px;
+    margin-top: 10px;
 }
 
 #navigation{
@@ -68,7 +68,7 @@ header{
     width: 0;
     position: absolute;
     right: 0px;
-    top: 35px;
+    top: 30px;
     padding: 10px;
     list-style-type: none;
     border: solid #ddd 1px;
@@ -95,7 +95,13 @@ header{
 }
 
 #navigation > li > .sub-menu li a i{
-    width: 20px;
+    vertical-align: middle;
+    width:  30px;
+}
+
+#navigation > li > .sub-menu li a span{
+    vertical-align: middle;
+    line-height: 0.5;
 }
 
 #navigation > li > .sub-menu::before{
@@ -180,6 +186,7 @@ header{
 
     .navigation-container{
         position: fixed;
+        z-index: 999;
         left: 100%;
         top: 62px;
         width: 300px;
@@ -187,6 +194,7 @@ header{
         background: #5E46A7;
         clear: both;
         transition: transform .4s cubic-bezier(.31,-0.28,1,.1);
+        opacity: 1;
         padding-right: 100px;
     }
 
@@ -266,4 +274,63 @@ header{
         min-width: 230px;
         transform: translateY(0);
     }    
+}
+
+/**
+ *  Page header
+ *
+ */
+.page-header{
+    background: #282046;
+    color: white;
+    text-align: center;
+    padding: 50px 30px 70px 30px;
+}
+
+.page-header h1{
+    font-size: 50px;
+    font-weight: lighter;
+}
+
+.page-header p{
+    opacity: 0.6;
+    font-size: 22px;
+    font-weight: lighter;
+}
+
+/**
+ *  Tables
+ *
+ */
+.table{
+    display: block;
+    padding: 20px;
+}
+
+.table h2{
+    color: #444;
+    text-align: center;
+    font-size: 25px;
+    font-weight: lighter;
+}
+
+.table table{
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    color: #777;
+}
+.table table tbody tr td,
+.table table thead tr th{
+    padding: 15px;
+}
+.table table thead tr th{
+    width: 33.3333%;
+}
+.table table tbody tr td{
+    background: white;
+}
+
+.table > table > tbody > tr:nth-last-of-type(even) td{
+    background: #f8f8f8;
 }

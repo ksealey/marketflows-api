@@ -30,17 +30,13 @@ class RegisterController extends Controller
             'first_name'            => 'bail|required|min:2|max:64',
             'last_name'             => 'bail|required|min:2|max:64',
             'email'                 => 'bail|required|email|max:255|unique:users,email',
-            'country_code'          => 'bail|digits_between:1,6',
-            'area_code'             => 'bail|digits_between:1,6',
-            'phone'                 => 'bail|required|digits_between:10,16',
             'title'                 => 'bail|max:255',
             'password' => [
                 'bail',
                 'required',
                 'min:8',
                 'regex:/(?=.*[0-9])(?=.*[A-Z])/'
-            ],
-            'timezone'              => 'bail|required|timezone',
+            ]
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -71,10 +67,6 @@ class RegisterController extends Controller
                 'first_name'    => $request->first_name,
                 'last_name'     => $request->last_name,
                 'email'         => $request->email,
-                'country_code'  => $request->country_code,
-                'area_code'     => $request->area_code,
-                'phone'         => $request->phone,
-                'timezone'      => $request->timezone,
                 'password_hash' => bcrypt($request->password),
                 'auth_token'    => str_random(128),
             ]);
