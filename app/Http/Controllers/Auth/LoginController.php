@@ -78,7 +78,11 @@ class LoginController extends Controller
         $user->auth_token     = str_random(128);
         $user->save();
 
-        return $this->authenticatedResponse($user);
+        return response([
+            'message'       => 'created',
+            'auth_token'    => $user->auth_token,
+            'user'          => $user,
+        ], 201);
     }
 
     /**
@@ -146,7 +150,9 @@ class LoginController extends Controller
                                         ->first();
                                         
         if( ! $passwordReset )
-            return view('auth.reset-password-invalid', [], 404);
+            return response([
+                'error' => 'Invalid request'
+            ], 400);
 
         //  Make sure it's a valid password
         $rules = [
@@ -180,25 +186,34 @@ class LoginController extends Controller
         //  Delete password reset
         $passwordReset->delete();
 
-        return $this->authenticatedResponse($user);
+        return response([
+            'message'       => 'success',
+            'auth_token'    => $user->auth_token,
+            'user'          => $user,
+        ], 200);
     }
 
     /**
-     * Send a response with cookies needed for authentication
+     * Check is a password reset is valid or not
      * 
+     * @param Illuminate\Http\Request $request
+     * @param int $userId
+     * @param string $key 
      */
-    private function authenticatedResponse($user)
+    public function checkResetPassword(Request $request, $userId, $key)
     {
-        $cookieDomain = env('COOKIE_DOMAIN');
-
-        $aYearFromNow = 60 * 24 * 365;
-
+        $passwordReset = PasswordReset::where('user_id', $userId)
+                                        ->where('key', $key)
+                                        ->where('expires_at', '>', date('Y-m-d H:i:s'))
+                                        ->first();
+                                        
+        if( ! $passwordReset )
+            return response([
+                'error' => 'Invalid request'
+            ], 400);
+        
         return response([
-            'message'       => 'success',
-            'auth_token'    => $user->auth_token, 
-            'user'          => $user->profile()
-        ])
-        ->cookie('auth_token', $user->auth_token, $aYearFromNow, '/', $cookieDomain, env('SECURE_COOKIES'))
-        ->cookie('user', json_encode($user->profile()), $aYearFromNow, '/', $cookieDomain, env('SECURE_COOKIES'), false);
+            'message' => 'success'
+        ]);
     }
 }

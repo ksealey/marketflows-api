@@ -28,8 +28,13 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
     Route::post('/reset-password', 'Auth\LoginController@resetPassword')
          ->name('auth-reset-password');
 
+    Route::get('/reset-password/{userId}/{key}', 'Auth\LoginController@checkResetPassword')
+         ->name('auth-check-reset-password');
+         
     Route::post('/reset-password/{userId}/{key}', 'Auth\LoginController@handleResetPassword')
          ->name('auth-handle-reset-password');  
+
+    
 });
 
 /*

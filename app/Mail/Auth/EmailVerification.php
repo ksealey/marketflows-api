@@ -17,6 +17,10 @@ class EmailVerification extends Mailable
 
     public $verification;
 
+    public $tries = 3;
+
+    public $retryAfter = 5;
+
     /** 
      * Create a new message instance.
      *

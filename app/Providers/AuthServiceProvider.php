@@ -69,7 +69,7 @@ class AuthServiceProvider extends ServiceProvider
     {
         $token = $token ?? $fallbackToken;
 
-        $user = $token ? User::where('auth_token', $$token)->first() : null;
+        $user = $token ? User::where('auth_token', $token)->first() : null;
 
         return $user && ! $user->disabled_until ? $user : null;
     }

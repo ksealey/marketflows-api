@@ -15,6 +15,10 @@ class PasswordReset extends Mailable
 
     protected $passwordReset;
 
+    public $tries = 3;
+
+    public $retryAfter = 5;
+
     /**
      * Create a new message instance.
      *
@@ -34,9 +38,14 @@ class PasswordReset extends Mailable
      */
     public function build()
     {
-        return $this->view('mail.auth.password-reset', [
-            'user'  => $this->user,
-            'reset' => $this->passwordReset
-        ]);
+        return $this->view('mail.auth.password-reset')
+                    ->with([
+                        'user'      => $this->user,
+                        'resetURL'  => trim(env('CLIENT_URL'), '/') 
+                                        . '/auth/reset-password/u/' 
+                                        . $this->user->id 
+                                        . '/k/' 
+                                        . $this->passwordReset->key
+                    ]);
     }
 }

@@ -35,6 +35,7 @@ class CompanyController extends Controller
         $resultCount = $query->count();
         $records     = $query->offset($page * $limit)
                              ->limit($limit)
+                             ->orderBy('name', 'asc')
                              ->get();
 
         return response([
@@ -42,7 +43,7 @@ class CompanyController extends Controller
             'companies'       => $records,
             'result_count'    => $resultCount,
             'limit'           => $limit,
-            'page'            => $page + 1,
+            'page'            => intval($request->page),
             'total_pages'     => ceil($resultCount / $limit)
         ]);
     }
@@ -57,12 +58,7 @@ class CompanyController extends Controller
     public function create(Request $request)
     {
         $rules = [
-            'name'            => 'required|max:255',
-            'webhook_actions' => [
-                'required', 
-                'json', 
-                new CompanyWebhookActionsRule()
-            ]
+            'name' => 'required|max:255',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -77,8 +73,7 @@ class CompanyController extends Controller
         $company = Company::create([
             'account_id'        => $user->account_id,
             'created_by'        => $user->id,
-            'name'              => $request->name,
-            'webhook_actions'   => $request->webhook_actions
+            'name'              => $request->name
         ]);
 
         return response([
@@ -97,6 +92,8 @@ class CompanyController extends Controller
      */
     public function read(Request $request, Company $company)
     {
+        $company->plugins = $company->plugins();
+        
         return response([
             'message' => 'success',
             'company' => $company
@@ -114,12 +111,7 @@ class CompanyController extends Controller
     public function update(Request $request, Company $company)
     {
         $rules = [
-            'name'            => 'required|max:255',
-            'webhook_actions' => [
-                'required', 
-                'json', 
-                new CompanyWebhookActionsRule()
-            ]
+            'name' => 'required|max:255'
         ];
         
         $validator = Validator::make($request->input(), $rules);
@@ -129,8 +121,7 @@ class CompanyController extends Controller
             ], 400);
         }
 
-        $company->name            = $request->name;
-        $company->webhook_actions = $request->webhook_actions;
+        $company->name = $request->name;
         $company->save();
 
         return response([

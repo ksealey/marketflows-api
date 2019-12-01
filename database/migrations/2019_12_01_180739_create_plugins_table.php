@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateCompaniesTable extends Migration
+class CreatePluginsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,15 +13,15 @@ class CreateCompaniesTable extends Migration
      */
     public function up()
     {
-        Schema::create('companies', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->bigInteger('account_id')->unsigned();
-            $table->bigInteger('created_by')->unsigned();
+        Schema::create('plugins', function (Blueprint $table) {
+            $table->increments('id');
             $table->string('name', 255);
-            $table->integer('phone_number_max_allowed')->nullable();
+            $table->string('description', 1024);
+            $table->text('content');
+            $table->text('image');
+            $table->string('class_prefix', 255);
             $table->timestamps();
             $table->softDeletes();
-            $table->foreign('account_id')->references('id')->on('accounts');
         });
     }
 
@@ -32,6 +32,6 @@ class CreateCompaniesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('companies');
+        Schema::dropIfExists('plugins');
     }
 }
