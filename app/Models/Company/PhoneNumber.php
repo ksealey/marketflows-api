@@ -17,9 +17,6 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
 {
     use SoftDeletes, AcceptsIncomingCalls, HandlesPhoneNumbers;
 
-    const TYPE_LOCAL     = 1;
-    const TYPE_TOLL_FREE = 2;
-
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;
     
@@ -29,6 +26,8 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
         'created_by',
         'auto_provisioned_by',
         'external_id',
+        'type',
+        'usage_type',
         'country_code',
         'number',
         'voice',
@@ -39,7 +38,8 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
         'phone_number_config_id',
         'campaign_id',
         'name',
-        'assigned_at'
+        'assigned_at',
+        'last_assigned_at',
     ];
 
     protected $hidden = [
@@ -56,59 +56,41 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
     }
 
     /**
-     * Search for a phone number
+     * List local phone numbers available for a gived area code
      * 
      */
-    static public function lookup($areaCode = null, $local = true, $config = [], int $limit = 20, string $country = 'US')
+    static public function listAvailableLocal($areaCode, $limit = 20, $country = 'US')
     {
         $client = self::client();
 
-        //  Handle local or toll free portion
-        $query = $client->availablePhoneNumbers($country);
-        $query = $local ? $query->local : $query->tollFree;
+        //  Handle local
+        $numbers = $client->availablePhoneNumbers($country)
+                          ->local
+                          ->read([
+                              'areaCode'     => $areaCode,
+                              'voiceEnabled' => true,
+                              'smsEnabled'   => true,
+                          ], $limit);
 
-        //  Handle config
-        if( $areaCode )
-            $config['areaCode'] = $areaCode;
-
-        $numbers = $query->read($config, $limit);
-
-        $results = [];
-
-        foreach($numbers as $number){
-            
-            $results[] = [
-                'local'           => $local,
-                'toll_free'       => !$local,
-                'phone'           => $number->phoneNumber,
-                'phone_formatted' => $number->friendlyName
-            ];
-        }
-
-        return $results;
+        return $numbers ?: [];
     }
 
     /**
      * Given a set of requirements, find available phone numbers
      * 
-     * 
      */
-    static public function listAvailable($country = 'US', $areaCode = null, $type = 1, $limit = 20)
+    static public function listAvailableTollFree($limit = 20, $country = 'US')
     {
-        $client = self::client(); // Always use prop creds to do lookups
-        $query  = $client->availablePhoneNumbers($country);
+        
+        $client = self::client();
 
-        $config = [];
-        if( $type == self::TYPE_LOCAL ){
-            $query = $query->local;
-            
-            $config['areaCode'] = $areaCode;
-        }
-
-        if( $type == self::TYPE_TOLL_FREE )
-            $query = $query->tollFree;
-
-        $numbers = $query->read($config, $limit);
+        //  Handle local
+        $numbers = $client->availablePhoneNumbers($country)
+                          ->tollFree
+                          ->read([
+                              'voiceEnabled' => true,
+                              'smsEnabled'   => true,
+                          ], $limit);
 
         return $numbers ?: [];
     }
@@ -122,7 +104,7 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
      */
     static public function purchase(string $phone)
     {
-        $client = App::environment(['prod', 'production']) ? self::client() : self::testClient(); // Use test creds for purchase
+        $client = self::client();
 
         return $client->incomingPhoneNumbers
                       ->create([

@@ -15,20 +15,25 @@ class PhoneNumberConfig extends Model
         'company_id',
         'created_by',
         'name',
-        'source',
         'forward_to_country_code',
         'forward_to_number',
         'audio_clip_id',
-        'recording_enabled_at',
         'whisper_message',
-        'whisper_language',
-        'whisper_voice'
+        'recording_enabled_at'
     ];
 
     protected $hidden = [
         'company_id',
         'created_by',
         'deleted_at'
+    ];
+
+    protected $appends = [
+        'audio_clip',
+        'phone_numbers',
+        'phone_number_pools',
+        'link',
+        'kind'
     ];
 
     public function company()
@@ -68,5 +73,46 @@ class PhoneNumberConfig extends Model
         return $this->audio_clip_id;
     }
 
+    public function getAudioClipAttribute()
+    {
+        if( ! $this->audio_clip_id )
+            return null;
 
+        return AudioClip::where('id', $this->audio_clip_id)->first();
+    }
+
+    public function getPhoneNumbersAttribute()
+    {
+        return PhoneNumber::where('phone_number_config_id', $this->id)->get();
+    }
+
+    /**
+     * Get the associated phone number pools
+     * 
+     */
+    public function getPhoneNumberPoolsAttribute()
+    {
+        return PhoneNumberPool::where('phone_number_config_id', $this->id)->get();
+    }
+
+    /**
+     * Get the dynamic link for the route
+     * 
+     */
+    public function getLinkAttribute()
+    {
+        return route('read-phone-number-config', [
+            'companyId'           => $this->company_id,
+            'phoneNumberConfigId' => $this->id
+        ]);
+    }
+
+    /**
+     * Get the kind
+     * 
+     */
+    public function getKindAttribute()
+    {
+        return 'PhoneNumberConfig';
+    }
 }

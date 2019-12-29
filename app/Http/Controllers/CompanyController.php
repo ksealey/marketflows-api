@@ -8,8 +8,11 @@ use \App\Models\Company;
 use \App\Models\Company\Campaign;
 use \App\Models\User;
 use \App\Models\UserCompany;
+use \App\Rules\CountryRule;
 use \App\Rules\CompanyWebhookActionsRule;
 use Validator;
+use Exception;
+use DB;
 
 class CompanyController extends Controller
 {
@@ -27,7 +30,12 @@ class CompanyController extends Controller
         $search = $request->search;
         
         $user  = $request->user();
-        $query = Company::where('account_id', $user->account_id);
+        $query = Company::where('account_id', $user->account_id)
+                        ->whereIn('id', function($query) use($user){
+                            $query->select('company_id')
+                                  ->from('user_companies')
+                                  ->where('user_id', $user->id);
+                        });
         
         if( $search )
             $query->where('name', 'like', '%' . $search . '%');
@@ -39,8 +47,7 @@ class CompanyController extends Controller
                              ->get();
 
         return response([
-            'message'         => 'success',
-            'companies'       => $records,
+            'results'         => $records,
             'result_count'    => $resultCount,
             'limit'           => $limit,
             'page'            => intval($request->page),
@@ -58,7 +65,10 @@ class CompanyController extends Controller
     public function create(Request $request)
     {
         $rules = [
-            'name' => 'required|max:255',
+            'name'      => 'bail|required|max:255',
+            'industry'  => 'bail|required|max:255',
+            'country'   => ['bail', 'required', new CountryRule()],
+            'timezone'  => 'bail|required|timezone'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -70,16 +80,34 @@ class CompanyController extends Controller
 
         $user = $request->user();
 
-        $company = Company::create([
-            'account_id'        => $user->account_id,
-            'created_by'        => $user->id,
-            'name'              => $request->name
-        ]);
+        DB::beginTransaction();
 
-        return response([
-            'message' => 'created',
-            'company' => $company
-        ], 201);
+        try{
+            $company = Company::create([
+                'account_id'        => $user->account_id,
+                'created_by'        => $user->id,
+                'name'              => $request->name,
+                'industry'          => $request->industry,
+                'country'           => $request->country,
+                'timezone'          => $request->timezone
+            ]);
+
+            UserCompany::create([
+                'company_id' => $company->id,
+                'user_id'    => $user->id
+            ]);
+        }catch(Exception $e){
+            DB::rollBack();
+
+            throw $e;
+        }
+
+        DB::commit();
+
+        return response($company, 201)
+                ->withHeaders([
+                    'Location' => $company->link
+                ]);
     }
 
     /**
@@ -94,10 +122,7 @@ class CompanyController extends Controller
     {
         $company->plugins = $company->plugins();
         
-        return response([
-            'message' => 'success',
-            'company' => $company
-        ]);
+        return response($company);
     }
 
     /**
@@ -111,7 +136,9 @@ class CompanyController extends Controller
     public function update(Request $request, Company $company)
     {
         $rules = [
-            'name' => 'required|max:255'
+            'name' => 'required|max:255',
+            'industry'  => 'required|max:255',
+            'timezone'  => 'required|timezone'
         ];
         
         $validator = Validator::make($request->input(), $rules);
@@ -121,13 +148,12 @@ class CompanyController extends Controller
             ], 400);
         }
 
-        $company->name = $request->name;
+        $company->name     = $request->name;
+        $company->industry = $request->industry;
+        $company->timezone = $request->timezone;
         $company->save();
 
-        return response([
-            'message' => 'success',
-            'company' => $company
-        ]);
+        return response($company);
     }
 
     /**

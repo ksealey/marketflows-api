@@ -51,7 +51,7 @@ class AudioClipController extends Controller
     public function create(Request $request, Company $company)
     {
         $rules = [
-            'audio_clip'  => 'required|file|mimes:x-flac,mpeg,x-wav',
+            'audio_clip'  => 'required|file',
             'name'        => 'required|max:255'
         ];
 

@@ -44,6 +44,7 @@ class AuthServiceProvider extends ServiceProvider
         Auth::viaRequest('auth_token', function ($request){
             //  Check headers for bearer token
             $authToken = null;
+            
             if( $auth = $request->header('Authorization') ){
                 $segments = explode(' ', $auth);
                 if( count($segments) !== 2 )
@@ -56,7 +57,7 @@ class AuthServiceProvider extends ServiceProvider
                 if( strtoupper($tokenType) === 'BASIC' )
                     return $this->applicationAuth($credentials, $request); 
             }
-
+            
             return null;
         });
     }

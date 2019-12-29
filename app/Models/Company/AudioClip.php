@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company;
 use \App\Traits\HandlesStorage;
+use Storage;
 
 class AudioClip extends Model
 {
@@ -20,8 +21,14 @@ class AudioClip extends Model
     ];
 
     protected $hidden = [
+        'path',
         'deleted_at'
     ];
+
+    protected $appends = [
+        'url'
+    ];
+
 
     public function canBeDeleted()
     {
@@ -32,10 +39,27 @@ class AudioClip extends Model
         return true;
     }
 
-    public function getURL()
+    public function getURL($company = null)
     {
-        return rtrim(env('CDN_URL'), '/') 
-                . '/' 
-                . trim($this->path, '/');
+        $tempURL = Storage::temporaryUrl(
+            $this->path, now()->addMinutes(60)
+        );
+
+        //
+        //  TODO: Store in cache as HOT data for 55 minutes
+        //  ...
+        //  
+
+        return $tempURL;
+    }
+
+    public function getUrlAttribute()
+    {
+        return $this->getURL();
+    }
+
+    public function company()
+    {
+        return $this->belongsTo('\App\Models\Company');
     }
 }

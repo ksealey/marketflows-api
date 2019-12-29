@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Role;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
+use \App\Rules\CountryRule;
 use Validator;
 use DB;
 use Exception;
@@ -27,6 +28,7 @@ class RegisterController extends Controller
     {
         $rules = [
             'account_name'          => 'bail|required|min:4|max:255',
+            'country'               => ['bail', 'required', new CountryRule()],
             'first_name'            => 'bail|required|min:2|max:64',
             'last_name'             => 'bail|required|min:2|max:64',
             'email'                 => 'bail|required|email|max:255|unique:users,email',
@@ -51,7 +53,8 @@ class RegisterController extends Controller
         try{
             //  Create account
             $account = Account::create([
-                'name' => $request->account_name
+                'name'      => $request->account_name,
+                'country'   => $request->country
             ]);
             
             //  Create an admin role

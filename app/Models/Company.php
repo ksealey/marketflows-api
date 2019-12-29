@@ -17,13 +17,20 @@ class Company extends Model
         'account_id',
         'created_by',
         'name',
-        'webhook_actions'
+        'industry',
+        'country',
+        'timezone',
     ];
 
     protected $hidden = [
         'account_id',
         'created_by',
         'deleted_at'
+    ];
+
+    protected $appends = [
+        'link',
+        'kind'
     ];
 
     /**
@@ -47,5 +54,17 @@ class Company extends Model
                   ->from('company_plugins')
                   ->where('company_id', $this->id);
         })->get();
+    }
+
+    public function getLinkAttribute()
+    {
+        return route('read-company', [
+            'companyId' => $this->id
+        ]);
+    }
+
+    public function getKindAttribute()
+    {
+        return 'Company';
     }
 }

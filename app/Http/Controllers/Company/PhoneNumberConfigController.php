@@ -20,6 +20,7 @@ class PhoneNumberConfigController extends Controller
     public function list(Request $request, Company $company)
     {
         $limit  = intval($request->limit) ?: 25;
+        $limit  = $limit > 1000 ? 1000 : $limit;
         $page   = intval($request->page) ? intval($request->page) - 1 : 0;
         $search = $request->search;
 
@@ -28,10 +29,11 @@ class PhoneNumberConfigController extends Controller
         if( $search ){
             $query->where(function($query) use($search){
                 $query->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('source', 'like', '%' . $search . '%')
                       ->orWhere('forward_to_number', 'like', '%' . $search . '%');
             });
         }
+
+        $query->orderBy('created_at', 'DESC');
 
         $resultCount = $query->count();
         $records     = $query->offset($page * $limit)
@@ -39,8 +41,7 @@ class PhoneNumberConfigController extends Controller
                              ->get();
 
         return response([
-            'message'              => 'success',
-            'phone_number_configs' => $records,
+            'results'              => $records,
             'result_count'         => $resultCount,
             'limit'                => $limit,
             'page'                 => $page + 1,
@@ -54,17 +55,12 @@ class PhoneNumberConfigController extends Controller
      */
     public function create(Request $request, Company $company)
     {
-        $config = config('services.twilio');
-
-        $rules = [
+       $rules = [
             'name'              => 'bail|required|max:255',
-            'source'            => 'bail|required|max:255',
             'forward_to_number' => 'bail|required|digits_between:10,13',
             'audio_clip'        => ['bail', 'numeric', new AudioClipRule($company->id)],
-            'record'            => 'boolean',
-            'whisper_message'   => 'max:255',
-            'whisper_language'  => 'in:' . implode(',', array_keys($config['languages'])),
-            'whisper_voice'     => 'in:' . implode(',', array_keys($config['voices'])),
+            'record'            => 'bail|boolean',
+            'whisper_message'   => 'bail|max:255',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -74,24 +70,21 @@ class PhoneNumberConfigController extends Controller
             ], 400);
         }
 
-        $user  = $request->user();
         $phoneNumberConfig = PhoneNumberConfig::create([
             'company_id'                => $company->id,
-            'created_by'                => $user->id,
+            'created_by'                => $request->user()->id,
             'name'                      => $request->name,
-            'source'                    => $request->source,
             'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number),
             'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
-            'audio_clip_id'             => $request->audio_clip,
+            'audio_clip_id'             => $request->audio_clip ?: null,
             'recording_enabled_at'      => $request->record ? date('Y-m-d H:i:s') : null,
-            'whisper_message'           => $request->whisper_message,
-            'whisper_language'          => $request->whisper_language,
-            'whisper_voice'             => $request->whisper_voice
+            'whisper_message'           => $request->whisper_message ?: null
         ]);
 
-        return response([
-            'phone_number_config' => $phoneNumberConfig
-        ], 201);
+        return response($phoneNumberConfig, 201)
+                ->withHeaders([
+                    'Location' => $phoneNumberConfig->link
+                ]);
     }
 
     /**
@@ -100,9 +93,7 @@ class PhoneNumberConfigController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
-        return response([
-            'phone_number_config' => $phoneNumberConfig
-        ]);
+        return response( $phoneNumberConfig );
     }
 
     /**
@@ -111,17 +102,12 @@ class PhoneNumberConfigController extends Controller
      */
     public function update(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
-        $config = config('services.twilio');
-
         $rules = [
             'name'              => 'bail|required|max:255',
-            'source'            => 'bail|required|max:255',
             'forward_to_number' => 'bail|required|digits_between:10,13',
             'audio_clip'        => ['bail', 'numeric', new AudioClipRule($company->id)],
-            'record'            => 'boolean',
-            'whisper_message'   => 'max:255',
-            'whisper_language'  => 'in:' . implode(',', array_keys($config['languages'])),
-            'whisper_voice'     => 'in:' . implode(',', array_keys($config['voices'])),
+            'record'            => 'bail|boolean',
+            'whisper_message'   => 'bail|max:255',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -132,19 +118,14 @@ class PhoneNumberConfigController extends Controller
         }
 
         $phoneNumberConfig->name                    = $request->name;
-        $phoneNumberConfig->source                  = $request->source;
         $phoneNumberConfig->forward_to_country_code = PhoneNumber::countryCode($request->forward_to_number);
         $phoneNumberConfig->forward_to_number       = PhoneNumber::number($request->forward_to_number);
         $phoneNumberConfig->audio_clip_id           = $request->audio_clip;
         $phoneNumberConfig->recording_enabled_at    = $request->record ? ( $phoneNumberConfig->recording_enabled_at ?: date('Y-m-d H:i:s') ) : null;
         $phoneNumberConfig->whisper_message         = $request->whisper_message;
-        $phoneNumberConfig->whisper_language        = $request->whisper_language;
-        $phoneNumberConfig->whisper_voice           = $request->whisper_voice;
         $phoneNumberConfig->save();
 
-        return response([
-            'phone_number_config' => $phoneNumberConfig
-        ]);
+        return response( $phoneNumberConfig );
     }
 
     /**

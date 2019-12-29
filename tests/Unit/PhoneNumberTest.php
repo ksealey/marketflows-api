@@ -15,78 +15,19 @@ class PhoneNumberTest extends TestCase
     use \Tests\CreatesUser;
 
     /**
-     * Test searching for a phone numbers
+     * Test searching for a phone number
      * 
-     * @group unit-phone-numbers
+     * @group unit-phone-numbers--
      */
     public function testSearchAvailablePhoneNumbers()
     {
-        $provisionRule    = factory(PhoneNumberPoolProvisionRule::class)->make();
-
-        $numbersAvailable = PhoneNumber::listAvailable($provisionRule->country, $provisionRule->area_code, 1, 5);
+        $numbersAvailable = PhoneNumber::listAvailable('US', '813', 1, 5);
 
         $this->assertTrue(count($numbersAvailable) == 5);
 
         foreach( $numbersAvailable as $number ){
             $this->assertTrue(preg_match('/^(\+1' .$provisionRule->area_code . ')/', $number->phoneNumber) == true);
         }
-    }
-
-
-    /**
-     * Test searching available phone numbers
-     *
-     * @group unit-phone-numbers
-     */
-    public function testPhoneNumberLookups()
-    {
-        $magicNumbers = config('services.twilio.magic_numbers');
-
-        $user = $this->createUser();
-
-        //  Test searching a toll free number with no area code
-        $numbers = PhoneNumber::lookup(null, false, [], 2);
-        $this->assertTrue(count($numbers) == 2);
-        foreach($numbers as $number){
-            $this->assertTrue($number['toll_free'] == true);
-            $this->assertTrue(stripos($number['phone'], '+18') === 0);
-        }
-
-        //  Test searching a local phone number without an area code
-        $numbers = PhoneNumber::lookup(null, true, [], 2);
-        $this->assertTrue(count($numbers) == 2);
-        foreach($numbers as $number){
-            $this->assertTrue($number['local'] == true);
-        }
-
-        //  Now, with an area code ... 
-        $numbers = PhoneNumber::lookup(null, true, [], 2);
-        $this->assertTrue(count($numbers) == 2);
-        foreach($numbers as $number){
-            $this->assertTrue($number['local'] == true);
-        }
-
-        //  Now test purchasing an available phone number
-        $numberData = PhoneNumber::purchase($magicNumbers['available']);
-        $this->assertTrue($numberData != null);
-
-        //  Now try deleting the number
-        $number = $this->createPhoneNumber([
-            'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
-            'external_id'  => \str_random(40)
-        ]);
-        $this->assertTrue(PhoneNumber::find($number->id) != null);
-        $number->release();
-        $this->assertTrue(PhoneNumber::find($number->id) == null);
-
-        //  Now an unavailable one ...
-        $this->expectException(\Twilio\Exceptions\RestException::class);
-        PhoneNumber::purchase($magicNumbers['unavailable']);
-
-        //  Finally, an invalid one ...
-        $this->expectException(\Twilio\Exceptions\RestException::class);
-        PhoneNumber::purchase($magicNumbers['invalid']);
     }
 
     /**

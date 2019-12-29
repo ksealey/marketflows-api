@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "54a39087ba08c8ab9cbc1a36becc4ec2",
+    "content-hash": "7ff230fad3d86a1c6c407d07a8ae3b13",
     "packages": [
         {
             "name": "aws/aws-sdk-php",
@@ -3502,16 +3502,16 @@
         },
         {
             "name": "twilio/sdk",
-            "version": "5.34.2",
+            "version": "5.41.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/twilio/twilio-php.git",
-                "reference": "83d757c9abc5cf24b58e46e83ec120cda5986a05"
+                "reference": "b10341d50d647b1015dd264c530f3b8bca345b6c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/twilio/twilio-php/zipball/83d757c9abc5cf24b58e46e83ec120cda5986a05",
-                "reference": "83d757c9abc5cf24b58e46e83ec120cda5986a05",
+                "url": "https://api.github.com/repos/twilio/twilio-php/zipball/b10341d50d647b1015dd264c530f3b8bca345b6c",
+                "reference": "b10341d50d647b1015dd264c530f3b8bca345b6c",
                 "shasum": ""
             },
             "require": {
@@ -3520,7 +3520,7 @@
             "require-dev": {
                 "apigen/apigen": "^4.1",
                 "guzzlehttp/guzzle": "^6.3",
-                "phpunit/phpunit": "4.5.*"
+                "phpunit/phpunit": ">=4.5"
             },
             "suggest": {
                 "guzzlehttp/guzzle": "An HTTP client to execute the API requests"
@@ -3528,7 +3528,7 @@
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "Twilio\\": "Twilio/"
+                    "Twilio\\": "src/Twilio/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -3548,7 +3548,7 @@
                 "sms",
                 "twilio"
             ],
-            "time": "2019-07-25T01:24:34+00:00"
+            "time": "2019-12-18T19:43:22+00:00"
         },
         {
             "name": "vlucas/phpdotenv",

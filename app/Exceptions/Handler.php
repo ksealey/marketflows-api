@@ -13,7 +13,7 @@ class Handler extends ExceptionHandler
      * @var array
      */
     protected $dontReport = [
-        //
+        'Symfony\Component\HttpKernel\Exception\NotFoundHttpException'
     ];
 
     /**
@@ -46,6 +46,25 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Exception $exception)
     {
+        $class = get_class($exception);
+        
+        if( $request->expectsJson() ){ 
+            //  Resource missing
+            if( $class == \Illuminate\Database\Eloquent\ModelNotFoundException::class ){
+                return response([
+                    'error' => 'Not found'
+                ], 404);
+            }
+
+            if( $class == \Illuminate\Auth\AuthenticationException::class ){
+                return response([
+                    'error' => 'Unauthenticated'
+                ], 401);
+            }
+
+            //  ...
+        }
+       
         return parent::render($request, $exception);
     }
 }

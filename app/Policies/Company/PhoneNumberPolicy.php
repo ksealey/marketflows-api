@@ -14,7 +14,8 @@ class PhoneNumberPolicy
 
     public function list(User $user)
     {
-        return $user->canDoAction('phone-numbers.read');
+        return $this->userCanViewCompany($user, request()->company->id)
+            && $user->canDoAction('phone-numbers.read');
     }
     
     public function create(User $user)

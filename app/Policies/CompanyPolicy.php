@@ -5,10 +5,11 @@ namespace App\Policies;
 use App\Models\User;
 use App\Models\Company;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use App\Policies\Traits\HandlesCompanyResources;
 
 class CompanyPolicy
 {
-    use HandlesAuthorization;
+    use HandlesAuthorization, HandlesCompanyResources;
 
     public function list(User $user)
     {
@@ -22,19 +23,19 @@ class CompanyPolicy
 
     public function read(User $user, Company $company)
     {
-        return $user->account_id == $company->account_id 
+        return $this->userCanViewCompany($user, request()->company->id) 
             && $user->canDoAction('companies.read');
     }
 
     public function update(User $user, Company $company)
     {
-        return $user->account_id == $company->account_id 
+        return $this->userCanViewCompany($user, request()->company->id) 
             && $user->canDoAction('companies.update');
     }
 
     public function delete(User $user, Company $company)
     {
-        return $user->account_id == $company->account_id 
+        return $this->userCanViewCompany($user, request()->company->id) 
             && $user->canDoAction('companies.delete');
     }
 }
