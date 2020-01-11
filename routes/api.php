@@ -271,18 +271,9 @@ Route::middleware(['throttle:60,1', 'auth:api', 'api'])->group(function(){
             |--------------------------------
             */
             Route::prefix('phone-numbers')->group(function(){
-                Route::prefix('local')->group(function(){
-                    Route::get('/check-available', 'Company\PhoneNumberController@checkLocalNumbersAvailable')
-                            ->middleware('can:list,\App\Models\Company\PhoneNumber')
-                            ->name('check-local-phone-numbers-available');
-                });
-
-                Route::prefix('toll-free')->group(function(){
-                    Route::get('/check-available', 'Company\PhoneNumberController@checkTollFreeNumbersAvailable')
-                            ->middleware('can:list,\App\Models\Company\PhoneNumber')
-                            ->name('check-toll-free-phone-numbers-available');
-                });
-                
+                Route::get('/available', 'Company\PhoneNumberController@checkNumbersAvailable')
+                        ->middleware('can:list,\App\Models\Company\PhoneNumber')
+                        ->name('phone-numbers-available');
                     
                 Route::get('/', 'Company\PhoneNumberController@list')
                     ->middleware('can:list,\App\Models\Company\PhoneNumber')

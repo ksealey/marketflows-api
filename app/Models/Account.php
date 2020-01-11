@@ -21,4 +21,9 @@ class Account extends Model
         'disabled_at',
         'deleted_at'
     ];
+
+    public function hasValidPaymentMethod()
+    {
+        return true;
+    }
 }

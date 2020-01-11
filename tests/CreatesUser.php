@@ -118,7 +118,7 @@ trait CreatesUser
 
         return factory(PhoneNumberConfig::class)->create(array_merge([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'created_by'  => $user->id
         ], $fields));
     }
 

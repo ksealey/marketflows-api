@@ -40,8 +40,7 @@ class PhoneNumberTest extends TestCase
         ]), [], $this->authHeaders());
         $response->assertStatus(200);
         $response->assertJson([
-            'message'               => 'success',
-            'phone_numbers'    => [
+            'results'    => [
                 [
                     'id' => $phone1->id
                 ],
@@ -85,8 +84,7 @@ class PhoneNumberTest extends TestCase
         $response->assertStatus(200);
 
         $response->assertJson([
-            'message'               => 'success',
-            'phone_numbers'    => [
+            'results'    => [
                 [
                     'id' => $phone2->id
                 ]
@@ -98,22 +96,15 @@ class PhoneNumberTest extends TestCase
         ]);
     }
 
-
     /** 
-     * Test creating a phone number
+     * Test creating a local phone number
      *
      * @group feature-phone-numbers
      */
-    public function testCreate()
+    public function testCreateLocal()
     {
+        $user         = $this->createUser();
         $magicNumbers = config('services.twilio.magic_numbers');
-
-        $user = $this->createUser();
-
-        $pool = $this->createPhoneNumberPool([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id
-        ]);
 
         $phone = factory(PhoneNumber::class)->make([
             'country_code' => '1',
@@ -125,24 +116,90 @@ class PhoneNumberTest extends TestCase
             'created_by'  => $user->id
         ]);
 
+        $config = $this->createPhoneNumberConfig([
+            'audio_clip_id' => $audioClip->id
+        ]);
+
+        $postData = [
+            'name'                  => $phone->name,
+            'phone_number_config'   => $config->id,
+            'source'                => $phone->source,
+            'category'              => $phone->category,
+            'sub_category'          => $phone->sub_category,
+            'starts_with'           => $phone->number,
+            'toll_free'             => false,
+            'swap_rules'            => $phone->swap_rules
+        ];
+
+        //  Make sure it doesn't prompt for swap rules when it's no longer a website
         $response = $this->json('POST', route('create-phone-number', [
             'company' => $this->company->id
-        ]), [
-            'phone_number_pool'   => $pool->id,
-            'phone_number_config' => $pool->phone_number_config_id,
-            'number'              => $phone->country_code . $phone->number,
-            'name'                => $phone->name
-        ], $this->authHeaders());
+        ]), $postData, $this->authHeaders());
 
         $response->assertStatus(201);
 
         $response->assertJSON([
-            'phone_number' => [
-                'phone_number_pool_id' => $pool->id,
-                'country_code'  => $phone->country_code,
-                'number'        => $phone->number,
-                'name'          => $phone->name
-            ]
+            'kind'          => 'PhoneNumber',
+            'country_code'  => $phone->country_code,
+            'number'        => $phone->number,
+            'name'          => $phone->name,
+            'category'      => $phone->category,
+            'sub_category'  => $phone->sub_category,
+            'swap_rules'    => $phone->swap_rules,
+            'toll_free'     => 0
+        ]);
+    }
+
+    /** 
+     * Test creating a toll-free number
+     *
+     * @group feature-phone-numbers
+     */
+    public function testCreateTollFree()
+    {
+        $user         = $this->createUser();
+        $magicNumbers = config('services.twilio.magic_numbers');
+
+        $phone = factory(PhoneNumber::class)->make([
+            'country_code' => '1',
+            'number'       =>  substr($magicNumbers['available'], -10)
+        ]);
+
+        $audioClip = factory(AudioClip::class)->create([
+            'company_id'  => $this->company->id,
+            'created_by'  => $user->id
+        ]);
+
+        $config = $this->createPhoneNumberConfig([
+            'audio_clip_id' => $audioClip->id
+        ]);
+
+        $postData = [
+            'name'                  => $phone->name,
+            'phone_number_config'   => $config->id,
+            'source'                => $phone->source,
+            'category'              => $phone->category,
+            'sub_category'          => $phone->sub_category,
+            'swap_rules'            => $phone->swap_rules,
+            'toll_free'             => true
+        ];
+
+        //  Make sure it doesn't prompt for swap rules when it's no longer a website
+        $response = $this->json('POST', route('create-phone-number', [
+            'company' => $this->company->id
+        ]), $postData, $this->authHeaders());
+
+        $response->assertStatus(201);
+
+        $response->assertJSON([
+            'kind'          => 'PhoneNumber',
+            'country_code'  => $phone->country_code,
+            'number'        => $phone->number,
+            'name'          => $phone->name,
+            'category'      => $phone->category,
+            'sub_category'  => $phone->sub_category,
+            'swap_rules'    => $phone->swap_rules,
+            'toll_free'     => 1
         ]);
     }
 
@@ -155,20 +212,9 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = $this->createPhoneNumberPool([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id
-        ]);
-
-        $audioClip = factory(AudioClip::class)->create([
-            'company_id'  => $this->company->id,
-            'created_by' => $user->id
-        ]);
-
         $phone = $this->createPhoneNumber([
             'company_id' => $this->company->id,
             'created_by' => $user->id,
-            'phone_number_pool_id' =>$pool->id,
             'external_id'=> str_random(40),
         ]);
 
@@ -180,12 +226,13 @@ class PhoneNumberTest extends TestCase
         $response->assertStatus(200);
 
         $response->assertJson([
-            'phone_number' => [
-                'phone_number_pool_id' => $pool->id,
-                'country_code'  => $phone->country_code,
-                'number'        => $phone->number,
-                'name'          => $phone->name
-            ]
+            'kind'          => 'PhoneNumber',
+            'country_code'  => $phone->country_code,
+            'number'        => $phone->number,
+            'name'          => $phone->name,
+            'category'      => $phone->category,
+            'sub_category'  => $phone->sub_category,
+            'swap_rules'    => $phone->swap_rules
         ]);
     }
 
@@ -199,43 +246,44 @@ class PhoneNumberTest extends TestCase
     {
         $user = $this->createUser();
 
-        $pool = $this->createPhoneNumberPool([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id
-        ]);
-
         $phone = $this->createPhoneNumber([
             'company_id' => $this->company->id,
             'created_by' => $user->id,
-            'phone_number_pool_id' =>$pool->id,
             'external_id'=> str_random(40)
         ]);
 
-        $newName   = 'UPDATED';
-        $newPool = $this->createPhoneNumberPool([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id
+        //  Create a new config and generate new phone data
+        $newConfig  = $this->createPhoneNumberConfig();
+        $newPhone   = factory(PhoneNumber::class)->make([
+            'category'      => 'OFFLINE',
+            'sub_category'  => 'TV',
+            'swap_rules'    => ''
         ]);
-
 
         $response = $this->json('PUT', route('update-phone-number', [
             'company'     => $this->company->id,
             'phoneNumber' => $phone->id
         ]), [
-            'name' => $newName,
-            'phone_number_config' => $phone->phone_number_config_id,
-            'phone_number_pool' => $newPool->id,
+            'name'                => $newPhone->name,
+            'source'              => $newPhone->source,
+            'category'            => $newPhone->category,
+            'sub_category'        => $newPhone->sub_category,
+            'swap_rules'          => $newPhone->swap_rules,
+            'phone_number_config' => $newConfig->id
         ], $this->authHeaders());
 
         $response->assertStatus(200);
 
         $response->assertJson([
-            'phone_number' => [
-                'phone_number_pool_id' => $newPool->id,
-                'country_code'  => $phone->country_code,
-                'number'        => $phone->number,
-                'name'          => $newName
-            ]
+            'kind'                   => 'PhoneNumber',
+            'country_code'           => $phone->country_code,
+            'number'                 => $phone->number,
+            'name'                   => $newPhone->name,
+            'source'                 => $newPhone->source,
+            'category'               => $newPhone->category,
+            'sub_category'           => $newPhone->sub_category,
+            'swap_rules'             => $newPhone->swap_rules,
+            'phone_number_config_id' => $newConfig->id
         ]);
     }
 
@@ -247,11 +295,6 @@ class PhoneNumberTest extends TestCase
     public function testDelete()
     {
         $user = $this->createUser();
-
-        $pool = $this->createPhoneNumberPool([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id
-        ]);
 
         $phone = $this->createPhoneNumber([
             'company_id' => $this->company->id,
@@ -272,77 +315,97 @@ class PhoneNumberTest extends TestCase
     }
 
     /**
-     * Test deleting a phone number that is linked to a campaign
-     *
+     * Test checking that local phone numbers are available
+     * 
      * @group feature-phone-numbers
      */
-    public function testDeletePhoneLinkedToCampaign()
+    public function testCheckLocalNumbersAvailable()
     {
         $user = $this->createUser();
 
-        $campaign    = $this->createCampaign([
-            'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
+        $route = route('phone-numbers-available', [
+            'company'     => $this->company->id
         ]);
 
-        $phone = $this->createPhoneNumber([
-            'campaign_id'=> $campaign->id,
-            'company_id' => $this->company->id,
-            'created_by' => $user->id,
-            'external_id'=> str_random(40)
+        //  Try local
+        $response = $this->json('GET', $route, [
+            'toll_free'     => false,
+            'starts_with'   => '813',
+            'count'         => 2
+        ], $this->authHeaders());
+
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            'available' => true,
+            'count'     => 2,
+            'toll_free' => false
         ]);
 
-        $response = $this->json('DELETE', route('delete-phone-number', [
-            'company'     => $this->company->id,
-            'phoneNumber' => $phone->id
-        ]), [], $this->authHeaders());
+        //  Try local that doesn't exist
+        $response = $this->json('GET', $route, [
+            'toll_free'     => false,
+            'starts_with'   => '000',
+            'count'         => 2
+        ], $this->authHeaders());
 
         $response->assertStatus(400);
 
-        $response->assertJson([
-            'error' => 'This phone number is in use - please detach from all related entities and try again'
+        $response->assertJSON([
+            'available' => false,
+            'count'     => 0,
+            'toll_free' => false
+        ]);
+
+        $response->assertJSONStructure([
+            'error'
         ]);
     }
 
-
     /**
-     * Test deleting a phone number that is linked to a campaign via pool
-     *
+     * Test checking that toll-free phone numbers are available
+     * 
      * @group feature-phone-numbers
      */
-    public function testDeletePhoneLinkedToCampaignViaPool()
+    public function testCheckTollFreeNumbersAvailable()
     {
         $user = $this->createUser();
 
-        $campaign = $this->createCampaign([
-            'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
-            'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days')),
+        $route = route('phone-numbers-available', [
+            'company'     => $this->company->id
         ]);
 
-        $pool = $this->createPhoneNumberPool([
-            'campaign_id' => $campaign->id,
-            'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+        //  Try toll-free
+        $response = $this->json('GET', $route, [
+            'toll_free'     => true,
+            'count'         => 2,
+        ], $this->authHeaders());
+
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            'available' => true,
+            'count'     => 2,
+            'toll_free' => true
         ]);
 
-        $phone = $this->createPhoneNumber([
-            'company_id' => $this->company->id,
-            'created_by' => $user->id,
-            'phone_number_pool_id' => $pool->id,
-            'external_id'=> str_random(40)
-        ]);
-    
-        $response = $this->json('DELETE', route('delete-phone-number', [
-            'company'     => $this->company->id,
-            'phoneNumber' => $phone->id
-        ]), [], $this->authHeaders());
+        //  Try toll-free that doesn't exist
+        $response = $this->json('GET', $route, [
+            'toll_free'     => true,
+            'starts_with'   => '000',
+            'count'         => 2
+        ], $this->authHeaders());
 
         $response->assertStatus(400);
 
-        $response->assertJson([
-            'error' => 'This phone number is in use - please detach from all related entities and try again'
+        $response->assertJSON([
+            'available' => false,
+            'count'     => 0,
+            'toll_free' => true
+        ]);
+
+        $response->assertJSONStructure([
+            'error'
         ]);
     }
 }

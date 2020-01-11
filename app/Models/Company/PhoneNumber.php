@@ -12,6 +12,7 @@ use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumberConfig;
 use App;
+use Exception;
 
 class PhoneNumber extends Model implements CanAcceptIncomingCalls
 {
@@ -22,24 +23,23 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
     
     protected $fillable = [
         'uuid',
+        'external_id',
         'company_id',
         'created_by',
-        'auto_provisioned_by',
-        'external_id',
-        'type',
-        'usage_type',
+        'phone_number_config_id',
+        'category',
+        'sub_category',
+        'toll_free',
         'country_code',
         'number',
         'voice',
         'sms',
         'mms',
-        'phone_number_pool_id',
-        'phone_number_pool_provision_rule_id',
-        'phone_number_config_id',
-        'campaign_id',
         'name',
+        'source',
+        'swap_rules',
         'assigned_at',
-        'last_assigned_at',
+        'last_assigned_at'
     ];
 
     protected $hidden = [
@@ -48,6 +48,16 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
         'external_id',
         'last_assigned_at',
         'deleted_at'
+    ];
+
+    protected $appends = [
+        'link',
+        'kind',
+        'formatted_number'
+    ];
+
+    protected $casts = [
+        'swap_rules' => 'json'
     ];
 
     public function company()
@@ -59,38 +69,30 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
      * List local phone numbers available for a gived area code
      * 
      */
-    static public function listAvailableLocal($areaCode, $limit = 20, $country = 'US')
+    static public function listAvailable($contains = '' , $limit = 20, $tollFree = false, $country = 'US')
     {
-        $client = self::client();
+        $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
 
-        //  Handle local
-        $numbers = $client->availablePhoneNumbers($country)
-                          ->local
-                          ->read([
-                              'areaCode'     => $areaCode,
-                              'voiceEnabled' => true,
-                              'smsEnabled'   => true,
-                          ], $limit);
+        $config   = [
+            'contains'     => $contains,
+            'voiceEnabled' => true,
+            'smsEnabled'   => true,
+        ]; 
 
-        return $numbers ?: [];
-    }
+        $client  = self::client();
+        $numbers = [];
 
-    /**
-     * Given a set of requirements, find available phone numbers
-     * 
-     */
-    static public function listAvailableTollFree($limit = 20, $country = 'US')
-    {
-        
-        $client = self::client();
-
-        //  Handle local
-        $numbers = $client->availablePhoneNumbers($country)
+        try{
+            if( $tollFree ){
+                $numbers = $client->availablePhoneNumbers($country)
                           ->tollFree
-                          ->read([
-                              'voiceEnabled' => true,
-                              'smsEnabled'   => true,
-                          ], $limit);
+                          ->read($config, $limit);
+            }else{
+                $numbers = $client->availablePhoneNumbers($country)
+                          ->local
+                          ->read($config, $limit);
+            }
+        }catch(Exception $e){}
 
         return $numbers ?: [];
     }
@@ -102,13 +104,19 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
      * 
      * @return array
      */
-    static public function purchase(string $phone)
+    static public function purchase(string $number, $disableTestSwap = false)
     {
-        $client = self::client();
+        if( App::environment(['prod', 'production']) ){
+            $client = self::client();
+        }else{
+            $client = self::testClient();
+            if( ! $disableTestSwap )
+                $number = config('services.twilio.magic_numbers.available'); 
+        }
 
         return $client->incomingPhoneNumbers
                       ->create([
-                            'phoneNumber'           => $phone,
+                            'phoneNumber'           => $number,
                             'voiceUrl'              => route('incoming-call'),
                             'voiceMethod'           => 'GET',
                             'statusCallback'        => route('incoming-call-status-changed'),
@@ -172,6 +180,43 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
         $len = strlen($fullPhone) - strlen($phone);
 
         return substr($fullPhone, 0, $len);
+    }
+
+    /**
+     * Get the link
+     * 
+     */
+    public function getLinkAttribute()
+    {
+        return route('read-phone-number', [
+            'companyId'     => $this->company_id,
+            'phoneNumberId' => $this->id
+        ]);
+    }
+
+    /**
+     * Get the kind
+     * 
+     */
+    public function getKindAttribute()
+    {
+        return 'PhoneNumber';
+    }
+
+    /**
+     * Get a formatted version of the number
+     * 
+     */
+    public function getFormattedNumberAttribute()
+    {
+        return  '+' 
+                . $this->country_code 
+                . ' (' 
+                . substr($this->number, 0, 3)
+                . ') '
+                . substr($this->number, 3, 3)
+                . '-'
+                . substr($this->number, 6, 4);
     }
 
     /**

@@ -9,8 +9,10 @@ use App\Rules\Company\PhoneNumberPoolRule;
 use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
+use App\Rules\SwapRulesRule;
 use Validator;
 use Exception;
+use App;
 
 class PhoneNumberController extends Controller
 {
@@ -52,59 +54,85 @@ class PhoneNumberController extends Controller
      */
     public function create(Request $request, Company $company)
     {
-        $config = config('services.twilio');
+        if( ! $company->account->hasValidPaymentMethod() )
+            return response([
+                'error' => 'You must first add a valid payment method to your account before purchasing a phone number'
+            ], 400);
+
         $rules = [
-            'name'                => 'bail|required|max:255',
-            'area_code'           => 'bail|required|digits_between:1,3',
-            'category'            => 'bail|required|in:Online,Offline',
-            'sub_category'        => 'bail|required|max:255',        
+            'category'            => 'bail|required|in:ONLINE,OFFLINE',
+            'source'              => 'bail|required|max:255',        
             'phone_number_config' => [
                 'bail',
                 'required',
                 (new PhoneNumberConfigRule($company))
-            ]
+            ],
+            'name'          => 'bail|max:255',
+            'toll_free'     => 'bail|boolean',
+            'starts_with'   => 'bail|digits_between:1,10'
         ];
 
         $validator = Validator::make($request->input(), $rules);
+
+        //  Make sure the sub_category is valid for the category
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
+            return $input->category === 'ONLINE';
+        });
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,OTHER'], function($input){
+            return $input->category === 'OFFLINE';
+        });
+
+        //  Make sure the swap rules are there and valid when it's for a website
+        $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
+            return $input->sub_category == 'WEBSITE';
+        });
+
+
         if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
 
-        try{
-            $availableNumbers = PhoneNumber::listAvailable($request->area_code ?: null);
+        //  Look for a phone number that matches the start_with
+        $startsWith   = App::environment(['prod', 'production']) ? $request->starts_with : '';
+        $foundNumbers = PhoneNumber::listAvailable($startsWith, 1, $request->toll_free, $company->country) ?: [];
+        if( ! count($foundNumbers) )
             return response([
-                'error' => json_encode($availableNumbers)
+                'error' => 'No phone number could be found for purchase'
             ], 400);
-            
-            if( ! count($availableNumbers) )
-                return response([
-                    'error' => 'No available phone numbers found for area code ' . $request->area_code
-                ], 400);
-            
-            /*$purchasedPhone = PhoneNumber::purchaseWithAreaCode($request->area_code);
 
-            $phoneNumber = PhoneNumber::create([
+        //  Attempt to purchase phone numbers
+        try{
+            $purchasedPhone = PhoneNumber::purchase($foundNumbers[0]->phoneNumber);
+
+            $phoneNumber    = PhoneNumber::create([
                 'uuid'                      => Str::uuid(),
-                'company_id'                => $company->id,
-                'created_by'                => $user->id,
                 'external_id'               => $purchasedPhone->sid,
+                'company_id'                => $company->id,
+                'created_by'                => $request->user()->id,
+                'phone_number_config_id'    => $request->phone_number_config,
+                'category'                  => $request->category,
+                'sub_category'              => $request->sub_category,
+                'toll_free'                 => $request->toll_free ? 1 : 0,
                 'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
                 'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
                 'voice'                     => $purchasedPhone->capabilities['voice'],
                 'sms'                       => $purchasedPhone->capabilities['sms'],
                 'mms'                       => $purchasedPhone->capabilities['mms'],
                 'name'                      => $request->name ?: $purchasedPhone->phoneNumber,
-            ]);*/
+                'source'                    => $request->source,
+                'swap_rules'                => json_decode($request->swap_rules) ?: null,
+            ]);
+
+            return response($phoneNumber, 201);
         }catch(Exception $e){
+            
             return response([
-                'error' => $e->getMessage()//'Unable to purchase a phone number for the provided area code'
+                'error' => $e->getMessage() . 'Unable to purchase phone number'
             ], 400);
         }
 
-        return response([
-            'phone_number' => $phoneNumber
-        ], 201);
+        
     }
 
     /**
@@ -113,9 +141,7 @@ class PhoneNumberController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        return response([
-            'phone_number' => $phoneNumber
-        ]);
+        return response($phoneNumber);
     }
 
     /**
@@ -124,29 +150,41 @@ class PhoneNumberController extends Controller
      */
     public function update(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        $config = config('services.twilio');
-        
         $rules = [
-            'phone_number_pool' => ['bail', new PhoneNumberPoolRule($company)],
-            'phone_number_config'=>['bail', 'required', 'numeric', new PhoneNumberConfigRule($company)],
-            'name'              => 'bail|required|max:255',
+            'name'                => 'bail|required|max:255',
+            'category'            => 'bail|required|in:ONLINE,OFFLINE',
+            'source'              => 'bail|required|max:255',        
+            'phone_number_config' => [
+                'bail',
+                'required',
+                (new PhoneNumberConfigRule($company))
+            ]
         ];
 
         $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
+
+        //  Make sure the sub_category is valid for the category
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
+            return $input->category === 'ONLINE';
+        });
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,OTHER'], function($input){
+            return $input->category === 'OFFLINE';
+        });
+
+        if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
-        }
 
-        $phoneNumber->name                      = $request->name;
-        $phoneNumber->phone_number_pool_id      = $request->phone_number_pool;
         $phoneNumber->phone_number_config_id    = $request->phone_number_config;
+        $phoneNumber->category                  = $request->category;
+        $phoneNumber->sub_category              = $request->sub_category;
+        $phoneNumber->name                      = $request->name;
+        $phoneNumber->source                    = $request->source;
+        $phoneNumber->swap_rules                = $request->swap_rules;
         $phoneNumber->save();
 
-        return response([
-            'phone_number' => $phoneNumber
-        ]);
+        return response($phoneNumber);
     }
 
     /**
@@ -172,11 +210,12 @@ class PhoneNumberController extends Controller
      * Check that phone numbers are available for the provided area codes
      * 
      */
-    public function checkLocalNumbersAvailable(Request $request, Company $company)
+    public function checkNumbersAvailable(Request $request, Company $company)
     {
         $rules = [
-            'area_code'   => 'required|digits_between:1,3',
-            'count'       => 'digits_between:1,2'        
+            'toll_free'     => 'required|boolean',
+            'count'         => 'required|digits_between:1,2',
+            'starts_with'   => 'digits_between:1,10'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -186,57 +225,35 @@ class PhoneNumberController extends Controller
             ], 400);
         }
 
-        $count   = intval($request->count) ?: 1;
-
-        $notFoundMessage = 'No phone numbers could be found for this company\'s country(' 
-                            . $company->country 
-                            . ') and area code(' 
-                            . $request->area_code
-                            . ')';
+        $numbers = [];
         try{
-            $numbers = PhoneNumber::listAvailableLocal($request->area_code, $count, $company->country);
-        }catch(\Exception $e){
-            return response([
-                'error'     => $notFoundMessage,
-                'available' => false
-            ], 400);
-        }
+            $numbers = PhoneNumber::listAvailable(
+                $request->starts_with, 
+                $request->count, 
+                $request->toll_free,
+                $company->country
+            );
+        }catch(\Exception $e){}
 
-        if( ! count($numbers) )
-            return response([
-                'error'     => $notFoundMessage,
-                'available' => false
-            ], 400);
-
-        return response([
-            'available' => true,
-            'count'     => count($numbers)
-        ]);
-    }
-
-     /**
-     * Check that phone numbers are available for the provided area codes
-     * 
-     */
-    public function checkTollFreeNumbersAvailable(Request $request, Company $company)
-    {
-        $rules = [
-            'count' => 'digits_between:1,2'
+        $response = [
+            'available' => count($numbers) ? true : false,
+            'count'     => count($numbers),
+            'toll_free' => $request->toll_free
         ];
+        $statusCode = 200;
 
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
+        if( ! count($numbers) ){
+            $error = 'No phone numbers could be found for this company\'s country(' 
+                                . $company->country 
+                                . ')';
+            if( $request->starts_with )
+                $error .= ' starting with ' . $request->starts_with;
+
+            $response['error'] = $error;
+
+            $statusCode = 400;
         }
 
-        $count   = intval($request->count) ?: 1;
-
-        $numbers = PhoneNumber::listAvailableTollFree($count, $company->country);
-
-        return response([
-            'available' => count($numbers) == $count
-        ]);
+        return response($response, $statusCode);
     }
 }

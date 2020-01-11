@@ -96,7 +96,7 @@ class PhoneNumberConfig extends Model
     }
 
     /**
-     * Get the dynamic link for the route
+     * Get the link
      * 
      */
     public function getLinkAttribute()
