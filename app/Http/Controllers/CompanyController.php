@@ -25,11 +25,29 @@ class CompanyController extends Controller
      */
     public function list(Request $request)
     {
-        $limit  = intval($request->limit) ?: 25;
-        $page   = intval($request->page) ? intval($request->page) - 1 : 0;
-        $search = $request->search;
+        $rules = [
+            'limit'     => 'numeric',
+            'page'      => 'numeric',
+            'order_by'  => 'in:name',
+            'order_dir' => 'in:asc,desc'  
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $limit      = intval($request->limit) ?: 250;
+        $limit      = $limit > 250 ? 250 : $limit;
+        $page       = intval($request->page)  ?: 1;
+        $orderBy    = $request->order_by  ?: 'id';
+        $orderDir   = strtoupper($request->order_dir) ?: 'ASC';
+        $search     = $request->search;
         
         $user  = $request->user();
+
         $query = Company::where('account_id', $user->account_id)
                         ->whereIn('id', function($query) use($user){
                             $query->select('company_id')
@@ -41,17 +59,22 @@ class CompanyController extends Controller
             $query->where('name', 'like', '%' . $search . '%');
 
         $resultCount = $query->count();
-        $records     = $query->offset($page * $limit)
+        $records     = $query->offset(($page - 1) * $limit)
                              ->limit($limit)
                              ->orderBy('name', 'asc')
                              ->get();
+
+        $nextPage = null;
+        if( $resultCount > ($page * $limit) )
+            $nextPage = $page + 1;
 
         return response([
             'results'         => $records,
             'result_count'    => $resultCount,
             'limit'           => $limit,
             'page'            => intval($request->page),
-            'total_pages'     => ceil($resultCount / $limit)
+            'total_pages'     => ceil($resultCount / $limit),
+            'next_page'       => $nextPage
         ]);
     }
 

@@ -135,7 +135,7 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
      */
     public function release()
     {
-        if( env('APP_ENV') !== 'testing' ){
+        if( App::environment(['prod', 'production']) ){
             self::client()
                 ->incomingPhoneNumbers($this->external_id)
                 ->delete();

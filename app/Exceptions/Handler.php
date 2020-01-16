@@ -4,6 +4,7 @@ namespace App\Exceptions;
 
 use Exception;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use App;
 
 class Handler extends ExceptionHandler
 {
@@ -45,24 +46,30 @@ class Handler extends ExceptionHandler
      * @return \Illuminate\Http\Response
      */
     public function render($request, Exception $exception)
-    {
-        $class = get_class($exception);
-        
-        if( $request->expectsJson() ){ 
+    { 
+        if( $request->expectsJson() && App::environment(['prod', 'production']) ){ 
             //  Resource missing
-            if( $class == \Illuminate\Database\Eloquent\ModelNotFoundException::class ){
+            if( $exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ){
                 return response([
                     'error' => 'Not found'
                 ], 404);
             }
 
-            if( $class == \Illuminate\Auth\AuthenticationException::class ){
+            if( $exception instanceof \Illuminate\Auth\AuthenticationException ){
                 return response([
                     'error' => 'Unauthenticated'
                 ], 401);
             }
 
-            //  ...
+            if( $exception instanceof \Illuminate\Auth\AuthenticationException ){
+                return response([
+                    'error' => 'Too many requests'
+                ], 429);
+            }
+
+            return response([
+                'error' => 'An unknown error has occurred'
+            ], 500);
         }
        
         return parent::render($request, $exception);

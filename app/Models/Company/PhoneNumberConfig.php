@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
+use DB;
 
 class PhoneNumberConfig extends Model
 {
@@ -43,10 +44,10 @@ class PhoneNumberConfig extends Model
 
     public function isInUse()
     {
-        if( PhoneNumber::where('phone_number_config_id', $this->id)->count() )
+        if( $this->phone_number_pools )
             return true;
-    
-        if( PhoneNumberPool::where('phone_number_config_id', $this->id)->count() )
+
+        if( $this->phone_numbers )
             return true;
 
         return false;

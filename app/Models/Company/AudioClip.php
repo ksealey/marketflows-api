@@ -26,9 +26,10 @@ class AudioClip extends Model
     ];
 
     protected $appends = [
+        'link',
+        'kind',
         'url'
     ];
-
 
     public function canBeDeleted()
     {
@@ -61,5 +62,18 @@ class AudioClip extends Model
     public function company()
     {
         return $this->belongsTo('\App\Models\Company');
+    }
+
+    public function getLinkAttribute()
+    {
+        return route('read-audio-clip', [
+            'companyId'     => $this->company_id,
+            'audioClipId'   => $this->id
+        ]);
+    }
+
+    public function getKindAttribute()
+    {
+        return 'AudioClip';
     }
 }

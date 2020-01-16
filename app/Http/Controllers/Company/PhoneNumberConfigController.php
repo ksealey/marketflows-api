@@ -10,6 +10,9 @@ use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberConfig;
 use Validator;
+use DateTime;
+use DateTimeZone;
+use App\Helpers\Formatter;
 
 class PhoneNumberConfigController extends Controller
 {
@@ -19,11 +22,27 @@ class PhoneNumberConfigController extends Controller
      */
     public function list(Request $request, Company $company)
     {
-        $limit  = intval($request->limit) ?: 25;
-        $limit  = $limit > 1000 ? 1000 : $limit;
-        $page   = intval($request->page) ? intval($request->page) - 1 : 0;
-        $search = $request->search;
+        $rules = [
+            'limit'     => 'numeric',
+            'page'      => 'numeric',
+            'order_by'  => 'in:name,created_at,updated_at',
+            'order_dir' => 'in:asc,desc'  
+        ];
 
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $limit      = intval($request->limit) ?: 250;
+        $limit      = $limit > 250 ? 250 : $limit;
+        $page       = intval($request->page)  ?: 1;
+        $orderBy    = $request->order_by  ?: 'created_at';
+        $orderDir   = strtoupper($request->order_dir) ?: 'DESC';
+        $search     = $request->search;
+        
         $query = PhoneNumberConfig::where('company_id', $company->id);
         
         if( $search ){
@@ -33,19 +52,50 @@ class PhoneNumberConfigController extends Controller
             });
         }
 
-        $query->orderBy('created_at', 'DESC');
-
         $resultCount = $query->count();
-        $records     = $query->offset($page * $limit)
+        $records     = $query->offset(( $page - 1 ) * $limit)
                              ->limit($limit)
+                             ->orderBy($orderBy, $orderDir)
                              ->get();
+
+        //  Set local time
+        $now             = new DateTime(); 
+        $defaultTimezone = new DateTimeZone('UTC');
+        $companyTimezone = new DateTimeZone($company->timezone);
+
+        foreach( $records as $record ){
+            $createdAt = new DateTime($record->created_at, $defaultTimezone);
+            $updatedAt = new DateTime($record->updated_at, $defaultTimezone);
+
+            $record->offset_times = [
+                'created_at' => Formatter::offsetTimeString($now->diff($createdAt)),
+                'updated_at' => Formatter::offsetTimeString($now->diff($updatedAt)),
+            ];
+
+            $createdAt->setTimeZone($companyTimezone);
+            $updatedAt->setTimeZone($companyTimezone);
+            
+            $record->local_times = [
+                'created_at'          => $createdAt->format('Y-m-d H:i:s'),
+                'created_at_friendly' => $createdAt->format('F jS, Y') . ' at ' . $createdAt->format('g:ia'),
+                'updated_at'          => $updatedAt->format('Y-m-d H:i:s'),
+                'updated_at_friendly' => $updatedAt->format('F jS, Y') . ' at ' . $updatedAt->format('g:ia')
+            ];
+
+            
+        }
+
+        $nextPage = null;
+        if( $resultCount > ($page * $limit) )
+            $nextPage = $page + 1;
 
         return response([
             'results'              => $records,
             'result_count'         => $resultCount,
             'limit'                => $limit,
-            'page'                 => $page + 1,
-            'total_pages'          => ceil($resultCount / $limit)
+            'page'                 => $page,
+            'total_pages'          => ceil($resultCount / $limit),
+            'next_page'            => $nextPage
         ]);
     }
 
@@ -93,6 +143,14 @@ class PhoneNumberConfigController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
+        //
+        //  Attach phone numbers and phone number pools
+        //
+        
+        $phoneNumberConfig->phone_number_pools = $phoneNumberConfig->phone_number_pools;
+
+        $phoneNumberConfig->phone_numbers      = $phoneNumberConfig->phone_numbers;
+
         return response( $phoneNumberConfig );
     }
 
@@ -136,7 +194,7 @@ class PhoneNumberConfigController extends Controller
     {
         if( $phoneNumberConfig->isInUse() ){
             return response([
-                'error' => 'Phone number config in use'
+                'error' => 'This configuration is in use - Detach from all phone numbers and phone number pools then try again'
             ], 400);
         }
 

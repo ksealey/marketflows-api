@@ -20,9 +20,26 @@ class AudioClipController extends Controller
      */
     public function list(Request $request, Company $company)
     {
-        $limit  = intval($request->limit) ?: 25;
-        $page   = intval($request->page) ? intval($request->page) - 1 : 0;
-        $search = $request->search;
+        $rules = [
+            'limit'     => 'numeric',
+            'page'      => 'numeric',
+            'order_by'  => 'in:name,created_at,updated_at',
+            'order_dir' => 'in:asc,desc'  
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $limit      = intval($request->limit) ?: 250;
+        $limit      = $limit > 250 ? 250 : $limit;
+        $page       = intval($request->page) ?: 1;
+        $orderBy    = $request->order_by  ?: 'created_at';
+        $orderDir   = strtoupper($request->order_dir) ?: 'DESC';
+        $search     = $request->search;
         
         $query  = AudioClip::where('company_id', $company->id);
         
@@ -30,17 +47,22 @@ class AudioClipController extends Controller
             $query->where('name', 'like', '%' . $search . '%');
 
         $resultCount = $query->count();
-        $records     = $query->offset($page * $limit)
-                             ->limit($limit)
+        $records     = $query->limit($limit)
+                             ->offset(($page - 1) * $limit)
+                             ->orderBy($orderBy, $orderDir)
                              ->get();
 
+        $nextPage = null;
+        if( $resultCount > ($page * $limit) )
+            $nextPage = $page + 1;
+
         return response([
-            'message'         => 'success',
-            'audio_clips'     => $records,
-            'result_count'    => $resultCount,
-            'limit'           => $limit,
-            'page'            => $page + 1,
-            'total_pages'     => ceil($resultCount / $limit)
+            'results'              => $records,
+            'result_count'         => $resultCount,
+            'limit'                => $limit,
+            'page'                 => $page,
+            'total_pages'          => ceil($resultCount / $limit),
+            'next_page'            => $nextPage
         ]);
     }
 
@@ -91,10 +113,7 @@ class AudioClipController extends Controller
 
         DB::commit();
 
-        return response([
-            'message'       => 'created',
-            'audio_clip'    => $audioClip
-        ], 201);
+        return response($audioClip, 201);
     }
 
     /**
