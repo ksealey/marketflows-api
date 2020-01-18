@@ -7,9 +7,10 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Traits\HasUserEvents;
+use App\Traits\Helpers\AppendsDates;
 use App\Models\User;
 
 class Controller extends BaseController
 {
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HasUserEvents;
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HasUserEvents,  AppendsDates;
 }

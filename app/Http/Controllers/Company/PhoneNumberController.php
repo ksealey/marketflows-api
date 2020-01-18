@@ -25,7 +25,7 @@ class PhoneNumberController extends Controller
         $rules = [
             'limit'     => 'numeric',
             'page'      => 'numeric',
-            'order_by'  => 'in:name,created_at,updated_at',
+            'order_by'  => 'in:name,number,created_at,updated_at',
             'order_dir' => 'in:asc,desc'  
         ];
 
@@ -47,7 +47,8 @@ class PhoneNumberController extends Controller
         
         if( $search ){
             $query->where(function($query) use($search){
-                $query->where('name', 'like', '%' . $search . '%');
+                $query->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('number', 'like', '%' . $search . '%');
             });
         }
 
@@ -56,6 +57,8 @@ class PhoneNumberController extends Controller
                              ->limit($limit)
                              ->orderBy($orderBy, $orderDir)
                              ->get();
+
+        $records = $this->withAppendedDates($company, $records);
 
         $nextPage = null;
         if( $resultCount > ($page * $limit) )
@@ -174,14 +177,16 @@ class PhoneNumberController extends Controller
     public function update(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
         $rules = [
-            'name'                => 'bail|required|max:255',
             'category'            => 'bail|required|in:ONLINE,OFFLINE',
             'source'              => 'bail|required|max:255',        
             'phone_number_config' => [
                 'bail',
                 'required',
                 (new PhoneNumberConfigRule($company))
-            ]
+            ],
+            'name'          => 'bail|max:255',
+            'toll_free'     => 'bail|boolean',
+            'starts_with'   => 'bail|digits_between:1,10'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -194,6 +199,11 @@ class PhoneNumberController extends Controller
             return $input->category === 'OFFLINE';
         });
 
+        //  Make sure the swap rules are there and valid when it's for a website
+        $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
+            return $input->sub_category == 'WEBSITE';
+        });
+
         if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first()
@@ -204,7 +214,7 @@ class PhoneNumberController extends Controller
         $phoneNumber->sub_category              = $request->sub_category;
         $phoneNumber->name                      = $request->name;
         $phoneNumber->source                    = $request->source;
-        $phoneNumber->swap_rules                = $request->swap_rules;
+        $phoneNumber->swap_rules                = $request->sub_category == 'WEBSITE' ? json_decode($request->swap_rules) : null;
         $phoneNumber->save();
 
         return response($phoneNumber);

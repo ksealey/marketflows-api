@@ -12,7 +12,6 @@ use App\Models\Company\PhoneNumberConfig;
 use Validator;
 use DateTime;
 use DateTimeZone;
-use App\Helpers\Formatter;
 
 class PhoneNumberConfigController extends Controller
 {
@@ -25,7 +24,7 @@ class PhoneNumberConfigController extends Controller
         $rules = [
             'limit'     => 'numeric',
             'page'      => 'numeric',
-            'order_by'  => 'in:name,created_at,updated_at',
+            'order_by'  => 'in:name,created_at,forward_to_number,updated_at',
             'order_dir' => 'in:asc,desc'  
         ];
 
@@ -58,32 +57,7 @@ class PhoneNumberConfigController extends Controller
                              ->orderBy($orderBy, $orderDir)
                              ->get();
 
-        //  Set local time
-        $now             = new DateTime(); 
-        $defaultTimezone = new DateTimeZone('UTC');
-        $companyTimezone = new DateTimeZone($company->timezone);
-
-        foreach( $records as $record ){
-            $createdAt = new DateTime($record->created_at, $defaultTimezone);
-            $updatedAt = new DateTime($record->updated_at, $defaultTimezone);
-
-            $record->offset_times = [
-                'created_at' => Formatter::offsetTimeString($now->diff($createdAt)),
-                'updated_at' => Formatter::offsetTimeString($now->diff($updatedAt)),
-            ];
-
-            $createdAt->setTimeZone($companyTimezone);
-            $updatedAt->setTimeZone($companyTimezone);
-            
-            $record->local_times = [
-                'created_at'          => $createdAt->format('Y-m-d H:i:s'),
-                'created_at_friendly' => $createdAt->format('F jS, Y') . ' at ' . $createdAt->format('g:ia'),
-                'updated_at'          => $updatedAt->format('Y-m-d H:i:s'),
-                'updated_at_friendly' => $updatedAt->format('F jS, Y') . ' at ' . $updatedAt->format('g:ia')
-            ];
-
-            
-        }
+        $records = $this->withAppendedDates($company, $records);
 
         $nextPage = null;
         if( $resultCount > ($page * $limit) )
@@ -143,10 +117,6 @@ class PhoneNumberConfigController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
-        //
-        //  Attach phone numbers and phone number pools
-        //
-        
         $phoneNumberConfig->phone_number_pools = $phoneNumberConfig->phone_number_pools;
 
         $phoneNumberConfig->phone_numbers      = $phoneNumberConfig->phone_numbers;
