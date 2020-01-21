@@ -24,8 +24,6 @@ class PhoneNumberConfig extends Model
     ];
 
     protected $hidden = [
-        'company_id',
-        'created_by',
         'deleted_at'
     ];
 
@@ -44,10 +42,10 @@ class PhoneNumberConfig extends Model
 
     public function isInUse()
     {
-        if( $this->phone_number_pools )
+        if( count($this->phone_number_pools) )
             return true;
 
-        if( $this->phone_numbers )
+        if( count($this->phone_numbers) )
             return true;
 
         return false;

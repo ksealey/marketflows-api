@@ -82,7 +82,7 @@ class PhoneNumberConfigController extends Controller
        $rules = [
             'name'              => 'bail|required|max:255',
             'forward_to_number' => 'bail|required|digits_between:10,13',
-            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($company->id)],
+            'audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'            => 'bail|boolean',
             'whisper_message'   => 'bail|max:255',
         ];
@@ -100,7 +100,7 @@ class PhoneNumberConfigController extends Controller
             'name'                      => $request->name,
             'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number),
             'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
-            'audio_clip_id'             => $request->audio_clip ?: null,
+            'audio_clip_id'             => $request->audio_clip_id ?: null,
             'recording_enabled_at'      => $request->record ? date('Y-m-d H:i:s') : null,
             'whisper_message'           => $request->whisper_message ?: null
         ]);
@@ -133,7 +133,7 @@ class PhoneNumberConfigController extends Controller
         $rules = [
             'name'              => 'bail|required|max:255',
             'forward_to_number' => 'bail|required|digits_between:10,13',
-            'audio_clip'        => ['bail', 'numeric', new AudioClipRule($company->id)],
+            'audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'            => 'bail|boolean',
             'whisper_message'   => 'bail|max:255',
         ];
@@ -145,12 +145,19 @@ class PhoneNumberConfigController extends Controller
             ], 400);
         }
 
-        $phoneNumberConfig->name                    = $request->name;
-        $phoneNumberConfig->forward_to_country_code = PhoneNumber::countryCode($request->forward_to_number);
-        $phoneNumberConfig->forward_to_number       = PhoneNumber::number($request->forward_to_number);
-        $phoneNumberConfig->audio_clip_id           = $request->audio_clip;
-        $phoneNumberConfig->recording_enabled_at    = $request->record ? ( $phoneNumberConfig->recording_enabled_at ?: date('Y-m-d H:i:s') ) : null;
-        $phoneNumberConfig->whisper_message         = $request->whisper_message;
+        if( $request->has('name') )
+            $phoneNumberConfig->name = $request->name;
+        if( $request->has('forward_to_country_code') )
+            $phoneNumberConfig->forward_to_country_code = PhoneNumber::countryCode($request->forward_to_number);
+        if( $request->has('forward_to_number') )
+            $phoneNumberConfig->forward_to_number = PhoneNumber::number($request->forward_to_number);
+        if( $request->has('audio_clip_id') )
+            $phoneNumberConfig->audio_clip_id = $request->audio_clip_id;
+        if( $request->has('record') )
+            $phoneNumberConfig->recording_enabled_at = $request->record ? ( $phoneNumberConfig->recording_enabled_at ?: date('Y-m-d H:i:s') ) : null;
+        if( $request->has('whisper_message') )
+            $phoneNumberConfig->whisper_message = $request->whisper_message;
+        
         $phoneNumberConfig->save();
 
         return response( $phoneNumberConfig );

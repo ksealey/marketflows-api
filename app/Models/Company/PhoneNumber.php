@@ -4,8 +4,6 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use \App\Contracts\CanAcceptIncomingCalls;
-use \App\Traits\AcceptsIncomingCalls;
 use \App\Traits\HandlesPhoneNumbers;
 use \App\Models\User;
 use \App\Models\Company\Campaign;
@@ -14,9 +12,9 @@ use \App\Models\Company\PhoneNumberConfig;
 use App;
 use Exception;
 
-class PhoneNumber extends Model implements CanAcceptIncomingCalls
+class PhoneNumber extends Model 
 {
-    use SoftDeletes, AcceptsIncomingCalls, HandlesPhoneNumbers;
+    use SoftDeletes, HandlesPhoneNumbers;
 
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;
@@ -26,6 +24,7 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
         'external_id',
         'company_id',
         'created_by',
+        'phone_number_pool_id',
         'phone_number_config_id',
         'category',
         'sub_category',
@@ -43,10 +42,7 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
     ];
 
     protected $hidden = [
-        'company_id',
-        'created_by',
         'external_id',
-        'last_assigned_at',
         'deleted_at'
     ];
 
@@ -57,7 +53,7 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
     ];
 
     protected $casts = [
-        'swap_rules' => 'json'
+        'swap_rules' => 'array'
     ];
 
     public function company()
@@ -92,7 +88,7 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
                           ->local
                           ->read($config, $limit);
             }
-        }catch(Exception $e){}
+        }catch(Exception $e){ }
 
         return $numbers ?: [];
     }
@@ -264,22 +260,6 @@ class PhoneNumber extends Model implements CanAcceptIncomingCalls
         }
      
         return [];
-    }
-    
-    /**
-     * Get a phone number's config
-     * 
-     * @return \App\Models\Company\PhoneNumberConfig
-     */
-    public function getPhoneNumberConfig() : PhoneNumberConfig
-    {
-        if( $this->phone_number_pool_id ){
-            $pool = PhoneNumberPool::find($this->phone_number_pool_id);
-            if( $pool )
-                return $pool->getPhoneNumberConfig();
-        }
-        
-        return PhoneNumberConfig::find($this->phone_number_config_id);
     }
 
     /**

@@ -27,8 +27,8 @@ $factory->define(\App\Models\Company\PhoneNumber::class, function (Faker $faker)
         'mms'                       => true,
         'name'                      => $faker->realText(20),
         'source'                    => ['Google', 'Facebook', 'Yahoo'][mt_rand(0, 2)],
-        'swap_rules'                => json_encode([
-            'patterns' => [
+        'swap_rules'                => [
+            'targets' => [
                 '813557####',
                 '18003098829'
             ],
@@ -77,7 +77,7 @@ $factory->define(\App\Models\Company\PhoneNumber::class, function (Faker $faker)
                 ]
             ]
 
-        ]),
+        ],
         'assigned_at'               => now(),
         'last_assigned_at'          => now()
     ];

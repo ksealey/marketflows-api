@@ -16,7 +16,8 @@ class ChargeError extends Model
         'amount',
         'description',
         'error',
-        'exception'
+        'exception',
+        'resolved'
     ];
 
     protected $hidden = [

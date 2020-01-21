@@ -20,6 +20,7 @@ class CreateChargeErrorsTable extends Migration
             $table->string('description', 255);
             $table->string('error', 255);
             $table->text('exception');
+            $table->boolean('resolved')->default(0);
             $table->timestamps();
             $table->foreign('payment_method_id')->references('id')->on('payment_methods');
             $table->softDeletes();

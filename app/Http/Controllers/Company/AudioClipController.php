@@ -148,16 +148,14 @@ class AudioClipController extends Controller
 
         DB::beginTransaction();
         try{
-            //  Replace existing file if provided
-            if( $file = $request->audio_clip )
-                Storage::put($audioClip->path, $file);
+            if( $request->hasFile('audio_clip') )
+                //  Replace existing file if provided
+                Storage::put($audioClip->path, $request->audio_clip);
 
-            $old = clone $audioClip;
+            if( $request->filled('name') )
+                $audioClip->name = $request->name;
 
-            $audioClip->name = $request->name;
             $audioClip->save();
-
-            $this->logUserEvent($request->user(), 'audio-clips.update', $old, $audioClip);
         }catch(Exception $e){
             DB::rollBack();
 
@@ -167,10 +165,7 @@ class AudioClipController extends Controller
         }
         DB::commit();
 
-        return response([
-            'message'    => 'updated',
-            'audio_clip' => $audioClip
-        ], 200);
+        return response($audioClip, 200);
     }
 
     public function delete(Request $request, Company $company, AudioClip $audioClip)

@@ -35,23 +35,23 @@ class SwapRulesRule implements Rule
             return false;
         }
 
-        //  Make sure there is at least 1 pattern and they're valid
-        if( empty($swapRules->patterns) || ! is_array($swapRules->patterns) ){
-            $this->message = 'Swap rules must contain at least 1 phone number matching pattern - see documentation for format';
+        //  Make sure there is at least 1 target and they're valid
+        if( empty($swapRules->targets) || ! is_array($swapRules->targets) ){
+            $this->message = 'Swap rules must contain at least 1 phone number matching target - see documentation for format';
 
             return false;
         }
 
-        foreach( $swapRules->patterns as $pattern ){
-            if( ! is_string($pattern) ){
-                $this->message = 'Swap rule patterns must be strings';
+        foreach( $swapRules->targets as $target ){
+            if( ! is_string($target) ){
+                $this->message = 'Swap rule targets must be strings';
 
                 return false;
             }
 
-            $patternData = preg_replace('/[^0-9\#]+/', '', $pattern);
-            if( strlen($patternData) < 7 || strlen($patternData) > 13 ){
-                $this->message = 'Swap rule pattern invalid';
+            $targetData = preg_replace('/[^0-9\#]+/', '', $target);
+            if( strlen($targetData) < 7 || strlen($targetData) > 13 ){
+                $this->message = 'Swap rule target invalid';
 
                 return false;
             }

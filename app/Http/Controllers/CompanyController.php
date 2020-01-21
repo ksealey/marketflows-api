@@ -159,9 +159,10 @@ class CompanyController extends Controller
     public function update(Request $request, Company $company)
     {
         $rules = [
-            'name' => 'required|max:255',
-            'industry'  => 'required|max:255',
-            'timezone'  => 'required|timezone'
+            'name'      => 'min:1|max:255',
+            'industry'  => 'min:1|max:255',
+            'country'   => [new CountryRule()],  
+            'timezone'  => 'timezone'
         ];
         
         $validator = Validator::make($request->input(), $rules);
@@ -171,9 +172,15 @@ class CompanyController extends Controller
             ], 400);
         }
 
-        $company->name     = $request->name;
-        $company->industry = $request->industry;
-        $company->timezone = $request->timezone;
+        if( $request->filled('name') )
+            $company->name = $request->name;
+        if( $request->filled('industry') )
+            $company->industry = $request->industry;
+        if( $request->filled('country') )
+            $company->country = $request->country;
+        if( $request->filled('timezone') )
+            $company->timezone = $request->timezone;
+
         $company->save();
 
         return response($company);

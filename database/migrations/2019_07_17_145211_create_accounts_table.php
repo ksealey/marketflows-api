@@ -17,6 +17,10 @@ class CreateAccountsTable extends Migration
             $table->bigIncrements('id');
             $table->string('name', 255);
             $table->string('country', 32);
+            $table->json('rates');
+            $table->decimal('balance', 16, 4)->default(0.00);
+            $table->dateTime('auto_reload_enabled_at')->nullale();
+            $table->integer('auto_reload_minimum')->nullable();
             $table->string('stripe_id', 255)->nullable();
             $table->dateTime('disabled_at')->nullable();
             $table->timestamps();

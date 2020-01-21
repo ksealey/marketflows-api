@@ -26,7 +26,7 @@ class PhoneNumberController extends Controller
             'limit'     => 'numeric',
             'page'      => 'numeric',
             'order_by'  => 'in:name,number,created_at,updated_at',
-            'order_dir' => 'in:asc,desc'  
+            'order_dir' => 'in:asc,desc'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -51,6 +51,13 @@ class PhoneNumberController extends Controller
                       ->orWhere('number', 'like', '%' . $search . '%');
             });
         }
+
+        if( $request->category )
+            $query->where('category', $request->category);
+
+        if( $request->sub_category )
+            $query->where('sub_category', $request->sub_category);
+        
 
         $resultCount = $query->count();
         $records     = $query->offset(( $page - 1 ) * $limit)
@@ -80,11 +87,6 @@ class PhoneNumberController extends Controller
      */
     public function create(Request $request, Company $company)
     {
-        if( ! $company->account->hasValidPaymentMethod() )
-            return response([
-                'error' => 'You must first add a valid payment method to your account before purchasing a phone number'
-            ], 400);
-
         $rules = [
             'category'            => 'bail|required|in:ONLINE,OFFLINE',
             'source'              => 'bail|required|max:255',        
@@ -113,10 +115,17 @@ class PhoneNumberController extends Controller
             return $input->sub_category == 'WEBSITE';
         });
 
-
         if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first()
+            ], 400);
+
+        //  Make sure that account balance can purchase object
+        $purchaseObject = 'PhoneNumber.' . ($request->toll_free ? 'TollFree' : 'Local'); 
+        $account        = $company->account; 
+        if( ! $account->canPurchase($purchaseObject, 1, true) )
+            return response([
+                'error' => 'Your account balance(' . $account->balance . ') is too low to complete purchase. Reload account balance or turn on auto-reload in your account payment settings and try again.'
             ], 400);
 
         //  Look for a phone number that matches the start_with
@@ -136,7 +145,7 @@ class PhoneNumberController extends Controller
                 'external_id'               => $purchasedPhone->sid,
                 'company_id'                => $company->id,
                 'created_by'                => $request->user()->id,
-                'phone_number_config_id'    => $request->phone_number_config,
+                'phone_number_config_id'    => $request->phone_number_config_id,
                 'category'                  => $request->category,
                 'sub_category'              => $request->sub_category,
                 'toll_free'                 => $request->toll_free ? 1 : 0,
@@ -147,7 +156,7 @@ class PhoneNumberController extends Controller
                 'mms'                       => $purchasedPhone->capabilities['mms'],
                 'name'                      => $request->name ?: $purchasedPhone->phoneNumber,
                 'source'                    => $request->source,
-                'swap_rules'                => json_decode($request->swap_rules) ?: null,
+                'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null
             ]);
 
             return response($phoneNumber, 201);
@@ -177,11 +186,10 @@ class PhoneNumberController extends Controller
     public function update(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
         $rules = [
-            'category'            => 'bail|required|in:ONLINE,OFFLINE',
-            'source'              => 'bail|required|max:255',        
+            'category'            => 'bail|in:ONLINE,OFFLINE',
+            'source'              => 'bail|max:255',        
             'phone_number_config' => [
                 'bail',
-                'required',
                 (new PhoneNumberConfigRule($company))
             ],
             'name'          => 'bail|max:255',
@@ -209,12 +217,19 @@ class PhoneNumberController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        $phoneNumber->phone_number_config_id    = $request->phone_number_config;
-        $phoneNumber->category                  = $request->category;
-        $phoneNumber->sub_category              = $request->sub_category;
-        $phoneNumber->name                      = $request->name;
-        $phoneNumber->source                    = $request->source;
-        $phoneNumber->swap_rules                = $request->sub_category == 'WEBSITE' ? json_decode($request->swap_rules) : null;
+        if( $request->filled('phone_number_config') )
+            $phoneNumber->phone_number_config_id = $request->phone_number_config_id;
+        if( $request->filled('category') )
+            $phoneNumber->category = $request->category;
+        if( $request->filled('sub_category') )
+            $phoneNumber->sub_category = $request->sub_category;
+        if( $request->filled('name') )
+            $phoneNumber->name = $request->name;
+        if( $request->filled('source') )
+            $phoneNumber->source = $request->source;
+        if( $request->filled('swap_rules') )
+            $phoneNumber->swap_rules = $request->sub_category == 'WEBSITE' ? json_decode($request->swap_rules) : null;
+        
         $phoneNumber->save();
 
         return response($phoneNumber);
@@ -271,7 +286,7 @@ class PhoneNumberController extends Controller
         $response = [
             'available' => count($numbers) ? true : false,
             'count'     => count($numbers),
-            'toll_free' => $request->toll_free
+            'toll_free' => boolval($request->toll_free)
         ];
         $statusCode = 200;
 

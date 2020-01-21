@@ -18,16 +18,18 @@ class CreatePhoneNumberPoolsTable extends Migration
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('phone_number_config_id')->unsigned();
-            $table->bigInteger('campaign_id')->unsigned()->nullable();
             $table->string('name', 255)->nullable();
-            $table->dateTime('auto_provision_enabled_at')->nullable();
-            $table->integer('auto_provision_max_allowed')->nullable();
+            $table->string('category', 64);
+            $table->string('sub_category', 64);
+            $table->string('source', 255)->nullable();
+            $table->string('source_param', 255)->nullable();
+            $table->json('referrer_aliases')->nullable();
+            $table->json('swap_rules')->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('phone_number_config_id')->references('id')->on('phone_number_configs');
-            $table->foreign('campaign_id')->references('id')->on('campaigns');
         });
     }
 

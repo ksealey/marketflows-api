@@ -19,8 +19,6 @@ class PaymentMethod extends Model
 {
     use SoftDeletes;
 
-    private $lastChargeError;
-
     protected $hidden = [
         'account_id',
         'external_id',
@@ -126,14 +124,17 @@ class PaymentMethod extends Model
                 'description'   => $description
             ]);
 
-            //  Remove any existing charge errors
+            //  Resolve any existing charge errors
             ChargeError::where('payment_method_id', $this->id)
-                        ->delete();
+                        ->where('resolved', 0)
+                        ->update([ 
+                            'resolved' => 1 
+                        ]);
             
-            //  Create charge 
+            //  Create local charge 
             return Charge::create([
                 'payment_method_id' => $this->id,
-                'external_id'         => $stripeCharge->id,
+                'external_id'       => $stripeCharge->id,
                 'amount'            => $amount,
                 'description'       => $description
             ]);
@@ -145,7 +146,7 @@ class PaymentMethod extends Model
             $exception = $e->getMessage() . "\n" . $e->getTraceAsString();
         }
 
-        $this->lastChargeError = ChargeError::create([
+        ChargeError::create([
             'payment_method_id' => $this->id,
             'amount'            => $amount,
             'description'       => $description,
@@ -183,17 +184,6 @@ class PaymentMethod extends Model
         }
     }
 
-    public function lastChargeError()
-    {
-        if( ! $this->lastChargeError ){
-            $errors = $this->chargeErrors;
-
-            $this->lastChargeError = count($errors) ? $errors->last() : null;
-        }
-        
-        return $this->lastChargeError;
-    }
-
     /**
      * Delete payment along wit it's remote resource
      * 
@@ -209,4 +199,19 @@ class PaymentMethod extends Model
         //  Now call the parent's delete method
         parent::delete();
     }
+
+    /**
+     * Determine if a payment method is valid
+     * 
+     */
+    public function isValid()
+    {
+        $chargeErrorCount = ChargeError::where('payment_method_id', $this->id)
+                                        ->where('resolved', 0)
+                                        ->count();
+
+        return $chargeErrorCount ? false : true;
+    }
+
+
 }

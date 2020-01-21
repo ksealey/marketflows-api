@@ -42,7 +42,7 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
 | Handle authenticated user api calls
 |----------------------------------------
 */
-Route::middleware(['throttle:240,1', 'auth:api', 'api'])->group(function(){
+Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
     Route::get('/me', function(Request $request){
         return response([
             'user' => $request->user()

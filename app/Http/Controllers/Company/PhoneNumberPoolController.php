@@ -3,14 +3,21 @@
 namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use \App\Rules\Company\AudioClipRule;
 use \App\Models\Company;
 use App\Rules\Company\PhoneNumberConfigRule;
+use App\Rules\Company\NumbersRule;
+use App\Rules\Company\SingleWebsiteSessionPoolRule;
+use App\Rules\ReferrerAliasesRule;
+use App\Rules\SwapRulesRule;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
+use \App\Models\Purchase;
 use Validator;
+use DB;
 
 class PhoneNumberPoolController extends Controller
 {
@@ -24,9 +31,26 @@ class PhoneNumberPoolController extends Controller
      */
     public function list(Request $request, Company $company)
     {
-        $limit  = intval($request->limit) ?: 25;
-        $page   = intval($request->page) ? intval($request->page) - 1 : 0;
-        $search = $request->search;
+        $rules = [
+            'limit'     => 'numeric',
+            'page'      => 'numeric',
+            'order_by'  => 'in:name,created_at,updated_at',
+            'order_dir' => 'in:asc,desc'
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $limit      = intval($request->limit) ?: 250;
+        $limit      = $limit > 250 ? 250 : $limit;
+        $page       = intval($request->page)  ?: 1;
+        $orderBy    = $request->order_by  ?: 'created_at';
+        $orderDir   = strtoupper($request->order_dir) ?: 'DESC';
+        $search     = $request->search;
         
         $query = PhoneNumberPool::where('company_id', $company->id);
         
@@ -36,18 +60,32 @@ class PhoneNumberPoolController extends Controller
             });
         }
 
+        if( $request->category )
+            $query->where('category', $request->category);
+
+        if( $request->sub_category )
+            $query->where('sub_category', $request->sub_category);
+        
+
         $resultCount = $query->count();
-        $records     = $query->offset($page * $limit)
+        $records     = $query->offset(( $page - 1 ) * $limit)
                              ->limit($limit)
+                             ->orderBy($orderBy, $orderDir)
                              ->get();
 
+        $records = $this->withAppendedDates($company, $records);
+
+        $nextPage = null;
+        if( $resultCount > ($page * $limit) )
+            $nextPage = $page + 1;
+
         return response([
-            'message'               => 'success',
-            'phone_number_pools'    => $records,
-            'result_count'          => $resultCount,
-            'limit'                 => $limit,
-            'page'                  => $page + 1,
-            'total_pages'           => ceil($resultCount / $limit)
+            'results'              => $records,
+            'result_count'         => $resultCount,
+            'limit'                => $limit,
+            'page'                 => $page,
+            'total_pages'          => ceil($resultCount / $limit),
+            'next_page'            => $nextPage
         ]);
     }
 
@@ -61,34 +99,217 @@ class PhoneNumberPoolController extends Controller
      */
     public function create(Request $request, Company $company)
     {
-        $config = config('services.twilio');
         $rules = [
-            'phone_number_config'   => ['bail', 'required', 'numeric', new PhoneNumberConfigRule($company)],
-            'name'                  => 'bail|required|max:255',
-            'auto_provision'        => 'boolean',
+            'name'                   => 'bail|required|max:255',
+            'category'               => 'bail|required|in:ONLINE,OFFLINE',
+            'initial_pool_size'      => 'bail|required|in:' . implode(',', range(5,20)),  
+            'phone_number_config_id' => [
+                'bail',
+                'required',
+                (new PhoneNumberConfigRule($company))
+            ],
+            'numbers'       => ['bail', 'json', new NumbersRule($company)],  
+            'toll_free'     => 'bail|boolean',
+            'starts_with'   => 'bail|digits_between:1,10'
         ];
 
         $validator = Validator::make($request->input(), $rules);
+
+        //  Make sure the sub_category is valid for the category
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE_MANUAL,WEBSITE,WEBSITE_SESSION,SOCIAL_MEDIA,EMAIL'], function($input){
+            return $input->category === 'ONLINE';
+        });
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,OTHER'], function($input){
+            return $input->category === 'OFFLINE';
+        });
+
+        //  Only allow a single website session pool for a company
+        $validator->sometimes('sub_category', ['bail', 'required', new SingleWebsiteSessionPoolRule($company)], function($input){
+            return $input->sub_category === 'WEBSITE_SESSION';
+        });
+
+        //  Make sure the swap rules are there and valid when it's for a website or website sessions
+        $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
+            return $input->sub_category == 'WEBSITE' || $input->sub_category == 'WEBSITE_SESSION';
+        });
+
+        //  Require a source for all except web sessions
+        $validator->sometimes('source', ['bail', 'required', 'max:255'], function($input){
+            return $input->sub_category !== 'WEBSITE_SESSION';
+        });
+
+        //  Require source_param for web sessions
+        $validator->sometimes('source_param', ['bail', 'required', 'max:255'], function($input){
+            return $input->sub_category === 'WEBSITE_SESSION';
+        });
+
+        //  Validate referrer aliases when provided
+        $validator->sometimes('referrer_aliases', ['bail', 'json', new ReferrerAliasesRule()], function($input){
+            return $input->sub_category === 'WEBSITE_SESSION';
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' =>  $validator->errors()->first()
             ], 400);
         }
 
-        $user = $request->user();
-        
-        $phoneNumberPool = PhoneNumberPool::create([
+        $user               = $request->user();
+        $account            = $company->account;
+        $purchaseObject     = 'PhoneNumber.' . ($request->toll_free ? 'TollFree' : 'Local'); 
+
+        $numberIds          = array_unique($request->has('numbers') ? json_decode($request->numbers, true) : []); 
+        $purchaseCount      = intval($request->initial_pool_size) - count($numberIds);
+        $purchaseCount      = $purchaseCount > 0 ? $purchaseCount : 0;
+        $availableNumbers   = [];
+
+        //
+        //  If there are numbers to be purchased, run some additional validation
+        //
+        if( $purchaseCount ){
+            //  Make sure this account can purchase the amount of numbers requested
+            if( ! $account->canPurchase($purchaseObject, $purchaseCount, true) )
+                    return response([
+                        'error' => 'Your account balance(' 
+                                    . $account->balance 
+                                    . ') is too low to complete purchase.'
+                                    . 'Reload account balance or turn on auto-reload in your account payment settings and try again.'
+                                    . 'If auto-reload is already on, your payment method may be invalid.'
+                    ], 400);
+
+            //  Make sure we have enough numbers available
+            $availableNumbers = PhoneNumber::listAvailable(
+                $request->starts_with, 
+                $purchaseCount, 
+                $request->toll_free ?: false, 
+                $company->country
+            );
+
+            if( count($availableNumbers) < $purchaseCount ){
+                if( $request->toll_free ){
+                    $error = 'Not enough toll free numbers available. Try using local numbers.';
+                }else{
+                    $error = 'Not enough local numbers available. Try again with a different area code.';
+                }
+
+                return response([
+                    'error' => $error
+                ], 400);
+            }
+        }
+
+        //  Wrap in transaction
+        DB::beginTransaction();
+        $canCommit = false;
+
+        //  Step 1: Create Pool
+        $swapRules       = ($request->sub_category == 'WEBSITE_SESSION' || $request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null;
+        $referrerAliases = $request->sub_category == 'WEBSITE_SESSION' ? json_decode($request->referrer_aliases) : null;
+    
+        $pool = PhoneNumberPool::create([
             'company_id'                => $company->id,
             'created_by'                => $user->id,
-            'phone_number_config_id'    => $request->phone_number_config,
-            'name'                      => $request->name, 
-            'auto_provision_enabled_at' => $request->auto_provision ? date('Y-m-d H:i:s') : null
+            'phone_number_config_id'    => $request->phone_number_config_id,
+            'name'                      => $request->name,
+            'category'                  => $request->category,
+            'sub_category'              => $request->sub_category,
+            'source'                    => $request->sub_category == 'WEBSITE_SESSION' ? null : $request->source,
+            'source_param'              => $request->sub_category == 'WEBSITE_SESSION' ? $request->source_param : null,
+            'referrer_aliases'          => $referrerAliases,
+            'swap_rules'                => $swapRules
         ]);
 
-        return response([
-            'phone_number_pool' => $phoneNumberPool,
-            'message'           => 'created'
-        ], 201);
+        //  Step 2: Attach provided numbers to pool
+        if( count($numberIds) ){
+            PhoneNumber::whereIn('id', $numberIds)
+                        ->update([
+                            'phone_number_pool_id' => $pool->id
+                        ]);
+            
+        }
+
+        //  Step 3: Purchase additional numbers to fill pool until it fails
+        $due       = 0;
+        $price     = $account->price($purchaseObject);
+        $purchases = [];
+
+        if( $purchaseCount > 0 ){
+            for($i = 0; $i < $purchaseCount; $i++){
+                try{
+                    //  Create Remote Resource
+                    $availableNumber = $availableNumbers[$i];
+                    $purchasedPhone = PhoneNumber::purchase($availableNumber->phoneNumber);
+
+                    //  Tie to company and make local record
+                    $phoneNumber = PhoneNumber::create([
+                        'uuid'                      => Str::uuid(),
+                        'external_id'               => $purchasedPhone->sid,
+                        'phone_number_pool_id'      => $pool->id,
+                        'company_id'                => $pool->company_id,
+                        'created_by'                => $pool->created_by,
+                        'phone_number_config_id'    => $pool->phone_number_config_id,
+                        'category'                  => $pool->category,
+                        'sub_category'              => $pool->sub_category,
+                        'toll_free'                 => $request->toll_free ? 1 : 0,
+                        'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
+                        'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
+                        'voice'                     => $purchasedPhone->capabilities['voice'],
+                        'sms'                       => $purchasedPhone->capabilities['sms'],
+                        'mms'                       => $purchasedPhone->capabilities['mms'],
+                        'name'                      => $purchasedPhone->phoneNumber
+                    ]);
+                    
+                    //  Add to total due
+                    $due  += $price;
+                    
+                    //  Add to purchase logs on behalf of company
+                    $purchases[] = [
+                        'account_id'    => $account->id,
+                        'company_id'    => $company->id,
+                        'created_by'    => $user->id,
+                        'identifier'    => $phoneNumber->id,
+                        'external_id'   => $purchasedPhone->sid,
+                        'price'         => $price,
+                        'object'        => $purchaseObject,
+                        'label'         => $purchasedPhone->phoneNumber,
+                        'created_at'    => now(),
+                        'updated_at'    => now()
+                    ];
+
+                    $canCommit = true; // Once we create 1 record, we can commit this
+                }catch(Exception $e){
+                    break; // Stop loop once we run into an issue
+                }
+            }
+        }else{
+            $canCommit = true; // If there are no numbers to purchase, we're good to go.
+        }
+
+        if( $canCommit )
+            DB::commit();
+        else
+            DB::rollBack();
+
+        //  Apply due amount to account balance
+        if( $due ){
+            $account->balance -= $due;
+            $account->save();
+        }
+
+        //  Add purchases
+        if( count($purchases) )
+            Purchase::insert($purchases);
+
+        //  If we could not commit the pool, return error
+        if( ! $canCommit ){
+            return response([
+                'error' => 'Unable to create number pool - Please try again later'
+            ], 400);
+        }
+
+        $pool->phone_numbers = $pool->phone_numbers;
+
+        return response($pool, 201);
     }
 
     /**
@@ -102,10 +323,9 @@ class PhoneNumberPoolController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        return response([
-            'phone_number_pool' => $phoneNumberPool,
-            'message'           => 'success'
-        ]);
+        $phoneNumberPool->phone_numbers;
+
+        return response($phoneNumberPool);
     }
 
     /**
@@ -119,27 +339,75 @@ class PhoneNumberPoolController extends Controller
      */
     public function update(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        $config = config('services.twilio');
         $rules = [
-            'phone_number_config'   => ['bail', 'required', 'numeric', new PhoneNumberConfigRule($company)],
-            'name'                  => 'bail|required|max:255',
+            'name'                   => 'bail|required|max:255',
+            'category'               => 'bail|required|in:ONLINE,OFFLINE',
+            'phone_number_config_id' => [
+                'bail',
+                'required',
+                (new PhoneNumberConfigRule($company))
+            ]
         ];
 
         $validator = Validator::make($request->input(), $rules);
+
+        //  Make sure the sub_category is valid for the category
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE_MANUAL,WEBSITE,WEBSITE_SESSION,SOCIAL_MEDIA,EMAIL'], function($input){
+            return $input->category === 'ONLINE';
+        });
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,OTHER'], function($input){
+            return $input->category === 'OFFLINE';
+        });
+
+        //  Only allow a single website session pool for a company
+        $validator->sometimes('sub_category', ['bail', 'required', new SingleWebsiteSessionPoolRule($company)], function($input){
+            return $input->sub_category === 'WEBSITE_SESSION';
+        });
+
+        //  Make sure the swap rules are there and valid when it's for a website or website sessions
+        $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
+            return $input->sub_category == 'WEBSITE' || $input->sub_category == 'WEBSITE_SESSION';
+        });
+
+        //  Require a source for all except web sessions
+        $validator->sometimes('source', ['bail', 'required', 'max:255'], function($input){
+            return $input->sub_category !== 'WEBSITE_SESSION';
+        });
+
+        //  Require source_param for web sessions
+        $validator->sometimes('source_param', ['bail', 'required', 'max:255'], function($input){
+            return $input->sub_category === 'WEBSITE_SESSION';
+        });
+
+        //  Validate referrer aliases when provided
+        $validator->sometimes('referrer_aliases', ['bail', 'json', new ReferrerAliasesRule()], function($input){
+            return $input->sub_category === 'WEBSITE_SESSION';
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' =>  $validator->errors()->first()
             ], 400);
         }
 
+       
+        $swapRules       = ($request->sub_category == 'WEBSITE_SESSION' || $request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null;
+        $referrerAliases = $request->sub_category  == 'WEBSITE_SESSION' ? json_decode($request->referrer_aliases) : null;
+    
+        $phoneNumberPool->phone_number_config_id = $request->phone_number_config_id;
         $phoneNumberPool->name                   = $request->name;
-        $phoneNumberPool->phone_number_config_id = $request->phone_number_config;
+        $phoneNumberPool->category               = $request->category;
+        $phoneNumberPool->sub_category           = $request->sub_category;
+        $phoneNumberPool->source                 = $request->sub_category == 'WEBSITE_SESSION' ? null : $request->source;
+        $phoneNumberPool->source_param           = $request->sub_category == 'WEBSITE_SESSION' ? $request->source_param : null;
+        $phoneNumberPool->referrer_aliases       = $referrerAliases;
+        $phoneNumberPool->swap_rules             = $swapRules;
+
         $phoneNumberPool->save();
 
-        return response([
-            'phone_number_pool' => $phoneNumberPool,
-            'message'           => 'updated'
-        ], 200);
+        $phoneNumberPool->phone_numbers; // Attach phone numbers
+
+        return response($phoneNumberPool);
     }
 
     /**
@@ -155,7 +423,7 @@ class PhoneNumberPoolController extends Controller
     {
         if( $phoneNumberPool->isInUse() ){
             return response([
-                'error' => 'This phone number pool is in use'
+                'error' => 'This phone number pool is in use - release or re-assign all attached phone numbers and try again.'
             ], 400);
         }
 
