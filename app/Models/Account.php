@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Purchase;
 use Exception;
 
 class Account extends Model
@@ -68,7 +69,30 @@ class Account extends Model
         if( ! isset($rates[$object]) )
             throw new Exception('Unknown purchasable object ' . $object);
 
-        return floatval( $rates[$object] );
+        return floatval($rates[$object] );
+    }
+
+    public function purchase($companyId, $userId, $purchaseObject, $label, $identifier, $externalIdentifier = null)
+    {
+        $price = $this->price($purchaseObject);
+
+        //  Reduce balance
+        $this->balance -= $price;
+        $this->save();
+
+        //  Create purchase record
+        return Purchase::create([
+            'account_id'    => $this->id,
+            'company_id'    => $companyId,
+            'created_by'    => $userId,
+            'object'        => $purchaseObject,
+            'label'         => $label,
+            'identifier'    => $identifier,
+            'external_id'   => $externalIdentifier,
+            'price'         => $price,
+            'created_at'    => now(),
+            'updated_at'    => now()
+        ]);
     }
 
     /**

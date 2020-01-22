@@ -10,7 +10,6 @@ use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Campaign;
 use App\Rules\Company\CampaignNumberSwapRule;
-use \App\Rules\Company\PhoneNumberPoolRule;
 use Validator;
 
 class CampaignController extends Controller

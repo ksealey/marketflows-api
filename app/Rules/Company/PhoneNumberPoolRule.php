@@ -11,8 +11,6 @@ class PhoneNumberPoolRule implements Rule
 {
     protected $company;
 
-    protected $campaign;
-
     protected $message;
 
     /**
@@ -20,11 +18,9 @@ class PhoneNumberPoolRule implements Rule
      *
      * @return void
      */
-    public function __construct(Company $company, $campaign = null)
+    public function __construct(Company $company)
     {
         $this->company  = $company;
-
-        $this->campaign = $campaign;
     }
 
     /**
@@ -46,12 +42,6 @@ class PhoneNumberPoolRule implements Rule
 
         if( $pool->company_id != $this->company->id ){
             $this->message = 'Phone number pool invalid';
-
-            return false;
-        }
-
-        if( $pool->isInUse($this->campaign ? $this->campaign->id : null) ){
-            $this->message = 'Phone number pool in use';
 
             return false;
         }

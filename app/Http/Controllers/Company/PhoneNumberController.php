@@ -13,6 +13,7 @@ use App\Rules\SwapRulesRule;
 use Validator;
 use Exception;
 use App;
+use Log;
 
 class PhoneNumberController extends Controller
 {
@@ -90,10 +91,14 @@ class PhoneNumberController extends Controller
         $rules = [
             'category'            => 'bail|required|in:ONLINE,OFFLINE',
             'source'              => 'bail|required|max:255',        
-            'phone_number_config' => [
+            'phone_number_config_id' => [
                 'bail',
                 'required',
                 (new PhoneNumberConfigRule($company))
+            ],
+            'phone_number_pool_id' => [
+                'bail',
+                (new PhoneNumberPoolRule($company))
             ],
             'name'          => 'bail|max:255',
             'toll_free'     => 'bail|boolean',
@@ -122,14 +127,16 @@ class PhoneNumberController extends Controller
 
         //  Make sure that account balance can purchase object
         $purchaseObject = 'PhoneNumber.' . ($request->toll_free ? 'TollFree' : 'Local'); 
+        $user           = $request->user(); 
         $account        = $company->account; 
+        
         if( ! $account->canPurchase($purchaseObject, 1, true) )
             return response([
                 'error' => 'Your account balance(' . $account->balance . ') is too low to complete purchase. Reload account balance or turn on auto-reload in your account payment settings and try again.'
             ], 400);
 
         //  Look for a phone number that matches the start_with
-        $startsWith   = App::environment(['prod', 'production']) ? $request->starts_with : '';
+        $startsWith   = $request->starts_with;
         $foundNumbers = PhoneNumber::listAvailable($startsWith, 1, $request->toll_free, $company->country) ?: [];
         if( ! count($foundNumbers) )
             return response([
@@ -140,12 +147,13 @@ class PhoneNumberController extends Controller
         try{
             $purchasedPhone = PhoneNumber::purchase($foundNumbers[0]->phoneNumber);
 
-            $phoneNumber    = PhoneNumber::create([
+            $phoneNumber = PhoneNumber::create([
                 'uuid'                      => Str::uuid(),
                 'external_id'               => $purchasedPhone->sid,
                 'company_id'                => $company->id,
-                'created_by'                => $request->user()->id,
+                'created_by'                => $user->id,
                 'phone_number_config_id'    => $request->phone_number_config_id,
+                'phone_number_pool_id'      => $request->phone_number_pool_id,
                 'category'                  => $request->category,
                 'sub_category'              => $request->sub_category,
                 'toll_free'                 => $request->toll_free ? 1 : 0,
@@ -159,15 +167,24 @@ class PhoneNumberController extends Controller
                 'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null
             ]);
 
-            return response($phoneNumber, 201);
+           //  Log purchase while adjusting balance
+           $account->purchase(
+                $company->id,
+                $user->id,
+                $purchaseObject,
+                $purchasedPhone->phoneNumber,
+                $phoneNumber->id,
+                $purchasedPhone->sid
+            );
         }catch(Exception $e){
-            
+            Log::error($e->getTraceAsString());
+
             return response([
-                'error' => $e->getMessage() . 'Unable to purchase phone number'
+                'error' => 'Unable to purchase phone number - Please try again later.'
             ], 400);
         }
 
-        
+        return response($phoneNumber, 201);
     }
 
     /**
@@ -185,19 +202,29 @@ class PhoneNumberController extends Controller
      */
     public function update(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
+        //  Disable updates when attached to a pool
+        if( $phoneNumber->phone_number_pool_id ){
+            return response([
+                'error' => 'This phone number is associated with a phone number pool. You must detach it before attempting to update.'
+            ], 400);
+        }
+
+        //  Do not allow
         $rules = [
-            'category'            => 'bail|in:ONLINE,OFFLINE',
             'source'              => 'bail|max:255',        
             'phone_number_config' => [
                 'bail',
                 (new PhoneNumberConfigRule($company))
             ],
-            'name'          => 'bail|max:255',
-            'toll_free'     => 'bail|boolean',
-            'starts_with'   => 'bail|digits_between:1,10'
+            'name' => 'bail|max:255'
         ];
 
         $validator = Validator::make($request->input(), $rules);
+
+        //  Require a category when the subcategory is set
+        $validator->sometimes('category', ['bail', 'required', 'in:ONLINE,OFFLINE'], function($input){
+            return $input->filled('sub_category');
+        });
 
         //  Make sure the sub_category is valid for the category
         $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
@@ -252,6 +279,81 @@ class PhoneNumberController extends Controller
         return response([
             'message' => 'deleted'
         ]);
+    }
+
+    /**
+     * Attach a phone number to a phone number pool
+     * 
+     */
+    public function attach(Request $request, Company $company, PhoneNumber $phoneNumber)
+    {
+        $rules = [
+            'phone_number_pool_id' => [
+                'bail',
+                'required',
+                new PhoneNumberPoolRule($company)
+            ]
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+
+        $phoneNumber->phone_number_pool_id = $request->phone_number_pool_id;
+        $phoneNumber->save();
+
+        return response($phoneNumber);
+    }
+
+    /**
+     * Detach a phone number from a phone number pool
+     * 
+     */
+    public function detach(Request $request, Company $company, PhoneNumber $phoneNumber)
+    {
+        $rules = [
+            'category'            => 'bail|required|in:ONLINE,OFFLINE',
+            'source'              => 'bail|required|max:255',        
+            'phone_number_config' => [
+                'bail',
+                'required',
+                (new PhoneNumberConfigRule($company))
+            ]
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+
+        //  Make sure the sub_category is valid for the category
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
+            return $input->category === 'ONLINE';
+        });
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,OTHER'], function($input){
+            return $input->category === 'OFFLINE';
+        });
+
+        //  Make sure the swap rules are there and valid when it's for a website
+        $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
+            return $input->sub_category == 'WEBSITE';
+        });
+
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+    
+        $phoneNumber->phone_number_pool_id      = null;
+        $phoneNumber->phone_number_config_id    = $request->phone_number_config_id;
+        $phoneNumber->category                  = $request->category;
+        $phoneNumber->sub_category              = $request->sub_category;
+        $phoneNumber->name                      = $request->name;
+        $phoneNumber->source                    = $request->source;
+        $phoneNumber->swap_rules                = $request->sub_category == 'WEBSITE' ? json_decode($request->swap_rules) : null;
+        
+        $phoneNumber->save();
+
+        return response($phoneNumber);
     }
 
     /**

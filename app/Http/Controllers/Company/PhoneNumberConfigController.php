@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Company;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Rules\Company\PhoneNumberPoolRule;
 use App\Rules\Company\AudioClipRule;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;

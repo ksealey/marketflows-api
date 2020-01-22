@@ -414,7 +414,6 @@ class PhoneNumberPoolTest extends TestCase
                     'kind' => 'PhoneNumber'
                 ]
             ],
-            
         ]);
     }
 
