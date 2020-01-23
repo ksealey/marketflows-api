@@ -78,7 +78,6 @@ $factory->define(\App\Models\Company\PhoneNumber::class, function (Faker $faker)
             ]
 
         ],
-        'assigned_at'               => now(),
-        'last_assigned_at'          => now()
+        'last_assigned_at'          => null
     ];
 });

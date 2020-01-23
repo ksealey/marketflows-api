@@ -38,13 +38,13 @@ $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $fa
                 '18003098829'
             ],
             'inclusion_rules' => [
-                [
+                /*[
                     'rules' => [
                         [
                             'type'     => 'ALL'
                         ]
                     ]
-                ],
+                ],*/
 
                 [
                     'rules' => [
@@ -76,6 +76,26 @@ $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $fa
                             'match_input' => [
                                 'key'     => 'utm_source',
                                 'value'   => 'testing'
+                            ]
+                        ]
+                    ]
+                ],
+                [
+                    'rules' => [
+                        [
+                            'type'=> 'LANDING_PATH',
+                            'operator' => 'CONTAINS',
+                            'match_input' => [
+                                'key'     => '',
+                                'value'   => '/test'
+                            ]
+                        ],
+                        [
+                            'type'=> 'LANDING_PATH',
+                            'operator' => 'CONTAINS',
+                            'match_input' => [
+                                'key'     => '',
+                                'value'   => '/lp/old'
                             ]
                         ]
                     ]

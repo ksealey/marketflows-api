@@ -106,13 +106,7 @@ class SwapRulesRule implements Rule
             }
         }
 
-
-
-
-
         return true;
-
-
     }
 
     /**
@@ -131,7 +125,7 @@ class SwapRulesRule implements Rule
             return false;
 
         $ruleTypes = [
-            'LANDING_URL',
+            'LANDING_PATH',
             'LANDING_PARAM'
         ];
 

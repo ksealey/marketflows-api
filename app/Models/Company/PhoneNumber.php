@@ -4,17 +4,17 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use \App\Traits\HandlesPhoneNumbers;
 use \App\Models\User;
 use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumberPool;
+use \App\Traits\CanSwapNumbers;
 use \App\Models\Company\PhoneNumberConfig;
 use App;
 use Exception;
 
 class PhoneNumber extends Model 
 {
-    use SoftDeletes, HandlesPhoneNumbers;
+    use SoftDeletes, CanSwapNumbers;
 
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;
@@ -37,7 +37,7 @@ class PhoneNumber extends Model
         'name',
         'source',
         'swap_rules',
-        'assigned_at',
+        'assignments',
         'last_assigned_at'
     ];
 
@@ -59,6 +59,17 @@ class PhoneNumber extends Model
     public function company()
     {
         return $this->belongsTo('\App\Models\Company');
+    }
+
+
+    static private function client()
+    {
+        return new TwilioClient(env('TWILIO_SID'), env('TWILIO_TOKEN'));
+    }
+
+    static public function testClient()
+    {
+        return new TwilioClient(env('TWILIO_TESTING_SID'), env('TWILIO_TESTING_TOKEN'));
     }
 
     /**

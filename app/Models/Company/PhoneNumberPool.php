@@ -9,13 +9,15 @@ use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\PhoneNumberPoolProvisionRule;
+use \App\Traits\CanSwapNumbers;
 use Exception;
 use DateTime;
+use DateTimeZone;
 use stdClass;
 
 class PhoneNumberPool extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, CanSwapNumbers;
 
     static public $currentAvailablePhoneList = [];
 
@@ -93,5 +95,36 @@ class PhoneNumberPool extends Model
             return true;
         
         return false;
+    }
+
+    /**
+     * Get the next phone number in line
+     * 
+     */
+    public function assignPhoneNumber($preferredPhoneId = null)
+    {
+        $phoneNumber = null;
+        if( $preferredPhoneId ){
+            $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)
+                                    ->where('id', $preferredPhoneId)
+                                    ->first();
+        }
+
+        if( ! $phoneNumber ){
+            $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)
+                                    ->orderBy('last_assigned_at', 'ASC')
+                                    ->orderBy('id', 'ASC')
+                                    ->first();
+        }
+
+        if( ! $phoneNumber )
+            return null;
+
+        $now = new DateTime(null, new DateTimeZone('UTC'));
+        $phoneNumber->last_assigned_at = $now->format('Y-m-d H:i:s.u');
+        $phoneNumber->assignments++;
+        $phoneNumber->save();
+
+        return $phoneNumber;
     }
 }

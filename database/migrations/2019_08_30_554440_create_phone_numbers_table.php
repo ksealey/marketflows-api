@@ -32,7 +32,7 @@ class CreatePhoneNumbersTable extends Migration
             $table->boolean('toll_free');
             $table->string('source', 255)->nullable();
             $table->json('swap_rules')->nullable();
-            $table->dateTime('assigned_at', 6)->nullable();
+            $table->bigInteger('assignments')->unsigned()->default(0);
             $table->dateTime('last_assigned_at', 6)->nullable();
             $table->timestamps();
             $table->softDeletes();
