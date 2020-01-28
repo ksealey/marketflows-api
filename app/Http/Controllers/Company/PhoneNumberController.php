@@ -44,7 +44,8 @@ class PhoneNumberController extends Controller
         $orderDir   = strtoupper($request->order_dir) ?: 'DESC';
         $search     = $request->search;
 
-        $query = PhoneNumber::where('company_id', $company->id);
+        $query = PhoneNumber::where('company_id', $company->id)
+                            ->whereNull('phone_number_pool_id');
         
         if( $search ){
             $query->where(function($query) use($search){
@@ -111,7 +112,7 @@ class PhoneNumberController extends Controller
         $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
             return $input->category === 'ONLINE';
         });
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,OTHER'], function($input){
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,BILLBOARD,OTHER'], function($input){
             return $input->category === 'OFFLINE';
         });
 
@@ -132,7 +133,7 @@ class PhoneNumberController extends Controller
         
         if( ! $account->canPurchase($purchaseObject, 1, true) )
             return response([
-                'error' => 'Your account balance(' . $account->balance . ') is too low to complete purchase. Reload account balance or turn on auto-reload in your account payment settings and try again.'
+                'error' => 'Your account balance(' . $account->rounded_balance  . ') is too low to complete purchase. Reload account balance or turn on auto-reload in your account payment settings and try again.'
             ], 400);
 
         //  Look for a phone number that matches the start_with
@@ -230,7 +231,7 @@ class PhoneNumberController extends Controller
         $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
             return $input->category === 'ONLINE';
         });
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,OTHER'], function($input){
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,BILLBOARD,OTHER'], function($input){
             return $input->category === 'OFFLINE';
         });
 
@@ -329,7 +330,7 @@ class PhoneNumberController extends Controller
         $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
             return $input->category === 'ONLINE';
         });
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,OTHER'], function($input){
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,BILLOARD,OTHER'], function($input){
             return $input->category === 'OFFLINE';
         });
 

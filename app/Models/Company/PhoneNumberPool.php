@@ -26,10 +26,6 @@ class PhoneNumberPool extends Model
         'created_by',
         'phone_number_config_id',
         'name',
-        'category',
-        'sub_category',
-        'source',
-        'source_param',
         'referrer_aliases',
         'swap_rules'
     ];

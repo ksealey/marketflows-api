@@ -45,7 +45,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the user's account relationship
+     * Relationships
      * 
      */
     public function account()
@@ -53,19 +53,11 @@ class User extends Authenticatable
         return $this->belongsTo('\App\Models\Account');
     }
 
-    /**
-     * Get the user's companies
-     * 
-     */
     public function companies()
     {
         return $this->belongsToMany('App\Models\Company', 'user_companies');
     }
 
-    /**
-     * Get the user's role
-     * 
-     */
     public function role()
     {
         return $this->belongsTo('\App\Models\Role');
@@ -122,19 +114,5 @@ class User extends Authenticatable
         }
 
         return false;
-    }
-
-    public function profile()
-    {
-        $myAccount = $this->account;
-        $myRole    = $this->role;
-
-        return [
-            'account'    => $myAccount,
-            'first_name' => $this->first_name,
-            'last_name'  => $this->last_name,
-            'email'      => $this->email,
-            'role'       => $myRole,
-        ];
     }
 }

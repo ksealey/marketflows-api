@@ -44,8 +44,11 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
 */
 Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
     Route::get('/me', function(Request $request){
+        $user = $request->user();
+        $user->account;
+
         return response([
-            'user' => $request->user()
+            'user' => $user
         ]);
     })->name('me');
 

@@ -19,10 +19,6 @@ class CreatePhoneNumberPoolsTable extends Migration
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('phone_number_config_id')->unsigned();
             $table->string('name', 255)->nullable();
-            $table->string('category', 64);
-            $table->string('sub_category', 64);
-            $table->string('source', 255)->nullable();
-            $table->string('source_param', 255)->nullable();
             $table->json('referrer_aliases')->nullable();
             $table->json('swap_rules')->nullable();
             $table->timestamps();

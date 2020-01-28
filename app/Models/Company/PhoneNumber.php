@@ -9,6 +9,7 @@ use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Traits\CanSwapNumbers;
 use \App\Models\Company\PhoneNumberConfig;
+use Twilio\Rest\Client as TwilioClient;
 use App;
 use Exception;
 

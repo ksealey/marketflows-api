@@ -14,24 +14,49 @@ class Account extends Model
     protected $table = 'accounts'; 
 
     protected $fillable = [
+        'plan',
         'name',
-        'country',
         'balance',
         'auto_reload_minimum',
         'auto_reload_enabled_at',
-        'rates'
+        'bill_at',
+        'last_billed_at'        
     ];
 
     protected $hidden = [
         'external_id',
         'disabled_at',
-        'deleted_at'
+        'deleted_at',
+        'last_billed_at',
+        'bill_at',
     ];
 
-    protected $casts = [
-        'rates' => 'array'
+    private $rates = [
+        'BASIC' => [
+            'Plan'                 => 9.99,
+            'PhoneNumber.Local'    => 3.00,
+            'PhoneNumber.TollFree' => 5.00,
+            'Minute.Local'         => 0.04,
+            'Minute.TollFree'      => 0.07,
+            'SMS'                  => 0.025
+        ],
+        'AGENCY' =>  [
+            'Plan'                 => 29.00,
+            'PhoneNumber.Local'    => 2.00,
+            'PhoneNumber.TollFree' => 4.00, 
+            'Minute.Local'         => 0.04,
+            'Minute.TollFree'      => 0.07,
+            'SMS'                  => 0.025
+        ],
+        'ENTERPRISE' =>  [
+            'Plan'                 => 79.00,
+            'PhoneNumber.Local'    => 2.00,
+            'PhoneNumber.TollFree' => 4.00,
+            'Minute.Local'         => 0.035,
+            'Minute.TollFree'      => 0.065,
+            'SMS'                  => 0.02
+        ]
     ];
-
     /**
      * Relationships
      * 
@@ -64,14 +89,15 @@ class Account extends Model
      */
     public function price($object)
     {
-        $rates = json_decode($this->rates, true);
+        $rates = $this->rates[$this->plan];
 
-        if( ! isset($rates[$object]) )
-            throw new Exception('Unknown purchasable object ' . $object);
-
-        return floatval($rates[$object] );
+        return floatval($rates[$object]);
     }
 
+    /**
+     * Purchase an object
+     * 
+     */
     public function purchase($companyId, $userId, $purchaseObject, $label, $identifier, $externalIdentifier = null)
     {
         $price = $this->price($purchaseObject);
@@ -93,6 +119,11 @@ class Account extends Model
             'created_at'    => now(),
             'updated_at'    => now()
         ]);
+    }
+
+    public function getRoundedBalanceAttribute()
+    {
+        return money_format('%i', $this->balance);
     }
 
     /**

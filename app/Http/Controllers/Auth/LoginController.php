@@ -82,6 +82,8 @@ class LoginController extends Controller
             'message'       => 'created',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
+            'account'       => $user->account,
+            'first_login'   => false
         ], 201);
     }
 

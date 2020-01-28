@@ -28,7 +28,7 @@ class RegisterController extends Controller
     {
         $rules = [
             'account_name'          => 'bail|required|min:4|max:255',
-            'country'               => ['bail', 'required', new CountryRule()],
+            'plan'                  => 'bail|required|in:BASIC,AGENGY,ENTERPRISE',
             'first_name'            => 'bail|required|min:2|max:64',
             'last_name'             => 'bail|required|min:2|max:64',
             'email'                 => 'bail|required|email|max:255|unique:users,email',
@@ -54,16 +54,9 @@ class RegisterController extends Controller
             //  Create account
             $account = Account::create([
                 'name'      => $request->account_name,
-                'country'   => $request->country,
                 'balance'   => 0.00,
-                'rates'     => json_encode([
-                    'PhoneNumber.Local'    => 4.00,
-                    'PhoneNumber.TollFree' => 5.00,
-                    'Call.In'              => 0.10,
-                    'Call.Out'             => 0.10,
-                    'Sms.In'               => 0.05,
-                    'Sms.Out'              => 0.05
-                ])
+                'plan'      => $request->plan,
+                'bill_at'   => now()->addMonths(1)
             ]);
             
             //  Create an admin role
@@ -95,9 +88,10 @@ class RegisterController extends Controller
         DB::commit(); 
         
         return response([
-            'message'       => 'created',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
+            'account'       => $account,
+            'first_login'   => true
         ], 201);
     }
 }
