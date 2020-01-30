@@ -8,10 +8,9 @@ use Faker\Generator as Faker;
 $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $faker) {
     return [
         'name'                      => $faker->company,
-        'source'                    => $faker->company,
-        'source_param'              => 'utm_source',
-        'category'                  => 'ONLINE',
-        'sub_category'              => 'WEBSITE_SESSION',
+        'toll_free'                 => false,
+        'starts_with'               => '813',
+        'size'                      => 0,
         'referrer_aliases'          => [
             'aliases' => [
                 [

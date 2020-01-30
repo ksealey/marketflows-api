@@ -27,7 +27,10 @@ class PhoneNumberPool extends Model
         'phone_number_config_id',
         'name',
         'referrer_aliases',
-        'swap_rules'
+        'swap_rules',
+        'toll_free',
+        'starts_with',
+        'size'
     ];
 
     protected $hidden = [

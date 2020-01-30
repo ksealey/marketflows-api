@@ -37,6 +37,9 @@ class PhoneNumber extends Model
         'mms',
         'name',
         'source',
+        'medium',
+        'content',
+        'campaign',
         'swap_rules',
         'assignments',
         'last_assigned_at'

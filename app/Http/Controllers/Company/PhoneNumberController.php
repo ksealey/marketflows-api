@@ -91,7 +91,10 @@ class PhoneNumberController extends Controller
     {
         $rules = [
             'category'            => 'bail|required|in:ONLINE,OFFLINE',
-            'source'              => 'bail|required|max:255',        
+            'source'              => 'bail|required|max:255', 
+            'medium'              => 'bail|max:255',
+            'content'             => 'bail|max:255',
+            'campaign'            => 'bail|max:255',       
             'phone_number_config_id' => [
                 'bail',
                 'required',
@@ -165,6 +168,9 @@ class PhoneNumberController extends Controller
                 'mms'                       => $purchasedPhone->capabilities['mms'],
                 'name'                      => $request->name ?: $purchasedPhone->phoneNumber,
                 'source'                    => $request->source,
+                'medium'                    => $request->medium,
+                'content'                   => $request->content,
+                'campaign'                  => $request->campaign,
                 'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null
             ]);
 
@@ -245,7 +251,7 @@ class PhoneNumberController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        if( $request->filled('phone_number_config') )
+        if( $request->filled('phone_number_config_id') )
             $phoneNumber->phone_number_config_id = $request->phone_number_config_id;
         if( $request->filled('category') )
             $phoneNumber->category = $request->category;
@@ -255,6 +261,13 @@ class PhoneNumberController extends Controller
             $phoneNumber->name = $request->name;
         if( $request->filled('source') )
             $phoneNumber->source = $request->source;
+        if( $request->filled('medium') )
+            $phoneNumber->medium = $request->medium;
+        if( $request->filled('content') )
+            $phoneNumber->content = $request->content;
+        if( $request->filled('campaign') )
+            $phoneNumber->campaign = $request->campaign;
+
         if( $request->filled('swap_rules') )
             $phoneNumber->swap_rules = $request->sub_category == 'WEBSITE' ? json_decode($request->swap_rules) : null;
         

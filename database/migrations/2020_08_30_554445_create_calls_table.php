@@ -16,6 +16,7 @@ class CreateCallsTable extends Migration
         Schema::create('calls', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('phone_number_id')->unsigned();
+            $table->bigInteger('blocked_phone_number_id')->unsigned()->nullable();
             $table->string('external_id', 64)->index();
             $table->string('direction', 64);
             $table->string('status', 64);
@@ -33,7 +34,11 @@ class CreateCallsTable extends Migration
             $table->string('to_country', 255)->nullable();
             $table->integer('duration')->unsigned()->nullable();
             $table->string('source', 255)->nullable();
+            $table->string('medium', 255)->nullable();
+            $table->string('content', 255)->nullable();
+            $table->string('campaign', 255)->nullable();
             $table->timestamps();
+            $table->foreign('blocked_phone_number_id')->references('id')->on('blocked_phone_numbers');
             $table->index(['created_at', 'updated_at']);
         });
     }

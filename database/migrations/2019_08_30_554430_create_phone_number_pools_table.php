@@ -21,6 +21,9 @@ class CreatePhoneNumberPoolsTable extends Migration
             $table->string('name', 255)->nullable();
             $table->json('referrer_aliases')->nullable();
             $table->json('swap_rules')->nullable();
+            $table->boolean('toll_free');
+            $table->string('starts_with', 16)->nullable();
+            $table->integer('size')->unsigned();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');

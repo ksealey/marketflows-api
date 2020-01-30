@@ -129,6 +129,34 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
     });
 
     /*
+    |---------------------------------------
+    | Handle account blocked phone numbers
+    |---------------------------------------
+    */
+    Route::prefix('blocked-phone-numbers')->group(function(){
+        Route::get('/', 'BlockedPhoneNumberController@list')
+            ->middleware('can:list,\App\Models\BlockedPhoneNumber')
+            ->name('list-blocked-phone-numbers'); 
+
+        Route::post('/', 'BlockedPhoneNumberController@create')
+             ->middleware('can:create,\App\Models\BlockedPhoneNumber')
+             ->name('create-blocked-phone-number');
+
+        Route::get('/{blockedPhoneNumber}', 'BlockedPhoneNumberController@read')
+             ->middleware('can:read,blockedPhoneNumber')
+             ->name('read-blocked-phone-number');
+
+        Route::put('/{blockedPhoneNumber}', 'BlockedPhoneNumberController@update')
+             ->middleware('can:update,blockedPhoneNumber')
+             ->name('update-blocked-phone-number');
+
+        Route::delete('/{blockedPhoneNumber}', 'BlockedPhoneNumberController@delete')
+            ->middleware('can:delete,blockedPhoneNumber')
+            ->name('delete-blocked-phone-number'); 
+    });
+
+
+    /*
     |--------------------------------
     | Handle companies
     |--------------------------------
@@ -266,7 +294,34 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                 Route::delete('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@delete')
                     ->middleware('can:delete,phoneNumberPool')
                     ->name('delete-phone-number-pool');
-            });  
+            }); 
+            
+            /*
+            |---------------------------------------
+            | Handle company blocked phone numbers
+            |---------------------------------------
+            */
+            Route::prefix('blocked-phone-numbers')->group(function(){
+                Route::get('/', 'Company\BlockedPhoneNumberController@list')
+                    ->middleware('can:list,\App\Models\BlockedPhoneNumber')
+                    ->name('list-company-blocked-phone-numbers'); 
+
+                Route::post('/', 'Company\BlockedPhoneNumberController@create')
+                    ->middleware('can:create,\App\Models\BlockedPhoneNumber')
+                    ->name('create-company-blocked-phone-number');
+
+                Route::put('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@update')
+                    ->middleware('can:update,blockedPhoneNumber')
+                    ->name('update-company-blocked-phone-number');
+
+                Route::get('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@read')
+                    ->middleware('can:read,blockedPhoneNumber')
+                    ->name('read-company-blocked-phone-number');
+
+                Route::delete('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@delete')
+                    ->middleware('can:delete,blockedPhoneNumber')
+                    ->name('delete-company-blocked-phone-number'); 
+            });
 
             /*
             |--------------------------------
@@ -298,7 +353,6 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:delete,phoneNumber')
                     ->name('delete-phone-number');
 
-                
 
                 /*
                 |--------------------------------

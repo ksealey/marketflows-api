@@ -106,6 +106,60 @@ class SwapRulesRule implements Rule
             }
         }
 
+        //  Device Types
+        if( empty($swapRules->device_types) ){
+            $this->message = 'Swap rule device types required';
+                
+            return false;
+        }
+
+        if( ! is_array($swapRules->device_types) ){
+            $this->message = 'Swap rule device types must be an array of device strings';
+                
+            return false;
+        }
+
+        foreach($swapRules->device_types as $idx => $deviceType){
+            if( ! is_string($deviceType) ){
+                $this->message = 'Swap rule device types must be strings - Index: ' . $idx . '.';
+                
+                return false;
+            }
+
+            if( ! in_array($deviceType, ['ALL', 'DESKTOP', 'TABLET', 'MOBILE']) ){
+                $this->message = 'Swap rule device type invalid - Index ' . $idx;
+                
+                return false;
+            }
+        }
+
+        //  Browser Types
+        if( empty($swapRules->browser_types) ){
+            $this->message = 'Swap rule browser types required';
+                
+            return false;
+        }
+
+        if( ! is_array($swapRules->browser_types) ){
+            $this->message = 'Swap rule browser types must be an array of browser strings';
+                
+            return false;
+        }
+
+        foreach($swapRules->browser_types as $idx => $browserType){
+            if( ! is_string($browserType) ){
+                $this->message = 'Swap rule browser types must be strings - Index: ' . $idx;
+                
+                return false;
+            }
+
+            if( ! in_array($browserType, ['ALL', 'CHROME', 'FIREFOX', 'INTERNET_EXPLORER', 'EDGE', 'SAFARI', 'OPERA', 'OTHER']) ){
+                $this->message = 'Swap rule browser type invalid - Index: ' . $idx;
+                
+                return false;
+            }
+        }
+
         return true;
     }
 

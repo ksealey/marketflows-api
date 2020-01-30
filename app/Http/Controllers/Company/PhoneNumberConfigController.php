@@ -80,7 +80,7 @@ class PhoneNumberConfigController extends Controller
     {
        $rules = [
             'name'              => 'bail|required|max:255',
-            'forward_to_number' => 'bail|required|digits_between:10,13',
+            'forward_to_number' => 'bail|required|numeric|digits_between:10,13',
             'audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'            => 'bail|boolean',
             'whisper_message'   => 'bail|max:255',
