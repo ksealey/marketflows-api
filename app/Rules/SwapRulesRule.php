@@ -178,39 +178,42 @@ class SwapRulesRule implements Rule
         if( empty($rule->type) || ! is_string($rule->type) )
             return false;
 
-        $ruleTypes = [
-            'LANDING_PATH',
-            'LANDING_PARAM'
-        ];
-
         if( ! $isExclusionRule ){
             if( $rule->type === 'ALL' )
                 return true;
         } 
 
-        if( ! in_array($rule->type, $ruleTypes) )
+        //  Validate for types that do not need values
+        if( in_array($rule->type, ['DIRECT', 'ORGANIC']) )
+            return true;
+
+        //
+        //  Validate types that require operators and values have them
+        //
+
+        //  Check type
+        if( ! in_array($rule->type, ['LANDING_PATH', 'LANDING_PARAM', 'REFERRER']) )
             return false;
 
+        //  Check operator
         if( empty($rule->operator) || ! is_string($rule->operator) )
             return false;
+            
+        if( in_array($rule->operator, ['EMPTY', 'NOT_EMPTY']) ) // Validate operators that do not need values
+            return true;
 
-        $ruleOperators = [
-            'EQUALS',
-            'NOT_EQUALS',
-            'CONTAINS',
-            'NOT_CONTAINS'
-        ];
-
-        if( ! in_array($rule->operator, $ruleOperators) )
+        if( ! in_array($rule->operator, ['EQUALS', 'NOT_EQUALS', 'CONTAINS', 'NOT_CONTAINS', 'MATCHES', 'NOT_MATCHES'] ) )
             return false;
 
+        //  Check matchinput values
         if( empty($rule->match_input) || ! is_object($rule->match_input) )
             return false;
 
-        if( empty($rule->match_input->value) )
+        if( empty($rule->match_input->value) || ! is_string($rule->match_input->value) )
             return false;
 
-        if( $rule->type == 'LANDING_PARAM' && empty($rule->match_input->key))
+        //  parameters should also have a key
+        if( $rule->type == 'LANDING_PARAM' && (empty($rule->match_input->key) || ! is_string($rule->match_input->key) ))
             return false;
         
         return true;

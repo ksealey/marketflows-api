@@ -14,6 +14,7 @@ use \Stripe\Charge as StripeCharge;
 use Stripe\PaymentMethod as StripePaymentMethod;
 use DB;
 use Exception;
+use DateTime;
 
 class PaymentMethod extends Model
 {
@@ -31,13 +32,22 @@ class PaymentMethod extends Model
         'created_by',
         'external_id',
         'last_4',
-        'exp_year',
-        'exp_month',
+        'expiration',
         'brand',
         'type',
-        'primary_method'
+        'primary_method',
+        'last_used_at'
     ];
 
+    protected $appends = [
+        'kind',
+        'link'
+    ];
+
+    /**
+     * Relationships
+     * 
+     */
     public function account()
     {
         return $this->belongsTo('\App\Models\Account');
@@ -54,6 +64,22 @@ class PaymentMethod extends Model
     } 
 
     /**
+     * Appends
+     * 
+     */
+    public function getLinkAttribute()
+    {
+        return route('read-payment-method', [
+            'paymentMethod' => $this->id
+        ]);
+    }
+
+    public function getKindAttribute()
+    {
+        return 'PaymentMethod';
+    }
+
+    /**
      * Create a payment method using a token
      * 
      */
@@ -66,19 +92,19 @@ class PaymentMethod extends Model
 
         //  Create customer with source if not exists
         $account = $user->account;
-        if( ! $account->external_id ){
+        if( ! $account->stripe_id ){
             $primaryMethod = true; // Since there is no primary methon set this as true
             $customer = Customer::create([
                 'description' => $account->name,
                 'source'      => $stripeToken
             ]);
-            $account->external_id = $customer->id;
+            $account->stripe_id = $customer->id;
             $account->save();
             
             $card = $customer->sources->data[0];
         }else{
             $card = Customer::createSource(
-                $account->external_id,
+                $account->stripe_id,
                 ['source' => $stripeToken]
             );
         }
@@ -91,13 +117,15 @@ class PaymentMethod extends Model
                 ]);
         }
 
+        $expiration = new DateTime($card->exp_year . '-' . $card->exp_month . '-01 00:00:00'); 
+        $expiration->modify('last day of this month');
+
         return self::create([
             'account_id'     => $user->account_id,
             'created_by'     => $user->id,
-            'external_id'      => $card->id,
+            'external_id'    => $card->id,
             'last_4'         => $card->last4,
-            'exp_month'      => $card->exp_month,
-            'exp_year'       => $card->exp_month,
+            'expiration'     => $expiration->format('Y-m-d'),
             'type'           => $card->funding,
             'brand'          => $card->brand,
             'primary_method' => $primaryMethod

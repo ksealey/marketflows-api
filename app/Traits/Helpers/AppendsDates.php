@@ -7,12 +7,12 @@ use DateTimeZone;
 
 trait AppendsDates
 { 
-    public function withAppendedDates(Company $company, $records = [])
+    public function withAppendedDates($timezone, $records = [])
     {
         //  Set local time
         $now             = new DateTime(); 
         $defaultTimezone = new DateTimeZone('UTC');
-        $companyTimezone = new DateTimeZone($company->timezone);
+        $targetTimezone  = new DateTimeZone($timezone);
 
         foreach( $records as $record ){
             $fields = property_exists($this, 'appendedDates') ? $record->appendedDates : ['created_at', 'updated_at'];
@@ -30,7 +30,7 @@ trait AppendsDates
                 $offsetTimes[$field] = Formatter::offsetTimeString($now->diff($recordDate));
 
                 //  Get the local time of the field
-                $recordDate->setTimeZone($companyTimezone);
+                $recordDate->setTimeZone($targetTimezone);
 
                 $localTimes[$field]  =  $recordDate->format('Y-m-d H:i:s');
 

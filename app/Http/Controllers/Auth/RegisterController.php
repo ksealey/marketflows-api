@@ -28,7 +28,8 @@ class RegisterController extends Controller
     {
         $rules = [
             'account_name'          => 'bail|required|min:4|max:255',
-            'plan'                  => 'bail|required|in:BASIC,AGENGY,ENTERPRISE',
+            'timezone'              => 'bail|required|timezone',
+            'plan'                  => 'bail|required|in:BASIC,AGENCY,ENTERPRISE',
             'first_name'            => 'bail|required|min:2|max:64',
             'last_name'             => 'bail|required|min:2|max:64',
             'email'                 => 'bail|required|email|max:255|unique:users,email',
@@ -54,8 +55,9 @@ class RegisterController extends Controller
             //  Create account
             $account = Account::create([
                 'name'      => $request->account_name,
-                'balance'   => 0.00,
                 'plan'      => $request->plan,
+                'timezone'  => $request->timezone,
+                'balance'   => 0.00,
                 'bill_at'   => now()->addMonths(1)
             ]);
             

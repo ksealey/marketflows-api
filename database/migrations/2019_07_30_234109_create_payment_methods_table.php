@@ -19,12 +19,13 @@ class CreatePaymentMethodsTable extends Migration
             $table->bigInteger('created_by')->unsigned();
             $table->string('external_id', 64);
             $table->integer('last_4')->unsigned();
-            $table->integer('exp_month')->unsigned();
-            $table->integer('exp_year')->unsigned();
+            $table->date('expiration');
             $table->string('brand', 64);
             $table->string('type', 64);
             $table->boolean('primary_method')->default(0);
+            $table->dateTime('last_used_at')->nullable();
             $table->timestamps();
+
             $table->softDeletes();
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('created_by')->references('id')->on('users');

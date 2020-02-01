@@ -17,6 +17,7 @@ class CreateAccountsTable extends Migration
             $table->bigIncrements('id');
             $table->string('name', 255);
             $table->string('plan', 32);
+            $table->string('timezone', 64);
             $table->decimal('balance', 16, 4)->default(0.00);
             $table->dateTime('auto_reload_enabled_at')->nullable();
             $table->integer('auto_reload_minimum')->nullable();

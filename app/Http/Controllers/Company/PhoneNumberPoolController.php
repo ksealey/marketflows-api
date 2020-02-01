@@ -75,7 +75,7 @@ class PhoneNumberPoolController extends Controller
                              ->orderBy($orderBy, $orderDir)
                              ->get();
 
-        $records = $this->withAppendedDates($company, $records);
+        $records = $this->withAppendedDates($company->timezone, $records);
 
         $nextPage = null;
         if( $resultCount > ($page * $limit) )
@@ -442,20 +442,18 @@ class PhoneNumberPoolController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        if( $phoneNumberPool->isInUse() ){
-            return response([
-                'error' => 'This phone number pool is in use - release or re-assign all attached phone numbers and try again.'
-            ], 400);
+        //  Detach numbers then remove pool
+        $phoneNumbers = PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
+                                    ->get();
+        
+        foreach( $phoneNumbers as $phoneNumber ){
+            $phoneNumber->release();
         }
-
-        //  Detach phone numbers from pool
-        PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
-                   ->update(['phone_number_pool_id' => null]);
-
+       
         $phoneNumberPool->delete();
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted.'
         ]);
     }
 }

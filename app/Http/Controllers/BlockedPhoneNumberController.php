@@ -50,7 +50,7 @@ class BlockedPhoneNumberController extends Controller
                              ->orderBy($orderBy, $orderDir)
                              ->get();
 
-        $records = $this->withAppendedDates($user->account, $records);
+        $records = $this->withAppendedDates($user->account->timezone, $records);
 
         $nextPage = null;
         if( $resultCount > ($page * $limit) )

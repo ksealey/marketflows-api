@@ -52,6 +52,19 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
         ]);
     })->name('me');
 
+   /*
+    |--------------------------------
+    | Handle account
+    |--------------------------------
+    */
+    Route::get('/accounts', 'AccountController@read')
+         ->middleware('can:read,\App\Models\Account')
+         ->name('read-account');
+
+    Route::put('/accounts', 'AccountController@update')
+         ->middleware('can:update,\App\Models\Account')
+         ->name('update-account');
+
     /*
     |--------------------------------
     | Handle roles
@@ -119,7 +132,7 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
              ->middleware('can:read,paymentMethod')
              ->name('read-payment-method');
 
-        Route::put('/{paymentMethod}/make-default', 'PaymentMethodController@makeDefault')
+        Route::post('/{paymentMethod}/make-default', 'PaymentMethodController@makeDefault')
              ->middleware('can:update,paymentMethod')
              ->name('update-payment-method');
 

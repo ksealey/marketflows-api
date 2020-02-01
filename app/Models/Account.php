@@ -16,6 +16,7 @@ class Account extends Model
     protected $fillable = [
         'plan',
         'name',
+        'timezone',
         'balance',
         'auto_reload_minimum',
         'auto_reload_enabled_at',
@@ -29,6 +30,7 @@ class Account extends Model
         'deleted_at',
         'last_billed_at',
         'bill_at',
+        'stripe_id',
     ];
 
     private $rates = [
@@ -57,15 +59,35 @@ class Account extends Model
             'SMS'                  => 0.02
         ]
     ];
+
+    protected $appends = [
+        'link',
+        'kind'
+    ];
+
     /**
      * Relationships
-     * 
      * 
      */
     public function payment_methods()
     {
         return $this->hasMany('\App\Models\PaymentMethod');
     }
+
+    /**
+     * Appends
+     * 
+     */
+    public function getLinkAttribute()
+    {
+        return route('read-account');
+    }
+
+    public function getKindAttribute()
+    {
+        return 'Account';
+    }
+
 
     /**
      * Determine if an object can be purchased

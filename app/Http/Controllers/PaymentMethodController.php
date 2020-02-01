@@ -11,6 +11,67 @@ use DB;
 
 class PaymentMethodController extends Controller
 {
+    
+    /**
+     * List Payment Methods
+     * 
+     */
+    public function list(Request $request)
+    {
+        $rules = [
+            'limit'     => 'numeric',
+            'page'      => 'numeric',
+            'order_by'  => 'in:created_at,updated_at,last_4,brand,expiration',
+            'order_dir' => 'in:asc,desc'  
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $limit      = intval($request->limit) ?: 250;
+        $limit      = $limit > 250 ? 250 : $limit;
+        $page       = intval($request->page)  ?: 1;
+        $orderBy    = $request->order_by  ?: 'id';
+        $orderDir   = strtoupper($request->order_dir) ?: 'ASC';
+        $search     = $request->search;
+        
+        $user    = $request->user();
+        $account = $user->account;
+
+        $query = PaymentMethod::where('account_id', $account->id);
+        
+        if( $search )
+            $query->where(function($query) use($search){
+                $query->where('last_4', 'like', '%' . $search . '%')
+                      ->orWhere('brand', 'like', '%' . $search . '%');
+            });
+
+        $resultCount = $query->count();
+        $records     = $query->offset(($page - 1) * $limit)
+                             ->limit($limit)
+                             ->orderBy($orderBy, $orderDir)
+                             ->get();
+
+        $records = $this->withAppendedDates($account->timezone, $records);
+
+        $nextPage = null;
+        if( $resultCount > ($page * $limit) )
+            $nextPage = $page + 1;
+
+        return response([
+            'results'         => $records,
+            'result_count'    => $resultCount,
+            'limit'           => $limit,
+            'page'            => intval($request->page),
+            'total_pages'     => ceil($resultCount / $limit),
+            'next_page'       => $nextPage
+        ]);
+    }
+
     /**
      * Create a record
      * 
@@ -27,7 +88,7 @@ class PaymentMethodController extends Controller
         $validator = Validator::make($request->input(), $rules);
         if( $validator->fails() ){
             return response([
-                'error' => $validator->error()->first()
+                'error' => $validator->errors()->first()
             ], 400);
         }
 
@@ -43,10 +104,7 @@ class PaymentMethodController extends Controller
             ], 400);
         }
 
-        return response([
-            'message'        => 'created',
-            'payment_method' => $paymentMethod
-        ], 201);
+        return response($paymentMethod, 201);
     }
 
     /**
@@ -59,10 +117,7 @@ class PaymentMethodController extends Controller
      */
     public function read(Request $request, PaymentMethod $paymentMethod)
     {
-        return response([
-            'message'        => 'success',
-            'payment_method' => $paymentMethod
-        ], 200);
+        return response($paymentMethod);
     }
 
     /**
@@ -85,10 +140,7 @@ class PaymentMethodController extends Controller
         $paymentMethod->primary_method = true;
         $paymentMethod->save();
 
-        return response([
-            'message'        => 'updated',
-            'payment_method' => $paymentMethod
-        ], 200);
+        return response($paymentMethod);
     }
 
     /**
@@ -113,36 +165,7 @@ class PaymentMethodController extends Controller
         $paymentMethod->delete();
 
         return response([
-            'message' => 'deleted'        
+            'message' => 'Deleted.'        
         ], 200);
     }
-
-    /**
-     * Payment Methods
-     * 
-     */
-    public function list(Request $request)
-    {
-        $user  = $request->user();
-
-        $start = intval($request->input('start', 0));
-        $limit = intval($request->input('limit', 0)) ?: 25;
-
-        $query      = PaymentMethod::where('account_id', $user->account_id); 
-        $totalCount = $query->count();
-
-        $paymentMethods = $query->limit($limit)
-                                ->offset($start)
-                                ->get();
-        
-        return response([
-            'message'         => 'success',
-            'ok'              => true,
-            'payment_methods' => $paymentMethods,
-            'result_count'    => count($paymentMethods),
-            'total_count'     => $totalCount
-        ]);
-    }
-
-
 }

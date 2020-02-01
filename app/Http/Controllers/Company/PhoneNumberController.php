@@ -67,7 +67,7 @@ class PhoneNumberController extends Controller
                              ->orderBy($orderBy, $orderDir)
                              ->get();
 
-        $records = $this->withAppendedDates($company, $records);
+        $records = $this->withAppendedDates($company->timezone, $records);
 
         $nextPage = null;
         if( $resultCount > ($page * $limit) )
