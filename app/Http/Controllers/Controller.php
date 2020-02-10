@@ -8,9 +8,10 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Traits\HasUserEvents;
 use App\Traits\Helpers\AppendsDates;
+use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
 
 class Controller extends BaseController
 {
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HasUserEvents,  AppendsDates;
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HasUserEvents,  AppendsDates, HandlesDateFilters;
 }

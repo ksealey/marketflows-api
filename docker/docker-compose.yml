@@ -14,8 +14,6 @@ services:
     environment:
       PHP_XDEBUG_ENABLED: 1
       XDEBUG_CONFIG: remote_host=host.docker.internal
-    expose:
-      - "9000"
   mf_app_db:
     image: mysql:5.7.22
     restart: always
@@ -27,14 +25,6 @@ services:
       - MYSQL_ROOT_PASSWORD=root
     ports:
       - "3306:3306"
-    networks:
-      - mf_net
-  mf_app_dynamodb:
-    image: amazon/dynamodb-local
-    restart: always
-    container_name: mf_app_dynamodb
-    ports:
-      - "8000:8000"
     networks:
       - mf_net
 networks:

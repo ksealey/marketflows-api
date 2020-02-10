@@ -10,6 +10,7 @@ use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Rules\SwapRulesRule;
+use App\Rules\DateFilterRule;
 use Validator;
 use Exception;
 use App;
@@ -27,10 +28,15 @@ class PhoneNumberController extends Controller
             'limit'     => 'numeric',
             'page'      => 'numeric',
             'order_by'  => 'in:name,number,created_at,updated_at',
-            'order_dir' => 'in:asc,desc'
+            'order_dir' => 'in:asc,desc',
+            'from_date' => [new DateFilterRule()]
         ];
 
         $validator = Validator::make($request->input(), $rules);
+        $validator->sometimes('to_date', ['required', new DateFilterRule()], function($input){
+            return $input->has('from_date');
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -43,7 +49,7 @@ class PhoneNumberController extends Controller
         $orderBy    = $request->order_by  ?: 'created_at';
         $orderDir   = strtoupper($request->order_dir) ?: 'DESC';
         $search     = $request->search;
-
+       
         $query = PhoneNumber::where('company_id', $company->id)
                             ->whereNull('phone_number_pool_id');
         
@@ -53,6 +59,15 @@ class PhoneNumberController extends Controller
                       ->orWhere('number', 'like', '%' . $search . '%');
             });
         }
+
+        if( $request->from_date ){
+            $startDate = $this->startDate($request->from_date, $company->timezone);
+            $endDate   = $this->endDate($request->to_date, $company->timezone);     
+
+            $query->where('created_at', '>=', $startDate)
+                  ->where('created_at', '<=', $endDate);
+        }
+
 
         if( $request->category )
             $query->where('category', $request->category);
