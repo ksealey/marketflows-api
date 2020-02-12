@@ -57,13 +57,20 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
     | Handle account
     |--------------------------------
     */
-    Route::get('/accounts', 'AccountController@read')
-         ->middleware('can:read,\App\Models\Account')
-         ->name('read-account');
+    Route::prefix('accounts')->group(function(){
+        Route::get('/', 'AccountController@read')
+             ->middleware('can:read,\App\Models\Account')
+             ->name('read-account');
 
-    Route::put('/accounts', 'AccountController@update')
-         ->middleware('can:update,\App\Models\Account')
-         ->name('update-account');
+        Route::put('/', 'AccountController@update')
+             ->middleware('can:update,\App\Models\Account')
+             ->name('update-account');
+
+        Route::post('/fund', 'AccountController@fund')
+             ->middleware('can:update,\App\Models\Account')
+             ->name('fund-account');
+    });
+   
 
     /*
     |--------------------------------
@@ -140,6 +147,30 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
             ->middleware('can:delete,paymentMethod')
             ->name('delete-payment-method'); 
     });
+
+    /*
+    |----------------------------------------
+    | Handle charges
+    |----------------------------------------
+    */
+    Route::prefix('charges')->group(function(){
+        Route::get('/', 'ChargeController@list')
+            ->middleware('can:list,\App\Models\Charge')
+            ->name('list-charges'); 
+    });
+
+    /*
+    |----------------------------------------
+    | Handle transactions
+    |----------------------------------------
+    */
+    Route::prefix('transactions')->group(function(){
+        Route::get('/', 'TransactionController@list')
+            ->middleware('can:list,\App\Models\Transaction')
+            ->name('list-transactions'); 
+    });
+
+
 
     /*
     |---------------------------------------

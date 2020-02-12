@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Purchase extends Model
+class Transaction extends Model
 {
-    protected $table = 'purchases'; 
+    protected $table = 'transactions'; 
 
     protected $fillable = [
         'account_id',

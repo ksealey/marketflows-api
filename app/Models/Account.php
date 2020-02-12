@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Purchase;
+use App\Models\Transaction;
 use Exception;
 
 class Account extends Model
@@ -18,8 +18,9 @@ class Account extends Model
         'name',
         'timezone',
         'balance',
-        'auto_reload_minimum',
         'auto_reload_enabled_at',
+        'auto_reload_minimum',
+        'auto_reload_amount',
         'bill_at',
         'last_billed_at'        
     ];
@@ -62,7 +63,8 @@ class Account extends Model
 
     protected $appends = [
         'link',
-        'kind'
+        'kind',
+        'rounded_balance'
     ];
 
     /**
@@ -88,21 +90,9 @@ class Account extends Model
         return 'Account';
     }
 
-
-    /**
-     * Determine if an object can be purchased
-     * 
-     */
-    public function canPurchase($object, $count = 1)
+    public function getRoundedBalanceAttribute()
     {
-        $requiredBalance = $this->price($object) * $count;
-        
-        //  Check account balance
-        if( $this->balance >= $requiredBalance )
-            return true;
-
-        //  If auto reload is turned on and there is a valid payent method
-        return $this->auto_reload_enabled_at && $this->hasValidPaymentMethod();
+        return money_format('%i', $this->balance);
     }
 
     /**
@@ -117,35 +107,19 @@ class Account extends Model
     }
 
     /**
-     * Purchase an object
+     * Determine if an object can be purchased
      * 
      */
-    public function purchase($companyId, $userId, $purchaseObject, $label, $identifier, $externalIdentifier = null)
+    public function balanceCovers($object, $count = 1)
     {
-        $price = $this->price($purchaseObject);
+        $requiredBalance = $this->price($object) * $count;
+        
+        //  Check account balance
+        if( $this->balance >= $requiredBalance )
+            return true;
 
-        //  Reduce balance
-        $this->balance -= $price;
-        $this->save();
-
-        //  Create purchase record
-        return Purchase::create([
-            'account_id'    => $this->id,
-            'company_id'    => $companyId,
-            'created_by'    => $userId,
-            'object'        => $purchaseObject,
-            'label'         => $label,
-            'identifier'    => $identifier,
-            'external_id'   => $externalIdentifier,
-            'price'         => $price,
-            'created_at'    => now(),
-            'updated_at'    => now()
-        ]);
-    }
-
-    public function getRoundedBalanceAttribute()
-    {
-        return money_format('%i', $this->balance);
+        //  If auto reload is turned on and there is a valid payent method
+        return $this->auto_reload_enabled_at && $this->hasValidPaymentMethod();
     }
 
     /**
@@ -160,5 +134,32 @@ class Account extends Model
         }
 
         return false;
+    }
+
+    /**
+     * Create transaction, reducing the account balance
+     * 
+     */
+    public function transaction($companyId, $userId, $purchaseObject, $label, $identifier, $externalIdentifier = null)
+    {
+        $price = $this->price($purchaseObject);
+
+        //  Reduce balance
+        $this->balance -= $price;
+        $this->save();
+
+        //  Create purchase record
+        return Transaction::create([
+            'account_id'    => $this->id,
+            'company_id'    => $companyId,
+            'created_by'    => $userId,
+            'object'        => $purchaseObject,
+            'label'         => $label,
+            'identifier'    => $identifier,
+            'external_id'   => $externalIdentifier,
+            'price'         => $price,
+            'created_at'    => now(),
+            'updated_at'    => now()
+        ]);
     }
 }

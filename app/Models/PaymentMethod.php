@@ -143,22 +143,30 @@ class PaymentMethod extends Model
             return null;
 
         try{
+            Stripe::setApiKey(env('STRIPE_SK'));
+
             //  Create remote charge
-            $stripeCharge = StripeCharge::create([
-                'customer'      => $this->account->external_id,
+            $chargeData = [
+                'customer'      => $this->account->stripe_id,
                 'source'        => $this->external_id,
                 'amount'        => $amount * 100,
                 'currency'      => 'usd',
                 'description'   => $description
-            ]);
+            ];
 
+            $stripeCharge = StripeCharge::create($chargeData);
+            
             //  Resolve any existing charge errors
             ChargeError::where('payment_method_id', $this->id)
                         ->where('resolved', 0)
                         ->update([ 
                             'resolved' => 1 
                         ]);
-            
+
+            //  Update used time
+            $this->last_used_at = now();
+            $this->save();
+
             //  Create local charge 
             return Charge::create([
                 'payment_method_id' => $this->id,

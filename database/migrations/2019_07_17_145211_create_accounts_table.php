@@ -20,7 +20,8 @@ class CreateAccountsTable extends Migration
             $table->string('timezone', 64);
             $table->decimal('balance', 16, 4)->default(0.00);
             $table->dateTime('auto_reload_enabled_at')->nullable();
-            $table->integer('auto_reload_minimum')->nullable();
+            $table->integer('auto_reload_minimum')->nullable()->unsigned();
+            $table->integer('auto_reload_amount')->nullable()->unsigned();
             $table->string('stripe_id', 255)->nullable();
             $table->dateTime('disabled_at')->nullable();
             $table->dateTime('last_billed_at')->nullable();

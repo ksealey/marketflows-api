@@ -145,7 +145,7 @@ class PhoneNumberPoolController extends Controller
         $poolSize           = intval($request->size);
 
         //  Make sure this account can purchase the amount of numbers requested
-        if( ! $account->canPurchase($purchaseObject, $poolSize, true) ){
+        if( ! $account->balanceCovers($purchaseObject, $poolSize, true) ){
                 return response([
                     'error' => 'Your account balance(' 
                                 . $account->rounded_balance 
@@ -215,7 +215,7 @@ class PhoneNumberPoolController extends Controller
                 ]);
                 
                 //  Log purchase while adjusting balance
-                $account->purchase(
+                $account->transaction(
                     $company->id,
                     $user->id,
                     $purchaseObject,
@@ -333,7 +333,7 @@ class PhoneNumberPoolController extends Controller
             //  Make sure this account can purchase the amount of numbers requested
             $purchaseCount  = $newPoolSize - $currentPoolSize;
             $purchaseObject = 'PhoneNumber.' . ($phoneNumberPool->toll_free ? 'TollFree' : 'Local'); 
-            if( ! $account->canPurchase($purchaseObject, $purchaseCount, true) ){
+            if( ! $account->balanceCovers($purchaseObject, $purchaseCount, true) ){
                     return response([
                         'error' => 'Your account balance(' 
                                     . $account->rounded_balance 
@@ -386,8 +386,8 @@ class PhoneNumberPoolController extends Controller
                         'name'                      => $purchasedPhone->phoneNumber
                     ]);
                     
-                    //  Log purchase while adjusting balance
-                    $account->purchase(
+                    //  Log transaction
+                    $account->transaction(
                         $company->id,
                         $user->id,
                         $purchaseObject,

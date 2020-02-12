@@ -18,58 +18,31 @@ class PaymentMethodController extends Controller
      */
     public function list(Request $request)
     {
+        //  Set additional rules
         $rules = [
-            'limit'     => 'numeric',
-            'page'      => 'numeric',
             'order_by'  => 'in:created_at,updated_at,last_4,brand,expiration',
-            'order_dir' => 'in:asc,desc'  
         ];
 
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $limit      = intval($request->limit) ?: 250;
-        $limit      = $limit > 250 ? 250 : $limit;
-        $page       = intval($request->page)  ?: 1;
-        $orderBy    = $request->order_by  ?: 'id';
-        $orderDir   = strtoupper($request->order_dir) ?: 'ASC';
-        $search     = $request->search;
+        $account = $request->user()->account;
         
-        $user    = $request->user();
-        $account = $user->account;
-
+        //  Build Query
         $query = PaymentMethod::where('account_id', $account->id);
         
-        if( $search )
-            $query->where(function($query) use($search){
-                $query->where('last_4', 'like', '%' . $search . '%')
-                      ->orWhere('brand', 'like', '%' . $search . '%');
+        if( $request->search )
+            $query->where(function($query) use($request){
+                $query->where('last_4', 'like', '%' . $request->search . '%')
+                      ->orWhere('brand', 'like', '%' . $request->search . '%');
             });
 
-        $resultCount = $query->count();
-        $records     = $query->offset(($page - 1) * $limit)
-                             ->limit($limit)
-                             ->orderBy($orderBy, $orderDir)
-                             ->get();
+        //  Pass along to parent for listing
+        return $this->listRecords(
+            $request,
+            $query,
+            $rules, 
+            $account->timezone
+        );
 
-        $records = $this->withAppendedDates($account->timezone, $records);
 
-        $nextPage = null;
-        if( $resultCount > ($page * $limit) )
-            $nextPage = $page + 1;
-
-        return response([
-            'results'         => $records,
-            'result_count'    => $resultCount,
-            'limit'           => $limit,
-            'page'            => intval($request->page),
-            'total_pages'     => ceil($resultCount / $limit),
-            'next_page'       => $nextPage
-        ]);
     }
 
     /**

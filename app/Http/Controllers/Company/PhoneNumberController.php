@@ -24,78 +24,37 @@ class PhoneNumberController extends Controller
      */
     public function list(Request $request, Company $company)
     {
+        //  Set additional rules
         $rules = [
-            'limit'     => 'numeric',
-            'page'      => 'numeric',
-            'order_by'  => 'in:name,number,created_at,updated_at',
-            'order_dir' => 'in:asc,desc',
-            'from_date' => [new DateFilterRule()]
+            'order_by'      => 'in:name,number,created_at,updated_at',
+            'category'      => 'max:255',
+            'sub_category'  => 'max:255'
         ];
 
-        $validator = Validator::make($request->input(), $rules);
-        $validator->sometimes('to_date', ['required', new DateFilterRule()], function($input){
-            return $input->has('from_date');
-        });
-
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $limit      = intval($request->limit) ?: 250;
-        $limit      = $limit > 250 ? 250 : $limit;
-        $page       = intval($request->page)  ?: 1;
-        $orderBy    = $request->order_by  ?: 'created_at';
-        $orderDir   = strtoupper($request->order_dir) ?: 'DESC';
-        $search     = $request->search;
-       
+        //  Build Query
         $query = PhoneNumber::where('company_id', $company->id)
                             ->whereNull('phone_number_pool_id');
         
-        if( $search ){
-            $query->where(function($query) use($search){
-                $query->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('number', 'like', '%' . $search . '%');
-            });
-        }
-
-        if( $request->from_date ){
-            $startDate = $this->startDate($request->from_date, $company->timezone);
-            $endDate   = $this->endDate($request->to_date, $company->timezone);     
-
-            $query->where('created_at', '>=', $startDate)
-                  ->where('created_at', '<=', $endDate);
-        }
-
-
         if( $request->category )
             $query->where('category', $request->category);
 
         if( $request->sub_category )
             $query->where('sub_category', $request->sub_category);
-        
 
-        $resultCount = $query->count();
-        $records     = $query->offset(( $page - 1 ) * $limit)
-                             ->limit($limit)
-                             ->orderBy($orderBy, $orderDir)
-                             ->get();
+        if( $request->search ){
+            $query->where(function($query) use($request){
+                $query->where('name', 'like', '%' . $request->search . '%')
+                    ->orWhere('number', 'like', '%' . $request->search . '%');
+            });
+        }
 
-        $records = $this->withAppendedDates($company->timezone, $records);
-
-        $nextPage = null;
-        if( $resultCount > ($page * $limit) )
-            $nextPage = $page + 1;
-
-        return response([
-            'results'              => $records,
-            'result_count'         => $resultCount,
-            'limit'                => $limit,
-            'page'                 => $page,
-            'total_pages'          => ceil($resultCount / $limit),
-            'next_page'            => $nextPage
-        ]);
+        //  Pass along to parent for listing
+        return $this->listRecords(
+            $request,
+            $query,
+            $rules, 
+            $company->timezone
+        );
     }
 
     /**
@@ -149,7 +108,7 @@ class PhoneNumberController extends Controller
         $user           = $request->user(); 
         $account        = $company->account; 
         
-        if( ! $account->canPurchase($purchaseObject, 1, true) )
+        if( ! $account->balanceCovers($purchaseObject, 1, true) )
             return response([
                 'error' => 'Your account balance(' . $account->rounded_balance  . ') is too low to complete purchase. Reload account balance or turn on auto-reload in your account payment settings and try again.'
             ], 400);
@@ -189,8 +148,8 @@ class PhoneNumberController extends Controller
                 'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null
             ]);
 
-           //  Log purchase while adjusting balance
-           $account->purchase(
+           //  Log transaction
+           $account->transaction(
                 $company->id,
                 $user->id,
                 $purchaseObject,

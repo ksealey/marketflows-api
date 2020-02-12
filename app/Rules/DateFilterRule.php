@@ -135,6 +135,15 @@ class DateFilterRule implements Rule
                 
             case 'FIRST_DAY_OF':
             case 'LAST_DAY_OF':
+                return in_array($date->interval, [
+                    'THIS_WEEK',
+                    'LAST_WEEK',
+                    'THIS_MONTH',
+                    'LAST_MONTH',
+                    'THIS_YEAR',
+                    'LAST_YEAR'
+                ]);
+
             case 'FIRST_WEEK_OF':
             case 'LAST_WEEK_OF':
                 return in_array($date->interval, [
@@ -150,6 +159,14 @@ class DateFilterRule implements Rule
                     'THIS_YEAR',
                     'LAST_YEAR'
                 ]);
+
+            case 'PRIOR':
+                return in_array($date->interval, [
+                    'DAYS',
+                    'WEEKS',
+                    'MONTHS',
+                    'YEARS'
+                ]) && intval($date->time_frame);
             default:
                 return false;
         }

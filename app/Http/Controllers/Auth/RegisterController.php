@@ -27,7 +27,7 @@ class RegisterController extends Controller
     public function register(Request $request)
     {
         $rules = [
-            'account_name'          => 'bail|required|min:4|max:255',
+            'account_name'          => 'bail|required|min:4|max:64',
             'timezone'              => 'bail|required|timezone',
             'plan'                  => 'bail|required|in:BASIC,AGENCY,ENTERPRISE',
             'first_name'            => 'bail|required|min:2|max:64',
