@@ -101,8 +101,6 @@ class AudioClipController extends Controller
                 'path'          => $filePath,
                 'mime_type'     => $file->getMimeType()
             ]);
-
-            $this->logUserEvent($user, 'audio-clips.create', $audioClip);
         }catch(Exception $e){
             DB::rollBack();
 
@@ -179,8 +177,6 @@ class AudioClipController extends Controller
         Storage::delete($audioClip->path);
         
         $audioClip->delete();
-
-        $this->logUserEvent($request->user(), 'audio-clips.delete', $audioClip);
 
         return response([
             'message' => 'deleted',

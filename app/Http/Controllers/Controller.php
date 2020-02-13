@@ -8,7 +8,6 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use App\Traits\HasUserEvents;
 use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
 use App\Rules\DateFilterRule;
@@ -18,7 +17,7 @@ use Validator;
 
 class Controller extends BaseController
 {
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HasUserEvents, HandlesDateFilters;
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HandlesDateFilters;
 
     public function listRecords(Request $request, $query, $additionalRules = [], callable $formatter = null)
     {
