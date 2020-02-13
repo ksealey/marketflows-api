@@ -53,9 +53,6 @@ class AuthServiceProvider extends ServiceProvider
                 list($tokenType, $credentials) = $segments; 
                 if( strtoupper($tokenType) === 'BEARER' )
                     return $this->userAuth($credentials, $request->cookie('auth_token'));
-
-                if( strtoupper($tokenType) === 'BASIC' )
-                    return $this->applicationAuth($credentials, $request); 
             }
             
             return null;
@@ -71,35 +68,6 @@ class AuthServiceProvider extends ServiceProvider
         $token = $token ?? $fallbackToken;
 
         $user = $token ? User::where('auth_token', $token)->first() : null;
-
-        return $user && ! $user->disabled_until ? $user : null;
-    }
-
-    /**
-     * Handle application auth
-     *
-     */
-    public function applicationAuth($credentials, &$request)
-    {
-        $credentials = explode(':', base64_decode($credentials));
-        if( count($credentials) !== 2 )
-            return null;
-
-        list($key, $secret) = $credentials;
-
-        $app = Application::where('key', $key)->first();
-
-        if( ! $app || ! $app->activated_at || $app->disabled_at )
-            return null;
-
-        if( ! password_verify($secret, $app->secret) )
-            return null;
-
-        $request->merge([
-            'application_id' => $app->id
-        ]);
-
-        $user = User::find($app->user_id);
 
         return $user && ! $user->disabled_until ? $user : null;
     }
