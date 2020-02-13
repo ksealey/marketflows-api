@@ -77,11 +77,11 @@ class PhoneNumberConfigController extends Controller
     public function create(Request $request, Company $company)
     {
        $rules = [
-            'name'              => 'bail|required|max:255',
+            'name'              => 'bail|required|max:64',
             'forward_to_number' => 'bail|required|numeric|digits_between:10,13',
             'audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'            => 'bail|boolean',
-            'whisper_message'   => 'bail|max:255',
+            'whisper_message'   => 'bail|max:128',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -93,7 +93,7 @@ class PhoneNumberConfigController extends Controller
 
         $phoneNumberConfig = PhoneNumberConfig::create([
             'company_id'                => $company->id,
-            'user_id'                => $request->user()->id,
+            'user_id'                   => $request->user()->id,
             'name'                      => $request->name,
             'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number),
             'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
@@ -128,11 +128,11 @@ class PhoneNumberConfigController extends Controller
     public function update(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
         $rules = [
-            'name'              => 'bail|required|max:255',
+            'name'              => 'bail|required|max:64',
             'forward_to_number' => 'bail|required|digits_between:10,13',
             'audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
             'record'            => 'bail|boolean',
-            'whisper_message'   => 'bail|max:255',
+            'whisper_message'   => 'bail|max:128',
         ];
 
         $validator = Validator::make($request->input(), $rules);

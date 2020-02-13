@@ -30,10 +30,9 @@ class RegisterController extends Controller
             'account_name'          => 'bail|required|min:4|max:64',
             'timezone'              => 'bail|required|timezone',
             'plan'                  => 'bail|required|in:BASIC,AGENCY,ENTERPRISE',
-            'first_name'            => 'bail|required|min:2|max:64',
-            'last_name'             => 'bail|required|min:2|max:64',
-            'email'                 => 'bail|required|email|max:255|unique:users,email',
-            'title'                 => 'bail|max:255',
+            'first_name'            => 'bail|required|min:2|max:32',
+            'last_name'             => 'bail|required|min:2|max:32',
+            'email'                 => 'bail|required|email|max:128|unique:users,email',
             'password' => [
                 'bail',
                 'required',

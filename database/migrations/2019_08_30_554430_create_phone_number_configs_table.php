@@ -17,11 +17,11 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('user_id')->unsigned();
-            $table->string('name', 255);
+            $table->string('name', 64);
             $table->string('forward_to_country_code', 8)->nullable();
             $table->string('forward_to_number', 16);
             $table->bigInteger('audio_clip_id')->unsigned()->nullable();
-            $table->string('whisper_message', 255)->nullable();
+            $table->string('whisper_message', 128)->nullable();
             $table->dateTime('recording_enabled_at')->nullable();
             $table->timestamps();
             $table->softDeletes();

@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use \App\Models\Company;
-use \App\Models\Company\Campaign;
 use \App\Models\User;
 use \App\Models\UserCompany;
 use \App\Rules\CountryRule;
@@ -107,7 +106,7 @@ class CompanyController extends Controller
         try{
             $company = Company::create([
                 'account_id'        => $user->account_id,
-                'user_id'        => $user->id,
+                'user_id'           => $user->id,
                 'name'              => $request->name,
                 'industry'          => $request->industry,
                 'country'           => $request->country
@@ -191,16 +190,6 @@ class CompanyController extends Controller
      */
     public function delete(Request $request, Company $company)
     {
-        if( $company->isInUse() ){
-            return response([
-                'error' => 'Company has active campaigns attached'
-            ], 400);
-        }        
-
-        //  Remove any inactive campaigns attached
-        Campaign::where('company_id', $company->id)
-                ->delete();
-
         //  Remove any users attached
         UserCompany::where('company_id', $company->id)
                    ->delete();

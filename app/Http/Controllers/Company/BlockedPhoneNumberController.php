@@ -78,7 +78,7 @@ class BlockedPhoneNumberController extends Controller
 
         $validator = Validator::make($request->input(), [
             'number'        => 'bail|required|numeric|digits_between:10,13',
-            'name'          => 'bail|required|max:255',
+            'name'          => 'bail|required|max:64',
         ]);
 
         if( $validator->fails() ){
@@ -90,7 +90,7 @@ class BlockedPhoneNumberController extends Controller
         $number = BlockedPhoneNumber::create([
             'account_id' => $user->account_id,
             'company_id' => $company->id,
-            'user_id' => $user->id,
+            'user_id'    => $user->id,
             'name'       => $request->name,
             'number'     => $request->number
         ]);
@@ -116,7 +116,7 @@ class BlockedPhoneNumberController extends Controller
     public function update(Request $request, Company $company, BlockedPhoneNumber $blockedPhoneNumber)
     {
         $validator = Validator::make($request->input(), [
-            'name'          => 'bail|required|max:255',
+            'name'          => 'bail|required|max:64',
         ]);
 
         if( $validator->fails() ){

@@ -29,10 +29,10 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $rules = [
-            'first_name'            => 'bail|required|min:2|max:64',
-            'last_name'             => 'bail|required|min:2|max:64',
-            'email'                 => 'bail|required|email|max:255',
-            'role'                  => 'numeric',
+            'first_name'            => 'bail|required|min:2|max:32',
+            'last_name'             => 'bail|required|min:2|max:32',
+            'email'                 => 'bail|required|email|max:128',
+            'roles'                 => [],
             'companies'             => 'required|array',
             'companies.*'           => 'numeric',
         ];

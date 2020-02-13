@@ -17,9 +17,9 @@ class CreateAudioClipsTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('user_id')->unsigned();
-            $table->string('name', 255);
-            $table->string('path', 255);
-            $table->string('mime_type', 255);
+            $table->string('name', 64);
+            $table->string('path', 128);
+            $table->string('mime_type', 64);
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');

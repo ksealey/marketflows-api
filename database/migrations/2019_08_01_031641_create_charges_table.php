@@ -18,7 +18,7 @@ class CreateChargesTable extends Migration
             $table->bigInteger('payment_method_id')->unsigned();
             $table->string('external_id', 64);
             $table->decimal('amount', 8, 2);
-            $table->string('description', 255);
+            $table->string('description', 64);
             $table->dateTime('created_at')->index();
             $table->foreign('payment_method_id')->references('id')->on('payment_methods');
         });

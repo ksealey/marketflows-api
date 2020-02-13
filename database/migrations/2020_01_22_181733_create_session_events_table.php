@@ -17,7 +17,7 @@ class CreateSessionEventsTable extends Migration
             $table->uuid('id')->primary();
             $table->uuid('session_id');
             $table->string('event_type', 32);
-            $table->string('content', 1028)->nullable();
+            $table->string('content', 512)->nullable();
             $table->dateTime('created_at');
             $table->boolean('is_public');
             $table->foreign('session_id')->references('id')->on('sessions');

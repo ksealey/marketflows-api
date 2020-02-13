@@ -74,7 +74,7 @@ class AudioClipController extends Controller
     {
         $rules = [
             'audio_clip'  => 'required|file',
-            'name'        => 'required|max:255'
+            'name'        => 'required|max:64'
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -95,11 +95,11 @@ class AudioClipController extends Controller
 
             //  Log in database
             $audioClip = AudioClip::create([
-                'company_id'  => $company->id,
-                'user_id'  => $user->id,
-                'name'        => $request->name,
-                'path'        => $filePath,
-                'mime_type'   => $file->getMimeType()
+                'company_id'    => $company->id,
+                'user_id'       => $user->id,
+                'name'          => $request->name,
+                'path'          => $filePath,
+                'mime_type'     => $file->getMimeType()
             ]);
 
             $this->logUserEvent($user, 'audio-clips.create', $audioClip);
@@ -136,7 +136,7 @@ class AudioClipController extends Controller
     {
         $rules = [
             'audio_clip'  => 'file|mimes:x-flac,mpeg,x-wav',
-            'name'        => 'required|max:255'
+            'name'        => 'required|max:64'
         ];
 
         $validator = Validator::make($request->all(), $rules);

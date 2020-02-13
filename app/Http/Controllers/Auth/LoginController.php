@@ -97,7 +97,7 @@ class LoginController extends Controller
     public function resetPassword(Request $request)
     {
         $rules = [
-            'email' => 'required|email',
+            'email' => 'required|email|max:128',
         ];
 
         $messages = [

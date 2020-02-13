@@ -100,7 +100,7 @@ class PhoneNumberPoolController extends Controller
     public function create(Request $request, Company $company)
     {
         $rules = [
-            'name'                   => 'bail|required|max:255',
+            'name'                   => 'bail|required|max:64',
             'size'                   => 'bail|required|numeric|min:5|max:50',  
             'phone_number_config_id' => [
                 'bail',
@@ -267,7 +267,7 @@ class PhoneNumberPoolController extends Controller
     public function update(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
         $rules = [
-            'name'              => 'bail|max:255',
+            'name'              => 'bail|max:64',
             'size'              => 'bail|numeric|min:5|max:50',  
             'phone_number_config_id' => [
                 'bail',

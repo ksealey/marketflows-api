@@ -28,8 +28,8 @@ class PhoneNumberController extends Controller
         //  Set additional rules
         $rules = [
             'order_by'      => 'in:name,number,created_at,updated_at',
-            'category'      => 'max:255',
-            'sub_category'  => 'max:255'
+            'category'      => 'max:32',
+            'sub_category'  => 'max:32'
         ];
 
         //  Build Query
@@ -67,10 +67,10 @@ class PhoneNumberController extends Controller
     {
         $rules = [
             'category'            => 'bail|required|in:ONLINE,OFFLINE',
-            'source'              => 'bail|required|max:255', 
-            'medium'              => 'bail|max:255',
-            'content'             => 'bail|max:255',
-            'campaign'            => 'bail|max:255',       
+            'source'              => 'bail|required|max:64', 
+            'medium'              => 'bail|max:64',
+            'content'             => 'bail|max:64',
+            'campaign'            => 'bail|max:64',       
             'phone_number_config_id' => [
                 'bail',
                 'required',
@@ -80,7 +80,7 @@ class PhoneNumberController extends Controller
                 'bail',
                 (new PhoneNumberPoolRule($company))
             ],
-            'name'          => 'bail|max:255',
+            'name'          => 'bail|max:64',
             'toll_free'     => 'bail|boolean',
             'starts_with'   => 'bail|digits_between:1,10'
         ];
@@ -193,14 +193,16 @@ class PhoneNumberController extends Controller
             ], 400);
         }
 
-        //  Do not allow
         $rules = [
-            'source'              => 'bail|max:255',        
+            'name'                => 'bail|max:64',
+            'source'              => 'bail|max:64',  
+            'medium'              => 'bail|max:64',  
+            'content'             => 'bail|max:64',  
+            'campaign'            => 'bail|max:64',        
             'phone_number_config' => [
                 'bail',
                 (new PhoneNumberConfigRule($company))
-            ],
-            'name' => 'bail|max:255'
+            ]
         ];
 
         $validator = Validator::make($request->input(), $rules);

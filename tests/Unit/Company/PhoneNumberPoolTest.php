@@ -109,7 +109,6 @@ class PhoneNumberPoolTest extends TestCase
         // Remove that number, so there is room for one more, 
         // But restrict at the company limit and make sure it fails
         $phoneNumber->delete();
-        $pool->company->phone_number_max_allowed = 2;
         $pool->company->save();
         $this->assertTrue(
             PhoneNumber::where('phone_number_pool_id', $pool->id)->count() < $pool->auto_provision_max_allowed

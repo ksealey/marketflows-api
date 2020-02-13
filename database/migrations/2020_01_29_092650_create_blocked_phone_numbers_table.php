@@ -18,7 +18,7 @@ class CreateBlockedPhoneNumbersTable extends Migration
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned()->nullable();
             $table->bigInteger('user_id')->unsigned()->nullable();
-            $table->string('name', 255);
+            $table->string('name', 64);
             $table->string('number', 16);
             $table->timestamps();
             $table->softDeletes();
