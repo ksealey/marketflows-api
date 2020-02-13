@@ -18,17 +18,8 @@ class PaymentMethodController extends Controller
      */
     public function list(Request $request)
     {
-        //  Set additional rules
-        $rules = [
-            'order_by'  => 'in:created_at,updated_at,last_4,brand,expiration',
-        ];
-
-        $user    = $request->user();
-
-        $account = $user->account;
-        
         //  Build Query
-        $query = PaymentMethod::where('account_id', $account->id);
+        $query = PaymentMethod::where('account_id', $request->user()->account_id);
         
         if( $request->search )
             $query->where(function($query) use($request){
@@ -40,7 +31,7 @@ class PaymentMethodController extends Controller
         return $this->listRecords(
             $request,
             $query,
-            $rules
+            [ 'order_by' => 'in:created_at,updated_at,last_4,brand,expiration' ]
         );
     }
 

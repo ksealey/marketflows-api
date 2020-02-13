@@ -30,7 +30,7 @@ class RoleController extends Controller
         $user  = $request->user();
         
         $role = Role::create([
-            'user_id' => $user->id,
+            'user_id'    => $user->id,
             'account_id' => $user->account_id,
             'name'       => $request->name,
             'policy'     => $request->policy

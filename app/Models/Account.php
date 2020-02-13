@@ -107,6 +107,16 @@ class Account extends Model
                             ->first();
     }
 
+    public function getAdminUsersAttribute()
+    {
+        return User::where('account_id', $this->id)
+                   ->whereIn('id', function($query){
+                        $query->select('user_id')
+                              ->from('user_roles')
+                              ->where('');
+                   });
+    }
+
     /**
      * Determine the price of an object by rates
      * 

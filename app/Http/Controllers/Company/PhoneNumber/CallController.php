@@ -21,13 +21,9 @@ class CallController extends Controller
      */
     public function list(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        $limit  = intval($request->limit) ?: 25;
-        $page   = intval($request->page) ? intval($request->page) - 1 : 0;
-        $search = $request->search;
-
         $query = Call::where('phone_number_id', $phoneNumber->id);
         
-        if( $search ){
+        if( $request->search ){
             $query->where(function($query) use($search){
                 $query->where('name', 'like', '%' . $search . '%')
                       ->orWhere('number', 'like', '%' . preg_replace('/[^0-9]+/', '', $search) . '%');

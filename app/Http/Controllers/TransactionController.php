@@ -11,7 +11,7 @@ class TransactionController extends Controller
     {
         //  Set additional rules
         $rules = [
-            'order_by'          => 'in:company_id,label,amount,created_at,',
+            'order_by'          => 'in:company_id,label,amount,created_at',
             'company_id'        => 'numeric',
             'payment_method_id' => 'numeric'
         ];

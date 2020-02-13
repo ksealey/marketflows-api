@@ -16,8 +16,10 @@ class CreateRolesTable extends Migration
         Schema::create('roles', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
-            $table->bigInteger('user_id')->unsigned()->nullable();
-            $table->string('name', 255);
+            $table->bigInteger('created_by')->unsigned()->nullable();
+            $table->string('name', 64);
+            $table->string('description', 128);
+            $table->boolean('admin_role')->default(0);
             $table->json('policy');
             $table->timestamps();
             $table->foreign('account_id')->references('id')->on('accounts');

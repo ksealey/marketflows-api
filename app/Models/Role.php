@@ -9,7 +9,10 @@ class Role extends Model
 {
     protected $fillable = [
         'account_id',
+        'created_by',
         'name',
+        'description',
+        'admin_role',
         'policy'
     ];
 
@@ -26,7 +29,9 @@ class Role extends Model
     {
         return self::create([
             'account_id'    => $account->id,
-            'name'          => 'Admin User',
+            'name'          => 'Administrator',
+            'description'   => 'System user without limitations. Only these users will get system alerts.',
+            'admin_role'    => true,
             'policy'        => json_encode([
                 'policy' => [
                     [
@@ -50,6 +55,8 @@ class Role extends Model
         return self::create([
             'account_id'    => $account->id,
             'name'          => 'Reporting User',
+            'description'   => 'Users that should only be able to view reporting. This would be an ideal role for clients of a marketing agency.',
+            'admin_role'    => false,
             'policy'        => json_encode([
                 'policy' => [
                     [

@@ -14,56 +14,21 @@ class BlockedPhoneNumberController extends Controller
      */
     public function list(Request $request)
     {
-        $rules = [
-            'limit'     => 'numeric',
-            'page'      => 'numeric',
-            'order_by'  => 'in:name,number,created_at,updated_at',
-            'order_dir' => 'in:asc,desc'
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $limit      = intval($request->limit) ?: 250;
-        $limit      = $limit > 250 ? 250 : $limit;
-        $page       = intval($request->page)  ?: 1;
-        $orderBy    = $request->order_by  ?: 'created_at';
-        $orderDir   = strtoupper($request->order_dir) ?: 'DESC';
-        $search     = $request->search;
+        $user  = $request->user();
 
         $query = BlockedPhoneNumber::where('account_id', $user->account_id);
         
-        if( $search ){
-            $query->where(function($query) use($search){
-                $query->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('number', 'like', '%' . $search . '%');
+        if( $request->search )
+            $query->where(function($query) use($request){
+                $query->where('name', 'like', '%' . $request->search . '%')
+                      ->orWhere('number', 'like', '%' . $request->search . '%');
             });
-        }
 
-        $resultCount = $query->count();
-        $records     = $query->offset(( $page - 1 ) * $limit)
-                             ->limit($limit)
-                             ->orderBy($orderBy, $orderDir)
-                             ->get();
-
-        $records = $this->withAppendedDates($user->timezone, $records);
-
-        $nextPage = null;
-        if( $resultCount > ($page * $limit) )
-            $nextPage = $page + 1;
-
-        return response([
-            'results'              => $records,
-            'result_count'         => $resultCount,
-            'limit'                => $limit,
-            'page'                 => $page,
-            'total_pages'          => ceil($resultCount / $limit),
-            'next_page'            => $nextPage
-        ]);
+        return $this->listRecords(
+            $request,
+            $query,
+            ['order_by'  => 'in:name,number,created_at,updated_at']
+        );
     }
 
     /**

@@ -15,14 +15,16 @@ class CallPolicy
 
     public function list(User $user)
     {
-        return $user->canDoAction('phone-numbers.read');
+       
     }
 
     public function read(User $user, PhoneNumber $phoneNumber, Call $call)
     {
+        /*
         return $phoneNumber->id == $call->phone_number_id
             && $this->resourceBelongsToCompany($phoneNumber->company_id)
             && $this->userCanViewCompany($user, $phoneNumber->company_id) 
             && $user->canDoAction('phone-numbers.read');
+        */
     }
 }
