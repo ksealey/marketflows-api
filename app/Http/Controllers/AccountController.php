@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PaymentMethod;
+use App\Models\CreditCode;
 use Illuminate\Validation\Rule;
 use Validator;
 use Exception;
+use DB;
 
 class AccountController extends Controller
 {
@@ -122,5 +124,47 @@ class AccountController extends Controller
         $account->save();
 
         return response($charge);
+    }
+
+    public function applyCreditCode(Request $request)
+    {
+        $rules = [
+            'code' => [
+                'required',
+                'regex:/^\bMKT-\b[0-9A-z]{16}$/'
+            ]
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $user       = $request->user();
+        $creditCode = CreditCode::where('code', $request->code)->first();
+        if( ! $creditCode || ($creditCode->account_id && $creditCode->account_id != $user->account_id ) )
+            return response([
+                'error' => 'Invalid credit code'
+            ], 400);
+
+        DB::beginTransaction();
+       
+        try{
+            $account = $user->account;
+            $account->balance = $account->balance + $creditCode->amount;
+            $account->save();
+
+            $creditCode->delete();
+
+            DB::commit();
+
+            return response($account);
+        }catch(Exception $e){
+            DB::rollBack();
+
+            throw $e;
+        }
     }
 }

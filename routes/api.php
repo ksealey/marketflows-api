@@ -94,6 +94,10 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
         Route::post('/fund', 'AccountController@fund')
              ->middleware('can:update,\App\Models\Account')
              ->name('fund-account');
+
+        Route::post('/apply-credit-code', 'AccountController@applyCreditCode')
+             ->middleware('can:update,\App\Models\Account')
+             ->name('apply-credit-code');
     });
 
     /*
