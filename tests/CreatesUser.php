@@ -41,51 +41,6 @@ trait CreatesUser
         return $this->user;
     }
 
-    public function createCampaign($fields = [])
-    {
-        $user = $this->user ?: $this->createUser();
-        
-        return factory(Campaign::class)->create(array_merge([
-            'company_id' => $this->company->id,
-            'user_id' => $user->id,
-            'type'       => Campaign::TYPE_PRINT
-        ], $fields));
-    }
-
-    /**
-     * Create a web campaign
-     * 
-     */
-    public function createWebCampaign($phoneNumberCount = 2)
-    {
-        $user = $this->user ?: $this->createUser();
-        
-        $campaign = $this->createCampaign([
-            'type' => Campaign::TYPE_WEB
-        ]);
-
-        $config = $this->createPhoneNumberConfig();
-
-        $pool = $this->createPhoneNumberPool([
-            'campaign_id' => $campaign->id
-        ],  $config);
-
-        $phoneNumbers = [];
-        for($i = 0; $i < $phoneNumberCount; $i++){
-            $phoneNumber = $this->createPhoneNumber([
-                'phone_number_pool_id' => $pool->id
-            ],  $config);
-
-            $phoneNumbers[] = $phoneNumber;
-        }
-        
-        return [
-            'pool'          => $pool,
-            'campaign'      => $campaign,
-            'phone_numbers' => $phoneNumbers
-        ];
-    }
-
     public function createPhoneNumber($fields = [], $config = null)
     {
         $user = $this->user ?: $this->createUser();
