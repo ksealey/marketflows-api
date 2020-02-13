@@ -123,10 +123,7 @@ class CompanyController extends Controller
 
         DB::commit();
 
-        return response($company, 201)
-                ->withHeaders([
-                    'Location' => $company->link
-                ]);
+        return response($company, 201);
     }
 
     /**
@@ -138,9 +135,7 @@ class CompanyController extends Controller
      * @return Response
      */
     public function read(Request $request, Company $company)
-    {
-        $company->plugins = $company->plugins();
-        
+    {   
         return response($company);
     }
 

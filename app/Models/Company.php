@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\Campaign;
-use App\Models\Plugin;
 
 class Company extends Model
 {
@@ -31,15 +30,6 @@ class Company extends Model
         'link',
         'kind'
     ];
-
-    public function plugins()
-    {
-        return Plugin::whereIn('id', function($query){
-            $query->select('plugin_id')
-                  ->from('company_plugins')
-                  ->where('company_id', $this->id);
-        })->get();
-    }
 
     public function getLinkAttribute()
     {
