@@ -32,20 +32,6 @@ class Company extends Model
         'kind'
     ];
 
-    /**
-     * Check if this company is in use
-     * 
-     * @return bool
-     */
-    public function isInUse()
-    {
-        $activeCampaignCount = Campaign::where('company_id', $this->id)
-                                       ->whereNotNull('activated_at')
-                                       ->count();
-        
-        return $activeCampaignCount ? true : false;
-    }
-
     public function plugins()
     {
         return Plugin::whereIn('id', function($query){

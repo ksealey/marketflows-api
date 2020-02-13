@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use App\Models\Company\Campaign;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
@@ -70,18 +69,7 @@ class IncomingCallController extends Controller
         $pool = null;
         if( $phoneNumber->phone_number_pool_id )
             $pool = PhoneNumberPool::find($phoneNumber->phone_number_pool_id);
-        
-        //  Find campaign, even if deleted
-        $campaign = null;
-        if( $pool ){
-            $campaign = Campaign::where('id', $pool->campaign_id)
-                                ->withTrashed()
-                                ->first();
-        }else{
-            $campaign = Campaign::where('id', $phoneNumber->campaign_id)
-                                ->withTrashed()
-                                ->first();
-        }
+    
 
         //  Try to get the config
         $phoneNumberConfig = $phoneNumber->getPhoneNumberConfig();
@@ -91,7 +79,6 @@ class IncomingCallController extends Controller
             'phone_number_id'       => $phoneNumber->id,
             'phone_number_pool_id'  => $pool ? $pool->id : null,
             'phone_number_config_id'=> $phoneNumberConfig->id,
-            'campaign_id'           => ($campaign ? $campaign->id : null),
             'external_id'           => $request->CallSid,
             'direction'             => $request->Direction,
             'status'                => $request->CallStatus,
@@ -107,15 +94,6 @@ class IncomingCallController extends Controller
             'to_state'              => $request->ToState ?: null,
             'to_zip'                => $request->ToZip ?: null,
             'to_country'            => $request->ToCountry ?: null,
-            
-            //
-            //  This data should be stamped into call
-            //
-            'stamped_campaign_type'                 => ($campaign ? $campaign->type : null),
-            'stamped_campaign_name'                 => ($campaign ? $campaign->name : null),
-            'stamped_source'                        => $phoneNumberConfig ? $phoneNumberConfig->source : null,
-            'stamped_forward_to_country_code'       => $phoneNumberConfig ? $phoneNumberConfig->stamped_forward_to_country_code : null,
-            'stamped_forward_to_number'             => $phoneNumberConfig ? $phoneNumberConfig->forward_to_number : null,
         ]);
 
         //  Let the rest of the system know it happened

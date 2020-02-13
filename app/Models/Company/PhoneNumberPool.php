@@ -8,7 +8,6 @@ use Illuminate\Support\Str;
 use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
-use \App\Models\Company\PhoneNumberPoolProvisionRule;
 use \App\Traits\CanSwapNumbers;
 use Exception;
 use DateTime;
