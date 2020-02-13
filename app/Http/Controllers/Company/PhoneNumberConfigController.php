@@ -56,8 +56,6 @@ class PhoneNumberConfigController extends Controller
                              ->orderBy($orderBy, $orderDir)
                              ->get();
 
-        $records = $this->withAppendedDates($company->timezone, $records);
-
         $nextPage = null;
         if( $resultCount > ($page * $limit) )
             $nextPage = $page + 1;
@@ -95,7 +93,7 @@ class PhoneNumberConfigController extends Controller
 
         $phoneNumberConfig = PhoneNumberConfig::create([
             'company_id'                => $company->id,
-            'created_by'                => $request->user()->id,
+            'user_id'                => $request->user()->id,
             'name'                      => $request->name,
             'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number),
             'forward_to_number'         => PhoneNumber::number($request->forward_to_number),

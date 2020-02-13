@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Rules\Company\PhoneNumberPoolRule;
 use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
+use App\Models\Transaction;
 use App\Models\Company\PhoneNumber;
 use App\Rules\SwapRulesRule;
 use App\Rules\DateFilterRule;
@@ -48,12 +49,13 @@ class PhoneNumberController extends Controller
             });
         }
 
+        $user = $request->user();
+
         //  Pass along to parent for listing
         return $this->listRecords(
             $request,
             $query,
-            $rules, 
-            $company->timezone
+            $rules
         );
     }
 
@@ -129,7 +131,7 @@ class PhoneNumberController extends Controller
                 'uuid'                      => Str::uuid(),
                 'external_id'               => $purchasedPhone->sid,
                 'company_id'                => $company->id,
-                'created_by'                => $user->id,
+                'user_id'                   => $user->id,
                 'phone_number_config_id'    => $request->phone_number_config_id,
                 'phone_number_pool_id'      => $request->phone_number_pool_id,
                 'category'                  => $request->category,
@@ -150,12 +152,13 @@ class PhoneNumberController extends Controller
 
            //  Log transaction
            $account->transaction(
-                $company->id,
-                $user->id,
+                Transaction::TYPE_PURCHASE,
                 $purchaseObject,
-                $purchasedPhone->phoneNumber,
+                $phoneNumber->getTable(),
                 $phoneNumber->id,
-                $purchasedPhone->sid
+                'Purchased Number ' . $purchasedPhone->phoneNumber,
+                $company->id,
+                $user->id
             );
         }catch(Exception $e){
             Log::error($e->getTraceAsString());

@@ -8,7 +8,6 @@ $factory->define(\App\Models\Company::class, function (Faker $faker) {
     return [
         'name'      => $faker->company,
         'industry'  => 'Manufacturing',
-        'country'   => 'US',
-        'timezone'  => 'America/New_York',
+        'country'   => 'US'
     ];
 });

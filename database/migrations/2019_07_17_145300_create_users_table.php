@@ -17,16 +17,21 @@ class CreateUsersTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('role_id')->unsigned()->nullable();
+            $table->string('timezone', 64);
             $table->string('first_name', 64);
             $table->string('last_name', 64);
             $table->string('email', 255)->unique();
+            $table->string('phone', 16)->nullable();
             $table->string('password_hash', 255);
             $table->string('auth_token', 255);
             $table->dateTime('email_verified_at')->nullable();
+            $table->dateTime('phone_verified_at')->nullable();
             $table->dateTime('last_login_at')->nullable();
             $table->dateTime('password_reset_at')->nullable();
             $table->dateTime('disabled_until')->nullable();
             $table->integer('login_attempts')->unsigned()->default(0);
+            $table->dateTime('email_alerts_enabled_at')->nullable();
+            $table->dateTime('sms_alerts_enabled_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('account_id')->references('id')->on('accounts');
@@ -34,7 +39,7 @@ class CreateUsersTable extends Migration
         });
 
         Schema::table('roles', function (Blueprint $table) {
-            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('user_id')->references('id')->on('users');
         });
     }
 

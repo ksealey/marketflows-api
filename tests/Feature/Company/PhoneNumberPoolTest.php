@@ -28,12 +28,12 @@ class PhoneNumberPoolTest extends TestCase
 
         $pool1 = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $pool2 = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $response = $this->json('GET', route('list-phone-number-pools', [
@@ -71,12 +71,12 @@ class PhoneNumberPoolTest extends TestCase
 
         $pool1 = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $pool2 = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $response = $this->json('GET', route('list-phone-number-pools', [
@@ -113,7 +113,7 @@ class PhoneNumberPoolTest extends TestCase
 
         factory(PaymentMethod::class)->create([
             'account_id' => $this->account->id,
-            'created_by' => $this->user->id
+            'user_id' => $this->user->id
         ]);
 
         $config = $this->createPhoneNumberConfig();
@@ -204,7 +204,7 @@ class PhoneNumberPoolTest extends TestCase
 
         factory(PaymentMethod::class)->create([
             'account_id' => $this->account->id,
-            'created_by' => $this->user->id
+            'user_id' => $this->user->id
         ]);
 
         $config = $this->createPhoneNumberConfig();
@@ -296,7 +296,7 @@ class PhoneNumberPoolTest extends TestCase
 
         factory(PaymentMethod::class)->create([
             'account_id' => $this->account->id,
-            'created_by' => $this->user->id
+            'user_id' => $this->user->id
         ]);
 
         $config = $this->createPhoneNumberConfig();
@@ -389,7 +389,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $pool = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
-            'created_by'  =>  $user->id
+            'user_id'  =>  $user->id
         ]);
 
         $number = $this->createPhoneNumber([
@@ -428,7 +428,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $pool = $this->createPhoneNumberPool([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $updatedPool = factory(PhoneNumberPool::class)->make([

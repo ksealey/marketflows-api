@@ -24,7 +24,7 @@ class PhoneNumberPoolTest extends TestCase
         
         $provisionRule = factory(PhoneNumberPoolProvisionRule::class)->create([
             'phone_number_pool_id'  => $pool->id,
-            'created_by'            => $this->user->id,
+            'user_id'            => $this->user->id,
             'priority'              => 1,
         ]);
         
@@ -56,7 +56,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $provisionRule = factory(PhoneNumberPoolProvisionRule::class)->create([
             'phone_number_pool_id'  => $pool->id,
-            'created_by'            => $this->user->id,
+            'user_id'            => $this->user->id,
             'priority'              => 0,
         ]);
 
@@ -80,7 +80,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $provisionRule = factory(PhoneNumberPoolProvisionRule::class)->create([
             'phone_number_pool_id'  => $pool->id,
-            'created_by'            => $this->user->id,
+            'user_id'            => $this->user->id,
             'priority'              => 0,
         ]);
 
@@ -131,7 +131,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $provisionRule = factory(PhoneNumberPoolProvisionRule::class)->create([
             'phone_number_pool_id'  => $pool->id,
-            'created_by'            => $this->user->id,
+            'user_id'            => $this->user->id,
             'priority'              => 0,
         ]);
         
@@ -186,7 +186,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $provisionRule = factory(PhoneNumberPoolProvisionRule::class)->create([
             'phone_number_pool_id'  => $pool->id,
-            'created_by'            => $this->user->id,
+            'user_id'            => $this->user->id,
             'priority'              => 0,
         ]);
         
@@ -228,7 +228,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $provisionRule = factory(PhoneNumberPoolProvisionRule::class)->create([
             'phone_number_pool_id'  => $pool->id,
-            'created_by'            => $this->user->id,
+            'user_id'            => $this->user->id,
             'priority'              => 0,
         ]);
         
@@ -296,7 +296,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $provisionRule = factory(PhoneNumberPoolProvisionRule::class)->create([
             'phone_number_pool_id'  => $pool->id,
-            'created_by'            => $this->user->id,
+            'user_id'            => $this->user->id,
             'priority'              => 0,
         ]);
         

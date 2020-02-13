@@ -23,7 +23,9 @@ class PaymentMethodController extends Controller
             'order_by'  => 'in:created_at,updated_at,last_4,brand,expiration',
         ];
 
-        $account = $request->user()->account;
+        $user    = $request->user();
+
+        $account = $user->account;
         
         //  Build Query
         $query = PaymentMethod::where('account_id', $account->id);
@@ -38,11 +40,8 @@ class PaymentMethodController extends Controller
         return $this->listRecords(
             $request,
             $query,
-            $rules, 
-            $account->timezone
+            $rules
         );
-
-
     }
 
     /**

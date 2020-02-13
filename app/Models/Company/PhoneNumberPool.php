@@ -23,7 +23,7 @@ class PhoneNumberPool extends Model
 
     protected $fillable = [
         'company_id',
-        'created_by',
+        'user_id',
         'phone_number_config_id',
         'name',
         'referrer_aliases',

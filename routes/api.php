@@ -33,8 +33,6 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
          
     Route::post('/reset-password/{userId}/{key}', 'Auth\LoginController@handleResetPassword')
          ->name('auth-handle-reset-password');  
-
-    
 });
 
 /*
@@ -43,14 +41,41 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
 |----------------------------------------
 */
 Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
-    Route::get('/me', function(Request $request){
-        $user = $request->user();
-        $user->account;
 
-        return response([
-            'user' => $user
-        ]);
-    })->name('me');
+    /*
+    |----------------------------------------
+    | Handle current user
+    |----------------------------------------
+    */
+    Route::prefix('me')->group(function(){
+
+        Route::get('/', function(Request $request){
+            $user = $request->user();
+            $user->account;
+    
+            return response($user);
+        })->name('me');
+
+        /*
+        |----------------------------------------
+        | Handle alerts
+        |----------------------------------------
+        */
+        Route::prefix('alerts')->group(function(){
+            Route::get('/', 'AlertController@list')
+                 ->name('list-alerts');
+
+            Route::get('/{alert}', 'AlertController@read')
+                 ->name('read-alert');
+
+            Route::put('/{alert}', 'AlertController@update')
+                 ->name('update-alert');
+
+            Route::delete('/{alert}', 'AlertController@delete')
+                 ->name('delete-alert');
+        });
+        
+    });
 
    /*
     |--------------------------------
@@ -70,7 +95,6 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
              ->middleware('can:update,\App\Models\Account')
              ->name('fund-account');
     });
-   
 
     /*
     |--------------------------------
@@ -157,6 +181,10 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
         Route::get('/', 'ChargeController@list')
             ->middleware('can:list,\App\Models\Charge')
             ->name('list-charges'); 
+
+        Route::get('/{Charge}', 'ChargeController@read')
+            ->middleware('can:read,\App\Models\Charge')
+            ->name('read-charge'); 
     });
 
     /*
@@ -168,9 +196,11 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
         Route::get('/', 'TransactionController@list')
             ->middleware('can:list,\App\Models\Transaction')
             ->name('list-transactions'); 
+        
+        Route::get('/{transaction}', 'TransactionController@read')
+            ->middleware('can:read,\App\Models\Transaction')
+            ->name('read-transaction'); 
     });
-
-
 
     /*
     |---------------------------------------

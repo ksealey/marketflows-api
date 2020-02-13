@@ -16,11 +16,10 @@ class CreateCompaniesTable extends Migration
         Schema::create('companies', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
-            $table->bigInteger('created_by')->unsigned();
-            $table->string('name', 255);
-            $table->string('industry', 255);
+            $table->bigInteger('user_id')->unsigned();
+            $table->string('name', 64);
+            $table->string('industry', 64);
             $table->string('country', 32);
-            $table->string('timezone', 128);
             $table->integer('phone_number_max_allowed')->nullable();
             $table->timestamps();
             $table->softDeletes();

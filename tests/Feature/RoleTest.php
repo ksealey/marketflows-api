@@ -176,7 +176,7 @@ class RoleTest extends TestCase
 
         $role = factory(Role::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $roleUpdate = factory(Role::class)->make([
@@ -218,7 +218,7 @@ class RoleTest extends TestCase
         $user = $this->createUser();
         $role = factory(Role::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('PUT', route('update-role', [
@@ -336,7 +336,7 @@ class RoleTest extends TestCase
 
         $role = factory(Role::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('DELETE', route('delete-role', [

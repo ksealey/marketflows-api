@@ -18,7 +18,7 @@ class CreatePhoneNumbersTable extends Migration
             $table->string('uuid', 128)->index();
             $table->string('external_id', 64)->index();
             $table->bigInteger('company_id')->unsigned();
-            $table->bigInteger('created_by')->unsigned();
+            $table->bigInteger('user_id')->unsigned();
             $table->bigInteger('phone_number_pool_id')->unsigned()->nullable();
             $table->bigInteger('phone_number_config_id')->unsigned()->nullable();
             $table->string('name', 255)->index();
@@ -43,7 +43,7 @@ class CreatePhoneNumbersTable extends Migration
             $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
             $table->foreign('phone_number_config_id')->references('id')->on('phone_number_configs');
             $table->foreign('company_id')->references('id')->on('companies');
-            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('user_id')->references('id')->on('users');
         });
     }
 

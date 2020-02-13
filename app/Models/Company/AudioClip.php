@@ -14,7 +14,7 @@ class AudioClip extends Model
 
     protected $fillable = [
         'company_id',
-        'created_by',
+        'user_id',
         'name',
         'path',
         'mime_type'

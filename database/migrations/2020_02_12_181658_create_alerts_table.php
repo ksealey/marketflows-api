@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateAudioClipsTable extends Migration
+class CreateAlertsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,16 +13,13 @@ class CreateAudioClipsTable extends Migration
      */
     public function up()
     {
-        Schema::create('audio_clips', function (Blueprint $table) {
+        Schema::create('alerts', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('user_id')->unsigned();
-            $table->string('name', 255);
-            $table->string('path', 255);
-            $table->string('mime_type', 255);
+            $table->string('type', 32);
+            $table->string('message', 128);
+            $table->boolean('seen')->default(0);
             $table->timestamps();
-            $table->softDeletes();
-            $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('user_id')->references('id')->on('users');
         });
     }
@@ -34,6 +31,6 @@ class CreateAudioClipsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('audio_clips');
+        Schema::dropIfExists('alerts');
     }
 }

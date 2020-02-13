@@ -62,7 +62,7 @@ class CallTest extends TestCase
         //
         $audioClip = factory(AudioClip::class)->create([
             'company_id' => $phone->company_id,
-            'created_by' => $this->user->id,
+            'user_id' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
         $config->audio_clip_id = $audioClip->id;
@@ -156,7 +156,7 @@ class CallTest extends TestCase
         //
         $audioClip = factory(AudioClip::class)->create([
             'company_id' => $phone->company_id,
-            'created_by' => $this->user->id,
+            'user_id' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
         $config->audio_clip_id = $audioClip->id;
@@ -247,7 +247,7 @@ class CallTest extends TestCase
         //
         $audioClip = factory(AudioClip::class)->create([
             'company_id' => $phone->company_id,
-            'created_by' => $this->user->id,
+            'user_id' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
         $config->audio_clip_id = $audioClip->id;
@@ -353,7 +353,7 @@ class CallTest extends TestCase
         //
         $audioClip = factory(AudioClip::class)->create([
             'company_id' => $phone->company_id,
-            'created_by' => $this->user->id,
+            'user_id' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
         $config->audio_clip_id = $audioClip->id;
@@ -444,7 +444,7 @@ class CallTest extends TestCase
         //
         $audioClip = factory(AudioClip::class)->create([
             'company_id' => $phone->company_id,
-            'created_by' => $this->user->id,
+            'user_id' => $this->user->id,
             'path'       => AudioClip::storagePath($this->company, 'audio_clips') . '/' . mt_rand(99999, 9999999) . '.mp3'
         ]);
         $config->audio_clip_id = $audioClip->id;

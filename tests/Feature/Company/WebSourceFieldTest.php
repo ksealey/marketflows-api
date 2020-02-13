@@ -124,7 +124,7 @@ class WebSourceFieldTest extends TestCase
 
         $otherCompany = factory(Company::class)->create([
             'account_id' => $this->account->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $existingField = factory(WebSourceField::class)->create([

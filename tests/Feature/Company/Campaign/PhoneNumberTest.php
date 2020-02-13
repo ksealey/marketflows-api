@@ -23,12 +23,12 @@ class PhoneNumberTest extends TestCase
 
         $phoneNumber = $this->createPhoneNumber([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $phoneNumber2 = $this->createPhoneNumber([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $campaign = $this->createCampaign();
@@ -66,12 +66,12 @@ class PhoneNumberTest extends TestCase
 
         $phoneNumber = $this->createPhoneNumber([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $phoneNumber2 = $this->createPhoneNumber([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $campaign = $this->createCampaign([
@@ -114,13 +114,13 @@ class PhoneNumberTest extends TestCase
         $phoneNumber = $this->createPhoneNumber([
             'campaign_id' => $campaign->id,
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $phoneNumber2 = $this->createPhoneNumber([
             'campaign_id' => $campaign->id,
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
         
         $response = $this->json('DELETE', route('remove-campaign-phone-number', [

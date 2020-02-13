@@ -54,9 +54,6 @@ class BlockedPhoneNumberController extends Controller
                              ->limit($limit)
                              ->orderBy($orderBy, $orderDir)
                              ->get();
-
-        $records = $this->withAppendedDates($company->timezone, $records);
-
         $nextPage = null;
         if( $resultCount > ($page * $limit) )
             $nextPage = $page + 1;
@@ -93,7 +90,7 @@ class BlockedPhoneNumberController extends Controller
         $number = BlockedPhoneNumber::create([
             'account_id' => $user->account_id,
             'company_id' => $company->id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'name'       => $request->name,
             'number'     => $request->number
         ]);

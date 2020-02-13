@@ -22,13 +22,13 @@ class CampaignTest extends \Tests\TestCase
         $now  = date('Y-m-d H:i:s');
 
         $campaign1 = factory(Campaign::class)->create([
-            'created_by'    => $user->id,
+            'user_id'    => $user->id,
             'company_id'    => $this->company->id,
             'activated_at'  => $now
         ]);
 
         $campaign2 = factory(Campaign::class)->create([
-            'created_by'    => $user->id,
+            'user_id'    => $user->id,
             'company_id'    => $this->company->id,
             'activated_at'  => $now
         ]);
@@ -61,13 +61,13 @@ class CampaignTest extends \Tests\TestCase
         $now  = date('Y-m-d H:i:s');
 
         $campaign1 = factory(Campaign::class)->create([
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'company_id' => $this->company->id,
             'activated_at'  => $now
         ]);
 
         $campaign2 = factory(Campaign::class)->create([
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'company_id' => $this->company->id,
             'activated_at'  => $now
         ]);
@@ -343,7 +343,7 @@ class CampaignTest extends \Tests\TestCase
 
         $campaign    = factory(Campaign::class)->create([
             'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
+            'user_id'   => $user->id,
             'type'         => Campaign::TYPE_WEB,
             'activated_at' => $now,
         ]);
@@ -375,7 +375,7 @@ class CampaignTest extends \Tests\TestCase
 
         $campaign    = factory(Campaign::class)->create([
             'company_id' => $this->company->id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'activated_at' => $now
         ]);
 
@@ -410,7 +410,7 @@ class CampaignTest extends \Tests\TestCase
         
         $campaign    = factory(Campaign::class)->create([
             'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
+            'user_id'   => $user->id,
             'activated_at' => null
         ]);
     
@@ -437,7 +437,7 @@ class CampaignTest extends \Tests\TestCase
         
         $campaign    = factory(Campaign::class)->create([
             'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
+            'user_id'   => $user->id,
             'activated_at' => $now
         ]);
     

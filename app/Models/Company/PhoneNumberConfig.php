@@ -14,7 +14,7 @@ class PhoneNumberConfig extends Model
 
     protected $fillable = [
         'company_id',
-        'created_by',
+        'user_id',
         'name',
         'forward_to_country_code',
         'forward_to_number',

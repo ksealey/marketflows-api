@@ -15,14 +15,13 @@ class CreateAccountsTable extends Migration
     {
         Schema::create('accounts', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('name', 255);
+            $table->string('name', 64);
             $table->string('plan', 32);
-            $table->string('timezone', 64);
-            $table->decimal('balance', 16, 4)->default(0.00);
+            $table->decimal('balance', 12, 2);
             $table->dateTime('auto_reload_enabled_at')->nullable();
             $table->integer('auto_reload_minimum')->nullable()->unsigned();
             $table->integer('auto_reload_amount')->nullable()->unsigned();
-            $table->string('stripe_id', 255)->nullable();
+            $table->string('stripe_id', 64)->nullable();
             $table->dateTime('disabled_at')->nullable();
             $table->dateTime('last_billed_at')->nullable();
             $table->dateTime('bill_at');

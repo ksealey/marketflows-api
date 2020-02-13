@@ -24,12 +24,12 @@ class AudioClipTest extends TestCase
 
         $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $audioClip2 = factory(AudioClip::class)->create([
             'company_id'  => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('GET', route('list-audio-clips', [
@@ -91,7 +91,7 @@ class AudioClipTest extends TestCase
 
         $audioClip = factory(AudioClip::class)->create([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('GET', route('read-audio-clip', [
@@ -120,7 +120,7 @@ class AudioClipTest extends TestCase
 
         $audioClip = factory(AudioClip::class)->create([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         Storage::fake();
@@ -157,7 +157,7 @@ class AudioClipTest extends TestCase
 
         $audioClip = factory(AudioClip::class)->create([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         Storage::fake();

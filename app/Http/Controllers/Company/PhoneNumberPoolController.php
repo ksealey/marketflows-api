@@ -15,7 +15,7 @@ use App\Rules\SwapRulesRule;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
-use \App\Models\Purchase;
+use \App\Models\Transaction;
 use Validator;
 use Exception;
 use Log;
@@ -74,9 +74,7 @@ class PhoneNumberPoolController extends Controller
                              ->limit($limit)
                              ->orderBy($orderBy, $orderDir)
                              ->get();
-
-        $records = $this->withAppendedDates($company->timezone, $records);
-
+                             
         $nextPage = null;
         if( $resultCount > ($page * $limit) )
             $nextPage = $page + 1;
@@ -182,7 +180,7 @@ class PhoneNumberPoolController extends Controller
     
         $pool = PhoneNumberPool::create([
             'company_id'                => $company->id,
-            'created_by'                => $user->id,
+            'user_id'                => $user->id,
             'phone_number_config_id'    => $request->phone_number_config_id,
             'name'                      => $request->name,
             'referrer_aliases'          => $referrerAliases,
@@ -204,7 +202,7 @@ class PhoneNumberPoolController extends Controller
                     'external_id'               => $purchasedPhone->sid,
                     'phone_number_pool_id'      => $pool->id,
                     'company_id'                => $pool->company_id,
-                    'created_by'                => $pool->created_by,
+                    'user_id'                => $pool->user_id,
                     'toll_free'                 => $request->toll_free ? 1 : 0,
                     'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
                     'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
@@ -214,14 +212,15 @@ class PhoneNumberPoolController extends Controller
                     'name'                      => $purchasedPhone->phoneNumber
                 ]);
                 
-                //  Log purchase while adjusting balance
+                //  Log transaction while adjusting balance
                 $account->transaction(
-                    $company->id,
-                    $user->id,
+                    Transaction::TYPE_PURCHASE,
                     $purchaseObject,
-                    $purchasedPhone->phoneNumber,
+                    $phoneNumber->getTable(),
                     $phoneNumber->id,
-                    $purchasedPhone->sid
+                    'Purchased Number ' . $purchasedPhone->phoneNumber,
+                    $company->id,
+                    $user->id
                 );
 
                 $pool->size++;
@@ -376,7 +375,7 @@ class PhoneNumberPoolController extends Controller
                         'external_id'               => $purchasedPhone->sid,
                         'phone_number_pool_id'      => $phoneNumberPool->id,
                         'company_id'                => $phoneNumberPool->company_id,
-                        'created_by'                => $phoneNumberPool->created_by,
+                        'user_id'                => $phoneNumberPool->user_id,
                         'toll_free'                 => $phoneNumberPool->toll_free ? 1 : 0,
                         'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
                         'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
@@ -388,12 +387,13 @@ class PhoneNumberPoolController extends Controller
                     
                     //  Log transaction
                     $account->transaction(
-                        $company->id,
-                        $user->id,
+                        Transaction::TYPE_PURCHASE,
                         $purchaseObject,
-                        $purchasedPhone->phoneNumber,
+                        $phoneNumber->getTable(),
                         $phoneNumber->id,
-                        $purchasedPhone->sid
+                        'Purchased Number ' . $purchasedPhone->phoneNumber,
+                        $company->id,
+                        $user->id
                     );
                 }catch(Exception $e){
                     Log::error($e->getTraceAsString());

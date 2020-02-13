@@ -18,7 +18,7 @@ class Campaign extends Model
     protected $fillable = [
         'uuid',
         'company_id',
-        'created_by',
+        'user_id',
         'name',
         'type',
         'phone_number_pool_id',

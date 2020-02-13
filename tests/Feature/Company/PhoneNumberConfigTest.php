@@ -23,12 +23,12 @@ class PhoneNumberConfigTest extends TestCase
 
         $config1 = factory(PhoneNumberConfig::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $config2 = factory(PhoneNumberConfig::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $response = $this->json('GET', route('list-phone-number-configs', [
@@ -63,12 +63,12 @@ class PhoneNumberConfigTest extends TestCase
 
         $config1 = factory(PhoneNumberConfig::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $config2 = factory(PhoneNumberConfig::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $response = $this->json('GET', route('list-phone-number-configs', [
@@ -106,7 +106,7 @@ class PhoneNumberConfigTest extends TestCase
 
         $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('POST', 'http://localhost/v1/companies/' . $this->company->id . '/phone-number-configs', [
@@ -145,7 +145,7 @@ class PhoneNumberConfigTest extends TestCase
 
         $config = factory(PhoneNumberConfig::class)->create([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('GET', route('read-phone-number-config', [
@@ -178,12 +178,12 @@ class PhoneNumberConfigTest extends TestCase
 
         $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $config = factory(PhoneNumberConfig::class)->create([
             'company_id'  => $this->company->id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
         ]);
 
         $newConfig = factory(PhoneNumberConfig::class)->make();
@@ -229,7 +229,7 @@ class PhoneNumberConfigTest extends TestCase
 
         $config = factory(PhoneNumberConfig::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'user_id'  => $user->id,
         ]);
 
         $phone = $this->createPhoneNumber([
@@ -259,7 +259,7 @@ class PhoneNumberConfigTest extends TestCase
 
         $config = factory(PhoneNumberConfig::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'user_id'  => $user->id,
         ]);
 
         $response = $this->json('DELETE', route('delete-phone-number-config', [

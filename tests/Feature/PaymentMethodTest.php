@@ -49,7 +49,7 @@ class PaymentMethodTest extends TestCase
         
         $paymentMethod = factory(PaymentMethod::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('GET', route('read-payment-method', [
@@ -80,13 +80,13 @@ class PaymentMethodTest extends TestCase
         
         $paymentMethod = factory(PaymentMethod::class)->create([
             'account_id' => $user->account_id,
-            'created_by'     => $user->id,
+            'user_id'     => $user->id,
             'primary_method' => true
         ]);
 
         $paymentMethod2 = factory(PaymentMethod::class)->create([
             'account_id' => $user->account_id,
-            'created_by'     => $user->id,
+            'user_id'     => $user->id,
             'primary_method' => false
         ]);
 
@@ -117,7 +117,7 @@ class PaymentMethodTest extends TestCase
         
         $paymentMethod = factory(PaymentMethod::class)->create([
             'account_id'     => $user->account_id,
-            'created_by'     => $user->id,
+            'user_id'     => $user->id,
             'primary_method' => false
         ]);
 
@@ -147,7 +147,7 @@ class PaymentMethodTest extends TestCase
         
         $paymentMethod = factory(PaymentMethod::class)->create([
             'account_id' => $user->account_id,
-            'created_by'     => $user->id,
+            'user_id'     => $user->id,
             'primary_method' => true
         ]);
 
@@ -177,19 +177,19 @@ class PaymentMethodTest extends TestCase
         
         $paymentMethod = factory(PaymentMethod::class)->create([
             'account_id'     => $user->account_id,
-            'created_by'     => $user->id,
+            'user_id'     => $user->id,
             'primary_method' => true
         ]);
 
         $paymentMethod2 = factory(PaymentMethod::class)->create([
             'account_id'     => $user->account_id,
-            'created_by'     => $user->id,
+            'user_id'     => $user->id,
             'primary_method' => true
         ]);
 
         $paymentMethod3 = factory(PaymentMethod::class)->create([
             'account_id'     => $user->account_id,
-            'created_by'     => $user->id,
+            'user_id'     => $user->id,
             'primary_method' => true
         ]);
 

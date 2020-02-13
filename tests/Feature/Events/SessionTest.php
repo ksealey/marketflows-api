@@ -25,7 +25,7 @@ class SessionTest extends TestCase
 
         $pool = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'user_id'  => $user->id,
             'category'    => 'ONLINE',
             'sub_category'=> 'WEBSITE_SESSION',
             'swap_rules'  => [
@@ -49,19 +49,19 @@ class SessionTest extends TestCase
 
         $phone1 = $this->createPhoneNumber([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'user_id'  => $user->id,
             'phone_number_pool_id' => $pool->id
         ]);
 
         $phone2 = $this->createPhoneNumber([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'user_id'  => $user->id,
             'phone_number_pool_id' => $pool->id
         ]);
 
         $phone3 = $this->createPhoneNumber([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'user_id'  => $user->id,
             'phone_number_pool_id' => $pool->id
         ]);
 
@@ -164,7 +164,7 @@ class SessionTest extends TestCase
 
         $pool = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'user_id'  => $user->id,
             'category'    => 'ONLINE',
             'sub_category'=> 'WEBSITE_SESSION',
             'swap_rules'  => [
@@ -190,7 +190,7 @@ class SessionTest extends TestCase
         for($i = 0; $i < 3; $i++){
             $phoneNumbers[] = $this->createPhoneNumber([
                 'company_id'  => $this->company->id,
-                'created_by'  => $user->id,
+                'user_id'  => $user->id,
                 'phone_number_pool_id' => $pool->id
             ]);
         }
@@ -243,7 +243,7 @@ class SessionTest extends TestCase
 
         $pool = $this->createPhoneNumberPool([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id,
+            'user_id'  => $user->id,
             'category'    => 'ONLINE',
             'sub_category'=> 'WEBSITE_SESSION',
             'swap_rules'  => [
@@ -269,7 +269,7 @@ class SessionTest extends TestCase
         for($i = 0; $i < 3; $i++){
             $phoneNumbers[] = $this->createPhoneNumber([
                 'company_id'  => $this->company->id,
-                'created_by'  => $user->id,
+                'user_id'  => $user->id,
                 'phone_number_pool_id' => $pool->id
             ]);
         }

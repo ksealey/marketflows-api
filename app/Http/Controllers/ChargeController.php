@@ -19,7 +19,8 @@ class ChargeController extends Controller
             'payment_method_id' => 'numeric'
         ];
 
-        $account = $request->user()->account;
+        $user    = $request->user();
+        $account = $user->account;
 
         //  Build Query
         $query = Charge::whereIn('payment_method_id', function($query) use($account){
@@ -38,8 +39,7 @@ class ChargeController extends Controller
         return $this->listRecords(
             $request,
             $query,
-            $rules, 
-            $account->timezone,
+            $rules,
             function($records){
                 $paymentMethodIds = [];
                 foreach( $records as $r )
@@ -51,10 +51,15 @@ class ChargeController extends Controller
                     $paymentMethodsById[$pm->id] = $pm;
 
                 foreach( $records as $record )
-                    $record->payment_method = $paymentMethodsById[$record->payment_method_id];
+                    $record->payment_method = $paymentMethodsById[$record->payment_method_id] ?? null;
 
                 return $records;
             }
         );
+    }
+
+    public function read(Request $request, Charge $charge)
+    {
+        return response($charge);
     }
 }

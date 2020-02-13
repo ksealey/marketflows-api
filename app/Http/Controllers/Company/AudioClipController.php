@@ -96,7 +96,7 @@ class AudioClipController extends Controller
             //  Log in database
             $audioClip = AudioClip::create([
                 'company_id'  => $company->id,
-                'created_by'  => $user->id,
+                'user_id'  => $user->id,
                 'name'        => $request->name,
                 'path'        => $filePath,
                 'mime_type'   => $file->getMimeType()

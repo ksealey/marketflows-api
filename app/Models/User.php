@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\EmailVerification;
 use App\Models\Company;
-use Cookie;
+use Mail;
 
 class User extends Authenticatable
 {
@@ -20,16 +20,21 @@ class User extends Authenticatable
         'account_id',
         'company_id',
         'role_id',
+        'timezone',
         'first_name',
         'last_name',
         'email',
+        'phone',
         'password_hash',
         'auth_token',
         'email_verified_at',
+        'phone_verified_at',
         'last_login_at',
         'password_reset_at',
         'disabled_until',
         'login_attempts',
+        'email_alerts_enabled',
+        'sms_alerts_enabled',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -114,5 +119,42 @@ class User extends Authenticatable
         }
 
         return false;
+    }
+
+    /**
+     * Determine if a user receives email alerts
+     * 
+     */
+    public function receivesEmailAlerts()
+    {
+        return $this->email_alerts_enabled_at;
+    }
+
+    /**
+     * Determine if a user receives sms alerts
+     * 
+     */
+    public function receivesSMSAlerts()
+    {
+        return $this->phone_verified_at && $this->sms_alerts_enabled_at;
+    }
+
+    /**
+     * Send mail to this user
+     * 
+     */
+    public function email($mail)
+    {
+        Mail::to($this->email)
+             ->send($mail);
+    }
+
+    /**
+     * Send sms to this user
+     * 
+     */
+    public function sms($message)
+    {
+        //  Send an SMS... 
     }
 }

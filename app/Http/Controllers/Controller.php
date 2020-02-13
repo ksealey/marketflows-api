@@ -7,17 +7,20 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use App\Traits\HasUserEvents;
 use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
 use App\Rules\DateFilterRule;
+use DateTime;
+
 use Validator;
 
 class Controller extends BaseController
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HasUserEvents, HandlesDateFilters;
 
-    public function listRecords(Request $request, $query, $additionalRules = [], $timezone = 'UTC', callable $formatter = null)
+    public function listRecords(Request $request, $query, $additionalRules = [], callable $formatter = null)
     {
         $rules = array_merge([
             'limit'     => 'numeric',
@@ -25,14 +28,11 @@ class Controller extends BaseController
             'order_by'  => 'in:created_at,updated_at',
             'order_dir' => 'in:asc,desc',
             'search'    => 'max:255',
-            'from_date' => [new DateFilterRule()]
+            'from_date' => [new DateFilterRule()],
+            'to_date'   => [new DateFilterRule()]
         ], $additionalRules);
 
         $validator = Validator::make($request->input(), $rules);
-
-        $validator->sometimes('to_date', ['required', new DateFilterRule()], function($input){
-            return $input->has('from_date');
-        });
 
         if( $validator->fails() ){
             return response([
@@ -47,14 +47,13 @@ class Controller extends BaseController
         $orderDir   = strtoupper($request->order_dir) ?: 'DESC';
         $search     = $request->search;
 
-        if( $request->from_date ){
-            $endDate   = $this->endDate(json_decode($request->to_date), $timezone); 
+        $user = $request->user();
 
-            $startDate = $this->startDate(json_decode($request->from_date), $endDate, $timezone); 
-
-            $query->where('created_at', '>=', $startDate)
-                  ->where('created_at', '<=', $endDate);
-        }
+        $endDate   = $request->to_date   ? $this->endDate(json_decode($request->to_date), $user->timezone) : new DateTime(); 
+        $startDate = $request->from_date ? $this->startDate(json_decode($request->from_date), $endDate, $user->timezone) : new DateTime('1970-01-01 00:00:00');
+       
+        $query->where('created_at', '>=', $startDate)
+              ->where('created_at', '<=', $endDate);
 
         $resultCount = $query->count();
         $records     = $query->offset(( $page - 1 ) * $limit)

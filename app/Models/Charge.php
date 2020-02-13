@@ -6,19 +6,37 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Charge extends Model
-{
-    use SoftDeletes;
-    
+{  
+    public $timestamps = false;
+     
     protected $fillable = [
         'payment_method_id',
         'external_id',
         'amount',
         'description',
+        'created_at'
+    ];
+    
+    protected $appends = [
+        'link',
+        'kind'
     ];
 
-    protected $hidden = [
-        'deleted_at'
-    ];
+     /**
+     * Appends
+     * 
+     */
+    public function getLinkAttribute()
+    {
+        return route('read-charge', [
+            $this->id
+        ]);
+    }
+
+    public function getKindAttribute()
+    {
+        return 'Charge';
+    }
 
     public function paymentMethod()
     {

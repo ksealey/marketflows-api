@@ -32,7 +32,7 @@ class BlockedPhoneNumbersTest extends TestCase
         $response->assertJSON([
             'number'        => $blockedNumber->number,
             'name'          => $blockedNumber->name,
-            'created_by'    => $user->id,
+            'user_id'    => $user->id,
             'company_id'    => null,
             'kind'          => 'BlockedPhoneNumber'
         ]);
@@ -49,7 +49,7 @@ class BlockedPhoneNumbersTest extends TestCase
 
         $blockedNumber = factory(BlockedPhoneNumber::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('GET', route('read-blocked-phone-number', [
@@ -61,7 +61,7 @@ class BlockedPhoneNumbersTest extends TestCase
         $response->assertJSON([
             'number'        => $blockedNumber->number,
             'name'          => $blockedNumber->name,
-            'created_by'    => $user->id,
+            'user_id'    => $user->id,
             'company_id'    => null,
             'kind'          => 'BlockedPhoneNumber'
         ]);
@@ -78,7 +78,7 @@ class BlockedPhoneNumbersTest extends TestCase
 
         $blockedNumber = factory(BlockedPhoneNumber::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('DELETE', route('delete-blocked-phone-number', [
@@ -120,7 +120,7 @@ class BlockedPhoneNumbersTest extends TestCase
         $response->assertJSON([
             'number'        => $blockedNumber->number,
             'name'          => $blockedNumber->name,
-            'created_by'    => $user->id,
+            'user_id'    => $user->id,
             'company_id'    => $this->company->id,
             'kind'          => 'BlockedPhoneNumber'
         ]);
@@ -138,7 +138,7 @@ class BlockedPhoneNumbersTest extends TestCase
         $blockedNumber = factory(BlockedPhoneNumber::class)->create([
             'account_id' => $user->account_id,
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('GET', route('read-blocked-phone-number', [
@@ -151,7 +151,7 @@ class BlockedPhoneNumbersTest extends TestCase
         $response->assertJSON([
             'number'        => $blockedNumber->number,
             'name'          => $blockedNumber->name,
-            'created_by'    => $user->id,
+            'user_id'    => $user->id,
             'company_id'    => $this->company->id,
             'kind'          => 'BlockedPhoneNumber'
         ]);
@@ -168,7 +168,7 @@ class BlockedPhoneNumbersTest extends TestCase
 
         $blockedNumber = factory(BlockedPhoneNumber::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'company_id' => $this->company->id,
         ]);
 

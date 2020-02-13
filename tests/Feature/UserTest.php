@@ -59,13 +59,13 @@ class UserTest extends TestCase
 
         $anotherCompany1 = factory(Company::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'name'       => 'Company B'
         ]);
 
         $anotherCompany2 = factory(Company::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'name'       => 'Company A'
         ]);
 

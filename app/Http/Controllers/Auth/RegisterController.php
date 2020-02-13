@@ -54,11 +54,12 @@ class RegisterController extends Controller
         try{
             //  Create account
             $account = Account::create([
-                'name'      => $request->account_name,
-                'plan'      => $request->plan,
-                'timezone'  => $request->timezone,
-                'balance'   => 0.00,
-                'bill_at'   => now()->addMonths(1)
+                'name'                => $request->account_name,
+                'plan'                => $request->plan,
+                'balance'             => 0.00,
+                'auto_reload_minimum' => 10.00,
+                'auto_reload_amount'  => 20.00,
+                'bill_at'             => now()->addMonths(1)
             ]);
             
             //  Create an admin role
@@ -69,13 +70,15 @@ class RegisterController extends Controller
 
             //  Create this user
             $user = User::create([
-                'account_id'    => $account->id,
-                'role_id'       => $adminRole->id,
-                'first_name'    => $request->first_name,
-                'last_name'     => $request->last_name,
-                'email'         => $request->email,
-                'password_hash' => bcrypt($request->password),
-                'auth_token'    => str_random(128),
+                'account_id'                => $account->id,
+                'role_id'                   => $adminRole->id,
+                'timezone'                  => $request->timezone,
+                'first_name'                => $request->first_name,
+                'last_name'                 => $request->last_name,
+                'email'                     => $request->email,
+                'password_hash'             => bcrypt($request->password),
+                'auth_token'                => str_random(128),
+                'email_alerts_enabled_at'   => now(),
             ]);
 
             //  Add verification mail to queue

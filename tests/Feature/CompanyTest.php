@@ -25,7 +25,7 @@ class CompanyTest extends TestCase
         for($i = 0; $i < 3; $i++){
             $companies[] = factory(Company::class)->create([
                 'account_id' => $user->account_id,
-                'created_by' => $user->id
+                'user_id' => $user->id
             ]);
         }
 
@@ -59,7 +59,7 @@ class CompanyTest extends TestCase
         for($i = 0; $i < 3; $i++){
             $companies[] = factory(Company::class)->create([
                 'account_id' => $user->account_id,
-                'created_by' => $user->id
+                'user_id' => $user->id
             ]);
         }
 
@@ -116,7 +116,7 @@ class CompanyTest extends TestCase
         $user    = $this->createUser();
         $company = factory(Company::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $response = $this->json('GET', route('read-company', [
@@ -142,7 +142,7 @@ class CompanyTest extends TestCase
         $user    = $this->createUser();
         $company = factory(Company::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $updatedCompany = factory(Company::class)->make([
@@ -192,7 +192,7 @@ class CompanyTest extends TestCase
         $user    = $this->createUser();
         $company = factory(Company::class)->create([
             'account_id' => $user->account_id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $updatedCompany = factory(Company::class)->make();

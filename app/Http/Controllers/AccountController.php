@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PaymentMethod;
+use Illuminate\Validation\Rule;
 use Validator;
 use Exception;
 
@@ -22,15 +23,27 @@ class AccountController extends Controller
     {
         $rules = [
             'name'                  => 'bail|min:1|max:64',
-            'timezone'              => 'bail|timezone',
             'plan'                  => 'bail|in:BASIC,AGENCY,ENTERPRISE',
-            'timezone'              => 'bail|timezone',
             'auto_reload_enabled'   => 'bail|boolean',
-            'auto_reload_minimum'   => 'bail|numeric|min:10|max:9999',
-            'auto_reload_amount'    => 'bail|numeric|min:10|max:9999',
+            'auto_reload_minimum'   => [
+                'bail', 
+                Rule::requiredIf($request->filled('auto_reload_amount')), 
+                'numeric',
+                'min:10', 
+                'max:9999',
+                'lte:auto_reload_amount'
+            ],
+            'auto_reload_amount'    => [
+                'bail', 
+                Rule::requiredIf($request->filled('auto_reload_minimum')), 
+                'numeric',
+                'min:10', 
+                'max:9999'
+            ]
         ];
 
-        $validator = Validator::make($request->input(), $rules);
+        $validator = Validator::make($request->all(), $rules);
+
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -39,23 +52,31 @@ class AccountController extends Controller
 
         $account = $request->user()->account;
 
-        if( $request->filled('name') )
-            $account->name = $request->name;
-
-        if( $request->filled('timezone') )
-            $account->timezone = $request->timezone;
-
-        if( $request->filled('plan') )
-            $account->plan = $request->plan;
-
-        if( $request->filled('auto_reload_enabled') )
-            $account->auto_reload_enabled_at = $request->auto_reload_enabled ? ($account->auto_reload_enabled_at ?: now() ) : null;
-        
         if( $request->filled('auto_reload_minimum') )
             $account->auto_reload_minimum = $request->auto_reload_minimum;
         
         if( $request->filled('auto_reload_amount') )
             $account->auto_reload_amount = $request->auto_reload_amount;
+
+        if( $request->filled('auto_reload_enabled') ){
+            //  Enable or disable auto-reload
+            $account->auto_reload_enabled_at = $request->auto_reload_enabled ? ($account->auto_reload_enabled_at ?: now() ) : null;
+            
+            if( $account->auto_reload_enabled_at && ! $account->primary_payment_method )
+                return response([
+                    'error' => 'You must first add a primary payment method before before enabling auto reload.'
+                ], 400);
+
+            //  Charge account immediately if the balance is too low
+            if( $account->shouldAutoReload() )
+                $account->autoReload();
+        }
+
+        if( $request->filled('name') )
+            $account->name = $request->name;
+
+        if( $request->filled('plan') )
+            $account->plan = $request->plan;
 
         $account->save();
 
@@ -86,12 +107,6 @@ class AccountController extends Controller
         if( ! $paymentMethod || $paymentMethod->account_id !== $account->id ){
             return response([
                 'error' => 'Payment method invalid'
-            ], 400);
-        }
-
-        if( ! $paymentMethod->isValid() ){
-            return response([
-                'error' => 'Please try a different payment method'
             ], 400);
         }
 

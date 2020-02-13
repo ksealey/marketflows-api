@@ -29,7 +29,7 @@ trait CreatesUser
         ], $fields));
 
         $this->company = factory(Company::class)->create([
-            'created_by' => $this->user->id,
+            'user_id' => $this->user->id,
             'account_id' => $this->account->id
         ]);
 
@@ -47,7 +47,7 @@ trait CreatesUser
         
         return factory(Campaign::class)->create(array_merge([
             'company_id' => $this->company->id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'type'       => Campaign::TYPE_PRINT
         ], $fields));
     }
@@ -96,7 +96,7 @@ trait CreatesUser
         return factory(PhoneNumber::class)->create(array_merge([
             'phone_number_config_id' => $config->id,
             'company_id'             => $this->company->id,
-            'created_by'             => $user->id,
+            'user_id'             => $user->id,
         ], $fields));
     }
 
@@ -109,7 +109,7 @@ trait CreatesUser
         return factory(PhoneNumberPool::class)->create(array_merge([
             'phone_number_config_id' => $config->id,
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ], $fields));
     }
 
@@ -118,7 +118,7 @@ trait CreatesUser
 
         return factory(PhoneNumberConfig::class)->create(array_merge([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ], $fields));
     }
 

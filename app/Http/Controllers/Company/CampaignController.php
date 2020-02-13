@@ -80,7 +80,7 @@ class CampaignController extends Controller
         $campaign = Campaign::create([
             'uuid'              => Str::uuid(),
             'company_id'        => $company->id,
-            'created_by'        => $request->user()->id,
+            'user_id'        => $request->user()->id,
             'name'              => $request->name,
             'type'              => $request->type,
             'number_swap_rules' => $request->number_swap_rules,

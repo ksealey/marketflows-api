@@ -24,7 +24,7 @@ class PhoneNumber extends Model
         'uuid',
         'external_id',
         'company_id',
-        'created_by',
+        'user_id',
         'phone_number_pool_id',
         'phone_number_config_id',
         'category',

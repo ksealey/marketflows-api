@@ -18,7 +18,7 @@ class BlockedPhoneNumber extends Model
     protected $fillable = [
         'account_id',
         'company_id',
-        'created_by',
+        'user_id',
         'name',
         'number',  
     ];

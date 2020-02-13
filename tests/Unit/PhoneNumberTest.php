@@ -56,13 +56,13 @@ class PhoneNumberTest extends TestCase
 
         $campaign    = factory(Campaign::class)->create([
             'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
+            'user_id'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days'))
         ]);
 
         $phone = $this->createPhoneNumber([
             'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
+            'user_id'   => $user->id,
             'external_id'  => \str_random(40)
         ]);
 
@@ -90,24 +90,24 @@ class PhoneNumberTest extends TestCase
 
         $pool = $this->createPhoneNumberPool([
             'company_id' => $this->company->id,
-            'created_by' => $user->id
+            'user_id' => $user->id
         ]);
 
         $phone = $this->createPhoneNumber([
             'company_id'    => $this->company->id,
-            'created_by'    => $user->id,
+            'user_id'    => $user->id,
             'external_id'   => str_random(40)
         ]);
 
         $phone2 = $this->createPhoneNumber([
             'company_id'    => $this->company->id,
-            'created_by'    => $user->id,
+            'user_id'    => $user->id,
             'external_id'   => str_random(40)
         ]);
 
         $campaign    = $this->createCampaign([
             'company_id'   => $this->company->id,
-            'created_by'   => $user->id,
+            'user_id'   => $user->id,
             'activated_at' => date('Y-m-d H:i:s', strtotime('now -10 days'))
         ]);
 

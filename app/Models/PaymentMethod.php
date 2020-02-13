@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
 use \App\Models\Charge;
-use \App\Models\ChargeError;
 use \Stripe\Stripe;
 use \Stripe\Customer;
 use \Stripe\Card;
@@ -23,20 +22,21 @@ class PaymentMethod extends Model
     protected $hidden = [
         'account_id',
         'external_id',
-        'created_by',
+        'user_id',
         'deleted_at'
     ];
 
     protected $fillable = [
         'account_id',
-        'created_by',
+        'user_id',
         'external_id',
         'last_4',
         'expiration',
         'brand',
         'type',
         'primary_method',
-        'last_used_at'
+        'last_used_at',
+        'error'
     ];
 
     protected $appends = [
@@ -57,11 +57,6 @@ class PaymentMethod extends Model
     {
         return $this->hasMany('\App\Models\Charge');
     }
-
-    public function chargeErrors()
-    {
-        return $this->hasMany('\App\Models\ChargeError');
-    } 
 
     /**
      * Appends
@@ -122,7 +117,7 @@ class PaymentMethod extends Model
 
         return self::create([
             'account_id'     => $user->account_id,
-            'created_by'     => $user->id,
+            'user_id'     => $user->id,
             'external_id'    => $card->id,
             'last_4'         => $card->last4,
             'expiration'     => $expiration->format('Y-m-d'),
@@ -137,8 +132,11 @@ class PaymentMethod extends Model
      * Charge payment method
      * 
      */
-    public function charge(float $amount, string $description)
+    public function charge(float $amount, string $description, $attempts = 1)
     {
+        if( $attempts >= 3 )
+            return null;
+
         if( ! $this->external_id )
             return null;
 
@@ -155,40 +153,33 @@ class PaymentMethod extends Model
             ];
 
             $stripeCharge = StripeCharge::create($chargeData);
-            
-            //  Resolve any existing charge errors
-            ChargeError::where('payment_method_id', $this->id)
-                        ->where('resolved', 0)
-                        ->update([ 
-                            'resolved' => 1 
-                        ]);
 
             //  Update used time
             $this->last_used_at = now();
+            $this->error        = null;
             $this->save();
 
             //  Create local charge 
             return Charge::create([
-                'payment_method_id' => $this->id,
-                'external_id'       => $stripeCharge->id,
-                'amount'            => $amount,
-                'description'       => $description
+                'payment_method_id'     => $this->id,
+                'external_id'           => $stripeCharge->id,
+                'amount'                => $amount,
+                'description'           => $description,
+                'created_at'            => now()
             ]);
-        }catch(\Stripe\Error\Card $e){
-            $error     = substr($e->getMessage(), 0, 255);
-            $exception = $e->getMessage() . "\n" . $e->getTraceAsString();
+        }catch(\Stripe\Exception\CardException $e){
+            //  Card declined
+            $this->error = substr($e->getError()->message, 0, 128);
+        }catch(\Stripe\Exception\RateLimitException $e){
+            //  We hit a rate limit, wait 2 seconds and try again
+            sleep(2);
+
+            return $this->charge($amount, $description, $attempts + 1);
         }catch(Exception $e){
-            $error     = ChargeError::PAYMENT_DECLINED;
-            $exception = $e->getMessage() . "\n" . $e->getTraceAsString();
+            $this->error = 'Card declined.';
         }
 
-        ChargeError::create([
-            'payment_method_id' => $this->id,
-            'amount'            => $amount,
-            'description'       => $description,
-            'error'             => $error,
-            'exception'         => $exception
-        ]);
+        $this->save();
 
         return null;
     }
@@ -242,11 +233,7 @@ class PaymentMethod extends Model
      */
     public function isValid()
     {
-        $chargeErrorCount = ChargeError::where('payment_method_id', $this->id)
-                                        ->where('resolved', 0)
-                                        ->count();
-
-        return $chargeErrorCount ? false : true;
+        return $this->error ? false : true;
     }
 
 

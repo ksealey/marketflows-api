@@ -26,13 +26,13 @@ class PhoneNumberTest extends TestCase
         $phone1 = $this->createPhoneNumber([
             'company_id'  => $this->company->id,
             'external_id' => str_random(40),
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $phone2 = $this->createPhoneNumber([
             'company_id'  => $this->company->id,
             'external_id' => str_random(40),
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $response = $this->json('GET', route('list-phone-numbers', [
@@ -67,13 +67,13 @@ class PhoneNumberTest extends TestCase
         $phone1 = $this->createPhoneNumber([
             'company_id'  => $this->company->id,
             'external_id'   => str_random(40),
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $phone2 = $this->createPhoneNumber([
             'company_id'  => $this->company->id,
             'external_id'   => str_random(40),
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $response = $this->json('GET', route('list-phone-numbers', [
@@ -113,7 +113,7 @@ class PhoneNumberTest extends TestCase
 
         $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $config = $this->createPhoneNumberConfig([
@@ -167,7 +167,7 @@ class PhoneNumberTest extends TestCase
 
         $audioClip = factory(AudioClip::class)->create([
             'company_id'  => $this->company->id,
-            'created_by'  => $user->id
+            'user_id'  => $user->id
         ]);
 
         $config = $this->createPhoneNumberConfig([
@@ -214,7 +214,7 @@ class PhoneNumberTest extends TestCase
 
         $phone = $this->createPhoneNumber([
             'company_id' => $this->company->id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'external_id'=> str_random(40),
         ]);
 
@@ -248,7 +248,7 @@ class PhoneNumberTest extends TestCase
 
         $phone = $this->createPhoneNumber([
             'company_id' => $this->company->id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'external_id'=> str_random(40)
         ]);
 
@@ -298,7 +298,7 @@ class PhoneNumberTest extends TestCase
 
         $phone = $this->createPhoneNumber([
             'company_id' => $this->company->id,
-            'created_by' => $user->id,
+            'user_id' => $user->id,
             'external_id'=> str_random(40)
         ]);
 

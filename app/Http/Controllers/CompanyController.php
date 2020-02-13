@@ -88,10 +88,9 @@ class CompanyController extends Controller
     public function create(Request $request)
     {
         $rules = [
-            'name'      => 'bail|required|max:255',
-            'industry'  => 'bail|required|max:255',
-            'country'   => ['bail', 'required', new CountryRule()],
-            'timezone'  => 'bail|required|timezone'
+            'name'      => 'bail|required|max:64',
+            'industry'  => 'bail|required|max:64',
+            'country'   => ['bail', 'required', new CountryRule()]
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -108,11 +107,10 @@ class CompanyController extends Controller
         try{
             $company = Company::create([
                 'account_id'        => $user->account_id,
-                'created_by'        => $user->id,
+                'user_id'        => $user->id,
                 'name'              => $request->name,
                 'industry'          => $request->industry,
-                'country'           => $request->country,
-                'timezone'          => $request->timezone
+                'country'           => $request->country
             ]);
 
             UserCompany::create([
@@ -159,10 +157,9 @@ class CompanyController extends Controller
     public function update(Request $request, Company $company)
     {
         $rules = [
-            'name'      => 'min:1|max:255',
-            'industry'  => 'min:1|max:255',
-            'country'   => [new CountryRule()],  
-            'timezone'  => 'timezone'
+            'name'      => 'min:1|max:64',
+            'industry'  => 'min:1|max:64',
+            'country'   => [new CountryRule()]
         ];
         
         $validator = Validator::make($request->input(), $rules);
@@ -178,8 +175,6 @@ class CompanyController extends Controller
             $company->industry = $request->industry;
         if( $request->filled('country') )
             $company->country = $request->country;
-        if( $request->filled('timezone') )
-            $company->timezone = $request->timezone;
 
         $company->save();
 
