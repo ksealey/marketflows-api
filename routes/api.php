@@ -44,6 +44,15 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
 
     /*
     |----------------------------------------
+    | Miscellaneous
+    |----------------------------------------
+    */
+    Route::prefix('tts')->group(function(){
+        Route::post('/say', 'TextToSpeechController@say');
+    });
+
+    /*
+    |----------------------------------------
     | Handle current user
     |----------------------------------------
     */

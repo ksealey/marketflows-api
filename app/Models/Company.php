@@ -17,7 +17,9 @@ class Company extends Model
         'user_id',
         'name',
         'industry',
-        'country'
+        'country',
+        'tts_voice',
+        'tts_llanguage'
     ];
 
     protected $hidden = [

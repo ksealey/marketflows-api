@@ -56,6 +56,19 @@ return [
         'voices' => [
             'alice' => 'Alice'
         ],
+
+        'languages-aws-map' => [
+            'en'        => 'en-US',
+            'en-gb'     => 'en-GB',
+            'es'        => 'es-ES',
+            'fr'        => 'fr-FR',
+            'de'        => 'de-DE',
+            'it'        => 'it-IT'
+        ],
+        'voices-aws-map' => [
+            'alice'     => 'Amy'
+        ],
+
         'magic_numbers' => [
             'unavailable'   => '+15005550000',
             'invalid'       => '+15005550001',
