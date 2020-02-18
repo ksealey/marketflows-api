@@ -20,8 +20,8 @@ class CreateCompaniesTable extends Migration
             $table->string('name', 64);
             $table->string('industry', 64);
             $table->string('country', 32);
-            $table->string('tts_voice', 32);
-            $table->string('tts_language', 32);
+            $table->string('tts_voice', 32)->default('alice');
+            $table->string('tts_language', 32)->default('en-US');
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('account_id')->references('id')->on('accounts');

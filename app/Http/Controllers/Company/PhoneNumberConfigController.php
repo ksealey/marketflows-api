@@ -42,11 +42,12 @@ class PhoneNumberConfigController extends Controller
     public function create(Request $request, Company $company)
     {
        $rules = [
-            'name'              => 'bail|required|max:64',
-            'forward_to_number' => 'bail|required|numeric|digits_between:10,13',
-            'audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
-            'record'            => 'bail|boolean',
-            'whisper_message'   => 'bail|max:128',
+            'name'                       => 'bail|required|max:64',
+            'forward_to_number'          => 'bail|required|numeric|digits_between:10,13',
+            'record'                     => 'bail|boolean',
+            'whisper_message'            => 'bail|max:128',
+            'greeting_message'           => 'bail|max:128',
+            'greeting_audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -56,21 +57,24 @@ class PhoneNumberConfigController extends Controller
             ], 400);
         }
 
+        if( $request->greeting_message && $request->greeting_audio_clip_id )
+            return response([
+                'error' => 'You must either provide a greeting audio clip id or greeting message, but not both.'
+            ], 400);
+
         $phoneNumberConfig = PhoneNumberConfig::create([
             'company_id'                => $company->id,
             'user_id'                   => $request->user()->id,
             'name'                      => $request->name,
             'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number),
             'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
-            'audio_clip_id'             => $request->audio_clip_id ?: null,
-            'recording_enabled_at'      => $request->record ? date('Y-m-d H:i:s') : null,
+            'greeting_audio_clip_id'    => $request->greeting_audio_clip_id ?: null,
+            'greeting_message'          => $request->greeting_message ?: null,
+            'recording_enabled_at'      => $request->record ? now() : null,
             'whisper_message'           => $request->whisper_message ?: null
         ]);
 
-        return response($phoneNumberConfig, 201)
-                ->withHeaders([
-                    'Location' => $phoneNumberConfig->link
-                ]);
+        return response($phoneNumberConfig, 201);
     }
 
     /**

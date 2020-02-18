@@ -18,7 +18,8 @@ class PhoneNumberConfig extends Model
         'name',
         'forward_to_country_code',
         'forward_to_number',
-        'audio_clip_id',
+        'greeting_audio_clip_id',
+        'greeting_message',
         'whisper_message',
         'recording_enabled_at'
     ];
