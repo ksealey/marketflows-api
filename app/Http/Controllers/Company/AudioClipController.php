@@ -57,7 +57,7 @@ class AudioClipController extends Controller
             $file =  $request->audio_clip; 
 
             //  Upload file
-            $filePath = Storage::putFile(AudioClip::storagePath($company, 'audio_clips'), $file);
+            $filePath = Storage::putFile(AudioClip::storagePath($company->account_id, $company->id, 'audio_clips'), $file);
 
             //  Log in database
             $audioClip = AudioClip::create([

@@ -18,11 +18,14 @@ class CreateCallsTable extends Migration
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned();
+            $table->boolean('toll_free')->default(0);
+            $table->string('category', 32)->nullable();
+            $table->string('sub_category', 32)->nullable();
 
             $table->bigInteger('phone_number_pool_id')->unsigned()->nullable();
             $table->uuid('session_id')->nullable();
 
-            $table->string('external_id', 64)->index();
+            $table->string('external_id', 64)->unique();
             $table->string('direction', 16);
             $table->string('status', 64);
 

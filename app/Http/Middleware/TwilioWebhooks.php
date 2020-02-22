@@ -15,7 +15,7 @@ class TwilioWebhooks
      */
     public function handle($request, Closure $next)
     {
-        if( ! $request->has('AccountSid') || $request->AccountSid != env('TWILIO_ACCOUNT_SID') )
+        if( ! $request->has('AccountSid') || $request->AccountSid != config('services.twilio.sid') )
             return response('Unauthorized', 403);
 
         return $next($request);

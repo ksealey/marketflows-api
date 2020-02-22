@@ -42,6 +42,7 @@ class CallController extends Controller
         $query = DB::table('calls')
                    ->select([
                        'calls.*', 
+                       'call_recordings.path AS recording_path',
                        'phone_numbers.name AS phone_number_name',
                        DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
                        'phone_number_pools.name AS phone_number_pool_name',
@@ -49,6 +50,10 @@ class CallController extends Controller
                        'companies.name AS company_name'
                     ])
                    ->where('calls.company_id', $company->id);
+
+        $query->leftJoin('call_recordings', function($join){
+            $join->on('call_recordings.call_id', 'calls.id');
+        });
 
         //  Join non-deleted numbers
         $query->leftJoin('phone_numbers', function($join){

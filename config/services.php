@@ -45,6 +45,11 @@ return [
     ],
 
     'twilio' => [
+        'sid'   => env('TWILIO_SID', ''),
+        'token' => env('TWILIO_TOKEN', ''),
+
+        'test_sid' => env('TWILIO_TEST_SID', ''),
+        'test_token' => env('TWILIO_TEST_TOKEN', ''),
 
         'languages' => [
             'en-US' => 'English (American)',

@@ -5,14 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Models\Account;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use App\Models\BlockedPhoneNumber;
 use App\Models\Company\PhoneNumber\Call;
 use App\Models\Company\PhoneNumber\CallRecording;
-use App\Events\IncomingCallEvent;
-use App\Events\IncomingCallUpdatedEvent;
 use App\Models\Events\Session;
 use App\Models\Events\SessionEvent;
 use App\Helpers\InsightsClient;
@@ -130,7 +129,9 @@ class IncomingCallController extends Controller
         //  Perform Lookups
         if( $config->caller_id_enabled_at ){
             try{
-                $twilio = new TwilioClient(env('TWILIO_SID'), env('TWILIO_TOKEN'));
+                $twilioConfig = config('services.twilio');
+
+                $twilio = new TwilioClient($twilioConfig['sid'], $twilioConfig['token']);
                 $caller = $twilio->lookups->v1
                                 ->phoneNumbers($request->from)
                                 ->fetch([
@@ -146,6 +147,9 @@ class IncomingCallController extends Controller
             'account_id'                => $company->account_id,
             'company_id'                => $company->id,
             'phone_number_id'           => $phoneNumber->id,
+            'toll_free'                 => $phoneNumber->toll_free,
+            'category'                  => $phoneNumber->category,
+            'sub_category'              => $phoneNumber->sub_category,
 
             'phone_number_pool_id'      => $pool ? $pool->id : null,
             'session_id'                => $session ? $session->id : null,
@@ -179,9 +183,6 @@ class IncomingCallController extends Controller
             'content'                   => $content,
             'campaign'                  => $campaign
         ]);
-
-        //  Let the rest of the system know it happened
-        event(new IncomingCallEvent($call, $session));
 
         $dialConfig = ['answerOnBridge' => 'true'];
 
@@ -222,6 +223,10 @@ class IncomingCallController extends Controller
 
         $dialCommand->number($config->forwardToPhoneNumber(), $numberConfig);
 
+        //  Let the rest of the system know it happened
+        //
+        //
+
         return Response::xmlResponse($response);
     }
 
@@ -246,22 +251,36 @@ class IncomingCallController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
+        
+
         $call = Call::where('external_id', $request->CallSid)
                     ->first();
 
-        if( ! $call ){
-            return response([
-                'error' => 'Not found',
-            ], 404);
-        }
+        if( ! $call )
+            return response('No Content', 204);
 
         //  Update call
-        $call->status   = $request->CallStatus;
-        $call->duration = $request->CallDuration;
-        $call->save();
+        $call->status   = substr(ucfirst(strtolower($request->CallStatus)), 0, 64);
+        $call->duration = intval($request->CallDuration) ?: null;
 
-        //  And let the rest of the system know it happened
-        event(new IncomingCallUpdatedEvent($call));
+        //  If this is a completed call, determine cost and apply to account balance
+        if( $call->duration && ! $call->cost ){
+            $account        = Account::withTrashed()->find($call->account_id);
+
+            $pricePerMinute = $account->price('Minute.' . ($call->toll_free ? 'TollFree' : 'Local'));
+            $pricePerMinute += $call->recording_enabled ? $account->price('Minute.Recording') : 0;
+            $cost           = ceil($call->duration / 60) * $pricePerMinute;
+            $cost           += $call->caller_id_enabled ? $account->price('CallerId.Lookup') : 0;
+
+            $call->cost = $cost;
+
+            $account->reduceBalance($cost);
+        }
+
+        $call->save();
+        //  Let the rest of the system know it happened
+        //
+        //
     }
 
     /**
@@ -319,8 +338,6 @@ class IncomingCallController extends Controller
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
-    
-        DB::beginTransaction();
 
         $call = Call::where('external_id', $request->CallSid)->first();
         if( ! $call ){
@@ -332,15 +349,18 @@ class IncomingCallController extends Controller
         $storagePath = CallRecording::moveRecording(
             $request->RecordingUrl, 
             $request->RecordingSid, 
-            $call->phoneNumber->company
+            $call->account_id,
+            $call->company_id
         );
 
-        //  Log record
-        CallRecording::create([
-            'call_id'       => $call->id,
-            'external_id'   => $request->RecordingSid,
-            'path'          => $storagePath,
-            'duration'      => intval($request->RecordingDuration)
-        ]);
+        if( $storagePath ){
+            //  Log record
+            CallRecording::create([
+                'call_id'       => $call->id,
+                'external_id'   => $request->RecordingSid,
+                'path'          => $storagePath,
+                'duration'      => intval($request->RecordingDuration)
+            ]);
+        }
     }
 }

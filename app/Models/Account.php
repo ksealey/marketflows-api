@@ -45,8 +45,10 @@ class Account extends Model
             'Plan'                 => 9.99,
             'PhoneNumber.Local'    => 3.00,
             'PhoneNumber.TollFree' => 5.00,
-            'Minute.Local'         => 0.04,
+            'Minute.Local'         => 0.045,
             'Minute.TollFree'      => 0.07,
+            'Minute.Recording'     => 0.01,
+            'CallerId.Lookup'      => 0.02,
             'SMS'                  => 0.025
         ],
         'AGENCY' =>  [
@@ -55,6 +57,8 @@ class Account extends Model
             'PhoneNumber.TollFree' => 4.00, 
             'Minute.Local'         => 0.04,
             'Minute.TollFree'      => 0.07,
+            'Minute.Recording'     => 0.01,
+            'CallerId.Lookup'      => 0.02,
             'SMS'                  => 0.025
         ],
         'ENTERPRISE' =>  [
@@ -63,6 +67,8 @@ class Account extends Model
             'PhoneNumber.TollFree' => 4.00,
             'Minute.Local'         => 0.035,
             'Minute.TollFree'      => 0.065,
+            'Minute.Recording'     => 0.01,
+            'CallerId.Lookup'      => 0.02,
             'SMS'                  => 0.02
         ]
     ];
@@ -164,44 +170,37 @@ class Account extends Model
      */
     public function transaction($type, $item, $table, $recordId, $label, $companyId = null, $userId = null)
     {
-        //  Wrap in transaction... The irony.
-        DB::beginTransaction();
+        $price = $this->price($item);
 
-        try{
-            //  Reduce balance
-            $price = $this->price($item);
-            $this->balance -= $price;
-            $this->save();
+        //  Log transaction
+        $transaction = Transaction::create([
+            'account_id'    => $this->id,
+            'amount'        => $price,
+            'type'          => $type,
+            'item'          => $item,
+            'table'         => $table,
+            'record_id'     => $recordId,
+            'label'         => $label,
+            'company_id'    => $companyId,
+            'user_id'       => $userId,
+            'created_at'    => now()
+        ]);
 
-            //  Log transaction
-            $transaction = Transaction::create([
-                'account_id'    => $this->id,
-                'amount'        => $price,
-                'type'          => $type,
-                'item'          => $item,
-                'table'         => $table,
-                'record_id'     => $recordId,
-                'label'         => $label,
-                'company_id'    => $companyId,
-                'user_id'       => $userId,
-                'created_at'    => now()
-            ]);
+        $this->reduceBalance($price);
 
-            DB::commit();
-        }catch(Exception $e){
-            DB::rollBack();
+        return $transaction;
+    }
 
-            throw $e;
-        }
+    public function reduceBalance($amount)
+    {
+        $this->balance -= $amount;
+        $this->save();
 
         if( $this->shouldAutoReload() )
             $this->autoReload();
 
         if( $this->shouldWarnBalanceLow() )
             $this->warnBalanceLow();
-
-
-        return $transaction;
     }
 
     /**

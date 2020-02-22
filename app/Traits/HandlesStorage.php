@@ -5,12 +5,12 @@ use App\Models\Company;
 
 trait HandlesStorage
 {
-    static public function storagePath(Company $company, $path = '')
+    static public function storagePath($accountId, $companyId, $path = '')
     {
         return 'accounts/' 
-                . $company->account_id 
+                . $accountId
                 . '/companies/' 
-                . $company->id 
+                . $companyId
                 . '/'
                 . trim($path, '/');
     }

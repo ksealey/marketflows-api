@@ -5,13 +5,15 @@ namespace App\Models\Company\PhoneNumber;
 use Illuminate\Http\File;
 use Illuminate\Database\Eloquent\Model;
 use \App\Traits\HandlesStorage;
-use \App\Traits\HandlesPhoneNumbers;
+use \GuzzleHttp\Client;
+use Twilio\Rest\Client as TwilioClient;
 use App;
 use Storage;
+use Exception;
 
 class CallRecording extends Model
 {
-    use HandlesStorage, HandlesPhoneNumbers;
+    use HandlesStorage;
 
     protected $fillable = [
         'call_id',
@@ -19,64 +21,83 @@ class CallRecording extends Model
         'path',
         'duration'
     ];
-   
-    public function getURL()
+
+    protected $appends = [
+        'url',
+        'kind'
+    ];
+
+    /**
+     * Appends
+     * 
+     */
+    public function getUrlAttribute()
     {
         return rtrim(env('CDN_URL'), '/') 
                 . '/' 
                 . trim($this->path, '/');
     }
+   
+    public function getKindAttribute()
+    {
+        return 'CallRecording';
+    }
 
-    static public function moveRecording($url, $recordingSid, $company)
+
+
+    static public function moveRecording($url, $recordingSid, $accountId, $companyId)
     {
         //  Download file
-        $localPath = self::downloadRecording($url);
+        $content = self::downloadRecording($url);
+
+        if( ! $content )
+            return null;
 
         //  Store remotely
-        $remotePath = self::storeRecording($localPath, $company);
+        $remotePath = self::storeRecording($content, $accountId, $companyId, $recordingSid);
+        if( ! $remotePath )
+            return null;
 
-        //  Remote file residue
-        self::cleanup($localPath, $recordingSid);
+        //  Remove remote file
+        self::deleteRemoteFile($recordingSid);
 
         return $remotePath;
     }
 
     static public function downloadRecording($url)
     {
-        $localPath = storage_path() . '/' . str_random(40);
-        
-        if( App::environment(['prod', 'production']) ){
-            $data = file_get_contents($url); 
-        }else{
-            $data = str_random(40);
+        try{
+            $client = new \GuzzleHttp\Client();
+            $response = $client->request('GET', $url);
+
+            return $response->getBody();
+        }catch(Exception $e){
+            return null;
         }
-
-        file_put_contents($localPath, $data);
-
-        return $localPath;
     }
 
-    static public function storeRecording($localPath, $company)
+    static public function storeRecording($content, $accountId, $companyId, $recordingSid)
     {
-        $file        = new File($localPath);
-        $storagePath = trim(CallRecording::storagePath($company, 'call_recordings'), '/');
-        $fileName    = str_random(32) . '.' . $file->guessExtension();
+        $storagePath = trim(CallRecording::storagePath($accountId, $companyId, 'call_recordings'), '/');
+        $path        = $storagePath . '/' . $recordingSid;
 
-        Storage::putFileAs($storagePath, $file, $fileName);
+        Storage::put($path, $content);
 
-        return $storagePath . '/' . $fileName;
+        return $path;
     }
 
-    static public function cleanup($localPath, $recordingSid)
+    
+
+    static public function deleteRemoteFile($recordingSid)
     {
-        if( App::environment(['prod', 'production']) ){
-            $client = self::client();
+        $config = config('services.twilio');
 
-            $client->recordings($recordingSid)
-                   ->delete();
-        }
+        $twilio = new TwilioClient($config['sid'], $config['token']);
 
-        if( file_exists($localPath) )
-            unlink($localPath);
+        try{
+            $twilio->recordings($recordingSid)
+                    ->delete();
+        }catch(Exception $e)
+        {}
     }
 }

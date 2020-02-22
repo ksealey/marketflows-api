@@ -77,12 +77,16 @@ class PhoneNumber extends Model
 
     static private function client()
     {
-        return new TwilioClient(env('TWILIO_SID'), env('TWILIO_TOKEN'));
+        $config = config('services.twilio');
+
+        return new TwilioClient($config['sid'], $config['token']);
     }
 
     static public function testClient()
     {
-        return new TwilioClient(env('TWILIO_TESTING_SID'), env('TWILIO_TESTING_TOKEN'));
+        $config = config('services.twilio');
+
+        return new TwilioClient($config['test_sid'], $config['test_token']);
     }
 
     /**

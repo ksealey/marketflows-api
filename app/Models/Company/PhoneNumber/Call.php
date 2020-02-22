@@ -10,12 +10,16 @@ class Call extends Model
         'account_id',
         'company_id',
         'phone_number_id',
+        'toll_free',
+        'category',
+        'sub_category',
         
         'phone_number_pool_id',
         'session_id',
 
         'caller_id_enabled',
         'recording_enabled',
+        
         'forwarded_to',
 
         'external_id',
