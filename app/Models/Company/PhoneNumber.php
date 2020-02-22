@@ -60,9 +60,18 @@ class PhoneNumber extends Model
         'swap_rules' => 'array'
     ];
 
+    /**
+     * Relationships
+     * 
+     */
     public function company()
     {
         return $this->belongsTo('\App\Models\Company');
+    }
+
+    public function phone_number_config()
+    {
+        return $this->belongsTo('\App\Models\Company\PhoneNumberConfig');
     }
 
 
@@ -298,5 +307,14 @@ class PhoneNumber extends Model
         $this->save();
 
         return $this;
+    }
+
+    public function exposedData()
+    {
+        return [
+            'uuid'          => $this->uuid,
+            'country_code'  => $this->country_code,
+            'number'        => $this->number
+        ];
     }
 }

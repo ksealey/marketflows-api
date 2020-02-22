@@ -46,7 +46,7 @@ class PhoneNumberPoolController extends Controller
         if( $request->sub_category )
             $query->where('sub_category', $request->sub_category);
         
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
             [ 'order_by'  => 'in:name,created_at,updated_at' ]
@@ -82,8 +82,9 @@ class PhoneNumberPoolController extends Controller
                 'json', 
                 new ReferrerAliasesRule()
             ],
-            'toll_free'     => 'bail|boolean',
-            'starts_with'   => 'bail|digits_between:1,10',
+            'override_campaigns'    => 'bail|boolean',
+            'toll_free'             => 'bail|boolean',
+            'starts_with'           => 'bail|digits_between:1,10',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -150,8 +151,8 @@ class PhoneNumberPoolController extends Controller
             'referrer_aliases'          => $referrerAliases,
             'swap_rules'                => $swapRules,
             'toll_free'                 => $request->toll_free ? true : false,
-            'starts_with'               => $request->starts_with ?: null,
-            'size'                      => 0
+            'override_campaigns'        => $request->override_campaigns ? true : false,
+            'starts_with'               => $request->starts_with ?: null
         ]);
 
         for($i = 0; $i < $request->size; $i++){
@@ -186,8 +187,6 @@ class PhoneNumberPoolController extends Controller
                     $company->id,
                     $user->id
                 );
-
-                $pool->size++;
             }catch(Exception $e){
 
                 Log::error($e->getTraceAsString());
@@ -247,8 +246,9 @@ class PhoneNumberPoolController extends Controller
                 'json', 
                 new ReferrerAliasesRule()
             ],
-            'toll_free'     => 'bail|boolean',
-            'starts_with'   => 'bail|digits_between:1,10'
+            'override_campaigns'    => 'bail|boolean',
+            'toll_free'             => 'bail|boolean',
+            'starts_with'           => 'bail|digits_between:1,10'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -263,10 +263,12 @@ class PhoneNumberPoolController extends Controller
             $phoneNumberPool->phone_number_config_id = $request->phone_number_config_id;
         if( $request->filled('name') )
             $phoneNumberPool->name = $request->name;
+        if( $request->filled('override_campaigns') )
+            $phoneNumberPool->override_campaigns = $request->override_campaigns ? true : false;
         if( $request->filled('starts_with') )
             $phoneNumberPool->starts_with = $request->starts_with;
         if( $request->filled('toll_free') )
-            $phoneNumberPool->toll_free = $request->toll_free;
+            $phoneNumberPool->toll_free = $request->toll_free ? true : false;
         if( $request->filled('referrer_aliases') ){
             $referrerAliases = json_decode($request->referrer_aliases);
             $phoneNumberPool->referrer_aliases = $referrerAliases;

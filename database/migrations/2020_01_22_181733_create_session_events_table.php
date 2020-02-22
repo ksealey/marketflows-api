@@ -13,13 +13,12 @@ class CreateSessionEventsTable extends Migration
      */
     public function up()
     {
-        Schema::connection('events')->create('session_events', function (Blueprint $table) {
+        Schema::create('session_events', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('session_id');
             $table->string('event_type', 32);
             $table->string('content', 512)->nullable();
             $table->dateTime('created_at');
-            $table->boolean('is_public');
             $table->foreign('session_id')->references('id')->on('sessions');
         });
     }
@@ -31,6 +30,6 @@ class CreateSessionEventsTable extends Migration
      */
     public function down()
     {
-        Schema::connection('events')->dropIfExists('session_events');
+        Schema::dropIfExists('session_events');
     }
 }

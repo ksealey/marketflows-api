@@ -28,7 +28,7 @@ class PaymentMethodController extends Controller
             });
 
         //  Pass along to parent for listing
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
             [ 'order_by' => 'in:created_at,updated_at,last_4,brand,expiration' ]

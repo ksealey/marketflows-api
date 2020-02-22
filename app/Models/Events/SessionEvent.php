@@ -12,7 +12,6 @@ class SessionEvent extends EventModel
         'id',
         'session_id',
         'event_type',
-        'is_public',
         'content',
         'created_at'
     ];

@@ -24,12 +24,13 @@ class PhoneNumberPool extends Model
         'company_id',
         'user_id',
         'phone_number_config_id',
+        'override_campaigns',
         'name',
         'referrer_aliases',
         'swap_rules',
         'toll_free',
         'starts_with',
-        'size'
+        'disabled_at'
     ];
 
     protected $hidden = [
@@ -96,32 +97,39 @@ class PhoneNumberPool extends Model
     }
 
     /**
-     * Get the next phone number in line
+     * Get and assign the next phone number in line
      * 
      */
-    public function assignPhoneNumber($preferredPhoneId = null)
+    public function assignNextNumber($preferredPhoneId = null)
     {
-        $phoneNumber = null;
-        if( $preferredPhoneId ){
+        $phoneNumber = $this->nextNumber($preferredPhoneId);
+        if( ! $phoneNumber )
+            return null;
+
+        $now = new DateTime();
+        $phoneNumber->last_assigned_at = $now->format('Y-m-d H:i:s.u');
+        $phoneNumber->assignments++;
+        $phoneNumber->save();
+
+        return $phoneNumber;
+    }
+
+    /**
+     * Get the next number in line
+     * 
+     */
+    public function nextNumber($preferredPhoneId = null)
+    {
+        if( $preferredPhoneId )
             $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)
                                     ->where('id', $preferredPhoneId)
                                     ->first();
-        }
 
-        if( ! $phoneNumber ){
+        if( ! $phoneNumber )
             $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)
                                     ->orderBy('last_assigned_at', 'ASC')
                                     ->orderBy('id', 'ASC')
                                     ->first();
-        }
-
-        if( ! $phoneNumber )
-            return null;
-
-        $now = new DateTime(null, new DateTimeZone('UTC'));
-        $phoneNumber->last_assigned_at = $now->format('Y-m-d H:i:s.u');
-        $phoneNumber->assignments++;
-        $phoneNumber->save();
 
         return $phoneNumber;
     }

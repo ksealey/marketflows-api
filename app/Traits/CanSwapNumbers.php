@@ -3,7 +3,7 @@ namespace App\Traits;
 
 trait CanSwapNumbers
 {
-    public function shouldSwap($entryURL)
+    public function shouldSwap($entryURL, $httpReferrer)
     {
         if( ! $this->swap_rules )
             return false;
@@ -15,7 +15,7 @@ trait CanSwapNumbers
         //  See if it should be included
         foreach( $swapRules->inclusion_rules as $ruleGroup ){
             //  Make sure the entire group passes or it fails
-            if( $this->ruleGroupPasses($ruleGroup, $entryURL) ){
+            if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer) ){
                 $shouldSwap = true;
 
                 break; // No need to check the other rules since one passed
@@ -28,7 +28,7 @@ trait CanSwapNumbers
         //
         if( $shouldSwap && ! empty($swapRules->exclusion_rules) ){
             foreach( $swapRules->exclusion_rules as $ruleGroup ){
-                if( $this->ruleGroupPasses($ruleGroup, $entryURL) ){
+                if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer) ){
                     $shouldSwap = false;
 
                     break; // No need to check the other rules since one passed
@@ -43,12 +43,12 @@ trait CanSwapNumbers
      * Determine if an entire rule group passes
      * 
      */
-    public function ruleGroupPasses($ruleGroup, $entryURL)
+    public function ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer)
     {
         $groupPassed = true;
 
         foreach( $ruleGroup->rules as $rule ){
-            if( ! $this->rulePasses($rule, $entryURL) ){
+            if( ! $this->rulePasses($rule, $entryURL, $httpReferrer) ){
                 $groupPassed = false;
             
                 break; // No need to check the other rules since one failed
@@ -62,12 +62,30 @@ trait CanSwapNumbers
      * Determine if a single rule passes
      * 
      */
-    public function rulePasses($rule, $entryURL)
+    public function rulePasses($rule, $entryURL, $httpReferrer)
     {
-        if( $rule->type == 'ALL' )
+        if( $rule->type === 'ALL' )
             return true;
+
+        if( $rule->type === 'DIRECT' )
+            return ! $httpReferrer;
+
+        if( $rule->type === 'ORGANIC' ){
+            //
+        }
+
+        if( $rule->type === 'REFERRAL' ){
+            //
+            
+        }  
         
         $matchInput = $rule->match_input;
+
+        if( $rule->type === 'REFERRER' ){
+            $value = strtolower(trim(trim($httpReferrer, ' '), '/'));
+            $input = strtolower(trim(trim($matchInput->value, ' '), '/'));
+        }
+
         if( $rule->type == 'LANDING_PATH' ){
             $value = strtolower(trim(parse_url($entryURL, PHP_URL_PATH), '/'));
             $input = strtolower(trim(trim($matchInput->value, ' '), '/'));

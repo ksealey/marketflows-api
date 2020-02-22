@@ -28,27 +28,80 @@ class SessionController extends Controller
             'entry_url'             => 'bail|required',
             'device_width'          => 'bail|required|numeric',
             'device_height'         => 'bail|required|numeric',
-            'assign_number'         => 'bail|boolean'
         ]);
 
-        if( $validator->fails() ){
+        if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
-        }
-         
+
         //  
         //  Reject robots
         //
         $dd = new DeviceDetector(!empty($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '');
         $dd->parse();
-        if( $dd->isBot() ){
+        if( $dd->isBot() )
             return response([
                 'error' => 'Robots not allowed'
-            ], 400);
+            ], 403);
+
+        //
+        //  End existing sessions for this user if it never ended
+        //  We will re-use this number for this user if it's still available in the pool
+        //
+        $previousSession = null;
+        if( $request->persisted_id ){
+            $previousSession = Session::where('persisted_id',  $request->persisted_id)
+                                        ->orderBy('created_at', 'DESC')
+                                        ->first();
+
+            if( $previousSession && ! $previousSession->ended_at ){
+                $previousSession->ended_at = now();
+                $previousSession->save();
+                
+                //  Generate end session event
+                SessionEvent::create([
+                    'session_id' => $previousSession->id,
+                    'event_type' => 'EndSession',
+                    'created_at' => now()  
+                ]);
+            }
         }
 
+        //
+        //  Make sure there is an active number pool for this company
+        //
+        $pool = PhoneNumberPool::where('company_id', $request->company_id)
+                               ->first();
+
+        if( ! $pool || $pool->disabled_at )
+            return response([
+                'error'       => 'No pool found for company ' . $request->company_id,
+                'swapping'    => [
+                    'should_swap'   => false
+                    'number'        => null
+                    'targets'       => [],
+                ],
+                'session' => null,
+            ], 400);
+        
+        //
+        //  Make sure a swap should occur
+        //
+        if( ! $pool->shouldSwap($request->entry_url) ){
+            return response([
+                'swapping'    => [
+                    'should_swap'   => false
+                    'number'        => null
+                    'targets'       => [],
+                ],
+                'session' => null,
+            ]);
+        }
+
+        //
         //  Determine Device Specs
+        //
         $os     = $dd->getOs();
         $client = $dd->getClient();
 
@@ -60,58 +113,12 @@ class SessionController extends Controller
         $deviceBrowserVersion   = $client && ! empty($client['version']) ? substr($client['version'], 0, 64) : null;
         $deviceBrowserEngine    = $client && ! empty($client['engine'])  ? substr($client['engine'], 0, 64)  : null;
 
-        //  Determine IP
+        //  Determine IP through load balancer
         $ip = $request->header('X-Forwarded-For') ?: $request->ip();
 
-        //  Check if we have an active pool
-        $pool = PhoneNumberPool::where('company_id', $request->company_id)
-                                    ->where('category', 'ONLINE')
-                                    ->where('sub_category', 'WEBSITE_SESSION')
-                                    ->first();
-
-        $previousSession = null;
-        if( $request->persisted_id ){
-            //  End existing sessions for this user if never ended
-            $previousSession = Session::where('persisted_id',  $request->persisted_id)
-                                        ->orderBy('created_at', 'DESC')
-                                        ->first();
-            if( $previousSession && ! $previousSession->ended_at ){
-                $previousSession->ended_at = now();
-                $previousSession->save();
-                
-                //  Generate event
-                SessionEvent::create([
-                    'session_id' => $previousSession->id,
-                    'event_type' => 'EndSession',
-                    'is_public'  => true,
-                    'created_at' => now()  
-                ]);
-            }
-        }
-
-        $phoneNumber = null;
-        $targets     = [];
-        if( $pool && $pool->shouldSwap($request->entry_url) ){
-            //  Use the same phone as before if available
-            $phoneNumber = $pool->assignPhoneNumber($previousSession ? $previousSession->phone_number_id : null);
-            $targets     = $pool->targets(); 
-        }else{
-            //  If there is no session pool, check if a number should do the swapping
-            $phoneNumbers = PhoneNumber::where('company_id', $request->company_id)
-                                        ->where('category', 'ONLINE')
-                                        ->where('sub_category', 'WEBSITE')
-                                        ->orderBy('created_at', 'desc')
-                                        ->get();
-            //  Get the most recent number that has passing swap rules
-            foreach( $phoneNumbers as $p ){
-                if( $p->shouldSwap($request->entry_url) ){
-                    $phoneNumber = $p;
-                    $targets     = $p->targets(); 
-
-                    break;
-                }
-            }
-        }
+        //  Find next available number
+        $phoneNumber = $pool->assignNextNumber($previousSession ? $previousSession->phone_number_id : null);
+        $targets     = $pool->targets(); 
 
         //  Create new session
         $session = Session::create([
@@ -134,20 +141,21 @@ class SessionController extends Controller
         $event = SessionEvent::create([
             'session_id' => $session->id,
             'event_type' => 'StartSession',
-            'is_public'  => true,
             'created_at' => now()   
         ]);
 
         //  Return the number and targets
         return response([
-            'session' => $session,
-            'number' => $phoneNumber ? [
-                'id'            => $phoneNumber->id,
-                'country_code'  => $phoneNumber->country_code,
-                'number'        => $phoneNumber->number
-            ] : null,
-            'targets'         => $targets,
-            'session_token'   => $session->token,
+            'swapping'    => [
+                'should_swap'   => false
+                'number'        => [
+                    'id'            => $phoneNumber->id,
+                    'country_code'  => $phoneNumber->country_code,
+                    'number'        => $phoneNumber->number
+                ],
+                'targets'       => $targets,
+            ],
+            'session'     => $session
         ], 201);
     }
 
@@ -180,7 +188,6 @@ class SessionController extends Controller
         SessionEvent::create([
             'session_id' => $session->id,
             'event_type' => 'EndSession',
-            'is_public'  => true,
             'created_at' => now()  
         ]);
 

@@ -8,14 +8,19 @@ use Illuminate\Http\Response;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
+use App\Models\BlockedPhoneNumber;
 use App\Models\Company\PhoneNumber\Call;
 use App\Models\Company\PhoneNumber\CallRecording;
 use App\Events\IncomingCallEvent;
 use App\Events\IncomingCallUpdatedEvent;
+use App\Models\Events\Session;
+use App\Models\Events\SessionEvent;
 use App\Helpers\InsightsClient;
 use Twilio\TwiML\VoiceResponse;
+use Twilio\Rest\Client as TwilioClient;
 use Validator;
 use Storage;
+use Exception;
 use DB;
 
 class IncomingCallController extends Controller
@@ -66,50 +71,122 @@ class IncomingCallController extends Controller
             return Response::xmlResponse($response);
         }
 
-        $pool = null;
-        if( $phoneNumber->phone_number_pool_id )
-            $pool = PhoneNumberPool::find($phoneNumber->phone_number_pool_id);
-    
+        $config     = null;
+        $pool       = null;
+        $session    = null;
 
-        //  Try to get the config
-        $phoneNumberConfig = $phoneNumber->getPhoneNumberConfig();
+        if( $phoneNumber->phone_number_pool_id ){
+            $pool = PhoneNumberPool::find($phoneNumber->phone_number_pool_id);
+            
+            $config = $pool->phone_number_config;
+
+            //
+            //  Fetch from reporting
+            //
+            
+            //  Get the session events associated with this number, ordering by events
+            //$sessionEvents = SessionEvent::
+
+        }else{
+            $config     = $phoneNumber->phone_number_config;
+
+            $source     = $phoneNumber->source;
+            $medium     = $phoneNumber->medium;
+            $content    = $phoneNumber->content;
+            $campaign   = $phoneNumber->campaign;
+        }
+
+        $company = $phoneNumber->company;
+
+        //
+        //  Handle blocked calls
+        //
+        $bnQuery = BlockedPhoneNumber::where('account_id', $company->account_id)
+                                     ->where('number', $dialedNumber);
+
+        if( $dialedCountryCode )
+            $bnQuery->where('country_code', $dialedCountryCode);
+
+        $bnQuery->orderBy('created_at', 'desc');
+
+        $blockedNumbers = $bnQuery->get();
+        foreach( $blockedNumbers as $blockedNumber ){
+            //  If it's on the whole account, or the number they called is attached to a company that blocked it
+            if( ! $blockedNumber->company_id || $blockedNumber->company_id == $phoneNumber->company_id ){
+                $blockedNumber->calls++;
+
+                $blockedNumber->save();
+
+                $response->hangup();
+
+                return Response::xmlResponse($response);
+            }
+        }
         
+        //  Default name
+        $callerFirstName = $request->FromCity  ?: null;
+        $callerLastName  = $request->FromState ?: null;
+
+        //  Perform Lookups
+        if( $config->caller_id_enabled_at ){
+            try{
+                $twilio = new TwilioClient(env('TWILIO_SID'), env('TWILIO_TOKEN'));
+                $caller = $twilio->lookups->v1
+                                ->phoneNumbers($request->from)
+                                ->fetch([
+                                    'type' => ['caller-name']
+                                ]);
+                $callerFirstName = $caller->firstName ?: $callerFirstName;
+                $callerLastName  = $caller->lastName  ?: $callerLastName;
+            }catch(Exception $_){}
+        }
+
         //  Log call
         $call = Call::create([
-            'phone_number_id'       => $phoneNumber->id,
-            'phone_number_pool_id'  => $pool ? $pool->id : null,
-            'phone_number_config_id'=> $phoneNumberConfig->id,
-            'external_id'           => $request->CallSid,
-            'direction'             => $request->Direction,
-            'status'                => $request->CallStatus,
-            'from_country_code'     => PhoneNumber::countryCode($request->From) ?: null,
-            'from_number'           => PhoneNumber::number($request->From),
-            'from_city'             => $request->FromCity ?: null,
-            'from_state'            => $request->FromState ?: null,
-            'from_zip'              => $request->FromZip ?: null,
-            'from_country'          => $request->FromCountry ?: null,
-            'to_country_code'       => PhoneNumber::countryCode($request->To) ?: null,
-            'to_number'             => PhoneNumber::number($request->To),
-            'to_city'               => $request->ToCity ?: null,
-            'to_state'              => $request->ToState ?: null,
-            'to_zip'                => $request->ToZip ?: null,
-            'to_country'            => $request->ToCountry ?: null,
+            'account_id'                => $company->account_id,
+            'company_id'                => $company->id,
+            'phone_number_id'           => $phoneNumber->id,
+
+            'phone_number_pool_id'      => $pool ? $pool->id : null,
+            'session_id'                => $session ? $session->id : null,
+
+            'caller_id_enabled'         => $config->caller_id_enabled_at ? true : false,
+            'recording_enabled'         => $config->recording_enabled_at ? true : false,
+            'forwarded_to'              => $config->forwardToPhoneNumber(),
+            
+            'external_id'               => $request->CallSid,
+            'direction'                 => ucfirst($request->Direction),
+            'status'                    => 'In Progress',
+            
+            'caller_first_name'         => substr(ucfirst($callerFirstName), 0, 64),
+            'caller_last_name'          => substr(ucfirst($callerLastName), 0, 64),
+            'caller_country_code'       => PhoneNumber::countryCode($request->From) ?: null,
+            'caller_number'             => PhoneNumber::number($request->From),
+            'caller_city'               => $request->FromCity ? substr($request->FromCity, 0, 64) : null,
+            'caller_state'              => $request->FromState ? substr($request->FromState, 0, 64) : null,
+            'caller_zip'                => $request->FromZip ? substr($request->FromZip, 0, 64) : null,
+            'caller_country'            => $request->FromCountry ? substr($request->FromCountry, 0, 64) : null,
+            
+            'dialed_country_code'       => PhoneNumber::countryCode($request->To) ?: null,
+            'dialed_number'             => PhoneNumber::number($request->To),
+            'dialed_city'               => $request->ToCity ? substr($request->ToCity, 0, 64) : null,
+            'dialed_state'              => $request->ToState ? substr($request->ToState, 0, 64) : null,
+            'dialed_zip'                => $request->ToZip ? substr($request->ToZip, 0, 64) : null,
+            'dialed_country'            => $request->ToCountry ? substr($request->ToCountry, 0, 64) : null,
+        
+            'source'                    => $source,
+            'medium'                    => $medium,
+            'content'                   => $content,
+            'campaign'                  => $campaign
         ]);
 
         //  Let the rest of the system know it happened
-        event(new IncomingCallEvent($call));
-        
-        //  For whatever reason we could not find out what action to take   
-        if( ! $phoneNumberConfig ){
-            $response->hangup();
-
-            return Response::xmlResponse($response);
-        }
+        event(new IncomingCallEvent($call, $session));
 
         $dialConfig = ['answerOnBridge' => 'true'];
 
-        //  Should we record?
-        if( $phoneNumberConfig->recordingEnabled() ){
+        //  Handle recording
+        if( $config->recording_enabled_at ){
             $dialConfig['record']                       = 'record-from-ringing';
             $dialConfig['recordingStatusCallback']      = route('incoming-call-recording-available');
             $dialConfig['recordingStatusCallbackEvent'] = 'completed';
@@ -117,20 +194,25 @@ class IncomingCallController extends Controller
             $dialConfig['record'] = 'do-not-record';
         }
         
-        //  Should we play audio?
-        if( $audioClipId = $phoneNumberConfig->audioClipId() ){
-            $audioClip = AudioClip::find($audioClipId);
+        //  Handle greeting
+        if( $config->greeting_audio_clip_id ){
+            $audioClip = AudioClip::find($config->greeting_audio_clip_id);
             if( $audioClip )
                 $response->play($audioClip->getURL());
+        }elseif( $config->greeting_message ){
+            $response->say($config->greetingMessage($call), [
+                'language' => $company->tts_language,
+                'voice'    => $company->tts_voice
+            ]);
         }
 
-        //  Should we have a whisper message?
+        //  Handle whisper message
         $numberConfig = [];
-        if( $phoneNumberConfig->whisper_message ){
+        if( $config->whisper_message ){
             $numberConfig['url'] = route('incoming-call-whisper', [
-                'whisper_message'  => $phoneNumberConfig->whisper_message,
-                'whisper_language' => $phoneNumberConfig->whisper_language,
-                'whisper_voice'    => $phoneNumberConfig->whisper_voice
+                'whisper_message'  => $config->whisperMessage($call),
+                'whisper_language' => $company->tts_language,
+                'whisper_voice'    => $company->tts_voice
             ]);
 
             $numberConfig['method'] = 'GET';
@@ -138,7 +220,7 @@ class IncomingCallController extends Controller
 
         $dialCommand = $response->dial(null, $dialConfig);
 
-        $dialCommand->number($phoneNumberConfig->forwardToPhoneNumber(), $numberConfig);
+        $dialCommand->number($config->forwardToPhoneNumber(), $numberConfig);
 
         return Response::xmlResponse($response);
     }
@@ -219,6 +301,10 @@ class IncomingCallController extends Controller
         return Response::xmlResponse($response);
     }
 
+    /**
+     * Handle downloading a call recording
+     * 
+     */
     public function handleRecordingAvailable(Request $request)
     {
         $rules = [

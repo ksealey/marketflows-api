@@ -7,24 +7,49 @@ use Illuminate\Database\Eloquent\Model;
 class Call extends Model
 {
     protected $fillable = [
+        'account_id',
+        'company_id',
         'phone_number_id',
+        
+        'phone_number_pool_id',
+        'session_id',
+
+        'caller_id_enabled',
+        'recording_enabled',
+        'forwarded_to',
+
         'external_id',
         'direction',
         'status',
+
+        'caller_first_name',
+        'caller_last_name',
+        'caller_country_code',
+        'caller_number',
+        'caller_city',
+        'caller_state',
+        'caller_zip',
+        'caller_country',
+        
+        'dialed_country_code',
+        'dialed_number',
+        'dialed_city',
+        'dialed_state',
+        'dialed_zip',
+        'dialed_country',
+        
+        'source',
+        'medium',
+        'content',
+        'campaign',
+
+        'recording_enabled',
+        'caller_id_enabled',
+        'forwarded_to',
+
         'duration',
-        'from_country_code',
-        'from_number',
-        'from_city',
-        'from_state',
-        'from_zip',
-        'from_country',
-        'to_country_code',
-        'to_number',
-        'to_city',
-        'to_state',
-        'to_zip',
-        'to_country',
-        'source'
+
+        'cost'
     ];
 
     protected $hidden = [

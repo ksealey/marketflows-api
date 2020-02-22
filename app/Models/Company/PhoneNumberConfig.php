@@ -5,6 +5,7 @@ namespace App\Models\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\PhoneNumber;
+use App\Models\Company\PhoneNumber\Call;
 use App\Models\Company\PhoneNumberPool;
 use DB;
 
@@ -21,7 +22,8 @@ class PhoneNumberConfig extends Model
         'greeting_audio_clip_id',
         'greeting_message',
         'whisper_message',
-        'recording_enabled_at'
+        'recording_enabled_at',
+        'caller_id_enabled_at'
     ];
 
     protected $hidden = [
@@ -29,16 +31,44 @@ class PhoneNumberConfig extends Model
     ];
 
     protected $appends = [
-        'audio_clip',
-        'phone_numbers',
-        'phone_number_pools',
         'link',
         'kind'
     ];
 
+    /**
+     * Relationships
+     * 
+     */
     public function company()
     {
         return $this->belongsTo('\App\Models\Company');
+    }
+
+    /**
+     *   Attributes 
+     *
+     */
+    public function getLinkAttribute()
+    {
+        return route('read-phone-number-config', [
+            'companyId'           => $this->company_id,
+            'phoneNumberConfigId' => $this->id
+        ]);
+    }
+
+    public function getKindAttribute()
+    {
+        return 'PhoneNumberConfig';
+    }
+
+    public function getPhoneNumberPoolsAttribute()
+    {
+        return PhoneNumberPool::where('phone_number_config_id', $this->id)->get();
+    }
+
+    public function getPhoneNumbersAttribute()
+    {
+        return PhoneNumber::where('phone_number_config_id', $this->id)->get();
     }
 
     public function isInUse()
@@ -58,61 +88,42 @@ class PhoneNumberConfig extends Model
                 . $this->forward_to_number;
     }
 
-    public function recordingEnabled()
+    public function greetingMessage(Call $call)
     {
-        return $this->recording_enabled_at ? true : false;
-    }
-
-    public function source()
-    {
-        return $this->source;
-    }
-
-    public function audioClipId()
-    {
-        return $this->audio_clip_id;
-    }
-
-    public function getAudioClipAttribute()
-    {
-        if( ! $this->audio_clip_id )
+        if( ! $this->greeting_message )
             return null;
 
-        return AudioClip::where('id', $this->audio_clip_id)->first();
+        return $this->message($this->greeting_message, $call);
     }
 
-    public function getPhoneNumbersAttribute()
+    public function whisperMessage(Call $call)
     {
-        return PhoneNumber::where('phone_number_config_id', $this->id)->get();
+        if( ! $this->whisper_message )
+        return null;
+        
+        return $this->message($this->whisper_message, $call);
     }
 
-    /**
-     * Get the associated phone number pools
-     * 
-     */
-    public function getPhoneNumberPoolsAttribute()
+    public function message(string $message, Call $call)
     {
-        return PhoneNumberPool::where('phone_number_config_id', $this->id)->get();
-    }
+        $variables = [
+            '${source}'             => $call->source,
+            '${medium}'             => $call->medium,
+            '${content}'            => $call->content,
+            '${campaign}'           => $call->campaign,
+            '${caller_first_name}'  => $call->caller_first_name,
+            '${caller_last_name}'   => $call->caller_last_name,
+            '${caller_country_code}'=> $call->from_country_code,
+            '${caller_number}'      => $call->from_number,
+            '${caller_city}'        => $call->from_city,
+            '${caller_state}'       => $call->from_state,
+            '${caller_zip}'         => $call->from_zip,
+            '${caller_country}'     => $call->from_country,
+            '${caller_network}'     => $call->from_network,
+            '${dialed_number}'      => $call->to_number
+        ];
 
-    /**
-     * Get the link
-     * 
-     */
-    public function getLinkAttribute()
-    {
-        return route('read-phone-number-config', [
-            'companyId'           => $this->company_id,
-            'phoneNumberConfigId' => $this->id
-        ]);
+        return str_replace(array_keys($variables), array_values($variables), strtolower($message));
     }
-
-    /**
-     * Get the kind
-     * 
-     */
-    public function getKindAttribute()
-    {
-        return 'PhoneNumberConfig';
-    }
+    
 }

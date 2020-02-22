@@ -83,7 +83,7 @@ class SwapRulesRule implements Rule
         //  When exclusion rules are provided, make sure that they're valid
         if( ! empty($swapRules->exclusion_rules) ){
 
-            if( !is_array($swapRules->exclusion_rules ) ){
+            if( ! is_array($swapRules->exclusion_rules) ){
                 $this->message = 'Swap rule exclusion rules must be a list of rules.  Group Index: ' . $groupIndex . ' - see documentation for format';
             
                 return false;

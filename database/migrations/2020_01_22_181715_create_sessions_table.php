@@ -13,12 +13,13 @@ class CreateSessionsTable extends Migration
      */
     public function up()
     {
-        Schema::connection('events')->create('sessions', function (Blueprint $table) {
+        Schema::create('sessions', function (Blueprint $table) {
             $table->uuid('id')->primary();  
             $table->uuid('persisted_id')->index(); 
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned()->nullable();
             $table->boolean('first_session');
+            $table->string('host', 128);
             $table->string('ip', 32);
             $table->integer('device_width')->unsigned();
             $table->integer('device_height')->unsigned();
@@ -42,6 +43,6 @@ class CreateSessionsTable extends Migration
      */
     public function down()
     {
-        Schema::connection('events')->dropIfExists('sessions');
+        Schema::dropIfExists('sessions');
     }
 }

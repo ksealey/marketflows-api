@@ -45,26 +45,22 @@ return [
     ],
 
     'twilio' => [
+
         'languages' => [
-            'en'        => 'English (American)',
-            'en-gb'     => 'English (British)',
-            'es'        => 'Spanish',
-            'fr'        => 'French',
-            'de'        => 'German',
-            'it'        => 'Italian'
+            'en-US' => 'English (American)',
+            'en-GB' => 'English (British)',
+            'es-ES' => 'Spanish',
+            'fr-FR' => 'French',
+            'de-DE' => 'German',
+            'it-IT' => 'Italian'
         ],
+
         'voices' => [
+            'man'   => 'Male',
+            'woman' => 'Female',
             'alice' => 'Alice'
         ],
 
-        'languages-aws-map' => [
-            'en'        => 'en-US',
-            'en-gb'     => 'en-GB',
-            'es'        => 'es-ES',
-            'fr'        => 'fr-FR',
-            'de'        => 'de-DE',
-            'it'        => 'it-IT'
-        ],
         'voices-aws-map' => [
             'alice'     => 'Amy'
         ],

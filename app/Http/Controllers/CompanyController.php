@@ -35,7 +35,7 @@ class CompanyController extends Controller
         if( $request->search )
             $query->where('name', 'like', '%' . $request->search . '%');
 
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
             [ 'order_by'  => 'in:name, created_at, updated_at' ]

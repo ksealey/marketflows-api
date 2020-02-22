@@ -7,8 +7,6 @@ use Illuminate\Support\Str;
 
 class EventModel extends Model
 {
-    protected $connection = 'events';
-
     protected static function boot()
     {
         parent::boot();

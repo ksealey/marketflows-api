@@ -26,7 +26,7 @@ class BlockedPhoneNumberController extends Controller
                       ->orWhere('number', 'like', '%' . $request->search . '%');
             });
 
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
             [ 'order_by'  => 'in:name,number,created_at,updated_at,call_count' ]

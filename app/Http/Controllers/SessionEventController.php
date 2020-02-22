@@ -38,8 +38,7 @@ class SessionEventController extends Controller
         $event = SessionEvent::create([
             'session_id' => $session->id,
             'event_type' => $request->event_type,
-            'content'    => substr($request->content, 0, 1024),
-            'is_public'  => true,
+            'content'    => substr($request->content, 0, 512),
             'created_at' => now()
         ]);
 

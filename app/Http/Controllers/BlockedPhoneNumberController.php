@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\BlockedPhoneNumber;
+use App\Models\Company\PhoneNumber;
 use Validator;
 
 class BlockedPhoneNumberController extends Controller
@@ -24,7 +25,7 @@ class BlockedPhoneNumberController extends Controller
                       ->orWhere('number', 'like', '%' . $request->search . '%');
             });
 
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
             ['order_by'  => 'in:name,number,created_at,updated_at']
@@ -41,7 +42,7 @@ class BlockedPhoneNumberController extends Controller
 
         $validator = Validator::make($request->input(), [
             'number'        => 'bail|required|numeric|digits_between:10,13',
-            'name'          => 'bail|required|max:255',
+            'name'          => 'bail|required|max:64',
         ]);
 
         if( $validator->fails() ){
@@ -51,11 +52,12 @@ class BlockedPhoneNumberController extends Controller
         }
 
         $number = BlockedPhoneNumber::create([
-            'account_id' => $user->account_id,
-            'company_id' => null,
-            'user_id' => $user->id,
-            'name'       => $request->name,
-            'number'     => $request->number
+            'account_id'    => $user->account_id,
+            'company_id'    => null,
+            'user_id'       => $user->id,
+            'name'          => $request->name,
+            'country_code'  => PhoneNumber::countryCode($request->number),
+            'number'        => PhoneNumber::number($request->number),
         ]);
 
         return response($number, 201);
@@ -79,7 +81,7 @@ class BlockedPhoneNumberController extends Controller
     public function update(Request $request, BlockedPhoneNumber $blockedPhoneNumber)
     {
         $validator = Validator::make($request->input(), [
-            'name' => 'bail|required|max:255',
+            'name' => 'bail|required|max:64',
         ]);
 
         if( $validator->fails() ){

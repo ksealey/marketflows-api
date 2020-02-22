@@ -28,7 +28,7 @@ class PhoneNumberConfigController extends Controller
                       ->orWhere('forward_to_number', 'like', '%' . $request->search . '%');
             });
 
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
             [ 'order_by'  => 'in:name,created_at,forward_to_number,updated_at' ]
@@ -45,6 +45,7 @@ class PhoneNumberConfigController extends Controller
             'name'                       => 'bail|required|max:64',
             'forward_to_number'          => 'bail|required|numeric|digits_between:10,13',
             'record'                     => 'bail|boolean',
+            'caller_id'                  => 'bail|boolean',
             'whisper_message'            => 'bail|max:128',
             'greeting_message'           => 'bail|max:128',
             'greeting_audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
@@ -71,6 +72,7 @@ class PhoneNumberConfigController extends Controller
             'greeting_audio_clip_id'    => $request->greeting_audio_clip_id ?: null,
             'greeting_message'          => $request->greeting_message ?: null,
             'recording_enabled_at'      => $request->record ? now() : null,
+            'caller_id_enabled_at'      => $request->caller_id ? now() : null,
             'whisper_message'           => $request->whisper_message ?: null
         ]);
 
@@ -97,11 +99,13 @@ class PhoneNumberConfigController extends Controller
     public function update(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
         $rules = [
-            'name'              => 'bail|required|max:64',
-            'forward_to_number' => 'bail|required|digits_between:10,13',
-            'audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
-            'record'            => 'bail|boolean',
-            'whisper_message'   => 'bail|max:128',
+            'name'                       => 'bail|max:64',
+            'forward_to_number'          => 'bail|digits_between:10,13',
+            'record'                     => 'bail|boolean',
+            'caller_id'                  => 'bail|boolean',
+            'whisper_message'            => 'bail|max:128',
+            'greeting_message'           => 'bail|max:128',
+            'greeting_audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -117,10 +121,14 @@ class PhoneNumberConfigController extends Controller
             $phoneNumberConfig->forward_to_country_code = PhoneNumber::countryCode($request->forward_to_number);
         if( $request->has('forward_to_number') )
             $phoneNumberConfig->forward_to_number = PhoneNumber::number($request->forward_to_number);
-        if( $request->has('audio_clip_id') )
-            $phoneNumberConfig->audio_clip_id = $request->audio_clip_id;
+        if( $request->has('greeting_audio_clip_id') )
+            $phoneNumberConfig->greeting_audio_clip_id = $request->greeting_audio_clip_id;
+        if( $request->has('greeting_message') )
+            $phoneNumberConfig->greeting_message = $request->greeting_message;
         if( $request->has('record') )
             $phoneNumberConfig->recording_enabled_at = $request->record ? ( $phoneNumberConfig->recording_enabled_at ?: date('Y-m-d H:i:s') ) : null;
+        if( $request->has('caller_id') )
+            $phoneNumberConfig->caller_id_enabled_at = $request->caller_id ? ( $phoneNumberConfig->caller_id_enabled_at ?: date('Y-m-d H:i:s') ) : null;
         if( $request->has('whisper_message') )
             $phoneNumberConfig->whisper_message = $request->whisper_message;
         

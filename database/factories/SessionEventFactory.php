@@ -9,7 +9,6 @@ $factory->define(App\Models\Events\SessionEvent::class, function (Faker $faker) 
     return [
         'event_type' => 'PageView',
         'content'    => $faker->url,
-        'created_at' => now(),
-        'is_public'  => 1
+        'created_at' => now()
     ];
 });

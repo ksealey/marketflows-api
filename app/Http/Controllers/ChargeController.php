@@ -36,25 +36,10 @@ class ChargeController extends Controller
             $query->where('description', 'like', '%' . $request->search . '%');
 
         //  Pass along to parent for listing
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
-            $rules,
-            function($records){
-                $paymentMethodIds = [];
-                foreach( $records as $r )
-                    $paymentMethodIds[] = $r->payment_method_id;
-                
-                $paymentMethodsById = [];
-                $paymentMethods     = PaymentMethod::whereIn('id', $paymentMethodIds)->withTrashed()->get();
-                foreach($paymentMethods as $pm)
-                    $paymentMethodsById[$pm->id] = $pm;
-
-                foreach( $records as $record )
-                    $record->payment_method = $paymentMethodsById[$record->payment_method_id] ?? null;
-
-                return $records;
-            }
+            $rules
         );
     }
 

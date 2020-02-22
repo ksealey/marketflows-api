@@ -14,7 +14,7 @@ class TextToSpeechController extends Controller
 
         $rules = [
             'text'      => 'required|max:128',
-            'language'  => 'in:' . implode(',', array_keys($settings['languages-aws-map'])),
+            'language'  => 'in:' . implode(',', array_keys($settings['languages'])),
             'voice'     => 'in:' . implode(',', array_keys($settings['voices-aws-map']))
         ];
 

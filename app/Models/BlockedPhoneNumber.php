@@ -20,7 +20,8 @@ class BlockedPhoneNumber extends Model
         'company_id',
         'user_id',
         'name',
-        'number',  
+        'number', 
+        'country_code', 
     ];
 
     protected $appends = [

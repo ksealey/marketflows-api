@@ -28,7 +28,7 @@ class TransactionController extends Controller
             $query->where('label', 'like', '%' . $request->search . '%');
 
         //  Pass along to parent for listing
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
             $rules

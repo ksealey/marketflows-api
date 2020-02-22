@@ -13,6 +13,7 @@ class Session extends EventModel
         'phone_number_id',
         'first_session',
         'ip',
+        'host',
         'device_width',
         'device_height',
         'device_type',

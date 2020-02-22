@@ -52,7 +52,7 @@ class PhoneNumberController extends Controller
         $user = $request->user();
 
         //  Pass along to parent for listing
-        return $this->listRecords(
+        return parent::results(
             $request,
             $query,
             $rules

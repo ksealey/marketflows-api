@@ -413,22 +413,22 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:delete,phoneNumber')
                     ->name('delete-phone-number');
 
-
-                /*
-                |--------------------------------
-                | Handle calls
-                |--------------------------------
-                */
-                Route::prefix('/{phoneNumber}')->group(function(){
-                    Route::get('/calls', 'Company\PhoneNumber\CallController@list')
-                        ->middleware('can:read,phoneNumber')
-                        ->name('list-calls');
-
-                    Route::get('/calls/{call}', 'Company\PhoneNumber\CallController@read')
-                        ->middleware('can:read,phoneNumber')
-                        ->name('read-call');
-                });
             }); 
+
+            /*
+            |--------------------------------
+            | Handle calls
+            |--------------------------------
+            */
+            Route::prefix('calls')->group(function(){
+                Route::get('/', 'Company\CallController@list')
+                    ->middleware('can:read,company')
+                    ->name('list-calls');
+
+                Route::get('/calls/{call}', 'Company\CallController@read')
+                    ->middleware('can:read,company')
+                    ->name('read-call');
+            });
             
             /*
             |--------------------------------
@@ -532,7 +532,7 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
 });
 
 
-Route::middleware('api')->group(function(){
+Route::middleware('twilio.webhooks')->group(function(){
     /*
     |--------------------------------
     | Handle incoming actions
@@ -545,10 +545,10 @@ Route::middleware('api')->group(function(){
     |--------------------------------
     */
     Route::prefix('incoming-calls')->group(function(){
-        Route::get('/', 'IncomingCallController@handleCall')
+        Route::post('/', 'IncomingCallController@handleCall')
                 ->name('incoming-call');
 
-        Route::get('/status-changed', 'IncomingCallController@handleCallStatusChanged')
+        Route::post('/status-changed', 'IncomingCallController@handleCallStatusChanged')
                 ->name('incoming-call-status-changed');
 
         Route::post('/recording-available', 'IncomingCallController@handleRecordingAvailable')
