@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Events;
+namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
-use App\Models\Events\SessionProfile;
 use App\Models\Events\Session;
 use App\Models\Events\SessionEvent;
 use DeviceDetector\DeviceDetector;
@@ -17,15 +16,16 @@ use Validator;
 class SessionController extends Controller
 {
     /**
-     * Start a new session
+     *  Take in client information and return the swap object 
      * 
      */
-    public function start(Request $request)
+    public function create(Request $request)
     {
         $validator = Validator::make($request->input(), [
             'persisted_id'          => 'uuid',
             'company_id'            => 'bail|required|exists:companies,id',
-            'entry_url'             => 'bail|required',
+            'http_referrer'         => 'bail|url',
+            'entry_url'             => 'bail|required|url',
             'device_width'          => 'bail|required|numeric',
             'device_height'         => 'bail|required|numeric',
         ]);
@@ -52,8 +52,8 @@ class SessionController extends Controller
         $previousSession = null;
         if( $request->persisted_id ){
             $previousSession = Session::where('persisted_id',  $request->persisted_id)
-                                        ->orderBy('created_at', 'DESC')
-                                        ->first();
+                                       ->orderBy('created_at', 'DESC')
+                                       ->first();
 
             if( $previousSession && ! $previousSession->ended_at ){
                 $previousSession->ended_at = now();
@@ -68,36 +68,74 @@ class SessionController extends Controller
             }
         }
 
+        $noSwapResponse = [
+            'swapping' => [
+                'should_swap' => false,
+                'targets'     => [],
+                'number'      => null
+            ],
+            'session'   => null,
+        ];
+
         //
+        //  
         //  Make sure there is an active number pool for this company
         //
         $pool = PhoneNumberPool::where('company_id', $request->company_id)
                                ->first();
 
-        if( ! $pool || $pool->disabled_at )
-            return response([
-                'error'       => 'No pool found for company ' . $request->company_id,
-                'swapping'    => [
-                    'should_swap'   => false
-                    'number'        => null
-                    'targets'       => [],
-                ],
-                'session' => null,
-            ], 400);
-        
+        $campaignPhoneNumber = null;
+        $phoneNumbers        = PhoneNumber::where('company_id', $request->company_id)
+                                          ->where('category', 'ONLINE')
+                                          ->where('sub_category', 'WEBSITE')
+                                          ->whereNull('phone_number_pool_id')
+                                          ->orderBy('created_at', 'DESC')
+                                          ->get();
+
+        foreach( $phoneNumbers as $phoneNumber ){
+            if( $phoneNumber->shouldSwap($request->entry_url, $request->http_referrer) ){
+                $campaignPhoneNumber = $phoneNumber;
+                
+                break;
+            }
+        }
+
+        //  If our only option is the campaign number ...
+        if( ! $pool || $pool->disabled_at || ! $pool->shouldSwap($request->entry_url, $request->http_referrer) ){
+            if( $campaignPhoneNumber ){
+                return response([
+                    'swapping' => [
+                        'should_swap'   => true,
+                        'targets'       => $campaignPhoneNumber->targets(),
+                        'number'        => $campaignPhoneNumber->exposedData()
+                    ],
+                    'session' => null
+                ]);
+            }
+
+            //  Nothing we can do
+            return response($noSwapResponse);
+        }
+
         //
-        //  Make sure a swap should occur
+        //  The pool is valid and should swap
         //
-        if( ! $pool->shouldSwap($request->entry_url) ){
+
+        //  If the pool is not set to override and there is a campaign number, use the campaign number
+        if( $campaignPhoneNumber && ! $pool->override_campaign ){
             return response([
-                'swapping'    => [
-                    'should_swap'   => false
-                    'number'        => null
-                    'targets'       => [],
+                'swapping' => [
+                    'should_swap'   => true,
+                    'targets'       => $campaignPhoneNumber->targets(),
+                    'number'        => $campaignPhoneNumber->exposedData()
                 ],
-                'session' => null,
+                'session' => null
             ]);
         }
+
+        //
+        //  We're using the pool, so create a session
+        //
 
         //
         //  Determine Device Specs
@@ -117,18 +155,18 @@ class SessionController extends Controller
         $ip = $request->header('X-Forwarded-For') ?: $request->ip();
 
         //  Find next available number
-        $phoneNumber = $pool->assignNextNumber($previousSession ? $previousSession->phone_number_id : null);
-        $targets     = $pool->targets(); 
+        $phoneNumber = $pool->assignNextNumber($previousSession ? $previousSession->phone_number_id : null); 
 
         //  Create new session
         $session = Session::create([
             'persisted_id'      => $request->persisted_id ?: Str::uuid(),
             'company_id'        => $request->company_id,
-            'phone_number_id'   => $phoneNumber ? $phoneNumber->id : null,
-            'first_session'     => Session::where('persisted_id', $request->persisted_id)->count() ? false : true,
+            'phone_number_id'   => $phoneNumber->id,
+            'first_session'     => $previousSession ? false : true,
             'ip'                => $ip,
-            'device_width'      => $request->device_width,
-            'device_height'     => $request->device_height,
+            'host'              => substr(parse_url($request->entry_url, PHP_URL_HOST), 0, 128),
+            'device_width'      => intval($request->device_width),
+            'device_height'     => intval($request->device_height),
             'device_type'       => $deviceType,
             'device_brand'      => $deviceBrand,
             'device_os'         => $deviceOS,
@@ -138,6 +176,7 @@ class SessionController extends Controller
             'started_at'        => now()
         ]);
 
+        //  Log start session event
         $event = SessionEvent::create([
             'session_id' => $session->id,
             'event_type' => 'StartSession',
@@ -146,17 +185,49 @@ class SessionController extends Controller
 
         //  Return the number and targets
         return response([
-            'swapping'    => [
-                'should_swap'   => false
-                'number'        => [
-                    'id'            => $phoneNumber->id,
-                    'country_code'  => $phoneNumber->country_code,
-                    'number'        => $phoneNumber->number
-                ],
-                'targets'       => $targets,
+            'swapping' => [
+                'should_swap'   => true,
+                'targets'       => $pool->targets(),
+                'number'        => $phoneNumber->exposedData()
             ],
-            'session'     => $session
-        ], 201);
+            'session' => $session
+        ]);
+    }
+
+
+    /**
+     * Create a new session event
+     * 
+     */
+    public function event(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'session_id'    => 'required|uuid',
+            'session_token' => 'required|string|size:40',
+            'event_type'    => 'required|in:PageView,ClickToCall,PageClosed',
+            'content'       => 'string',
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $session = Session::find($request->session_id);
+        if( ! $session || $session->token !== $request->session_token )
+            return response([
+                'error' => 'Invalid session'
+            ], 400);
+
+        $event = SessionEvent::create([
+            'session_id' => $session->id,
+            'event_type' => $request->event_type,
+            'content'    => substr($request->content, 0, 512),
+            'created_at' => now()
+        ]);
+
+        return response('Accepted', 202);
     }
 
     /**

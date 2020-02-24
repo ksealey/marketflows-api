@@ -73,5 +73,12 @@
             });
         </script>
         @yield('scripts')
+        <script>
+            (function(d,w,s,f,q,c,e,p){
+                e=d.createElement(s);e.src=f;e.async=1;
+                p=d.getElementsByTagName(s)[0];p.parentNode.insertBefore(e,p);
+                w[q]=w[q]||[];w[q].push(['setCompany',[c],true]);w[q].push(['pageView',[],true]);
+            })(document,window,'script','://js.marketflows.io/flows.js','mktfq',1);
+        </script>
     </body>
 </html>

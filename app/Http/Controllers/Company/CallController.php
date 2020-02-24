@@ -42,7 +42,14 @@ class CallController extends Controller
         $query = DB::table('calls')
                    ->select([
                        'calls.*', 
-                       'call_recordings.path AS recording_path',
+                       DB::raw('
+                            CASE
+                                WHEN call_recordings.path IS NOT NULL
+                                    THEN CONCAT(\'' . env('CDN_URL') . '/' . '\', call_recordings.path)
+                                ELSE NULL
+                            END
+                            AS recording_url
+                       '),
                        'phone_numbers.name AS phone_number_name',
                        DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
                        'phone_number_pools.name AS phone_number_pool_name',

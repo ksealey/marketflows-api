@@ -19,7 +19,8 @@ class CallRecording extends Model
         'call_id',
         'external_id',
         'path',
-        'duration'
+        'duration',
+        'file_size'
     ];
 
     protected $appends = [
@@ -43,25 +44,29 @@ class CallRecording extends Model
         return 'CallRecording';
     }
 
-
-
-    static public function moveRecording($url, $recordingSid, $accountId, $companyId)
+    static public function moveRecording($url, $recordingSid, $recordingDuration, $call)
     {
         //  Download file
-        $content = self::downloadRecording($url);
+        $content = self::downloadRecording($url . '.mp3');
 
         if( ! $content )
             return null;
 
         //  Store remotely
-        $remotePath = self::storeRecording($content, $accountId, $companyId, $recordingSid);
+        $remotePath = self::storeRecording($content, $call);
         if( ! $remotePath )
             return null;
 
         //  Remove remote file
         self::deleteRemoteFile($recordingSid);
 
-        return $remotePath;
+        return CallRecording::create([
+            'call_id'       => $call->id,
+            'external_id'   => $recordingSid,
+            'path'          => $remotePath,
+            'duration'      => intval($recordingDuration),
+            'file_size'     => strlen($content)
+        ]);
     }
 
     static public function downloadRecording($url)
@@ -76,12 +81,12 @@ class CallRecording extends Model
         }
     }
 
-    static public function storeRecording($content, $accountId, $companyId, $recordingSid)
+    static public function storeRecording($content, $call)
     {
-        $storagePath = trim(CallRecording::storagePath($accountId, $companyId, 'call_recordings'), '/');
-        $path        = $storagePath . '/' . $recordingSid;
+        $storagePath = trim(CallRecording::storagePath($call->account_id, $call->company_id, 'recordings'), '/');
+        $path        = $storagePath . '/Call-' . $call->id;
 
-        Storage::put($path, $content);
+        Storage::put($path, $content, 'public');
 
         return $path;
     }

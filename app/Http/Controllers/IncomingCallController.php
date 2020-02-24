@@ -188,7 +188,7 @@ class IncomingCallController extends Controller
 
         //  Handle recording
         if( $config->recording_enabled_at ){
-            $dialConfig['record']                       = 'record-from-ringing';
+            $dialConfig['record']                       = 'record-from-ringing-dual';
             $dialConfig['recordingStatusCallback']      = route('incoming-call-recording-available');
             $dialConfig['recordingStatusCallbackEvent'] = 'completed';
         }else{
@@ -346,21 +346,11 @@ class IncomingCallController extends Controller
             ], 404);
         }
 
-        $storagePath = CallRecording::moveRecording(
+        CallRecording::moveRecording(
             $request->RecordingUrl, 
-            $request->RecordingSid, 
-            $call->account_id,
-            $call->company_id
+            $request->RecordingSid,
+            $request->RecordingDuration,
+            $call
         );
-
-        if( $storagePath ){
-            //  Log record
-            CallRecording::create([
-                'call_id'       => $call->id,
-                'external_id'   => $request->RecordingSid,
-                'path'          => $storagePath,
-                'duration'      => intval($request->RecordingDuration)
-            ]);
-        }
     }
 }

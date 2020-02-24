@@ -120,6 +120,8 @@ class PhoneNumberPool extends Model
      */
     public function nextNumber($preferredPhoneId = null)
     {
+        $phoneNumber = null;
+        
         if( $preferredPhoneId )
             $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)
                                     ->where('id', $preferredPhoneId)
