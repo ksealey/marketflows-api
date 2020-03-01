@@ -38,7 +38,7 @@ class CompanyController extends Controller
         return parent::results(
             $request,
             $query,
-            [ 'order_by'  => 'in:name, created_at, updated_at' ]
+            [ 'order_by'  => 'in:name,industry,created_at,updated_at' ]
         );
     }
 

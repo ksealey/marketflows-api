@@ -53,7 +53,9 @@ class Call extends Model
 
         'duration',
 
-        'cost'
+        'cost',
+        'created_at',
+        'updated_at'
     ];
 
     protected $hidden = [

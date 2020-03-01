@@ -23,6 +23,7 @@ class PaymentMethod extends Model
         'account_id',
         'external_id',
         'user_id',
+        'external_id',
         'deleted_at'
     ];
 

@@ -69,7 +69,7 @@ class Controller extends BaseController
                 }
             });
         }
-
+       
         $resultCount = $query->count();
         $records     = $query->offset(( $page - 1 ) * $limit)
                              ->limit($limit)

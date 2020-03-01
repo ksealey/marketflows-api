@@ -18,7 +18,15 @@ class PaymentMethodController extends Controller
      */
     public function list(Request $request)
     {
-        //  Build Query
+        $rules = [
+            'order_by' => 'in:created_at,updated_at,last_4,brand,expiration'
+        ];
+
+        $searchFields = [
+            'last_4',
+            'brand'
+        ];
+
         $query = PaymentMethod::where('account_id', $request->user()->account_id);
         
         if( $request->search )
@@ -31,7 +39,8 @@ class PaymentMethodController extends Controller
         return parent::results(
             $request,
             $query,
-            [ 'order_by' => 'in:created_at,updated_at,last_4,brand,expiration' ]
+            $rules,
+            $searchFields
         );
     }
 

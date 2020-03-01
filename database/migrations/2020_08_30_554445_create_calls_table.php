@@ -58,7 +58,8 @@ class CreateCallsTable extends Migration
 
             $table->decimal('cost', 8, 4)->nullable();
             
-            $table->timestamps();
+            $table->dateTime('created_at', 6);
+            $table->dateTime('updated_at', 6);
             
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');

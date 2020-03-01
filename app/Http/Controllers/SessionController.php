@@ -24,8 +24,8 @@ class SessionController extends Controller
         $validator = Validator::make($request->input(), [
             'persisted_id'          => 'uuid',
             'company_id'            => 'bail|required|exists:companies,id',
-            'http_referrer'         => 'bail|url',
-            'entry_url'             => 'bail|required|url',
+            'http_referrer'         => 'bail',
+            'entry_url'             => 'bail|required',
             'device_width'          => 'bail|required|numeric',
             'device_height'         => 'bail|required|numeric',
         ]);
@@ -56,14 +56,14 @@ class SessionController extends Controller
                                        ->first();
 
             if( $previousSession && ! $previousSession->ended_at ){
-                $previousSession->ended_at = now();
+                $previousSession->ended_at = now()->format('Y-m-d H:i:s.u');
                 $previousSession->save();
                 
                 //  Generate end session event
                 SessionEvent::create([
                     'session_id' => $previousSession->id,
                     'event_type' => 'EndSession',
-                    'created_at' => now()  
+                    'created_at' => now()->format('Y-m-d H:i:s.u')  
                 ]);
             }
         }
@@ -173,14 +173,14 @@ class SessionController extends Controller
             'browser_type'      => $deviceBrowser,
             'browser_version'   => $deviceBrowserVersion,
             'token'             => str_random(40),
-            'started_at'        => now()
+            'started_at'        => now()->format('Y-m-d H:i:s.u')
         ]);
 
         //  Log start session event
         $event = SessionEvent::create([
             'session_id' => $session->id,
             'event_type' => 'StartSession',
-            'created_at' => now()   
+            'created_at' => now()->format('Y-m-d H:i:s.u')  
         ]);
 
         //  Return the number and targets
@@ -204,7 +204,7 @@ class SessionController extends Controller
         $validator = Validator::make($request->input(), [
             'session_id'    => 'required|uuid',
             'session_token' => 'required|string|size:40',
-            'event_type'    => 'required|in:PageView,ClickToCall,PageClosed',
+            'event_type'    => 'required|in:PageView,ClickToCall,WindowClosed',
             'content'       => 'string',
         ]);
 
@@ -224,7 +224,7 @@ class SessionController extends Controller
             'session_id' => $session->id,
             'event_type' => $request->event_type,
             'content'    => substr($request->content, 0, 512),
-            'created_at' => now()
+            'created_at' => now()->format('Y-m-d H:i:s.u')
         ]);
 
         return response('Accepted', 202);
@@ -253,13 +253,13 @@ class SessionController extends Controller
                 'error' => 'Invalid token'
             ], 400);
        
-        $session->ended_at = now();
+        $session->ended_at = now()->format('Y-m-d H:i:s.u');
         $session->save();
 
         SessionEvent::create([
             'session_id' => $session->id,
             'event_type' => 'EndSession',
-            'created_at' => now()  
+            'created_at' => now()->format('Y-m-d H:i:s.u') 
         ]);
 
         return response([

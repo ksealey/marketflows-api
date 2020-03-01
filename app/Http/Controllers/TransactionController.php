@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Transaction;
+use DB;
 
 class TransactionController extends Controller
 {
@@ -11,27 +12,33 @@ class TransactionController extends Controller
     {
         //  Set additional rules
         $rules = [
-            'order_by'          => 'in:company_id,label,amount,created_at',
+            'order_by'          => 'in:transactions.label,transactions.amount,transactions.created_at,companies.name',
             'company_id'        => 'numeric',
             'payment_method_id' => 'numeric'
         ];
 
-        $user    = $request->user();
+        $searchFields = [
+            'transactions.label', 
+            'transactions.amount',
+            'companies.name'
+        ];
 
         //  Build Query
-        $query = Transaction::where('account_id', $user->account_id);
+        $query = DB::table('transactions')
+                    ->select(['transactions.*', 'companies.name AS company_name', 'companies.deleted_at AS company_deleted_at'])
+                    ->leftJoin('companies', 'companies.id', 'transactions.company_id')
+                    ->where('transactions.account_id', $request->user()->account_id);
 
-        if( $request->company_id )
+        if( $request->company_id ) // No need to check since it will always be filtered by account id
             $query->where('company_id', $request->company_id);
-        
-        if( $request->search )
-            $query->where('label', 'like', '%' . $request->search . '%');
 
         //  Pass along to parent for listing
         return parent::results(
             $request,
             $query,
-            $rules
+            $rules,
+            $searchFields,
+            'transactions.created_at'
         );
     }
 

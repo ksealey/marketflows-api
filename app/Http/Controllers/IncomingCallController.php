@@ -181,7 +181,9 @@ class IncomingCallController extends Controller
             'source'                    => $source,
             'medium'                    => $medium,
             'content'                   => $content,
-            'campaign'                  => $campaign
+            'campaign'                  => $campaign,
+            'created_at'                => now()->format('Y-m-d H:i:s.u'),
+            'updated_at'                => now()->format('Y-m-d H:i:s.u')
         ]);
 
         $dialConfig = ['answerOnBridge' => 'true'];

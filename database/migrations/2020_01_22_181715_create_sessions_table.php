@@ -29,7 +29,8 @@ class CreateSessionsTable extends Migration
             $table->string('browser_type', 64)->nullable();
             $table->string('browser_version', 64)->nullable();
             $table->string('token', 40);
-            $table->timestamps();
+            $table->dateTime('created_at', 6);
+            $table->dateTime('updated_at', 6);
             $table->dateTime('ended_at')->nullable();
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
