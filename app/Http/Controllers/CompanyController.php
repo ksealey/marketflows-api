@@ -23,22 +23,28 @@ class CompanyController extends Controller
      */
     public function list(Request $request)
     {
-        $user  = $request->user();
+        $rules = [ 
+            'order_by'  => 'in:name,industry,created_at,updated_at' 
+        ];
 
+        $searchFields = [
+            'name',
+            'industry'
+        ];
+
+        $user  = $request->user();
         $query = Company::where('account_id', $user->account_id)
                         ->whereIn('id', function($query) use($user){
                             $query->select('company_id')
                                   ->from('user_companies')
                                   ->where('user_id', $user->id);
                         });
-        
-        if( $request->search )
-            $query->where('name', 'like', '%' . $request->search . '%');
 
         return parent::results(
             $request,
             $query,
-            [ 'order_by'  => 'in:name,industry,created_at,updated_at' ]
+            $rules,
+            $searchFields
         );
     }
 
