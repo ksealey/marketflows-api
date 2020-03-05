@@ -8,11 +8,123 @@ use Exception;
 
 trait HandlesDateFilters
 { 
+    public function startDate($dateRangeStr, $timezoneStr)
+    {
+        $userTZ    = new DateTimeZone($timezoneStr);
+        $targetTZ  = new DateTimeZone('UTC');
+
+        $defaultDate = new DateTime('1970-01-01 00:00:00', $userTZ);
+        $defaultDate->setTimeZone($targetTZ);
+
+        if( ! $dateRangeStr )
+            return $defaultDate;
+
+        $dateRange = json_decode($dateRangeStr);
+        if( $dateRange->key === 'CUSTOM' ){
+            if( ! isset($dateRange->start_date) )
+                return $defaultDate;
+
+            $date = DateTime::createFromFormat('Y-m-d', $dateRange->start_date);
+            if( ! $date )
+                return $defaultDate;
+
+            $date = new DateTime($dateRange->start_date . ' 00:00:00', $userTZ); 
+            $date->setTimeZone($targetTZ);
+        
+            return $date;
+        }
+
+        //  Preset
+        //
+
+        //  Use current date as base
+        $date = new DateTime(date('Y-m-d') . ' 00:00:00', $userTZ);
+        switch($dateRange->key){
+            case 'TODAY': 
+                break;
+
+            case 'YESTERDAY_TO_DATE':
+                $date->modify('-1 day');
+            break;
+
+            case 'LAST_7_DAYS':
+                $date->modify('-7 days');
+            break;
+
+            case 'LAST_30_DAYS':
+                $date->modify('-30 days');
+            break;
+
+            case 'LAST_4_WEEKS':
+                $date->modify('-4 weeks');
+            break;
+
+            case 'LAST_3_MONTHS':
+                $date->modify('-3 months');
+            break;
+
+            case 'WEEK_TO_DATE':
+                $date->modify('- ' . (date('N')-1) . ' days');
+            break;
+
+            case 'MONTH_TO_DATE':
+                $date->modify('- ' . (date('j')-1) . ' days');
+            break;
+
+            case 'YEAR_TO_DATE':
+                $date->modify('- ' . (date('z')) . ' days');
+            break;
+
+            case 'ALL_TIME':
+                $date->modify('-999 years');
+            break;
+
+            default:
+                return $defaultDate;
+        }
+
+        $date->setTimeZone($targetTZ);
+
+        return $date;
+    }
+
+    public function endDate($dateRangeStr, $timezoneStr)
+    {
+        $userTZ    = new DateTimeZone($timezoneStr); 
+        $targetTZ  = new DateTimeZone('UTC');
+
+        $defaultDate = new DateTime(date('Y-m-d') . ' 00:00:00', $userTZ);
+        $defaultDate->setTimeZone($targetTZ);
+        $defaultDate->modify('+1 day');
+
+        if( ! $dateRangeStr )
+            return $defaultDate;
+
+        $dateRange = json_decode($dateRangeStr);
+        if( $dateRange->key === 'CUSTOM' ){
+            if( ! isset($dateRange->end_date) )
+                return $defaultDate;
+
+            $date = DateTime::createFromFormat('Y-m-d H:i:s', trim($dateRange->end_date) . ' 00:00:00', $userTZ);
+            if( ! $date )
+                return $defaultDate;
+            
+            $date->setTimeZone($targetTZ);
+            $date->modify('+1 day');
+            
+        
+            return $date;
+        }
+
+        //  Preset
+        //
+        return $defaultDate;
+    }   
     /**
      * Determine end date
      * 
      */
-    public function endDate(object $dateFilter, string $timezone)
+    public function _endDate(object $dateFilter, string $timezone)
     {
         $timezone       = new DateTimeZone($timezone);
         $targetTimezone = new DateTimeZone('UTC');
@@ -299,7 +411,7 @@ trait HandlesDateFilters
      * Determine start date
      * 
      */
-    public function startDate(object $dateFilter, DateTime $endDate, string $timezone)
+    public function _startDate(object $dateFilter, DateTime $endDate, string $timezone)
     {
         $timezone       = new DateTimeZone($timezone);
         $targetTimezone = new DateTimeZone('UTC');

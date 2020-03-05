@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
-use App\Rules\DateFilterRule;
+use App\Rules\DateRangeRule;
 use App\Rules\SearchFieldsRule;
 use DateTime;
 
@@ -29,8 +29,7 @@ class Controller extends BaseController
             'order_dir'      => 'in:asc,desc',
             'search'         => 'max:255',
             'search_fields'  => [new SearchFieldsRule($searchFields)],
-            'from_date'      => [new DateFilterRule()],
-            'to_date'        => [new DateFilterRule()]
+            'date_range'     => ['json', new DateRangeRule()],
         ], $additionalRules);
 
         $validator = Validator::make($request->input(), $rules);
@@ -50,11 +49,12 @@ class Controller extends BaseController
 
         $user = $request->user();
 
-        $endDate   = $request->to_date   ? $this->endDate(json_decode($request->to_date), $user->timezone) : new DateTime(); 
-        $startDate = $request->from_date ? $this->startDate(json_decode($request->from_date), $endDate, $user->timezone) : new DateTime('1970-01-01 00:00:00');
-       
-        $query->where($rangeField, '>=', $startDate)
-              ->where($rangeField, '<=', $endDate);
+
+        $startDate = $this->startDate($request->date_range, $user->timezone);
+        $endDate   = $this->endDate($request->date_range, $user->timezone); 
+
+        $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'))
+              ->where($rangeField, '<', $endDate->format('Y-m-d H:i:s'));
 
         if( $request->search ){
             $searchFields = $request->search_fields ? explode(',', $request->search_fields) : $searchFields;

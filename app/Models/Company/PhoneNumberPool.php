@@ -47,6 +47,8 @@ class PhoneNumberPool extends Model
         'referrer_aliases' => 'array'
     ];
 
+    protected $dateFormat = 'Y-m-d H:i:s.u';  
+
     /**
      * Relationships
      * 
@@ -107,7 +109,7 @@ class PhoneNumberPool extends Model
             return null;
 
         $now = new DateTime();
-        $phoneNumber->last_assigned_at = $now->format('Y-m-d H:i:s.u');
+        $phoneNumber->last_assigned_at = now()->format('Y-m-d H:i:s.u');
         $phoneNumber->assignments++;
         $phoneNumber->save();
 

@@ -31,6 +31,8 @@ class CallController extends Controller
             'calls.caller_last_name',
             'calls.caller_number',
             'phone_numbers.name',
+            'calls.category',
+            'calls.sub_category',
             'calls.status',
             'calls.source',
             'calls.medium',

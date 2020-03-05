@@ -67,7 +67,7 @@ class PhoneNumberConfigController extends Controller
             'company_id'                => $company->id,
             'user_id'                   => $request->user()->id,
             'name'                      => $request->name,
-            'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number),
+            'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number) ?: null,
             'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
             'greeting_audio_clip_id'    => $request->greeting_audio_clip_id ?: null,
             'greeting_message'          => $request->greeting_message ?: null,
@@ -118,7 +118,7 @@ class PhoneNumberConfigController extends Controller
         if( $request->has('name') )
             $phoneNumberConfig->name = $request->name;
         if( $request->has('forward_to_country_code') )
-            $phoneNumberConfig->forward_to_country_code = PhoneNumber::countryCode($request->forward_to_number);
+            $phoneNumberConfig->forward_to_country_code = PhoneNumber::countryCode($request->forward_to_number) ?: null;
         if( $request->has('forward_to_number') )
             $phoneNumberConfig->forward_to_number = PhoneNumber::number($request->forward_to_number);
         if( $request->has('greeting_audio_clip_id') )

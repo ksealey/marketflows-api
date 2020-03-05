@@ -159,7 +159,7 @@ class SwapRulesRule implements Rule
                 return false;
             }
         }
-
+        
         return true;
     }
 

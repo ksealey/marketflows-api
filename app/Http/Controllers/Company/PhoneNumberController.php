@@ -10,12 +10,14 @@ use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
 use App\Models\Transaction;
 use App\Models\Company\PhoneNumber;
+use App\Models\Company\PhoneNumber\Call;
 use App\Rules\SwapRulesRule;
 use App\Rules\DateFilterRule;
 use Validator;
 use Exception;
 use App;
 use Log;
+use DB;
 
 class PhoneNumberController extends Controller
 {
@@ -27,27 +29,24 @@ class PhoneNumberController extends Controller
     {
         //  Set additional rules
         $rules = [
-            'order_by'      => 'in:name,number,created_at,updated_at',
+            'order_by'      => 'in:phone_numbers.name,phone_numbers.number,phone_numbers.category,phone_numbers.sub_category,phone_numbers.disabled_at,phone_numbers.created_at,phone_numbers.updated_at',
             'category'      => 'max:32',
             'sub_category'  => 'max:32'
         ];
 
         //  Build Query
-        $query = PhoneNumber::where('company_id', $company->id)
-                            ->whereNull('phone_number_pool_id');
-        
-        if( $request->category )
-            $query->where('category', $request->category);
+        $query = DB::table('phone_numbers')
+                    ->select(['phone_numbers.*', DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count')])
+                    ->whereNull('phone_numbers.phone_number_pool_id')
+                    ->whereNull('phone_numbers.deleted_at')
+                    ->where('phone_numbers.company_id', $company->id);
 
-        if( $request->sub_category )
-            $query->where('sub_category', $request->sub_category);
-
-        if( $request->search ){
-            $query->where(function($query) use($request){
-                $query->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('number', 'like', '%' . $request->search . '%');
-            });
-        }
+        $searchFields = [
+            'phone_numbers.name',
+            'phone_numbers.number',
+            'phone_numbers.category',
+            'phone_numbers.sub_category'
+        ];
 
         $user = $request->user();
 
@@ -55,7 +54,9 @@ class PhoneNumberController extends Controller
         return parent::results(
             $request,
             $query,
-            $rules
+            $rules,
+            $searchFields,
+            'phone_numbers.created_at'
         );
     }
 
@@ -168,6 +169,8 @@ class PhoneNumberController extends Controller
             ], 400);
         }
 
+        $phoneNumber->call_count = 0;
+
         return response($phoneNumber, 201);
     }
 
@@ -177,6 +180,8 @@ class PhoneNumberController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
+        $phoneNumber->call_count = Call::where('phone_number_id', $phoneNumber->id)->count();
+
         return response($phoneNumber);
     }
 
@@ -194,6 +199,7 @@ class PhoneNumberController extends Controller
         }
 
         $rules = [
+            'disabled'            => 'bail|boolean',
             'name'                => 'bail|max:64',
             'source'              => 'bail|max:64',  
             'medium'              => 'bail|max:64',  
@@ -230,6 +236,8 @@ class PhoneNumberController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
+        if( $request->filled('disabled') )
+            $phoneNumber->disabled_at = $request->disabled ? ($phoneNumber->disabled_at ?: now()) : null;
         if( $request->filled('phone_number_config_id') )
             $phoneNumber->phone_number_config_id = $request->phone_number_config_id;
         if( $request->filled('category') )

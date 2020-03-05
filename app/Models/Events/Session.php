@@ -26,4 +26,6 @@ class Session extends EventModel
         'updated_at',
         'ended_at'
     ];
+
+    protected $dateFormat = 'Y-m-d H:i:s.u';  
 }

@@ -7,6 +7,7 @@ use Illuminate\Http\Response;
 use \App\Models\Company;
 use \App\Models\User;
 use \App\Models\UserCompany;
+use \App\Models\Company\PhoneNumberPool;
 use \App\Rules\CountryRule;
 use Validator;
 use Exception;
@@ -24,27 +25,32 @@ class CompanyController extends Controller
     public function list(Request $request)
     {
         $rules = [ 
-            'order_by'  => 'in:name,industry,created_at,updated_at' 
+            'order_by'  => 'in:companies.name,companies.industry,companies.created_at,companies.updated_at' 
         ];
 
         $searchFields = [
-            'name',
-            'industry'
+            'companies.name',
+            'companies.industry'
         ];
 
         $user  = $request->user();
-        $query = Company::where('account_id', $user->account_id)
-                        ->whereIn('id', function($query) use($user){
-                            $query->select('company_id')
-                                  ->from('user_companies')
-                                  ->where('user_id', $user->id);
-                        });
+        $query = DB::table('companies')
+                    ->select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
+                    ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id')
+                    ->where('companies.account_id', $user->account_id)
+                    ->whereIn('companies.id', function($query) use($user){
+                        $query->select('company_id')
+                                ->from('user_companies')
+                                ->where('user_id', $user->id);
+                    })
+                    ->whereNull('companies.deleted_at');
 
         return parent::results(
             $request,
             $query,
             $rules,
-            $searchFields
+            $searchFields,
+            'companies.created_at'
         );
     }
 
@@ -95,6 +101,8 @@ class CompanyController extends Controller
 
         DB::commit();
 
+        $company->phone_number_pool_id = null;
+
         return response($company, 201);
     }
 
@@ -108,6 +116,10 @@ class CompanyController extends Controller
      */
     public function read(Request $request, Company $company)
     {   
+        $pool = PhoneNumberPool::where('company_id', $company->id)->first();
+
+        $company->phone_number_pool_id = $pool ? $pool->id : null;
+
         return response($company);
     }
 
@@ -142,6 +154,10 @@ class CompanyController extends Controller
             $company->country = $request->country;
 
         $company->save();
+
+        $pool = PhoneNumberPool::where('company', $company->id)->first();
+
+        $company->phone_number_pool_id = $pool ? $pool->id : null;
 
         return response($company);
     }

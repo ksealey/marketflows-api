@@ -62,6 +62,8 @@ class Call extends Model
         'external_id'
     ];
 
+    protected $dateFormat = 'Y-m-d H:i:s.u';  
+
     public function phoneNumber()
     {
         return $this->belongsTo('\App\Models\Company\PhoneNumber');
