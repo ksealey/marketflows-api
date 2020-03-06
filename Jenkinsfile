@@ -32,7 +32,7 @@ pipeline {
                 branch 'master'  
             }
             steps {
-                sh './scripts/deploy-staging.sh'
+                sh 'echo "Deploy Staging..."'
             }
         }
     }
