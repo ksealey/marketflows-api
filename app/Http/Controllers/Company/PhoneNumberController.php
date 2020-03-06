@@ -10,7 +10,7 @@ use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
 use App\Models\Transaction;
 use App\Models\Company\PhoneNumber;
-use App\Models\Company\PhoneNumber\Call;
+use App\Models\Company\Call;
 use App\Rules\SwapRulesRule;
 use App\Rules\DateFilterRule;
 use Validator;

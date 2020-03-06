@@ -5,7 +5,7 @@
 use App\Model;
 use Faker\Generator as Faker;
 
-$factory->define(\App\Models\Company\PhoneNumber\Call::class, function (Faker $faker) {
+$factory->define(\App\Models\Company\Call::class, function (Faker $faker) {
     return [
         'external_id' => str_random(40),
         'direction'   => 'inbound',

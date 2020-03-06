@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
-use App\Models\Company\PhoneNumber\Call;
+use App\Models\Company\Call;
 use DB;
 
 class CallController extends Controller
@@ -101,15 +101,8 @@ class CallController extends Controller
      * 
      * @return Response
      */
-    public function read(Request $request, Company $company, PhoneNumber $phoneNumber, Call $call)
+    public function read(Request $request, Company $company, Call $call)
     {
-        $phoneNumber->company = $company;
-        
-        $call->phone_number = $phoneNumber;
-
-        return response([
-            'message' => 'success',
-            'call'    => $call
-        ]);
+        return response($call);
     }
 }

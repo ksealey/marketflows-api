@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Company\PhoneNumber;
+namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 

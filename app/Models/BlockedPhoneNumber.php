@@ -35,7 +35,7 @@ class BlockedPhoneNumber extends Model
      */
     public function calls()
     {
-        return $this->hasMany('\App\Models\Company\PhoneNumber\Call');
+        return $this->hasMany('\App\Models\Company\Call');
     }
 
     /**

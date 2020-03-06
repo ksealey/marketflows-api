@@ -425,8 +425,8 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:read,company')
                     ->name('list-calls');
 
-                Route::get('/calls/{call}', 'Company\CallController@read')
-                    ->middleware('can:read,company')
+                Route::get('/{call}', 'Company\CallController@read')
+                    ->middleware('can:read,call,company')
                     ->name('read-call');
             });
             

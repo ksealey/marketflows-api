@@ -5,7 +5,7 @@ namespace App\Models\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\PhoneNumber;
-use App\Models\Company\PhoneNumber\Call;
+use App\Models\Company\Call;
 use App\Models\Company\PhoneNumberPool;
 use DB;
 
