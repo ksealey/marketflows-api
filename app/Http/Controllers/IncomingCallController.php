@@ -14,7 +14,6 @@ use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
 use App\Models\Events\Session;
 use App\Models\Events\SessionEvent;
-use App\Helpers\InsightsClient;
 use Twilio\TwiML\VoiceResponse;
 use Twilio\Rest\Client as TwilioClient;
 use Validator;

@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Foundation\Inspiring;
-ini_set('memory_limit', '1024M');
 /*
 |--------------------------------------------------------------------------
 | Console Routes

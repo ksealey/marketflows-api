@@ -41,8 +41,7 @@ class PasswordReset extends Mailable
         return $this->view('mail.auth.password-reset')
                     ->with([
                         'user'      => $this->user,
-                        'resetURL'  => trim(env('CLIENT_URL'), '/') 
-                                        . '/auth/reset-password/u/' 
+                        'resetURL'  => '/reset-password/u/' 
                                         . $this->user->id 
                                         . '/k/' 
                                         . $this->passwordReset->key

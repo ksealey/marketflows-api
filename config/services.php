@@ -75,10 +75,5 @@ return [
             'invalid'       => '+15005550001',
             'available'     => '+15005550006'
         ]
-    ],
-
-    'insights' => [
-        'endpoint' => env('INSIGHTS_ENDPOINT'),
-        'port'     => env('INSIGHTS_PORT')
     ]
 ];
