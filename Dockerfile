@@ -11,3 +11,5 @@ RUN apt-get update -y && \
     composer install && \
     chown -R www-data:www-data /var/www/app && \
     chmod -R ug+wr /var/www/app
+
+CMD ["/usr/sbin/apachectl", "-D", "FOREGROUND"]
