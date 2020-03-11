@@ -370,17 +370,33 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:create,\App\Models\BlockedPhoneNumber')
                     ->name('create-company-blocked-phone-number');
 
-                Route::put('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@update')
+                Route::prefix('{blockedPhoneNumber}')->group(function(){
+                    Route::put('/', 'Company\BlockedPhoneNumberController@update')
                     ->middleware('can:update,blockedPhoneNumber')
                     ->name('update-company-blocked-phone-number');
 
-                Route::get('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@read')
-                    ->middleware('can:read,blockedPhoneNumber')
-                    ->name('read-company-blocked-phone-number');
+                    Route::get('/', 'Company\BlockedPhoneNumberController@read')
+                        ->middleware('can:read,blockedPhoneNumber')
+                        ->name('read-company-blocked-phone-number');
 
-                Route::delete('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@delete')
-                    ->middleware('can:delete,blockedPhoneNumber')
-                    ->name('delete-company-blocked-phone-number'); 
+                    Route::delete('/', 'Company\BlockedPhoneNumberController@delete')
+                        ->middleware('can:delete,blockedPhoneNumber')
+                        ->name('delete-company-blocked-phone-number');
+
+                    /*
+                    |---------------------------------------
+                    | Handle blocked calls
+                    |---------------------------------------
+                    */   
+                    Route::prefix('blocked-calls')->group(function(){
+                        Route::get('/', 'BlockedPhoneNumber\BlockedCallController@list')
+                            ->middleware('can:list,\App\Models\BlockedPhoneNumber\BlockedCall')
+                            ->name('list-blocked-calls'); 
+                    });
+                });
+                 
+
+                
             });
 
             /*

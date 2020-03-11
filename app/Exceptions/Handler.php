@@ -14,7 +14,7 @@ class Handler extends ExceptionHandler
      * @var array
      */
     protected $dontReport = [
-        'Symfony\Component\HttpKernel\Exception\NotFoundHttpException'
+        //'Symfony\Component\HttpKernel\Exception\NotFoundHttpException'
     ];
 
     /**
@@ -47,30 +47,27 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Exception $exception)
     { 
-        if( $request->expectsJson() && App::environment(['prod', 'production']) ){ 
-            //  Resource missing
-            if( $exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ){
-                return response([
-                    'error' => 'Not found'
-                ], 404);
-            }
-
-            if( $exception instanceof \Illuminate\Auth\AuthenticationException ){
-                return response([
-                    'error' => 'Unauthenticated'
-                ], 401);
-            }
-
-            if( $exception instanceof \Illuminate\Auth\AuthenticationException ){
-                return response([
-                    'error' => 'Too many requests'
-                ], 429);
-            }
-
+        if( $exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ){
             return response([
-                'error' => 'An unknown error has occurred'
-            ], 500);
+                'error' => 'Not found'
+            ], 404);
         }
+
+        if( $exception instanceof \Illuminate\Auth\AuthenticationException ){
+            return response([
+                'error' => 'Unauthenticated'
+            ], 401);
+        }
+
+        if( $exception instanceof \Illuminate\Auth\AuthenticationException ){
+            return response([
+                'error' => 'Too many requests'
+            ], 429);
+        }
+
+        return response([
+            'error' => 'An unknown error has occurred'
+        ], 500);
        
         return parent::render($request, $exception);
     }

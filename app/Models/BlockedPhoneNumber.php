@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\BlockedPhoneNumber\BlockedCall;
 
 class BlockedPhoneNumber extends Model
 {
@@ -34,9 +35,9 @@ class BlockedPhoneNumber extends Model
      * Relationships
      * 
      */
-    public function calls()
+    public function getCallCountAttribute()
     {
-        return $this->hasMany('\App\Models\Company\Call');
+        return BlockedCall::where('blocked_phone_number_id', $this->id)->count();
     }
 
     /**

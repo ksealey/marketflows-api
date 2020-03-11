@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\BlockedPhoneNumber;
 
 use Illuminate\Database\Eloquent\Model;
 
 class BlockedCall extends Model
 {
-    protected $timestamps = false;
+    public $timestamps = false;
 
     protected $dateFormat = 'Y-m-d H:i:s.u';
 

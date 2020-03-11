@@ -90,7 +90,7 @@ class BlockedPhoneNumberController extends Controller
      */
     public function read(Request $request, Company $company, BlockedPhoneNumber $blockedPhoneNumber)
     {
-        $blockedPhoneNumber->calls;
+        $blockedPhoneNumber->call_count;
 
         return response($blockedPhoneNumber);
     }
@@ -102,7 +102,7 @@ class BlockedPhoneNumberController extends Controller
     public function update(Request $request, Company $company, BlockedPhoneNumber $blockedPhoneNumber)
     {
         $validator = Validator::make($request->input(), [
-            'name'          => 'bail|required|max:64',
+            'name' => 'bail|max:64',
         ]);
 
         if( $validator->fails() ){
@@ -111,9 +111,12 @@ class BlockedPhoneNumberController extends Controller
             ], 400);
         }
 
-        $blockedPhoneNumber->name = $request->name;
+        if( $request->filled('name') && $request->name !== $blockedPhoneNumber->name ){
+            $blockedPhoneNumber->name = $request->name;
+            $blockedPhoneNumber->save();
+        }
 
-        $blockedPhoneNumber->save();
+        $blockedPhoneNumber->call_count;
 
         return response($blockedPhoneNumber);
     }
