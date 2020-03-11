@@ -62,13 +62,29 @@ class BlockedPhoneNumberController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
         }
+        
+        $companyBlockedNumbers   = BlockedPhoneNumber::where('company_id', $company->id)->get();
+        $existingBlockedNumbers  = [];
+        foreach( $companyBlockedNumbers as $existingBlockedNumber ){
+            $existingBlockedNumbers[] = $existingBlockedNumber->country_code . $existingBlockedNumber->number;
+        }
 
-        $numbers = json_decode($request->numbers, true);
-        $inserts = [];
-        $batchId = str_random(16);
+        $wholeNumbers = [];
+        $inserts      = [];
+        $numbers      = json_decode($request->numbers, true);
+        $batchId      = str_random(16);
 
         foreach($numbers as $number){
-            $wholeNumber            = $number['number'];
+            //  Check for uniqueness in set, but be forgiving
+            $wholeNumber = $number['number'];
+            if( in_array($wholeNumber, $wholeNumbers) )
+                continue;
+
+            //  Check for uniqueness in existing records, still be forgiving
+            if( in_array($wholeNumber, $existingBlockedNumbers) )
+                continue;
+
+            $wholeNumbers[]         = $wholeNumber;
             $number['country_code'] = PhoneNumber::countryCode($wholeNumber) ?: null;
             $number['number']       = PhoneNumber::number($wholeNumber);
             $number['account_id']   = $company->account_id;
@@ -79,9 +95,15 @@ class BlockedPhoneNumberController extends Controller
             $inserts[]             = $number;
         }
 
+        if( ! count($inserts) ){
+            return response([
+                'error' => 'All blocked numbers provided already exist'
+            ], 400);
+        }
+
         BlockedPhoneNumber::insert($inserts);
 
-        return response(BlockedPhoneNumber::where('company_id', $company->id)->get(), 201);
+        return response(BlockedPhoneNumber::where('batch_id', $batchId)->get(), 201);
     }
 
     /**

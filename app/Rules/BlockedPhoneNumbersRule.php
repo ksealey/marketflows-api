@@ -37,6 +37,12 @@ class BlockedPhoneNumbersRule implements Rule
             return false;
         }
 
+        if( count($numbers) > 40 ){
+            $this->message = 'Only 40 blocked numbers can be added at a time'; 
+
+            return false;
+        }   
+
         foreach( $numbers as $idx => $number ){
             $validator = Validator::make($number, [
                 'name'      => 'required',
