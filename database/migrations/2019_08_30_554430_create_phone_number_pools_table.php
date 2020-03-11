@@ -24,8 +24,9 @@ class CreatePhoneNumberPoolsTable extends Migration
             $table->json('swap_rules')->nullable();
             $table->boolean('toll_free');
             $table->string('starts_with', 16)->nullable();
-            $table->dateTime('disabled_at')->nullable();
-            $table->timestamps();
+            $table->dateTime('disabled_at', 6)->nullable();
+            $table->dateTime('created_at', 6);
+            $table->dateTime('updated_at', 6);
             $table->softDeletes();
             
             $table->foreign('company_id')->references('id')->on('companies');

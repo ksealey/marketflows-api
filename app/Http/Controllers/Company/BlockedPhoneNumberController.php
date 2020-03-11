@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Company;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Company;
+use App\Models\Company\PhoneNumber;
 use App\Models\BlockedPhoneNumber;
+use App\Rules\BlockedPhoneNumbersRule;
 use Validator;
 use DB;
 
@@ -17,19 +19,24 @@ class BlockedPhoneNumberController extends Controller
      */
     public function list(Request $request, Company $company)
     {
-        $query = BlockedPhoneNumber::select(['*', DB::raw('(SELECT COUNT(*) FROM calls WHERE calls.blocked_phone_number_id = blocked_phone_numbers.id) AS call_count')])
-                                    ->where('company_id', $company->id);
-        
-        if( $request->search )
-            $query->where(function($query) use($request){
-                $query->where('name', 'like', '%' . $request->search . '%')
-                      ->orWhere('number', 'like', '%' . $request->search . '%');
-            });
+        $rules = [ 
+            'order_by'  => 'in:blocked_phone_numbers.name,blocked_phone_numbers.number,blocked_phone_numbers.created_at, call_count' 
+        ];
+
+        $searchFields = [
+            'companies.name',
+            'companies.industry'
+        ];
+
+        $query = BlockedPhoneNumber::select(['blocked_phone_numbers.*', DB::raw('(SELECT count(*) FROM blocked_calls WHERE blocked_calls.blocked_phone_number_id = blocked_phone_numbers.id) AS call_count')])
+                                   ->where('blocked_phone_numbers.company_id', $company->id);
 
         return parent::results(
             $request,
             $query,
-            [ 'order_by'  => 'in:name,number,created_at,updated_at,call_count' ]
+            $rules,
+            $searchFields,
+            'blocked_phone_numbers.created_at'
         );
     }
 
@@ -42,8 +49,12 @@ class BlockedPhoneNumberController extends Controller
         $user = $request->user();
 
         $validator = Validator::make($request->input(), [
-            'number'        => 'bail|required|numeric|digits_between:10,13',
-            'name'          => 'bail|required|max:64',
+            'numbers'        => [
+                'bail', 
+                'required', 
+                'json', 
+                new BlockedPhoneNumbersRule()
+            ]
         ]);
 
         if( $validator->fails() ){
@@ -52,15 +63,25 @@ class BlockedPhoneNumberController extends Controller
             ], 400);
         }
 
-        $number = BlockedPhoneNumber::create([
-            'account_id' => $user->account_id,
-            'company_id' => $company->id,
-            'user_id'    => $user->id,
-            'name'       => $request->name,
-            'number'     => $request->number
-        ]);
+        $numbers = json_decode($request->numbers, true);
+        $inserts = [];
+        $batchId = str_random(16);
 
-        return response($number, 201);
+        foreach($numbers as $number){
+            $wholeNumber            = $number['number'];
+            $number['country_code'] = PhoneNumber::countryCode($wholeNumber) ?: null;
+            $number['number']       = PhoneNumber::number($wholeNumber);
+            $number['account_id']   = $company->account_id;
+            $number['company_id']   = $company->id;
+            $number['batch_id']     = $batchId;
+            $number['created_at']   = now();
+
+            $inserts[]             = $number;
+        }
+
+        BlockedPhoneNumber::insert($inserts);
+
+        return response(BlockedPhoneNumber::where('company_id', $company->id)->get(), 201);
     }
 
     /**

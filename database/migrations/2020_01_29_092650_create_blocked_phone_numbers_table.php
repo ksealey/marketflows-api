@@ -21,7 +21,7 @@ class CreateBlockedPhoneNumbersTable extends Migration
             $table->string('name', 64);
             $table->string('country_code', 8)->nullable();
             $table->string('number', 16);
-            $table->bigInteger('calls')->unsigned()->default(0);
+            $table->string('batch_id', 16);
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('account_id')->references('id')->on('accounts');

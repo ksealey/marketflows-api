@@ -215,7 +215,7 @@ class PhoneNumberPoolController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        $phoneNumberPool->phone_numbers;
+        //$phoneNumberPool->phone_numbers;
 
         return response($phoneNumberPool);
     }

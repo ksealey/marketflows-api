@@ -163,9 +163,9 @@ class PhoneNumberController extends Controller
             );
         }catch(Exception $e){
             Log::error($e->getTraceAsString());
-
+            
             return response([
-                'error' => 'Unable to purchase phone number - Please try again later.'
+                'error' => $e->getMessage()
             ], 400);
         }
 
