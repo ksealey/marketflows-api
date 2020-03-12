@@ -65,7 +65,7 @@ class Handler extends ExceptionHandler
             ], 429);
         }
 
-        echo '<pre>' . $exception->getTraceAsString() . '</pre>';
+        echo '<pre>' . $exception->getMessage() . '</pre>';
         return response([
             'error' => 'An unknown error has occurred'
         ], 500);

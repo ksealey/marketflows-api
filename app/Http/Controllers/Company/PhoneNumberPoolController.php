@@ -35,16 +35,6 @@ class PhoneNumberPoolController extends Controller
     {
         $query = PhoneNumberPool::where('company_id', $company->id);
         
-        if( $request->search )
-            $query->where(function($query) use($request){
-                $query->where('name', 'like', '%' . $request->search . '%');
-            });
-
-        if( $request->category )
-            $query->where('category', $request->category);
-
-        if( $request->sub_category )
-            $query->where('sub_category', $request->sub_category);
         
         return parent::results(
             $request,

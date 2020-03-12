@@ -29,9 +29,7 @@ class PhoneNumberController extends Controller
     {
         //  Set additional rules
         $rules = [
-            'order_by'      => 'in:phone_numbers.name,phone_numbers.number,phone_numbers.category,phone_numbers.sub_category,phone_numbers.disabled_at,phone_numbers.created_at,phone_numbers.updated_at',
-            'category'      => 'max:32',
-            'sub_category'  => 'max:32'
+            'order_by' => 'in:phone_numbers.name,phone_numbers.number,phone_numbers.category,phone_numbers.sub_category,phone_numbers.disabled_at,phone_numbers.created_at,phone_numbers.updated_at'
         ];
 
         //  Build Query
@@ -47,8 +45,6 @@ class PhoneNumberController extends Controller
             'phone_numbers.category',
             'phone_numbers.sub_category'
         ];
-
-        $user = $request->user();
 
         //  Pass along to parent for listing
         return parent::results(

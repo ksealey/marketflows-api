@@ -22,8 +22,14 @@ class PhoneNumberConfig extends Model
         'greeting_audio_clip_id',
         'greeting_message',
         'whisper_message',
+        'keypress_key',
+        'keypress_timeout',
+        'keypress_attempts',
+        'keypress_audio_clip_id',
+        'keypress_message',
         'recording_enabled_at',
-        'caller_id_enabled_at'
+        'caller_id_enabled_at',
+        'keypress_enabled_at'
     ];
 
     protected $hidden = [

@@ -30,6 +30,9 @@ class AudioClipRule implements Rule
      */
     public function passes($attribute, $value)
     {
+        if( ! $value )
+            return true;
+            
         $audioClip = AudioClip::find($value);
         if( ! $audioClip || $audioClip->company_id != $this->companyId ){
             $this->message = 'Audio clip not found';

@@ -23,13 +23,20 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->bigInteger('greeting_audio_clip_id')->unsigned()->nullable();
             $table->string('greeting_message', 128)->nullable();
             $table->string('whisper_message', 128)->nullable();
+            $table->tinyInteger('keypress_key')->unsigned()->nullable();
+            $table->tinyInteger('keypress_attempts')->unsigned()->nullable();
+            $table->tinyInteger('keypress_timeout')->unsigned()->nullable();
+            $table->bigInteger('keypress_audio_clip_id')->unsigned()->nullable();
+            $table->string('keypress_message', 128)->nullable();
             $table->dateTime('recording_enabled_at')->nullable();
             $table->dateTime('caller_id_enabled_at')->nullable();
+            $table->dateTime('keypress_enabled_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('user_id')->references('id')->on('users');
             $table->foreign('greeting_audio_clip_id')->references('id')->on('audio_clips');
+            $table->foreign('keypress_audio_clip_id')->references('id')->on('audio_clips');
         });
     }
 

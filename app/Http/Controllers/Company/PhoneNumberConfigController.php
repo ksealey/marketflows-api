@@ -11,6 +11,7 @@ use App\Models\Company\PhoneNumberConfig;
 use Validator;
 use DateTime;
 use DateTimeZone;
+use DB;
 
 class PhoneNumberConfigController extends Controller
 {
@@ -20,18 +21,25 @@ class PhoneNumberConfigController extends Controller
      */
     public function list(Request $request, Company $company)
     {
-        $query = PhoneNumberConfig::where('company_id', $company->id);
-        
-        if( $request->search )
-            $query->where(function($query) use($request){
-                $query->where('name', 'like', '%' . $request->search . '%')
-                      ->orWhere('forward_to_number', 'like', '%' . $request->search . '%');
-            });
+        $rules = [
+            'order_by' => 'in:phone_number_configs.name,phone_number_configs.created_at,phone_number_configs.updated_at,phone_number_configs.forward_to_number',
+        ];
 
+        $query = DB::table('phone_number_configs')
+                    ->where('phone_number_configs.company_id', $company->id)
+                    ->whereNull('phone_number_configs.deleted_at');
+
+        $searchFields = [
+            'phone_number_configs.name',
+            'phone_number_configs.forward_to_number'
+        ];
+       
         return parent::results(
             $request,
             $query,
-            [ 'order_by'  => 'in:name,created_at,forward_to_number,updated_at' ]
+            $rules,
+            $searchFields,
+            'phone_number_configs.created_at'
         );
     }
 
@@ -46,9 +54,15 @@ class PhoneNumberConfigController extends Controller
             'forward_to_number'          => 'bail|required|numeric|digits_between:10,13',
             'record'                     => 'bail|boolean',
             'caller_id'                  => 'bail|boolean',
-            'whisper_message'            => 'bail|max:128',
-            'greeting_message'           => 'bail|max:128',
-            'greeting_audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
+            'whisper_message'            => 'bail|nullable|max:128',
+            'greeting_message'           => 'bail|nullable|max:128',
+            'greeting_audio_clip_id'     => ['bail', 'nullable', 'numeric', new AudioClipRule($company->id)],
+            'keypress_enabled'           => 'bail|boolean',
+            'keypress_key'               => 'bail|required_with:keypress_enabled|in:1,2,3,4,5,6,7,8,9,0',
+            'keypress_attempts'          => 'bail|required_with:keypress_enabled|in:1,2,3,4,5',
+            'keypress_timeout'           => 'bail|required_with:keypress_enabled|digits_between:1,2',
+            'keypress_audio_clip_id'     => ['bail', 'nullable',  'numeric', new AudioClipRule($company->id)],
+            'keypress_message'           => 'bail|nullable|max:128',
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -73,7 +87,13 @@ class PhoneNumberConfigController extends Controller
             'greeting_message'          => $request->greeting_message ?: null,
             'recording_enabled_at'      => $request->record ? now() : null,
             'caller_id_enabled_at'      => $request->caller_id ? now() : null,
-            'whisper_message'           => $request->whisper_message ?: null
+            'whisper_message'           => $request->whisper_message ?: null,
+            'keypress_enabled_at'       => $request->keypress_enabled ? now() : null,
+            'keypress_key'              => intval($request->keypress_key) ?: null,
+            'keypress_attempts'         => intval($request->keypress_attempts) ?: null,
+            'keypress_timeout'          => intval($request->keypress_timeout) ?: null,
+            'keypress_audio_clip_id'    => $request->keypress_audio_clip_id ?: null,
+            'keypress_message'          => $request->keypress_message ?: null,
         ]);
 
         return response($phoneNumberConfig, 201);
@@ -103,11 +123,16 @@ class PhoneNumberConfigController extends Controller
             'forward_to_number'          => 'bail|digits_between:10,13',
             'record'                     => 'bail|boolean',
             'caller_id'                  => 'bail|boolean',
-            'whisper_message'            => 'bail|max:128',
-            'greeting_message'           => 'bail|max:128',
-            'greeting_audio_clip_id'     => ['bail', 'numeric', new AudioClipRule($company->id)],
+            'whisper_message'            => 'bail|nullable|max:128',
+            'greeting_message'           => 'bail|nullable|max:128',
+            'greeting_audio_clip_id'     => ['bail', 'nullable', 'numeric', new AudioClipRule($company->id)],
+            'keypress_enabled'           => 'bail|boolean',
+            'keypress_key'               => 'bail|required_with:keypress_enabled|in:1,2,3,4,5,6,7,8,9,0',
+            'keypress_attempts'          => 'bail|required_with:keypress_enabled|in:1,2,3,4,5',
+            'keypress_timeout'           => 'bail|required_with:keypress_enabled|digits_between:1,2',
+            'keypress_audio_clip_id'     => ['bail', 'nullable',  'numeric', new AudioClipRule($company->id)],
+            'keypress_message'           => 'bail|nullable|max:128',
         ];
-
         $validator = Validator::make($request->input(), $rules);
         if( $validator->fails() ){
             return response([
@@ -131,7 +156,19 @@ class PhoneNumberConfigController extends Controller
             $phoneNumberConfig->caller_id_enabled_at = $request->caller_id ? ( $phoneNumberConfig->caller_id_enabled_at ?: date('Y-m-d H:i:s') ) : null;
         if( $request->has('whisper_message') )
             $phoneNumberConfig->whisper_message = $request->whisper_message;
-        
+        if( $request->has('keypress_enabled') )
+            $phoneNumberConfig->keypress_enabled_at = $request->keypress_enabled ? ($request->keypress_enabled_at ?: now()) : null;
+        if( $request->has('keypress_key') )
+            $phoneNumberConfig->keypress_key = intval($request->keypress_key);
+        if( $request->has('keypress_attempts') )
+            $phoneNumberConfig->keypress_attempts = intval($request->keypress_attempts);
+        if( $request->has('keypress_timeout') )
+            $phoneNumberConfig->keypress_timeout = intval($request->keypress_timeout);
+        if( $request->has('keypress_audio_clip_id') )
+            $phoneNumberConfig->keypress_audio_clip_id = $request->keypress_audio_clip_id;
+        if( $request->has('keypress_message') )
+            $phoneNumberConfig->keypress_message = $request->keypress_message;
+    
         $phoneNumberConfig->save();
 
         return response( $phoneNumberConfig );
