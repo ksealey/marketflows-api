@@ -34,7 +34,11 @@ class Report extends Model
 
     protected $resultSets = [];
 
-    protected $reportFields    = [
+    static protected $moduleLabels  = [
+        'calls' => 'Calls'
+    ];
+
+    static protected $reportFields    = [
         'calls' => [
             'calls.company_id',
             'calls.phone_number_id',
@@ -80,9 +84,18 @@ class Report extends Model
         ]
     ];
 
-    protected $metrics = [
+    static protected $metrics = [
         'calls' => [
-            'phone_number_name' => 'Phone Number'
+            'calls.source'      => 'Source',
+            'calls.medium'      => 'Medium',
+            'calls.campaign'    => 'Campaign',
+            'calls.content'     => 'Content',
+            'calls.category'    => 'Category',
+            'calls.sub_category'=> 'Sub-Category',
+            'calls.caller_city' => 'Caller City',
+            'calls.caller_state'=> 'Caller State',
+            'calls.caller_zip'  => 'Caller Zip',
+            'phone_number_name' => 'Dialed Phone Number'
         ]
     ];
     
@@ -123,12 +136,13 @@ class Report extends Model
 
         return [
             "data" => [
-                "labels"   => $this->labels(),
+                "labels"   => $this->dataLabels(),
                 "datasets" => $this->datasets()
             ],
-            "metric_label" => 'Calls',
+            "module_label" => $this->moduleLabel(),
+            "metric_label" => $this->hasMetric() ? $this->metricLabel() : null,
+            "type"         => $this->hasMetric() ? 'bar' : 'line',
             "step_size"    => 10,
-            "type"         => $this->hasMetric() ? 'bar' : 'line'
         ];
     }
 
@@ -189,12 +203,26 @@ class Report extends Model
         return $this->resultSets;
     }
 
-    public function label()
+    public function moduleLabel()
     {
-        return 'Calls';
+        return self::$moduleLabels[$this->module];
     }
 
-    public function labels()
+    /**
+     * Get a metric's label
+     * 
+     */
+    public function metricLabel()
+    {
+        if( ! $this->hasMetric() )
+            return null;
+
+        if( self::metricExists($this->module, $this->metric) )
+            return self::$metrics[$this->module][$this->metric];
+        return null;
+    }
+
+    public function dataLabels()
     {
         switch( $this->range_type ){
             case 'YEARS':
@@ -461,18 +489,30 @@ class Report extends Model
 
     }
 
+    /**
+     * Determine if an instance is associated with a metric
+     * 
+     */
     public function hasMetric()
     {
         return $this->metric ? true : false;
     }
 
+    /**
+     * Determine if a metric exists for a module
+     * 
+     */
     static public function metricExists($module, $metric)
     {
-        return isset($this->metrics[$module]) && in_array($metric, $this->metrics[$module]);
+        return isset(self::$metrics[$module]) && in_array($metric, array_keys(self::$metrics[$module]));
     }
 
-    static public function metricLabel($metric)
+    /**
+     * Determine if a metric exists for a module
+     * 
+     */
+    static public function fieldExists($module, $field)
     {
-        return $this->getMetrics()[$metric] ?? null;
+        return isset(self::$reportFields[$module]) && in_array($field, self::$reportFields[$module]);
     }
 }

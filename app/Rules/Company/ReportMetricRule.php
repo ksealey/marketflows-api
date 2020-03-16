@@ -1,23 +1,24 @@
 <?php
 
-namespace App\Rules;
+namespace App\Rules\Company;
 
 use Illuminate\Contracts\Validation\Rule;
+use App\Models\Company\Report;
 
 class ReportMetricRule implements Rule
 {
     protected $message = '';
 
-    protected $request;
+    protected $module;
 
     /**
      * Create a new rule instance.
      *
      * @return void
      */
-    public function __construct($request)
+    public function __construct($module)
     {
-        $this->request = $request;
+        $this->module = $module;
     }
 
     /**
@@ -29,15 +30,8 @@ class ReportMetricRule implements Rule
      */
     public function passes($attribute, $value)
     {
-        if( ! $this->request->has('fields') ){
-            $this->message = $attribute . ' requires the fields property to be set.';
-
-            return false;
-        }
-
-        $fields = explode(',', $this->request->fields);
-        if( ! in_array($value, $fields) ){
-            $this->message = $attribute . ' not found in fields.';
+        if( ! Report::metricExists($this->module, $value) ){
+            $this->message = $attribute . ' is invalid.';
 
             return false;
         }

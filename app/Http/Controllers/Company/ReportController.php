@@ -6,8 +6,8 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Company\Report;
-use App\Rules\ReportFieldsRule;
-use App\Rules\ReportMetricRule;
+use App\Rules\Company\ReportMetricRule;
+use App\Rules\Company\ReportFieldsRule;
 use App\Rules\ReportDateOffsetsRule;
 use DB;
 use Validator;
@@ -48,7 +48,7 @@ class ReportController extends Controller
             'name'          => ['bail', 'required', 'max:64'],
             'module'        => ['bail', 'required', 'in:calls'],
             'fields'        => ['bail', 'required', new ReportFieldsRule($request->module)],
-            'metric'        => ['bail', 'required', new ReportMetricRule($request)],
+            'metric'        => ['bail', 'required', new ReportMetricRule($request->module)],
             'range_type'    => ['bail', 'required', 'in:YEARS,MONTHS,DAYS'],
             'date_offsets'  => ['bail', 'required', new ReportDateOffsetsRule()]
         ];
@@ -87,7 +87,7 @@ class ReportController extends Controller
             'name'          => ['bail', 'max:64'],
             'module'        => ['bail', 'in:calls'],
             'fields'        => ['bail', new ReportFieldsRule($request->module)],
-            'metric'        => ['bail', new ReportMetricRule($request)],
+            'metric'        => ['bail', new ReportMetricRule($request->module)],
             'range_type'    => ['bail', 'in:YEARS,MONTHS,DAYS'],
             'date_offsets'  => ['bail', new ReportDateOffsetsRule()]
         ];
