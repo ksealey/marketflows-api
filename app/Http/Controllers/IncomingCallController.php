@@ -15,7 +15,7 @@ use App\Models\Company\CallRecording;
 use App\Models\Events\Session;
 use App\Models\Events\SessionEvent;
 use Twilio\TwiML\VoiceResponse;
-use Twilio\Rest\Client as TwilioClient;
+use Twilio\Rest\Client as Twilio;
 use Validator;
 use Storage;
 use Exception;
@@ -23,6 +23,13 @@ use DB;
 
 class IncomingCallController extends Controller
 {
+    protected $twilio;
+
+    public function __construct(Twilio $twilio)
+    {
+        $this->twilio = $twilio;
+    }
+
     /**
      * Entry point for all new incoming calls
      * 
@@ -122,18 +129,17 @@ class IncomingCallController extends Controller
         }
         
         //  Default name
-        $callerFirstName = $request->FromCity  ?: null;
-        $callerLastName  = $request->FromState ?: null;
+        $callerFirstName = ucfirst(strtolower($request->FromCity  ?: ''));
+        $callerLastName  = $request->FromState ?: '';
 
         //  Perform Lookups
         if( $config->caller_id_enabled_at ){
             try{
-                $twilioConfig = config('services.twilio');
-
-                $twilio = new TwilioClient($twilioConfig['sid'], $twilioConfig['token']);
-                $caller = $twilio->lookups->v1
-                                ->phoneNumbers($request->from)
-                                ->fetch([
+                $caller = $this->twilio
+                               ->lookups
+                               ->v1
+                               ->phoneNumbers($request->from)
+                               ->fetch([
                                     'type' => ['caller-name']
                                 ]);
                 $callerFirstName = $caller->firstName ?: $callerFirstName;

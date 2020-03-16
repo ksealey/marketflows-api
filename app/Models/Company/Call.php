@@ -17,11 +17,6 @@ class Call extends Model
         'phone_number_pool_id',
         'session_id',
 
-        'caller_id_enabled',
-        'recording_enabled',
-        
-        'forwarded_to',
-
         'external_id',
         'direction',
         'status',
@@ -62,10 +57,23 @@ class Call extends Model
         'external_id'
     ];
 
+    protected $appends = [
+        'link',
+        'kind',
+    ];
+
     protected $dateFormat = 'Y-m-d H:i:s.u';  
 
-    public function phoneNumber()
+    public function getLinkAttribute()
     {
-        return $this->belongsTo('\App\Models\Company\PhoneNumber');
+        return route('read-call', [
+            'companyId'  => $this->company_id,
+            'callId'    => $this->id
+        ]);
+    }
+
+    public function getKindAttribute()
+    {
+        return 'Call';
     }
 }

@@ -21,20 +21,26 @@ class AuthServiceProvider extends ServiceProvider
 
     ];
 
+   
     /**
      * Register any authentication / authorization services.
      *
      * @return void
      */
+    public function register()
+    {
+        $this->registerPolicies(); 
+    }
+
+
     public function boot()
     {
-        $this->registerPolicies();
-
         Gate::guessPolicyNamesUsing(function ($modelClass) {
-            $modelClass = trim($modelClass, '\\');
-            $modelClass = str_replace('\\Models\\', '\\Policies\\', $modelClass);
-            
-            return $modelClass . 'Policy';
+            return str_replace(
+                    '\\Models\\', 
+                    '\\Policies\\', 
+                    trim($modelClass, '\\')
+                ) . 'Policy';
         });
 
         /**
@@ -44,7 +50,6 @@ class AuthServiceProvider extends ServiceProvider
         Auth::viaRequest('auth_token', function ($request){
             //  Check headers for bearer token
             $authToken = null;
-            
             if( $auth = $request->header('Authorization') ){
                 $segments = explode(' ', $auth);
                 if( count($segments) !== 2 )

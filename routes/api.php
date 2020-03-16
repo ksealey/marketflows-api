@@ -385,7 +385,7 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
 
                     /*
                     |---------------------------------------
-                    | Handle blocked calls
+                    | Handle company blocked calls
                     |---------------------------------------
                     */   
                     Route::prefix('blocked-calls')->group(function(){
@@ -394,9 +394,6 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                             ->name('list-blocked-calls'); 
                     });
                 });
-                 
-
-                
             });
 
             /*
@@ -428,7 +425,33 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                 Route::delete('/{phoneNumber}', 'Company\PhoneNumberController@delete')
                     ->middleware('can:delete,phoneNumber')
                     ->name('delete-phone-number');
+            }); 
 
+            /*
+            |--------------------------------
+            | Handle company reports
+            |--------------------------------
+            */
+            Route::prefix('reports')->group(function(){
+                Route::get('/', 'Company\ReportController@list')
+                    ->middleware('can:list,\App\Models\Company\Report')
+                    ->name('list-reports');
+    
+                Route::post('/', 'Company\ReportController@create')
+                    ->middleware('can:create,\App\Models\Company\Report')
+                    ->name('create-report');
+
+                Route::get('/{report}', 'Company\ReportController@read')
+                    ->middleware('can:read,report')
+                    ->name('read-report');
+
+                Route::put('/{report}', 'Company\ReportController@update')
+                    ->middleware('can:update,report')
+                    ->name('update-report');
+
+                Route::delete('/{report}', 'Company\ReportController@delete')
+                    ->middleware('can:delete,report')
+                    ->name('delete-phone-number');
             }); 
 
             /*
@@ -445,104 +468,6 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:read,call,company')
                     ->name('read-call');
             });
-            
-            /*
-            |--------------------------------
-            | Handle campaigns
-            |--------------------------------
-            */
-            Route::prefix('campaigns')->group(function(){
-                Route::get('/', 'Company\CampaignController@list')
-                    ->middleware('can:list,\App\Models\Company\Campaign')
-                    ->name('list-campaigns');
-
-                Route::post('/', 'Company\CampaignController@create')
-                    ->middleware('can:create,App\Models\Company\Campaign')
-                    ->name('create-campaign');
-
-                Route::get('/{campaign}', 'Company\CampaignController@read')
-                    ->middleware('can:read,campaign')
-                    ->name('read-campaign');
-
-                Route::put('/{campaign}', 'Company\CampaignController@update')
-                    ->middleware('can:update,campaign')
-                    ->name('update-campaign');
-
-                Route::delete('/{campaign}', 'Company\CampaignController@delete')
-                    ->middleware('can:delete,campaign')
-                    ->name('delete-campaign');
-
-                /*
-                |--------------------------------
-                | Campaign children endpoints
-                |--------------------------------
-                */
-                Route::prefix('/{campaign}')->group(function(){
-                    /*
-                    |--------------------------------
-                    | Handle campaign phone numbers
-                    |--------------------------------
-                    */
-                    Route::post('/phone-numbers','Company\Campaign\PhoneNumberController@add')
-                         ->middleware('can:update,campaign')
-                         ->name('add-campaign-phone-number');
-
-                    Route::delete('/phone-numbers','Company\Campaign\PhoneNumberController@remove')
-                         ->middleware('can:update,campaign')
-                         ->name('remove-campaign-phone-number');
-
-                    /*
-                    |--------------------------------------
-                    | Handle campaign spends
-                    |--------------------------------------
-                    */
-                    Route::post('/spends','Company\Campaign\SpendController@create')
-                         ->middleware('can:update,campaign')
-                         ->name('create-campaign-spend');
-
-                    Route::put('/spends/{spend}','Company\Campaign\SpendController@update')
-                         ->middleware('can:update,campaign')
-                         ->name('update-campaign-spend');
-
-                    Route::delete('/spends/{spend}','Company\Campaign\SpendController@delete')
-                         ->middleware('can:update,campaign')
-                         ->name('delete-campaign-spend');
-                
-                    /*
-                    |--------------------------------------
-                    | Handle campaign domains (WEB Only)
-                    |--------------------------------------
-                    */
-                    Route::post('/domains','Company\Campaign\DomainController@create')
-                         ->middleware('can:update,campaign')
-                         ->name('create-campaign-domain');
-
-                    Route::put('/domains/{domain}','Company\Campaign\DomainController@update')
-                         ->middleware('can:update,campaign')
-                         ->name('update-campaign-domain');
-
-                    Route::delete('/domains/{domain}','Company\Campaign\DomainController@delete')
-                         ->middleware('can:update,campaign')
-                         ->name('delete-campaign-domain');
-
-                    /*
-                    |--------------------------------------
-                    | Handle campaign targets (WEB Only)
-                    |--------------------------------------
-                    */
-                    Route::post('/targets','Company\Campaign\TargetController@create')
-                         ->middleware('can:update,campaign')
-                         ->name('create-campaign-target');
-
-                    Route::put('/targets/{target}','Company\Campaign\TargetController@update')
-                         ->middleware('can:update,campaign')
-                         ->name('update-campaign-target');
-
-                    Route::delete('/targets/{target}','Company\Campaign\TargetController@delete')
-                         ->middleware('can:update,campaign')
-                         ->name('delete-campaign-target');
-                });
-            }); 
         }); 
     });
 });
