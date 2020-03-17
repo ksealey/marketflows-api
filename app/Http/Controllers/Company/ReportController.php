@@ -42,15 +42,21 @@ class ReportController extends Controller
     }
 
 
+    /**
+     * Create a report
+     * 
+     */
     public function create(Request $request, Company $company)
     {
         $rules = [
             'name'          => ['bail', 'required', 'max:64'],
             'module'        => ['bail', 'required', 'in:calls'],
             'fields'        => ['bail', 'required', new ReportFieldsRule($request->module)],
-            'metric'        => ['bail', 'required', new ReportMetricRule($request->module)],
-            'range_type'    => ['bail', 'required', 'in:YEARS,MONTHS,DAYS'],
-            'date_offsets'  => ['bail', 'required', new ReportDateOffsetsRule()]
+            'metric'        => ['bail', new ReportMetricRule($request->module)],
+            'metric_order'  => ['bail', 'in:min,max'],
+            'date_unit'     => ['bail', 'required', 'in:YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS,CUSTOM'],
+            'date_offsets'  => ['bail', 'required', new ReportDateOffsetsRule()],
+            
         ];
 
         $validator = validator($request->input(), $rules);
@@ -60,27 +66,33 @@ class ReportController extends Controller
             ], 400);
         }
 
-        $fields  = $this->stringArray($request->fields);
-        $offsets = $this->intArray($request->date_offsets);
-
         $report = Report::create([
             'company_id'    => $company->id,
             'name'          => $request->name,
             'module'        => $request->module,
-            'fields'        => json_encode($fields),
-            'metric'        => $request->metric,
-            'range_type'    => $request->range_type,
-            'date_offsets'  => json_encode($offsets)
+            'fields'        => json_encode($this->stringArray($request->fields)),
+            'metric'        => $request->metric ?: null,
+            'metric_order'  => $request->metric_order ?: 'max',
+            'date_unit'     => $request->date_unit,
+            'date_offsets'  => json_encode($this->intArray($request->date_offsets)),
         ]);
 
         return response($report, 201);
     }
 
+    /**
+     * Read a report
+     * 
+     */
     public function read(Request $request, Company $company, Report $report)
     {
         return response($report);
     }
 
+    /**
+     * Update a report
+     * 
+     */
     public function update(Request $request, Company $company, Report $report)
     {
         $rules = [
@@ -88,7 +100,8 @@ class ReportController extends Controller
             'module'        => ['bail', 'in:calls'],
             'fields'        => ['bail', new ReportFieldsRule($request->module)],
             'metric'        => ['bail', new ReportMetricRule($request->module)],
-            'range_type'    => ['bail', 'in:YEARS,MONTHS,DAYS'],
+            'metric_order'  => ['bail', 'in:min,max'],
+            'date_unit'     => ['bail', 'in:YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS,CUSTOM'],
             'date_offsets'  => ['bail', new ReportDateOffsetsRule()]
         ];
 
@@ -98,25 +111,22 @@ class ReportController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        $fields  = $request->has('fields') ? $this->stringArray($request->fields) : $report->fields;
-        $offsets = $request->has('date_offsets') ? $this->intArray($request->date_offsets) : $report->date_offsets;
         if( $request->has('name') )
             $report->name = $request->name;
         if( $request->has('module') )
             $report->module = $request->module;
         if( $request->has('fields') )
-            $report->fields = json_encode($fields);
+            $report->fields = json_encode($this->stringArray($request->fields));
         if( $request->has('metric') )
-            $report->metric = $request->metric;
-        if( $request->has('range_type') )
-            $report->range_type = $request->range_type;
+            $report->metric = $request->metric ?: null;
+        if( $request->has('metric_order') )
+            $report->metric_order = $request->metric_order ?: 'max';
+        if( $request->has('date_unit') )
+            $report->date_unit = $request->date_unit;
         if( $request->has('date_offsets') )
-            $report->date_offsets = json_encode($offsets);
+            $report->date_offsets = json_encode($this->intArray($request->date_offsets));
 
         $report->save();
-
-        $report->fields       = $fields;
-        $report->date_offsets = $offsets; 
 
         return response($report, 200);
     }

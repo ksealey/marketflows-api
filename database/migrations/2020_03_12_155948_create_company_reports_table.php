@@ -19,8 +19,9 @@ class CreateCompanyReportsTable extends Migration
             $table->string('name', 64);
             $table->string('module', 64);
             $table->string('fields', 256);
-            $table->string('metric', 32);
-            $table->string('range_type', 64);
+            $table->string('metric', 32)->nullable();
+            $table->string('metric_order', 8)->nullable();
+            $table->string('date_unit', 64);
             $table->string('date_offsets', 256);
             $table->boolean('is_system_report')->default(0);
             $table->timestamps();
