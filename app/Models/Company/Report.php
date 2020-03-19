@@ -15,18 +15,18 @@ class Report extends Model
         'company_id',
         'name',
         'module',
-        'fields',
         'metric',
-        'metric_order',
+        'order',
         'date_unit',
         'date_offsets',
+        'date_ranges',
+        'chart_type',
         'is_system_report'
     ];
 
     protected $appends = [
         'link',
-        'kind',
-        'graph'
+        'kind'
     ];
 
     protected $utcTimezone;
@@ -37,46 +37,6 @@ class Report extends Model
 
     static protected $moduleLabels  = [
         'calls' => 'Calls'
-    ];
-
-    static protected $reportFields    = [
-        'calls' => [
-            'calls.company_id',
-            'calls.phone_number_id',
-            'phone_number_name',
-            'calls.toll_free',
-            'calls.category',
-            'calls.sub_category',
-            'calls.phone_number_pool_id',
-            'phone_number_pool_name',
-            'calls.session_id',
-            'calls.direction',
-            'calls.status',
-            'calls.caller_first_name',
-            'calls.caller_last_name',
-            'calls.caller_country_code',
-            'calls.caller_number',
-            'calls.caller_city',
-            'calls.caller_state',
-            'calls.caller_zip',
-            'calls.caller_country',
-            'calls.dialed_country_code',
-            'calls.dialed_number',
-            'calls.dialed_city',
-            'calls.dialed_state',
-            'calls.dialed_zip',
-            'calls.dialed_country',
-            'calls.source',
-            'calls.medium',
-            'calls.content',
-            'calls.campaign',
-            'calls.recording_enabled',
-            'calls.caller_id_enabled',
-            'calls.forwarded_to',
-            'calls.duration',
-            'calls.created_at',
-            'calls.*'
-        ]
     ];
 
     static protected $metrics = [
@@ -93,7 +53,12 @@ class Report extends Model
             'phone_number_name' => 'Dialed Phone Number'
         ]
     ];
-    
+
+    const CHART_TYPE_LINE     = 'LINE'; // No metric
+    const CHART_TYPE_BAR      = 'BAR';  
+    const CHART_TYPE_PIE      = 'PIE';
+    const CHART_TYPE_DOUGHNUT = 'DOUGHNUT';
+
     /**
      * Attributes
      * 
@@ -111,17 +76,19 @@ class Report extends Model
         return 'Report';
     }
 
-    public function getDateOffsetsAttribute($dateOffset)
+    public function getDateOffsetsAttribute($dateOffsets)
     {
-        return json_decode($dateOffset);
+        return json_decode($dateOffsets);
     }
 
-    public function getFieldsAttribute($fields)
+    public function getDateRangesAttribute($dateRanges)
     {
-        return json_decode($fields);
+        if( ! $dateRanges ) return null;
+
+        return json_decode($dateRanges);
     }
 
-    public function getGraphAttribute()
+    public function getChartAttribute()
     {
         //  Run report
         $this->utcTimezone = new DateTimeZone('UTC');
@@ -136,9 +103,26 @@ class Report extends Model
             "module_label" => $this->moduleLabel(),
             "metric_label" => $this->metricLabel(),
             "range_label"  => $this->rangeLabel(),
-            "type"         => $this->hasMetric() ? 'bar' : 'line',
+            "type"         => $this->hasMetric() ? $this->chart_type : self::CHART_TYPE_LINE,
             "step_size"    => 10,
         ];
+    }
+
+    public function getResultsAttribute()
+    {
+        //  Flatten the data
+        $results = [];
+        foreach( $this->resultSets as $resultSet ){
+            $results = array_merge($results, $resultSet['data']);
+        }
+        return $results;
+    }
+
+    public function withChart()
+    {
+        $this->chart = $this->chart;
+
+        return $this;
     }
 
     public function run(string $timezone)
@@ -153,29 +137,63 @@ class Report extends Model
 
     public function runCallReport()
     {
-        $fields = array_merge($this->fields, [
-            'phone_numbers.name AS phone_number_name', 
-            'phone_number_pools.name as phone_number_pool_name',
-            'calls.created_at'
-        ]);
+        $dateSets = [];
+        if( $this->date_unit === 'CUSTOM' ){
+            $dateRanges = $this->date_ranges;
+            foreach( $dateRanges as $dateRange ){
+                $dates      = explode(':', $dateRange);
+                $startDate  = new DateTime($dates[0] . ' 00:00:00.000000', $this->timezone); 
+                $endDate    = new DateTime($dates[1] . ' 23:59:59.999999', $this->timezone); 
+                $dateSets[] = [
+                    'start' => $startDate,
+                    'end'   => $endDate
+                ];
+            }
+        }elseif( $this->date_unit === 'ALL_TIME' ){
+            $startDate  = new DateTime('1970-01-01 00:00:00'); 
+            $endDate    = new DateTime();
+
+            $startDate->setTimeZone($this->timezone); 
+            $endDate->setTimeZone($this->timezone); 
+
+            $dateSets[] = [
+                'start' => $startDate,
+                'end'   => $endDate
+            ];
+        }else{
+            $offsets = $this->date_offsets;
+            foreach( $offsets as $offset ){
+                $dateSets[] = [
+                    'start' => $this->startDate($offset),
+                    'end'   => $this->endDate($offset)
+                ];
+            }
+        }
+
+        //  Order based on date order
+        $dateOrder = $this->order;
+        usort($dateSets, function($a, $b)use($dateOrder){
+            if( $dateOrder === 'min' ){
+                return $a['start']->format('U') > $b['start']->format('U') ? 1 : -1;
+            }else{
+                return $a['start']->format('U') > $b['start']->format('U') ? -1 : 1;
+            }
+        });
 
         $resultSets = [];
-
-        $offsets = $this->date_offsets;
-        usort($offsets, function($a,$b){ return $a > $b ? -1 : 1; });
-
-        foreach( $offsets as $offset ){
-            $startDate = $this->startDate($offset);
-            $endDate   = $this->endDate($offset);
-
-            $startDateUTC = clone $startDate;
-            $endDateUTC   = clone $endDate;
+        foreach( $dateSets as $dateSet ){
+            $startDateUTC = clone $dateSet['start'];
+            $endDateUTC   = clone $dateSet['end'];
 
             $startDateUTC->setTimeZone($this->utcTimezone);
             $endDateUTC->setTimeZone($this->utcTimezone);
 
             $results = DB::table('calls')
-                            ->select($fields)
+                            ->select([
+                                'calls.*',
+                                'phone_numbers.name AS phone_number_name', 
+                                'phone_number_pools.name as phone_number_pool_name'
+                            ])
                             ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
                             ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
                             ->where('calls.created_at', '>=', $startDateUTC)
@@ -186,10 +204,7 @@ class Report extends Model
 
             $resultSets[] = [
                 'data'  => $results,
-                'dates' => [
-                    'start' => $startDate,
-                    'end'   => $endDate
-                ]
+                'dates' => $dateSet
             ];
         }
 
@@ -221,6 +236,10 @@ class Report extends Model
         return null;
     }
 
+    /**
+     * Get the range's label. This will display under the main labels describing the type of data in labels.
+     * 
+     */
     public function rangeLabel()
     {
         if( $this->hasMetric() )
@@ -229,13 +248,12 @@ class Report extends Model
         switch( $this->date_unit ){
             case 'DAYS':
             case 'YEARS':
-            case 'CUSTOM':
+            case 'ALL_TIME':
                 return null;
             default:
                 return 'Day';
         }
     }
-
 
     public function dataLabels()
     {
@@ -244,25 +262,151 @@ class Report extends Model
 
         switch( $this->date_unit ){
             case 'DAYS':
-                return $this->dayLabels();
+                return $this->hourLabels();
             case '7_DAYS':
-                return $this->dateLabels(7);
+                return $this->dayLabels(7);
             case '14_DAYS':
-                return $this->dateLabels(14);
+                return $this->dayLabels(14);
             case '28_DAYS':
-                return $this->dateLabels(28);
+                return $this->dayLabels(28);
             case '60_DAYS':
-                return $this->dateLabels(60);
+                return $this->dayLabels(60);
             case '90_DAYS':
-                return $this->dateLabels(90);
+                return $this->dayLabels(90);
             case 'YEARS':
-                return $this->yearLabels();
+                return $this->monthLabels();
+            case 'CUSTOM':
+                return $this->dayLabels($this->getCustomDateRangeDays());
+            case 'ALL_TIME':
+                return $this->allTimeLabels()['labels'];
             default:
-                return $this->customLabels();
+                return [];
+            break;
+        }
+    }
+
+    /**
+     * Labels
+     * 
+     */
+    public function metricLabels()
+    {
+        //  Use date ranges as bottom labels
+        $labels = [];
+        foreach( $this->resultSets as $resultSet ){
+            
+            switch( $this->date_unit ){
+                case 'YEARS':
+                    $labels[] = $resultSet['dates']['start']->format('Y');
+                break;
+
+                case 'ALL_TIME':
+                    $labels[] = $this->moduleLabel() . ' by ' . $this->metricLabel();
+                break;
+
+                default: 
+                    $start = $resultSet['dates']['start']->format('M d, Y');
+                    $end   = $resultSet['dates']['end']->format('M d, Y');
+                    $labels[] = $start . ( $start == $end ? '' : (' - ' . $end));
+                break;
+            }
+            
+        }
+        return $labels;
+    }
+
+    public function hourLabels()
+    {
+        return [
+            '12-1AM', '1-2AM', '2-3AM', '3-4AM', '4-5AM', '5-6AM', '6-7AM', '7-8AM', '8-9AM', '9-10AM', '10-11AM', '11AM-12PM', 
+            '12-1PM', '1-2PM', '2-3PM', '3-4PM', '4-5PM', '5-6PM', '6-7PM', '7-8PM', '8-9PM', '9-10PM', '10-11PM', '11PM-12AM'
+        ];
+    }
+
+    public function dayLabels($days)
+    {
+        $labels    = [];
+        for( $i=1; $i<=$days; $i++ ){
+            $labels[] = $i;
+        }
+        return $labels;
+    }
+
+    public function monthLabels()
+    {
+        return [
+            'January', 'February', 'March', 'April', 'May', 'June', 
+            'July', 'August', 'September', 'October', 'November', 'December' 
+        ];
+    }
+
+    public function allTimeLabels()
+    {
+        //  If there are no results, return current year
+        if( ! count($this->resultSets) )
+            return [
+                'labels'     => [date('Y')],
+                'group_type' => 'YEARS',
+                'date_format'=> 'Y'
+            ];
+
+        $groupType  = null;
+        $dateFormat = null;
+        $labels     = [];
+        $results    = $this->resultSets[0]['data'];
+
+        $first = new DateTime($results[0]->created_at);
+        $first->setTimeZone($this->timezone);
+
+        $last = new DateTime($results[count($results) - 1]->created_at);
+        $last->setTimeZone($this->timezone);
+
+        $diff = $first->diff($last);
+       
+        if( $diff->y > 1 ){
+            $groupType = 'YEARS';
+            $dateFormat = 'Y';
+            while( $first->format('Y') <= $last->format('Y') ){
+                $labels[] = $first->format($dateFormat);
+                $first->modify('+1 year');
+            }
+        }else{
+            $groupType  = 'MONTHS';
+            $dateFormat = 'M, y';
+            while( $first->format('Ym') <= $last->format('Ym') ){
+                $labels[] = $first->format($dateFormat);
+                $first->modify('+1 month');
+            }
+        }
+
+        return [
+            'labels'      => $labels,
+            'group_type'  => $groupType,
+            'date_format' => $dateFormat
+        ];
+    }
+
+    public function allTimeFirstLast()
+    {
+        // Get date of first and last record
+        $results = $this->resultSets[0]['data'];
+        $first   = new DateTime($results[0]->created_at);
+        $last    = new DateTime($results[count($results) - 1]->created_at);
+        $diff    = $first->diff($last);
+
+        
+        if( $diff->y > 1 ){
+            return 'YEARS';
+        }else{
+            return 'MONTHS';
         }
     }
 
 
+    /**
+     * Datasets
+     * 
+     */
     public function datasets()
     {
         if( $this->hasMetric() )
@@ -283,155 +427,15 @@ class Report extends Model
                 return $this->dayRangeDatasets(90);
             case 'YEARS':
                 return $this->yearDatasets();
+            case 'CUSTOM':
+                return $this->dayRangeDatasets($this->getCustomDateRangeDays());
+            case 'ALL_TIME':
+                return $this->allTimeDatasets();
             default:
-                return $this->customDatasets();
+                break;
         }
     }
     
-
-    /**
-     * Labels
-     * 
-     */
-    public function metricLabels()
-    {
-        //  Use date ranges as bottom labels
-        $labels = [];
-        foreach( $this->resultSets as $resultSet ){
-            $start = $resultSet['dates']['start']->format('M d, Y');
-            $end   = $resultSet['dates']['end']->format('M d, Y');
-            $labels[] = $start . ( $start == $end ? '' : (' - ' . $end));
-        }
-        return $labels;
-    }
-
-    public function dateLabels($days)
-    {
-        $labels    = [];
-        for( $i=1; $i<=$days; $i++ ){
-            $labels[] = $i;
-        }
-        return $labels;
-    }
-
-    public function dayLabels()
-    {
-        return [
-            '12-1AM', '1-2AM', '2-3AM', '3-4AM', '4-5AM', '5-6AM', '6-7AM', '7-8AM', '8-9AM', '9-10AM', '10-11AM', '11AM-12PM', 
-            '12-1PM', '1-2PM', '2-3PM', '3-4PM', '4-5PM', '5-6PM', '6-7PM', '7-8PM', '8-9PM', '9-10PM', '10-11PM', '11PM-12AM'
-        ];
-    }
-
-    public function yearLabels()
-    {
-        return [
-            'January', 'February', 'March', 'April', 'May', 'June', 
-            'July', 'August', 'September', 'October', 'November', 'December' 
-        ];
-    }
-
-    public function customLabels()
-    {
-
-    }
-
-
-
-    /**
-     * Datasets
-     * 
-     */
-    public function dayRangeDatasets($days)
-    {
-        $datasets = [];
-
-        foreach( $this->resultSets as $resultSet ){
-            $dailyCounts = [];
-            $startDay    = clone $resultSet['dates']['start'];
-            for($i=0;$i<$days;$i++){
-                $dailyCounts[$startDay->format('M jS, Y')] = 0;
-                $startDay->modify('+1 day');
-            }
-            
-            foreach( $resultSet['data'] as $result ){
-                $createdAt = new DateTime($result->created_at);
-                $createdAt->setTimeZone($this->timezone);
-
-                $dailyCounts[$createdAt->format('M jS, Y')] += 1;
-            }
-            
-            $dataLabel   = $resultSet['dates']['start']->format('M jS, Y') . ' - ' . $resultSet['dates']['end']->format('M jS, Y');
-            $datasets[] = [
-                'label'         => $dataLabel,
-                'data'          => array_values($dailyCounts),
-                'data_labels'   => array_keys($dailyCounts)
-            ];
-        }
-        
-        return $datasets;
-    }
-
-    public function dayDatasets()
-    {
-        $datasets = [];
-
-        //  Group items by their hour
-        foreach( $this->resultSets as $resultSet ){
-            $hourlyCounts  = [];
-            for($i=0;$i<24;$i++){
-                $hourlyCounts[str_pad($i,2,'0',STR_PAD_LEFT)] = 0;
-            }
-            
-            foreach( $resultSet['data'] as $result ){
-                $createdAt = new DateTime($result->created_at);
-                $createdAt->setTimeZone($this->timezone);
-
-                $hour                = $createdAt->format('H');
-                $hourlyCounts[$hour] += 1;
-            }
-
-            $dataLabel = $resultSet['dates']['start']->format('M d, Y');
-            $datasets[] = [
-                'label' => $dataLabel,
-                'data'  => array_values($hourlyCounts),
-            ];
-        }
-        
-        return $datasets;
-    }
-
-    public function yearDatasets()
-    {
-        $datasets = [];
-
-        //  Group items by month
-        foreach( $this->resultSets as $resultSet ){
-            $monthlyCounts = [];
-            $startDay      = clone $resultSet['dates']['start'];
-            for($i=0;$i<12;$i++){
-                $monthlyCounts[$startDay->format('M')] = 0;
-
-                $startDay->modify('+1 month');
-            }
-            
-            foreach( $resultSet['data'] as $result ){
-                $createdAt = new DateTime($result->created_at);
-                $createdAt->setTimeZone($this->timezone);
-
-                $monthlyCounts[$createdAt->format('M')] += 1;
-            }
-            
-            $dataLabel   = $resultSet['dates']['start']->format('Y');
-            $datasets[] = [
-                'label'         => $dataLabel,
-                'data'          => array_values($monthlyCounts),
-                'data_labels'   => array_keys($monthlyCounts)
-            ];
-        }
-        
-        return $datasets;
-    }
-
     /**
      * Get a dataset for a report that has a metric
      * 
@@ -505,6 +509,131 @@ class Report extends Model
 
             $datasets[] = $dataset;
         }
+
+        return $datasets;
+    }
+
+    public function dayRangeDatasets($days)
+    {
+        $datasets = [];
+        
+        foreach( $this->resultSets as $resultSet ){
+            $dailyCounts = [];
+            $startDay    = clone $resultSet['dates']['start'];
+            for($i=0;$i<$days;$i++){
+                $dailyCounts[$startDay->format('M jS, Y')] = 0;
+                $startDay->modify('+1 day');
+            }
+            
+            foreach( $resultSet['data'] as $result ){
+                $createdAt = new DateTime($result->created_at);
+                $createdAt->setTimeZone($this->timezone);
+
+                $dailyCounts[$createdAt->format('M jS, Y')] += 1;
+            }
+            
+            $dataLabel   = $resultSet['dates']['start']->format('M jS, Y') . ' - ' . $resultSet['dates']['end']->format('M jS, Y');
+            $datasets[] = [
+                'label'         => $dataLabel,
+                'data'          => array_values($dailyCounts),
+                'data_labels'   => array_keys($dailyCounts)
+            ];
+        }
+        
+        return $datasets;
+    }
+
+    public function dayDatasets()
+    {
+        $datasets = [];
+
+        //  Group items by their hour
+        foreach( $this->resultSets as $resultSet ){
+            $hourlyCounts  = [];
+            for($i=0;$i<24;$i++){
+                $hourlyCounts[str_pad($i,2,'0',STR_PAD_LEFT)] = 0;
+            }
+            
+            foreach( $resultSet['data'] as $result ){
+                $createdAt = new DateTime($result->created_at);
+                $createdAt->setTimeZone($this->timezone);
+
+                $hour                = $createdAt->format('H');
+                $hourlyCounts[$hour] += 1;
+            }
+
+            $dataLabel = $resultSet['dates']['start']->format('M d, Y');
+            $datasets[] = [
+                'label' => $dataLabel,
+                'data'  => array_values($hourlyCounts),
+            ];
+        }
+        
+        return $datasets;
+    }
+
+    public function yearDatasets()
+    {
+        $datasets = [];
+
+        //  Group items by month
+        foreach( $this->resultSets as $resultSet ){
+            $yearLabels    = [];
+            $monthlyCounts = [];
+            
+            //  Fill with all 12 months
+            $startDay  = clone $resultSet['dates']['start'];
+            for($i=0;$i<12;$i++){
+                $monthlyCounts[$startDay->format('M')] = 0;
+                $yearLabels[] = $startDay->format('Y');
+                $startDay->modify('+1 month');
+            }
+            
+            //  Group result counts by month
+            foreach( $resultSet['data'] as $result ){
+                $createdAt = new DateTime($result->created_at);
+                $createdAt->setTimeZone($this->timezone);
+
+                $monthlyCounts[$createdAt->format('M')] += 1;
+            }
+            
+            $dataLabel   = $resultSet['dates']['start']->format('Y');
+            $datasets[] = [
+                'label'         => $dataLabel,
+                'data'          => array_values($monthlyCounts),
+                'data_labels'   => $yearLabels
+            ];
+        }
+        
+        return $datasets;
+    }
+
+    public function allTimeDatasets()
+    {
+        $datasets      = [];
+        $allTimeCounts = [];
+        $labelData     = $this->allTimeLabels();
+
+        //  Fill counts with 0s
+        foreach($labelData['labels'] as $label){
+            $allTimeCounts[$label] = 0;
+        }
+
+        $resultSet = $this->resultSets[0];
+        foreach($labelData['labels'] as $label){
+            foreach( $resultSet['data'] as $result ){
+                $createdAt = new DateTime($result->created_at);
+                $createdAt->setTimeZone($this->timezone);
+                if( $createdAt->format($labelData['date_format']) === $label )
+                    $allTimeCounts[$createdAt->format($labelData['date_format'])]++;
+            }
+        }
+
+        $datasets[] = [
+            'label'         => $this->moduleLabel(),
+            'data'          => array_values($allTimeCounts),
+            'data_labels'   => array_fill(0, count($allTimeCounts), $this->moduleLabel())
+        ];
 
         return $datasets;
     }
@@ -640,6 +769,23 @@ class Report extends Model
     }
 
     /**
+     * Determine the time range for sutom dates
+     * 
+     */
+    public function getCustomDateRangeDays()
+    {
+        $dateRanges = $this->date_ranges;
+        if( ! count($dateRanges) )
+            return 0;
+        
+        $dateRange = explode(':', $dateRanges[0]);
+        $start     = new DateTime($dateRange[0]);
+        $end       = new DateTime($dateRange[1]);
+
+        return $start->diff($end)->days;
+    }
+
+    /**
      * Determine if an instance is associated with a metric
      * 
      */
@@ -658,11 +804,35 @@ class Report extends Model
     }
 
     /**
-     * Determine if a metric exists for a module
+     * Get a list of chart types that are available when a metric is provided
      * 
      */
-    static public function fieldExists($module, $field)
+    static public function metricChartTypes()
     {
-        return isset(self::$reportFields[$module]) && in_array($field, self::$reportFields[$module]);
+        return [
+            self::CHART_TYPE_BAR,
+            //self::CHART_TYPE_PIE,
+            //self::CHART_TYPE_DOUGHNUT,
+        ];
+    }
+
+    /**
+     * Get a list of all chart types
+     * 
+     */
+    static public function chartTypes()
+    {
+        return array_merge([
+            self::CHART_TYPE_LINE,
+        ], self::metricChartTypes());
+    }
+
+    /**
+     * Check if a chart type exists
+     * 
+     */
+    static public function chartTypeExists($chartType)
+    {
+        return in_array($chartType, self::chartTypes());
     }
 }

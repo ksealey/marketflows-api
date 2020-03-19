@@ -62,6 +62,12 @@ class ReportDateOffsetsRule implements Rule
                 return false;
             }
 
+            if( $offset > 999 ){
+                $this->message = $attribute . ' cannot contain values more than 999.';
+
+                return false;
+            }
+
             $foundOffsets[] = $offset;
         }
 
