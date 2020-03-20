@@ -12,6 +12,7 @@ use App\Rules\ReportCustomDateRangesRule;
 use DB;
 use Validator;
 use DateTime;
+use DateTimeZone;
 
 class ReportController extends Controller
 {
@@ -50,7 +51,7 @@ class ReportController extends Controller
             'module'        => ['bail', 'required', 'in:calls'],
             'metric'        => ['bail', 'nullable', new ReportMetricRule($request->module)],
             'chart_type'    => ['bail', 'in:' . implode(',', Report::metricChartTypes())],
-            'order'    => ['bail', 'in:min,max'],
+            'order'         => ['bail', 'in:asc,desc'],
             'date_unit'     => ['bail', 'required', 'in:YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS,CUSTOM,ALL_TIME'],
             'date_offsets'  => ['bail', 'required_if:date_unit,YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS', new ReportDateOffsetsRule()],
             'date_ranges'   => ['bail', 'required_if:date_unit,CUSTOM', new ReportCustomDateRangesRule()],
@@ -69,13 +70,13 @@ class ReportController extends Controller
             'module'        => $request->module,
             'metric'        => $request->metric ?: null,
             'chart_type'    => $request->metric ? ($request->chart_type ?: Report::CHART_TYPE_BAR) : null,
-            'order'    => $request->order ?: 'max',
+            'order'         => $request->order ?: 'asc',
             'date_unit'     => $request->date_unit,
             'date_offsets'  => json_encode($this->intArray($request->date_offsets)),
             'date_ranges'   => $request->date_ranges ? json_encode($this->dateRangeSort($this->stringArray($request->date_ranges))) : null,
         ]);
 
-        return response($report->withChart(), 201);
+        return response($report, 201);
     }
 
     /**
@@ -84,12 +85,7 @@ class ReportController extends Controller
      */
     public function read(Request $request, Company $company, Report $report)
     {
-        //
-        //  Fetch automations
-        //  ...  
-        //
-
-        return response($report->withChart());
+        return response($report);
     }
 
     /**
@@ -103,7 +99,7 @@ class ReportController extends Controller
             'module'        => ['bail', 'required_with:metric', 'in:calls'],
             'metric'        => ['bail', 'nullable', new ReportMetricRule($request->module)],
             'chart_type'    => ['bail', 'in:' . implode(',', Report::metricChartTypes())],
-            'order'    => ['bail', 'in:min,max'],
+            'order'         => ['bail', 'in:asc,desc'],
             'date_unit'     => ['bail', 'in:YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS,CUSTOM,ALL_TIME'],
             'date_offsets'  => ['bail', 'required_if:date_unit,YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS', new ReportDateOffsetsRule()],
             'date_ranges'   => ['bail', 'required_if:date_unit,CUSTOM', new ReportCustomDateRangesRule()],
@@ -144,7 +140,7 @@ class ReportController extends Controller
 
         $report->save();
 
-        return response($report->withChart(), 200);
+        return response($report, 200);
     }
 
     /**
@@ -167,6 +163,75 @@ class ReportController extends Controller
         $report->delete();
 
         return response([ 'message' => 'deleted' ]);
+    }
+
+    /**
+     * View a report's chart
+     * 
+     */
+    public function chart(Request $request, Company $company, Report $report)
+    {
+        $user = $request->user();
+
+        return response(
+            $report->chart(
+                new DateTimeZone($user->timezone)
+            )
+        );
+    }
+
+    /**
+     * View a report's results
+     * 
+     */
+    public function listResults(Request $request, Company $company, Report $report)
+    {
+        $rules = [
+            'page'      => 'required|numeric|min:1',
+            'limit'     => 'required|numeric|min:1,max:250',
+        ];
+
+        $validator = validator($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $page    = $request->page;
+        $limit   = $request->limit;
+        $user    = $request->user();
+
+        $resultCount = $report->resultCount($user->timezone);
+        $results     = $report->results(
+            $page, 
+            $limit,
+            $user->timezone
+        );
+
+        $nextPage = null;
+        if( $resultCount > ($page * $limit) )
+            $nextPage = $page + 1;
+        
+        return response([
+            'result_count' => $resultCount,
+            'results'      => $results,
+            'limit'        => $limit,
+            'page'         => $page,
+            'total_pages'  => ceil($resultCount / $limit),
+            'next_page'    => $nextPage
+        ]);
+    }
+
+    /**
+     * Export a report's results
+     * 
+     */
+    public function export(Request $request, Company $company, Report $report)
+    {
+        return response([
+            'export' => true
+        ]);
     }
 
     protected function intArray($items)

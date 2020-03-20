@@ -452,6 +452,18 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                 Route::delete('/{report}', 'Company\ReportController@delete')
                     ->middleware('can:delete,report')
                     ->name('delete-phone-number');
+
+                Route::get('/{report}/results', 'Company\ReportController@listResults')
+                    ->middleware('can:read,report')
+                    ->name('read-report-results');
+
+                Route::get('/{report}/chart', 'Company\ReportController@chart')
+                    ->middleware('can:read,report')
+                    ->name('read-report-chart');
+
+                Route::get('/{report}/export', 'Company\ReportController@export')
+                    ->middleware('can:read,report')
+                    ->name('export-report');
             }); 
 
             /*
