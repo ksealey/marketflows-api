@@ -16,6 +16,7 @@ class Report extends Model
         'name',
         'module',
         'metric',
+        'conditions',
         'order',
         'date_unit',
         'date_offsets',
@@ -39,16 +40,16 @@ class Report extends Model
 
     static protected $metrics = [
         'calls' => [
-            'calls.source'      => 'Source',
-            'calls.medium'      => 'Medium',
-            'calls.campaign'    => 'Campaign',
-            'calls.content'     => 'Content',
-            'calls.category'    => 'Category',
-            'calls.sub_category'=> 'Sub-Category',
-            'calls.caller_city' => 'Caller City',
-            'calls.caller_state'=> 'Caller State',
-            'calls.caller_zip'  => 'Caller Zip',
-            'phone_number_name' => 'Dialed Phone Number'
+            'calls.source'          => 'Source',
+            'calls.medium'          => 'Medium',
+            'calls.campaign'        => 'Campaign',
+            'calls.content'         => 'Content',
+            'calls.category'        => 'Category',
+            'calls.sub_category'    => 'Sub-Category',
+            'calls.caller_city'     => 'Caller City',
+            'calls.caller_state'    => 'Caller State',
+            'calls.caller_zip'      => 'Caller Zip',
+            'phone_numbers.name'    => 'Dialed Phone Number'
         ]
     ];
 
@@ -61,14 +62,14 @@ class Report extends Model
                 'calls.category',
                 'calls.sub_category',
                 'calls.phone_number_pool_id',
-                'phone_number_pools.name AS phone_number_pool_name',
+                'phone_number_pools.name',
                 'calls.phone_number_id',
                 'calls.dialed_number',
                 'calls.dialed_city',
                 'calls.dialed_state',
                 'calls.dialed_zip',
                 'calls.dialed_country',
-                'phone_numbers.name AS phone_number_name',
+                'phone_numbers.name',
                 'calls.caller_first_name',
                 'calls.caller_last_name',
                 'calls.caller_country_code',
@@ -117,14 +118,17 @@ class Report extends Model
 
     public function getDateOffsetsAttribute($dateOffsets)
     {
-        return json_decode($dateOffsets);
+        return json_decode($dateOffsets) ?: [];
     }
 
     public function getDateRangesAttribute($dateRanges)
     {
-        if( ! $dateRanges ) return null;
+        return json_decode($dateRanges) ?: [];
+    }
 
-        return json_decode($dateRanges);
+    public function getConditionsAttribute($conditions)
+    {
+        return json_decode($conditions) ?: [];
     }
 
 
@@ -423,13 +427,18 @@ class Report extends Model
         if( $this->module == 'calls' ){
             $query = DB::table('calls')
                         ->select([DB::raw('COUNT(*) AS total'), $this->metric])
+                        ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
+                        ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
                         ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $earliestDateRange['start']->format('Y-m-d H:i:s.u'))
                         ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $latestDateRange['end']->format('Y-m-d H:i:s.u'))
-                        ->where('calls.company_id', $this->company_id)
-                        ->groupBy($this->metric)
-                        ->orderBy('total', $this->order);
+                        ->where('calls.company_id', $this->company_id);
+            
+            $query   = $this->applyConditions($query);
+            $results = $query->groupBy($this->metric)
+                             ->orderBy('total', $this->order)
+                             ->get();
        
-            $metricList = array_column($query->get()->toArray(), $metricKey);
+            $metricList = array_column($results->toArray(), $metricKey);
             $datasets  = [];
             foreach( $metricList as $idx => $metricValue ){
                 if( $idx >= 10 )
@@ -439,13 +448,17 @@ class Report extends Model
             }
             
             foreach( $dateRanges as $idx => $dateRange ){
-                $results = DB::table('calls')
+                $query = DB::table('calls')
                             ->select([DB::raw('COUNT(*) AS total'), $this->metric])
+                            ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
+                            ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $dateRange['start']->format('Y-m-d H:i:s.u'))
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $dateRange['end']->format('Y-m-d H:i:s.u'))
-                            ->where('calls.company_id', $this->company_id)
-                            ->groupBy($this->metric)
-                            ->get();
+                            ->where('calls.company_id', $this->company_id);
+
+                $query   = $this->applyConditions($query);
+                $results = $query->groupBy($this->metric)
+                                 ->get();
                 
                 $resultMap = [];
                 foreach( $results as $result ){
@@ -497,14 +510,16 @@ class Report extends Model
                     $startDay->modify('+1 day');
                 }
 
-                $results = DB::table('calls')
+                $query = DB::table('calls')
                             ->select([DB::raw('COUNT(*) AS total'), DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "'),'%Y-%m-%d') AS create_date") ])
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $dateRange['start']->format('Y-m-d H:i:s.u'))
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $dateRange['end']->format('Y-m-d H:i:s.u'))
-                            ->where('calls.company_id', $this->company_id)
-                            ->groupBy('create_date')
-                            ->orderBy('total', $this->order)
-                            ->get();
+                            ->where('calls.company_id', $this->company_id);
+
+                $query   = $this->applyConditions($query);
+                $results = $query->groupBy('create_date')
+                                 ->orderBy('total', $this->order)
+                                 ->get();
                 foreach( $results as $result ){
                     $dailyCounts[$result->create_date] = $result->total ?: 0;
                 }
@@ -535,14 +550,16 @@ class Report extends Model
             $dateRanges = $this->dateRanges($timezone);
 
             foreach( $dateRanges as $idx => $dateRange ){
-                $results = DB::table('calls')
+                $query = DB::table('calls')
                             ->select([DB::raw('COUNT(*) AS total'), DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "'),'%H') AS create_date") ])
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $dateRange['start']->format('Y-m-d H:i:s.u'))
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $dateRange['end']->format('Y-m-d H:i:s.u'))
-                            ->where('calls.company_id', $this->company_id)
-                            ->groupBy('create_date')
-                            ->orderBy('total', $this->order)
-                            ->get();
+                            ->where('calls.company_id', $this->company_id);
+
+                $query   = $this->applyConditions($query);
+                $results =  $query->groupBy('create_date')
+                                  ->orderBy('total', $this->order)
+                                  ->get();
 
                  //  Group items by their hour
                 $hourlyCounts  = [];
@@ -573,14 +590,16 @@ class Report extends Model
             $dateRanges = $this->dateRanges($timezone);
 
             foreach( $dateRanges as $idx => $dateRange ){
-                $results = DB::table('calls')
+                $query = DB::table('calls')
                             ->select([DB::raw('COUNT(*) AS total'), DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "'),'%Y-%m') AS create_date") ])
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $dateRange['start']->format('Y-m-d H:i:s.u'))
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $dateRange['end']->format('Y-m-d H:i:s.u'))
-                            ->where('calls.company_id', $this->company_id)
-                            ->groupBy('create_date')
-                            ->orderBy('total', $this->order)
-                            ->get();
+                            ->where('calls.company_id', $this->company_id);
+
+                $query   = $this->applyConditions($query);
+                $results = $query->groupBy('create_date')
+                                 ->orderBy('total', $this->order)
+                                 ->get();
 
                  //  Group items by their hour
                 $monthlyCounts  = [];
@@ -615,12 +634,14 @@ class Report extends Model
         $dateFormat = str_replace(['M','Y','y'], ['%b','%Y','%y'], $labelData['date_format']);
 
         if( $this->module === 'calls' ){
-            $results = DB::table('calls')
+            $query = DB::table('calls')
                         ->select([DB::raw('COUNT(*) AS total'), DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "'),'" . $dateFormat . "') AS create_date") ])
                         ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $dateRanges[0]['start']->format('Y-m-d H:i:s.u'))
                         ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $dateRanges[0]['end']->format('Y-m-d H:i:s.u'))
-                        ->where('calls.company_id', $this->company_id)
-                        ->groupBy('create_date')
+                        ->where('calls.company_id', $this->company_id);
+
+            $query   = $this->applyConditions($query);
+            $results = $query->groupBy('create_date')
                         ->orderBy('total', $this->order)
                         ->get();
         
@@ -641,6 +662,41 @@ class Report extends Model
         }
 
         return $datasets;
+    }
+
+    /**
+     * Apply a report's conditions to a query
+     * 
+     */
+    protected function applyConditions($query)
+    {
+        foreach( $this->conditions as $condition ){
+            if( $condition->operator === 'equals' ){
+                $query->where($condition->field, '=', $condition->value);
+            }
+            
+            if( $condition->operator === 'not_equals' ){
+                $query->where($condition->field, '!=', $condition->value);
+            }
+
+            if( $condition->operator === 'like' ){
+                $query->where($condition->field, 'like', '%' . $condition->value . '%' );
+            }
+
+            if( $condition->operator === 'not_like' ){
+                $query->where($condition->field, 'not like', '%' . $condition->value . '%' );
+            }
+
+            if( $condition->operator === 'in' ){
+                $query->whereIn($condition->field, explode('|', $condition->value));
+            }
+
+            if( $condition->operator === 'not_in' ){
+                $query->whereNotIn($condition->field, explode('|', $condition->value));
+            }
+        }
+
+        return $query;
     }
 
     /**
@@ -807,6 +863,15 @@ class Report extends Model
     static public function metricExists($module, $metric)
     {
         return isset(self::$metrics[$module]) && in_array($metric, array_keys(self::$metrics[$module]));
+    }
+
+     /**
+     * Determine if an exposed field exists for a module
+     * 
+     */
+    static public function exposedFieldExists($module, $field)
+    {
+        return isset(self::$exposedFields[$module]) && in_array($field, self::$exposedFields[$module]['fields']);
     }
 
     /**

@@ -20,6 +20,7 @@ class CreateCompanyReportsTable extends Migration
             $table->string('module', 64);
             $table->string('metric', 32)->nullable();
             $table->string('chart_type', 32)->nullable();
+            $table->string('conditions', 2048)->nullable();
             $table->string('order', 8)->nullable();
             $table->string('date_unit', 32);
             $table->string('date_offsets', 128)->nullable();

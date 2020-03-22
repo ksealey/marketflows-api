@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Company\Report;
+use App\Rules\Company\ReportConditionsRule;
 use App\Rules\Company\ReportMetricRule;
 use App\Rules\ReportDateOffsetsRule;
 use App\Rules\ReportCustomDateRangesRule;
@@ -51,10 +52,12 @@ class ReportController extends Controller
             'module'        => ['bail', 'required', 'in:calls'],
             'metric'        => ['bail', 'nullable', new ReportMetricRule($request->module)],
             'chart_type'    => ['bail', 'in:' . implode(',', Report::metricChartTypes())],
+            'conditions'    => ['bail', 'nullable', new ReportConditionsRule($request->module)],
+            'conditions'    => ['bail', 'nullable', 'json', new ReportConditionsRule($request->module)],
             'order'         => ['bail', 'in:asc,desc'],
             'date_unit'     => ['bail', 'required', 'in:YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS,CUSTOM,ALL_TIME'],
-            'date_offsets'  => ['bail', 'required_if:date_unit,YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS', new ReportDateOffsetsRule()],
-            'date_ranges'   => ['bail', 'required_if:date_unit,CUSTOM', new ReportCustomDateRangesRule()],
+            'date_offsets'  => ['bail', 'required_if:date_unit,YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS', 'json', new ReportDateOffsetsRule()],
+            'date_ranges'   => ['bail', 'required_if:date_unit,CUSTOM', 'json', new ReportCustomDateRangesRule()],
         ];
 
         $validator = validator($request->input(), $rules);
@@ -70,10 +73,11 @@ class ReportController extends Controller
             'module'        => $request->module,
             'metric'        => $request->metric ?: null,
             'chart_type'    => $request->metric ? ($request->chart_type ?: Report::CHART_TYPE_BAR) : null,
+            'conditions'    => $request->conditions ? $request->conditions : null,
             'order'         => $request->order ?: 'asc',
             'date_unit'     => $request->date_unit,
-            'date_offsets'  => json_encode($this->intArray($request->date_offsets)),
-            'date_ranges'   => $request->date_ranges ? json_encode($this->dateRangeSort($this->stringArray($request->date_ranges))) : null,
+            'date_offsets'  => $request->date_unit === 'CUSTOM' || $request->date_unit === 'ALL_TIME' ? null : $request->date_offsets,
+            'date_ranges'   => $request->date_unit === 'CUSTOM' ? $request->date_ranges : null,
         ]);
 
         return response($report, 201);
@@ -99,10 +103,11 @@ class ReportController extends Controller
             'module'        => ['bail', 'required_with:metric', 'in:calls'],
             'metric'        => ['bail', 'nullable', new ReportMetricRule($request->module)],
             'chart_type'    => ['bail', 'in:' . implode(',', Report::metricChartTypes())],
+            'conditions'    => ['bail', 'nullable', 'json', new ReportConditionsRule($request->module)],
             'order'         => ['bail', 'in:asc,desc'],
             'date_unit'     => ['bail', 'in:YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS,CUSTOM,ALL_TIME'],
-            'date_offsets'  => ['bail', 'required_if:date_unit,YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS', new ReportDateOffsetsRule()],
-            'date_ranges'   => ['bail', 'required_if:date_unit,CUSTOM', new ReportCustomDateRangesRule()],
+            'date_offsets'  => ['bail', 'nullable', 'required_if:date_unit,YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS', 'json', new ReportDateOffsetsRule()],
+            'date_ranges'   => ['bail', 'nullable', 'required_if:date_unit,CUSTOM', 'json', new ReportCustomDateRangesRule()],
         ];
 
         $validator = validator($request->input(), $rules);
@@ -129,14 +134,23 @@ class ReportController extends Controller
         if( $request->has('order') )
             $report->order = $request->order;
 
-        if( $request->has('date_unit') )
+        if( $request->has('date_unit') ){
             $report->date_unit = $request->date_unit;
-
-        if( $request->has('date_offsets') )
-            $report->date_offsets = json_encode($this->intArray($request->date_offsets));
-
-        if( $request->has('date_ranges') )
-            $report->date_ranges = json_encode($this->dateRangeSort($this->stringArray($request->date_ranges)));
+            if( $report->date_unit === 'CUSTOM' ){
+                $report->date_offsets = null;
+                if( $request->has('date_ranges') ){
+                    $report->date_ranges = $request->date_ranges;
+                }
+            }elseif( $report->date_unit === 'ALL_TIME' ){
+                $report->date_offsets = null;
+                $report->date_ranges  = null;
+            }else{
+                $report->date_ranges = null;
+                if( $request->has('date_offsets') ){
+                    $report->date_offsets = $request->date_offsets;
+                }
+            }
+        }
 
         $report->save();
 

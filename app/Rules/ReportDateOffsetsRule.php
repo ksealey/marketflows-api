@@ -27,16 +27,20 @@ class ReportDateOffsetsRule implements Rule
      */
     public function passes($attribute, $value)
     {
-        $dateRangeOffsets = explode(',', $value);
+        $dateRangeOffsets = json_decode($value);
+
+        if( ! is_array($dateRangeOffsets) ){
+            $this->message = $attribute . ' must be provided as a json array.';
+            return false;
+        }
+
         if( ! count($dateRangeOffsets) ){
             $this->message = $attribute . ' must have at least one offset.';
-
             return false;
         }
 
         if( count($dateRangeOffsets) > 4 ){
             $this->message = $attribute . ' cannot have more than 4 offsets.';
-
             return false;
         }
 
@@ -56,8 +60,8 @@ class ReportDateOffsetsRule implements Rule
                 return false;
             }
 
-            if( $offset < 0 ){
-                $this->message = $attribute . ' cannot contain values less than 0.';
+            if( $offset < 1 ){
+                $this->message = $attribute . ' cannot contain values less than 1.';
 
                 return false;
             }
