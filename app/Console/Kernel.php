@@ -27,6 +27,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('clear:password-resets')
                  ->hourly()
                  ->onOneServer();
+
+        //  Send automated reports
+        $schedule->command('report:start-jobs')
+                 ->everyMinute()
+                 ->onOneServer();
     }
 
     /**

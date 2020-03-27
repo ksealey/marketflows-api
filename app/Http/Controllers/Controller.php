@@ -77,7 +77,6 @@ class Controller extends BaseController
                              ->get();
 
         $nextPage = null;
-
         if( $resultCount > ($page * $limit) )
             $nextPage = $page + 1;
 

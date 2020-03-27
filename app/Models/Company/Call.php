@@ -30,13 +30,6 @@ class Call extends Model
         'caller_zip',
         'caller_country',
         
-        'dialed_country_code',
-        'dialed_number',
-        'dialed_city',
-        'dialed_state',
-        'dialed_zip',
-        'dialed_country',
-        
         'source',
         'medium',
         'content',

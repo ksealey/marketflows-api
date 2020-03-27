@@ -175,7 +175,6 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-
     ],
 
     /*
@@ -227,6 +226,9 @@ return [
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
         'AWS' => Aws\Laravel\AwsFacade::class,
-
+        'Xlsx' => PhpOffice\PhpSpreadsheet\Writer\Xlsx::class,
+        'Spreadsheet' => PhpOffice\PhpSpreadsheet\Spreadsheet::class,
+        'Worksheet' => \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::class,
+        'SpreadsheetSettings' => \PhpOffice\PhpSpreadsheet\Settings::class
     ],
 ];

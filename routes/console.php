@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use \App\Models\Company\Call;
+use \App\Models\Company\ReportAutomation;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,11 +23,19 @@ Artisan::command('clear:password-resets', function () {
     \App\Models\Auth\PasswordReset::where('expires_at', '<', date('Y-m-d H:i:s'))->delete();
 })->describe('Clear expired password resets');
 
-Artisan::command('r', function(){
-    for( $i = 0; $i < 100000; $i++){
+Artisan::command('report:start-jobs', function(){
+    $now         = now();
+    $automations = ReportAutomation::where('TIME(schedules->"$[*]"->time)', '<=', now('H:i:s'))
+                                    ->where(function($query){
+                                        $query->where('last_run_at', '<', $now->format('Y-m-d'));
+                                    });
+});
+
+Artisan::command('fill-calls', function(){
+    for( $i = 0; $i < 10000; $i++){
         Call::create([
             'account_id'                => 1,
-            'company_id'                => 5,
+            'company_id'                => 1,
             'phone_number_id'           => 1,
             'toll_free'                 => 1,
             'category'                  => 'OFFLINE',
@@ -37,7 +46,7 @@ Artisan::command('r', function(){
 
             'caller_id_enabled'         => true,
             'recording_enabled'         => true,
-            'forwarded_to'              => '8889994345',
+            'forwarded_to'              => '8135573005',
             
             'external_id'               => str_random(40),
             'direction'                 => 'Inbound',
@@ -52,19 +61,13 @@ Artisan::command('r', function(){
             'caller_zip'                => '409483',
             'caller_country'            => 'US',
             
-            'dialed_country_code'       => 1,
-            'dialed_number'             => '8889993030', // Remove
-            'dialed_city'               => 'Tampa',
-            'dialed_state'              => 'FL',
-            'dialed_zip'                => '33610',
-            'dialed_country'            => 'US',
         
             'source'                    => 'Facebook',
-            'medium'                    => 'Medium...',
-            'content'                   => 'Content...',
-            'campaign'                  => 'Campaign...',
-            'created_at'                => now()->format('Y-m-d H:i:s.u'),
-            'updated_at'                => now()->format('Y-m-d H:i:s.u')
+            'medium'                    => 'Medium',
+            'content'                   => 'Content',
+            'campaign'                  => 'Campaign',
+            'created_at'                => now()->subtract('1 day')->format('Y-m-d H:i:s.u'),
+            'updated_at'                => now()->subtract('1 day')->format('Y-m-d H:i:s.u')
         ]);
     }
 });

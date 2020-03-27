@@ -176,13 +176,6 @@ class IncomingCallController extends Controller
             'caller_zip'                => $request->FromZip ? substr($request->FromZip, 0, 64) : null,
             'caller_country'            => $request->FromCountry ? substr($request->FromCountry, 0, 64) : null,
             
-            'dialed_country_code'       => PhoneNumber::countryCode($request->To) ?: null,
-            'dialed_number'             => PhoneNumber::number($request->To),
-            'dialed_city'               => $request->ToCity ? substr($request->ToCity, 0, 64) : null,
-            'dialed_state'              => $request->ToState ? substr($request->ToState, 0, 64) : null,
-            'dialed_zip'                => $request->ToZip ? substr($request->ToZip, 0, 64) : null,
-            'dialed_country'            => $request->ToCountry ? substr($request->ToCountry, 0, 64) : null,
-        
             'source'                    => $source,
             'medium'                    => $medium,
             'content'                   => $content,

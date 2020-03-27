@@ -3,16 +3,24 @@
 namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
+use League\Flysystem\Adapter\Local;
+use League\Flysystem\Filesystem;
+use Cache\Adapter\Filesystem\FilesystemCachePool;
+use Cache\Bridge\SimpleCache\SimpleCacheBridge;
+use App\Models\Company\ReportAutomation;
+use Spreadsheet;
+use Xlsx;
+use Worksheet;
+use SpreadsheetSettings;
 use DB;
 use DateTime;
 use DateTimeZone;
 
 class Report extends Model
 {
-    protected $table = 'company_reports';
-
     protected $fillable = [
         'company_id',
+        'user_id',
         'name',
         'module',
         'metric',
@@ -21,13 +29,17 @@ class Report extends Model
         'date_unit',
         'date_offsets',
         'date_ranges',
-        'chart_type',
+        'export_separate_tabs',
         'is_system_report'
     ];
 
     protected $appends = [
         'link',
         'kind'
+    ];
+
+    protected $casts = [
+        'export_separate_tabs' => 'int',
     ];
 
     protected $timezone;
@@ -56,19 +68,15 @@ class Report extends Model
     static protected $exposedFields = [
         'calls' => [
             'fields' => [
+                'calls.id',
                 'calls.company_id',
-                'companies.name as company_name',
+                'companies.name',
                 'calls.toll_free',
                 'calls.category',
                 'calls.sub_category',
                 'calls.phone_number_pool_id',
                 'phone_number_pools.name',
                 'calls.phone_number_id',
-                'calls.dialed_number',
-                'calls.dialed_city',
-                'calls.dialed_state',
-                'calls.dialed_zip',
-                'calls.dialed_country',
                 'phone_numbers.name',
                 'calls.caller_first_name',
                 'calls.caller_last_name',
@@ -82,14 +90,50 @@ class Report extends Model
                 'calls.medium',
                 'calls.content',
                 'calls.campaign',
-                'calls.recording_enabled',
-                'calls.caller_id_enabled',
                 'calls.forwarded_to',
-                'calls.id',
                 'calls.direction',
                 'calls.status',
                 'calls.duration',
+                'calls.recording_enabled',
+                'calls.caller_id_enabled',
                 'calls.created_at'
+            ],
+            'aliases' => [
+                'phone_numbers.name'        => 'phone_number_name',
+                'phone_number_pools.name'   => 'phone_number_pool_name',
+                'companies.name'            => 'company_name'
+            ],
+            //  IMORTANT: Keep in order for export headers
+            'headers' => [
+                'id'                        => 'Call Id',
+                'company_id'                => 'Company Id',
+                'company_name'              => 'Company',
+                'toll_free'                 => 'Toll-Free',
+                'category'                  => 'Category',
+                'sub_category'              => 'Sub-Category',
+                'phone_number_pool_id'      => 'Keyword Tracking Pool Id',
+                'phone_number_pool_name'    => 'Keyword Tracking Pool',
+                'phone_number_id'           => 'Tracking Number Id',
+                'phone_number_name'         => 'Tracking Number',
+                'caller_first_name'         => 'Caller First Name',
+                'caller_last_name'          => 'Caller Last Name',
+                'caller_country_code'       => 'Caller Country Code',
+                'caller_number'             => 'Caller Number',
+                'caller_city'               => 'Caller City',
+                'caller_state'              => 'Caller State',
+                'caller_zip'                => 'Caller Zip',
+                'caller_country'            => 'Caller Country',
+                'source'                    => 'Caller Source',
+                'medium'                    => 'Caller Medium',
+                'content'                   => 'Caller Content',
+                'campaign'                  => 'Caller Campaign',
+                'forwarded_to'              => 'Forwarded To',
+                'direction'                 => 'Direction',
+                'status'                    => 'Status',
+                'duration'                  => 'Duration',
+                'recording_enabled'         => 'Recording Enabled',
+                'caller_id_enabled'         => 'Caller Id Enabled',
+                'created_at'                => 'Call Time'
             ]
         ]
     ];
@@ -131,6 +175,11 @@ class Report extends Model
         return json_decode($conditions) ?: [];
     }
 
+    public function getAutomationsAttribute()
+    {
+        return ReportAutomation::where('report_id', $this->id)->get();
+    }
+
 
     /**
      * Fetch a chart
@@ -152,9 +201,147 @@ class Report extends Model
             'module_label' => $moduleLabel,
             'metric_label' => $metricLabel,
             'range_label'  => $rangeLabel,
-            'type'         => $this->hasMetric() ? $this->chart_type : self::CHART_TYPE_LINE,
+            'type'         => $this->hasMetric() ? self::CHART_TYPE_BAR : self::CHART_TYPE_LINE,
             'step_size'    => 10,
         ];
+    }
+
+    /**
+     * Return a stream of exported data
+     * 
+     */
+    public function export(DateTimeZone $timezone)
+    {
+        
+        /*
+        $filesystemAdapter = new Local(storage_path());
+        $filesystem        = new Filesystem($filesystemAdapter);
+        $pool              = new FilesystemCachePool($filesystem);
+        $simpleCache       = new SimpleCacheBridge($pool);
+        SpreadsheetSettings::setCache($simpleCache);
+        */
+        $fileName    = preg_replace('/[^0-9A-z]+/', '-', $this->name) . '.xlsx';
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getProperties()
+                    ->setCreator(env('APP_NAME'))
+                    ->setLastModifiedBy('System')
+                    ->setTitle($this->name)
+                    ->setSubject($this->name);
+                    
+        $moduleLabel = $this->moduleLabel();
+        $dataLabels  = $this->dataLabels($timezone);
+        $datasets    = $this->datasets($timezone);
+
+        if( $this->hasMetric() ){
+            //  Export counts with metric
+            $metricLabel = $this->metricLabel();
+
+            if( $this->export_separate_tabs ){
+                //  With separate tabs
+                foreach( $dataLabels as $idx => $tabName ){
+                    if( ! $idx ) // Remove initial worksheet
+                        $spreadsheet->removeSheetByIndex($idx);
+
+                    $sheet = new Worksheet($spreadsheet, $tabName);
+                    $spreadsheet->addSheet($sheet, $idx);
+
+                    //  Set headers
+                    $sheet->setCellValue('A1', 'Metric: ' . $metricLabel);
+                    $sheet->setCellValue('B1', 'Total ' . $moduleLabel);
+
+                    //  Set data
+                    $row = 2;
+                    foreach( $datasets as $dataset ){
+                        $sheet->setCellValue('A' . $row, $dataset['label']);
+                        $sheet->setCellValue('B' . $row, $dataset['data'][$idx]);
+
+                        ++$row;
+                    }
+
+                    //  Auto-resize columns
+                    $sheet->getColumnDimension('A')->setAutoSize(true);
+                    $sheet->getColumnDimension('B')->setAutoSize(true);
+                }
+            }else{
+                //  On same tab
+                $sheet = $spreadsheet->getActiveSheet();
+                $row   = 0;
+                foreach( $dataLabels as $idx => $datasetName ){
+                    ++$row;
+                    $sheet->setCellValue('A' . $row, $datasetName);
+                    $sheet->getStyle("A$row:B$row")->getFont()->setBold(true);
+                    $sheet->mergeCells("A$row:B$row");
+
+                    ++$row;
+                    $sheet->setCellValue('A' . $row, 'Metric: ' . $metricLabel);
+                    $sheet->setCellValue('B' . $row, 'Total ' . $moduleLabel);
+                    
+                    foreach( $datasets as $dataset ){
+                        ++$row;
+                        $sheet->setCellValue('A' . $row, $dataset['label']);
+                        $sheet->setCellValue('B' . $row, $dataset['data'][$idx]); 
+                    }
+                }
+                $sheet->getColumnDimension('A')->setAutoSize(true);
+                $sheet->getColumnDimension('B')->setAutoSize(true);
+            }
+        }else{
+            //  Export counts without metrics
+            $rangeLabel  = $this->rangeLabel();
+            if( $this->export_separate_tabs ){
+                //  ... on separate tabs
+                foreach( $datasets as $idx => $dataset ){
+                    if( ! $idx ) // Remove initial worksheet
+                        $spreadsheet->removeSheetByIndex($idx);
+                        
+                    $sheet = new Worksheet($spreadsheet, $dataset['label']);
+                    $spreadsheet->addSheet($sheet, $idx);
+
+                    $sheet->setCellValue('A1', $rangeLabel);
+                    $sheet->setCellValue('B1', 'Total ' . $moduleLabel);
+
+                    $row = 2;
+                    foreach( $dataLabels as $dlIdx => $dataLabel ){
+                        $sheet->setCellValue('A' . $row, $dataLabel);
+                        $sheet->setCellValue('B' . $row, $dataset['data'][$dlIdx]);
+                        ++$row;
+                    }
+                    //  Auto-resize columns
+                    $sheet->getColumnDimension('A')->setAutoSize(true);
+                    $sheet->getColumnDimension('B')->setAutoSize(true);
+                } 
+            }else{
+                //  ... on same tab
+                $sheet = $spreadsheet->getActiveSheet();
+                $row   = 0;
+                foreach( $datasets as $idx => $dataset ){
+                    ++$row;
+                    $sheet->setCellValue('A' . $row, $dataset['label']);
+                    $sheet->getStyle("A$row:B$row")->getFont()->setBold(true);
+                    $sheet->mergeCells("A$row:B$row");
+
+                    ++$row;
+                    $sheet->setCellValue('A' . $row, $rangeLabel);
+                    $sheet->setCellValue('B' . $row, 'Total ' . $moduleLabel);
+
+                    foreach( $dataLabels as $dlIdx => $dataLabel ){
+                        ++$row;
+                        $sheet->setCellValue('A' . $row, $dataLabel);
+                        $sheet->setCellValue('B' . $row, $dataset['data'][$dlIdx]);
+                    }
+                } 
+                //  Auto-resize columns
+                $sheet->getColumnDimension('A')->setAutoSize(true);
+                $sheet->getColumnDimension('B')->setAutoSize(true);
+            }
+        }
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="'.$fileName.'"');
+        header('Cache-Control: max-age=0');
+
+        $writer   = new Xlsx($spreadsheet);
+        $writer->save('php://output');
     }
 
     /**
@@ -180,7 +367,7 @@ class Report extends Model
             $result = DB::table($this->module)
                             ->select('created_at')
                             ->where('company_id', $this->company_id)
-                            ->orderBy('created_at', 'ASC')
+                            ->orderBy('id', 'ASC')
                             ->limit(1)
                             ->get();
 
@@ -249,6 +436,7 @@ class Report extends Model
 
         switch( $this->date_unit ){
             case 'DAYS':
+                return 'Time';
             case 'YEARS':
             case 'ALL_TIME':
                 return null;
@@ -343,7 +531,7 @@ class Report extends Model
         ];
     }
 
-    public function allTimeLabels($timezone)
+    public function allTimeLabels(DateTimeZone $timezone)
     {
         $dateRanges = $this->dateRanges($timezone);
         $dateFormat = null;
@@ -377,7 +565,7 @@ class Report extends Model
      * Datasets
      * 
      */
-    public function datasets($timezone)
+    public function datasets(DateTimeZone $timezone)
     {
         if( $this->hasMetric() )
             return $this->metricDatasets($timezone);
@@ -434,9 +622,10 @@ class Report extends Model
                         ->where('calls.company_id', $this->company_id);
             
             $query   = $this->applyConditions($query);
-            $results = $query->groupBy($this->metric)
-                             ->orderBy('total', $this->order)
-                             ->get();
+            $query->groupBy($this->metric)
+                  ->orderBy('total', $this->order);
+
+            $results = $query->get();
        
             $metricList = array_column($results->toArray(), $metricKey);
             $datasets  = [];
@@ -494,7 +683,7 @@ class Report extends Model
         return $returnSet;
     }
 
-    public function dayRangeDatasets($days, $timezone)
+    public function dayRangeDatasets($days, DateTimeZone $timezone)
     {
         $datasets = [];
         
@@ -542,7 +731,7 @@ class Report extends Model
         return $datasets;
     }
 
-    public function dayDatasets($timezone)
+    public function dayDatasets(DateTimeZone $timezone)
     {
         $datasets   = [];
 
@@ -582,7 +771,7 @@ class Report extends Model
         return $datasets;
     }
 
-    public function yearDatasets($timezone)
+    public function yearDatasets(DateTimeZone $timezone)
     {
         $datasets = [];
 
@@ -624,7 +813,7 @@ class Report extends Model
         return $datasets;
     }
 
-    public function allTimeDatasets($timezone)
+    public function allTimeDatasets(DateTimeZone $timezone)
     {
         $datasets      = [];
         $allTimeCounts = [];
@@ -662,6 +851,116 @@ class Report extends Model
         }
 
         return $datasets;
+    }
+
+    public function recordCount(DateTimeZone $timezone)
+    {
+        $dateRanges = $this->dateRanges($timezone);
+
+        $query = DB::table($this->module)
+                    ->select($this->queryFields())
+                    ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
+                    ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
+                    ->leftJoin('companies', 'companies.id', 'calls.company_id')
+                    ->where('calls.company_id', $this->company_id);
+
+        $query->where(function($query) use($dateRanges, $timezone){
+            foreach( $dateRanges as $idx => $dateRange ){ 
+                $where = function($q)use($dateRange, $timezone){
+                    $q->whereBetween(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), [
+                        $dateRange['start']->format('Y-m-d H:i:s.u'),
+                        $dateRange['end']->format('Y-m-d H:i:s.u')
+                    ]);
+                };
+
+                if( $idx === 0 ){
+                    $query->where($where);
+                }else{
+                    $query->orWhere($where);
+                }
+            }
+        });
+       
+        $query = $this->applyConditions($query);
+
+        return $query->count();
+    }
+    /**
+     * Run a report, returning results
+     * 
+     */
+    public function run(DateTimeZone $timezone, int $limit = 0, int $start = 0)
+    {
+        $dateRanges = $this->dateRanges($timezone);
+        $results    = [];
+
+        $query = DB::table($this->module)
+                    ->select($this->queryFields())
+                    ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
+                    ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
+                    ->leftJoin('companies', 'companies.id', 'calls.company_id')
+                    ->where('calls.company_id', $this->company_id);
+
+        $query->where(function($query) use($dateRanges, $timezone){
+            foreach( $dateRanges as $idx => $dateRange ){ 
+                $where = function($q)use($dateRange, $timezone){
+                    $q->whereBetween(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), [
+                        $dateRange['start']->format('Y-m-d H:i:s.u'),
+                        $dateRange['end']->format('Y-m-d H:i:s.u')
+                    ]);
+                };
+
+                if( $idx === 0 ){
+                    $query->where($where);
+                }else{
+                    $query->orWhere($where);
+                }
+            }
+        });
+       
+        $query       = $this->applyConditions($query);
+        $resultCount = $query->count();
+
+        $query->offset($start)
+              ->limit($limit);
+
+        $records = $query->orderBy('id', 'asc')
+                         ->get();
+
+        return [
+            'results'              => $records,
+            'result_count'         => $resultCount
+        ];
+    }
+
+    public function runAll(DateTimeZone $timezone)
+    {
+        $dateRanges = $this->dateRanges($timezone);
+        $results    = [];
+
+        foreach( $dateRanges as $idx => $dateRange ){ 
+            $query = DB::table($this->module)
+                        ->select($this->queryFields())
+                        ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
+                        ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
+                        ->leftJoin('companies', 'companies.id', 'calls.company_id')
+                        ->where('calls.company_id', $this->company_id)
+                        ->whereBetween(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), [
+                            $dateRange['start']->format('Y-m-d H:i:s.u'),
+                            $dateRange['end']->format('Y-m-d H:i:s.u')
+                        ]);
+
+            $query   = $this->applyConditions($query);
+            $records = $query->orderBy('id', 'asc')
+                             ->get();
+
+            $results[] = [
+                'results'    => $records,
+                'date_range' => $dateRange
+            ];
+        }
+
+        return $results;
     }
 
     /**
@@ -857,6 +1156,25 @@ class Report extends Model
     }
 
     /**
+     * Build query field list based on the module
+     * 
+     */
+    public function queryFields()
+    {
+        $exposed = self::$exposedFields[$this->module];
+        $fields  = $exposed['fields'];
+        $aliases = $exposed['aliases'];
+
+        $fields  = array_map(function($field) use($aliases){
+            if( !empty($aliases[$field]) )
+                return $field . ' AS ' . $aliases[$field];
+            return $field;
+        }, $fields);
+
+        return $fields;
+    }
+
+    /**
      * Determine if a metric exists for a module
      * 
      */
@@ -874,36 +1192,8 @@ class Report extends Model
         return isset(self::$exposedFields[$module]) && in_array($field, self::$exposedFields[$module]['fields']);
     }
 
-    /**
-     * Get a list of chart types that are available when a metric is provided
-     * 
-     */
-    static public function metricChartTypes()
+    static public function headers($module)
     {
-        return [
-            self::CHART_TYPE_BAR,
-            //self::CHART_TYPE_PIE,
-            //self::CHART_TYPE_DOUGHNUT,
-        ];
-    }
-
-    /**
-     * Get a list of all chart types
-     * 
-     */
-    static public function chartTypes()
-    {
-        return array_merge([
-            self::CHART_TYPE_LINE,
-        ], self::metricChartTypes());
-    }
-
-    /**
-     * Check if a chart type exists
-     * 
-     */
-    static public function chartTypeExists($chartType)
-    {
-        return in_array($chartType, self::chartTypes());
+        return self::$exposedFields[$module]['headers'];
     }
 }

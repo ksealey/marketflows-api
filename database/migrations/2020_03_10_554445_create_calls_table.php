@@ -37,13 +37,6 @@ class CreateCallsTable extends Migration
             $table->string('caller_state', 64)->index()->nullable();
             $table->string('caller_zip', 16)->index()->nullable();
             $table->string('caller_country', 64)->nullable();
-            
-            $table->string('dialed_country_code', 8)->nullable();
-            $table->string('dialed_number', 16)->index();
-            $table->string('dialed_city', 64)->index()->nullable();
-            $table->string('dialed_state', 64)->index()->nullable();
-            $table->string('dialed_zip', 16)->index()->nullable();
-            $table->string('dialed_country', 64)->nullable();
 
             $table->string('source', 128)->nullable();
             $table->string('medium', 128)->nullable();

@@ -82,13 +82,13 @@ class ReportConditionsRule implements Rule
 
             //  make sure field is valid
             if( ! Report::exposedFieldExists($this->module, $condition->field) ){
-                $this->message = 'Field ' . $field . ' invalid at index ' . $idx . '.';
+                $this->message = 'Field ' . $condition->field. ' invalid at index ' . $idx . '.';
                 return false;
             }
 
             //  make sure operator is valid
             if( ! in_array($condition->operator, $this->operators) ){
-                $this->message = 'Operator ' . $operator . ' invalid at index ' . $idx . ' - Operators ARE case-sensitive.';
+                $this->message = 'Operator ' . $condition->operator . ' invalid at index ' . $idx . ' - Operators ARE case-sensitive.';
                 return false;
             }
         }
