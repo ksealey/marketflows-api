@@ -38,4 +38,9 @@ class CompanyPolicy
         return $this->userCanViewCompany($user, request()->company->id) 
             && $user->canDoAction('companies.delete');
     }
+
+    public function bulkDelete(User $user)
+    {
+        return $user->canDoAction('companies.delete');
+    }
 }

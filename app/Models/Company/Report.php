@@ -65,6 +65,46 @@ class Report extends Model
         ]
     ];
 
+    static protected $operators = [
+        'equals',
+        'not_equals',
+        'like',
+        'not_like',
+        'in',
+        'not_in',
+        'empty',
+        'not_empty'
+    ];
+
+    static protected $conditionFields = [
+        'calls' => [
+            'fields' => [
+                'calls.source',
+                'calls.medium',
+                'calls.campaign',
+                'calls.content',
+                'calls.category',
+                'calls.sub_category',
+                'calls.caller_city',
+                'calls.caller_state',
+                'calls.caller_zip',
+                'phone_numbers.name',
+            ],
+            'headers' => [
+                'source'            => 'Source',
+                'medium'            => 'Medium',
+                'campaign'          => 'Campaign',
+                'content'           => 'Content',
+                'category'          => 'Category',
+                'sub_category'      => 'Sub-Category',
+                'caller_city'       => 'Caller City',
+                'caller_state'      => 'Caller State',
+                'caller_zip'        => 'Caller Zip',
+                'phone_number_name' => 'Dialed Phone Number'
+            ]
+        ]
+    ];
+
     static protected $exposedFields = [
         'calls' => [
             'fields' => [
@@ -970,6 +1010,20 @@ class Report extends Model
     protected function applyConditions($query)
     {
         foreach( $this->conditions as $condition ){
+            if( $condition->operator === 'empty' ){
+                $query->where(function($q){
+                    $q->whereNull($condition->field)
+                      ->orWhere($condition->field, '=', '');
+                });
+            }
+
+            if( $condition->operator === 'not_empty' ){
+                $query->where(function($q){
+                    $q->whereNotNull($condition->field)
+                      ->where($condition->field, '!=', '');
+                });
+            }
+
             if( $condition->operator === 'equals' ){
                 $query->where($condition->field, '=', $condition->value);
             }
@@ -1190,6 +1244,16 @@ class Report extends Model
     static public function exposedFieldExists($module, $field)
     {
         return isset(self::$exposedFields[$module]) && in_array($field, self::$exposedFields[$module]['fields']);
+    }
+
+    static public function conditionFieldExists($module, $field)
+    {
+        return isset(self::$conditionFields[$module]) && in_array($field, self::$conditionFields[$module]['fields']);
+    }
+
+    static public function operators()
+    {
+        return self::$operators;
     }
 
     static public function headers($module)

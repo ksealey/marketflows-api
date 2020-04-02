@@ -9,16 +9,6 @@ class ReportConditionsRule implements Rule
 {
     protected $module;
     protected $message = '';
-    protected $operators = [
-        'equals',
-        'not_equals',
-        'like',
-        'not_like',
-        'in',
-        'not_in',
-        'matches',
-        'does_not_match'
-    ];
 
     /**
      * Create a new rule instance.
@@ -45,23 +35,19 @@ class ReportConditionsRule implements Rule
             return false;
         }
 
-        if( ! count($conditions) ){
-            $this->message = 'At least 1 condition is required.';
-            return false;
-        }
-
         if( count($conditions) > 10 ){
             $this->message = 'A maximum of 10 conditions are allowed.';
             return false;
         }
 
         foreach( $conditions as $idx => $condition ){
-            //
-            //  field:operator:value
-            //
-            
             if( empty($condition->field) ){
                 $this->message = 'Field required for condition at index ' . $idx . '.';
+                return false;
+            }
+
+            if( Report::conditionFieldExists($this->module, $condition->field) ){
+                $this->message = 'Operator ' . $condition->operator . ' invalid at index ' . $idx . ' - Operators ARE case-sensitive.';
                 return false;
             }
 
@@ -70,11 +56,18 @@ class ReportConditionsRule implements Rule
                 return false;
             }
 
-            if( empty($condition->value)){
-                $this->message = 'Value required for condition at index ' . $idx . '.';
+            if( ! in_array($condition->operator, Report::operators()) ){
+                $this->message = 'Operator ' . $condition->operator . ' invalid at index ' . $idx . ' - Operators ARE case-sensitive.';
                 return false;
             }
 
+            if( $condition->operator !== 'empty' && $condition->operator !== 'not_empty' ){
+                if( empty($condition->value)){
+                    $this->message = 'Value required for condition at index ' . $idx . '.';
+                    return false;
+                }
+            }
+           
             if( strlen($condition->value) > 128 ){
                 $this->message = 'Value cannot exceed 128 characters for condition at index ' . $idx . '.';
                 return false;
@@ -86,11 +79,7 @@ class ReportConditionsRule implements Rule
                 return false;
             }
 
-            //  make sure operator is valid
-            if( ! in_array($condition->operator, $this->operators) ){
-                $this->message = 'Operator ' . $condition->operator . ' invalid at index ' . $idx . ' - Operators ARE case-sensitive.';
-                return false;
-            }
+            
         }
 
         return true;

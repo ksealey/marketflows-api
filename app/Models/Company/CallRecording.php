@@ -4,6 +4,7 @@ namespace App\Models\Company;
 
 use Illuminate\Http\File;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Traits\HandlesStorage;
 use \GuzzleHttp\Client;
 use Twilio\Rest\Client as TwilioClient;
@@ -13,7 +14,7 @@ use Exception;
 
 class CallRecording extends Model
 {
-    use HandlesStorage;
+    use HandlesStorage, SoftDeletes;
 
     protected $fillable = [
         'call_id',

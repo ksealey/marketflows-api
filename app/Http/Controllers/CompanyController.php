@@ -7,8 +7,20 @@ use Illuminate\Http\Response;
 use \App\Models\Company;
 use \App\Models\User;
 use \App\Models\UserCompany;
+use \App\Models\Company\Report;
+use \App\Models\Company\ReportAutomation;
+use \App\Models\Company\AudioClip;
+use \App\Models\Company\PhoneNumberConfig;
+use \App\Models\Company\Call;
+use \App\Models\Company\CallRecording;
+use \App\Models\BlockedPhoneNumber;
+use \App\Models\BlockedPhoneNumber\BlockedCall;
+
+
+
 use \App\Models\Company\PhoneNumberPool;
 use \App\Rules\CountryRule;
+use \App\Rules\BulkCompanyRule;
 use Validator;
 use Exception;
 use DB;
@@ -25,7 +37,7 @@ class CompanyController extends Controller
     public function list(Request $request)
     {
         $rules = [ 
-            'order_by'  => 'in:companies.name,companies.industry,companies.created_at,companies.updated_at' 
+            'order_by'  => 'in:companies.name,companies.industry,companies.country,companies.created_at,companies.updated_at' 
         ];
 
         $searchFields = [
@@ -180,6 +192,55 @@ class CompanyController extends Controller
 
         return response([
             'message' => 'deleted'
+        ]);
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $validator = validator($request->input(), [
+            'ids' => ['required','json', new BulkCompanyRule($request->user())]
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $results = DB::table('companies')
+                        ->select(['companies.id', DB::raw('COUNT(phone_numbers.id) as phone_number_count')])
+                        ->leftJoin('phone_numbers', 'phone_numbers.company_id', 'companies.id')
+                        ->whereIn('companies.id', json_decode($request->ids))
+                        ->groupBy(['companies.id'])
+                        ->get();
+
+        $errors  = [];
+        $deleted = [];
+        foreach( $results as $result ){
+            if( $result->phone_number_count ){
+                $errors[] = 'Company with id ' . $result->id . ' has attached phone numbers. Please detach and try again.';
+                continue;
+            }
+            $deleted[] = $result->id;
+        }
+
+        if( count($deleted) ){
+            Company::whereIn('id', $deleted)->delete();
+            UserCompany::whereIn('company_id', $deleted)->delete();
+            Report::whereIn('company_id', $deleted)->delete();
+            ReportAutomation::whereIn('report_id', function($q) use($deleted){
+                $q->select('id')
+                    ->from('reports')
+                    ->whereIn('reports.company_id', $deleted);
+            })->delete();
+            AudioClip::whereIn('company_id', $deleted)->delete();
+            BlockedPhoneNumber::whereIn('company_id', $deleted)->delete();
+            PhoneNumberConfig::whereIn('company_id', $deleted)->delete();
+        }
+
+        return response([
+            'errors'  => $errors,
+            'deleted' => $deleted
         ]);
     }
 }

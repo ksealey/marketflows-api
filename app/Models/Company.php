@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\Campaign;
+use App\Models\Company\PhoneNumber;
 
 class Company extends Model
 {

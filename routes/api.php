@@ -158,6 +158,16 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
             ->name('change-user-password');
     });
 
+    Route::prefix('widgets')->group(function(){
+        Route::get('/top-call-sources', 'WidgetController@topCallSources')
+             ->middleware('can:read,\App\Models\Account')
+             ->name('widget-top-call-sources');
+
+        Route::get('/total-calls', 'WidgetController@totalCalls')
+             ->middleware('can:read,\App\Models\Account')
+             ->name('widget-total-calls');
+    });
+
     /*
     |----------------------------------------
     | Handle payment methods
@@ -249,6 +259,10 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
     |--------------------------------
     */
     Route::prefix('companies')->group(function(){
+        Route::delete('/', 'CompanyController@bulkDelete')
+              ->middleware('can:bulkDelete,\App\Models\Company')
+              ->name('bulk-delete-companies');
+
         Route::get('/', 'CompanyController@list')
             ->middleware('can:list,\App\Models\Company')
             ->name('list-companies');

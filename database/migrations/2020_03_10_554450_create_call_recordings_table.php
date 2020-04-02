@@ -21,6 +21,8 @@ class CreateCallRecordingsTable extends Migration
             $table->integer('file_size')->unsigned(); 
             $table->string('path', 128);
             $table->timestamps();
+            $table->softDeletes();
+
             $table->foreign('call_id')->references('id')->on('calls');
         });
     }

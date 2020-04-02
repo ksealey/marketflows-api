@@ -53,6 +53,9 @@ class CreateCallsTable extends Migration
             
             $table->dateTime('created_at', 6);
             $table->dateTime('updated_at', 6);
+            
+            $table->softDeletes();
+
         
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');

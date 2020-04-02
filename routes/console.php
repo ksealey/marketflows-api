@@ -32,9 +32,9 @@ Artisan::command('report:start-jobs', function(){
 });
 
 Artisan::command('fill-calls', function(){
-    for( $i = 0; $i < 10000; $i++){
+    for( $i = 0; $i < 1000; $i++){
         Call::create([
-            'account_id'                => 1,
+            'account_id'                => 2,
             'company_id'                => 1,
             'phone_number_id'           => 1,
             'toll_free'                 => 1,
