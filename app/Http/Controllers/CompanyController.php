@@ -36,16 +36,17 @@ class CompanyController extends Controller
      */
     public function list(Request $request)
     {
-        $rules = [ 
-            'order_by'  => 'in:companies.name,companies.industry,companies.country,companies.created_at,companies.updated_at' 
-        ];
-
-        $searchFields = [
+        $fields = [
+            'companies.id',
             'companies.name',
-            'companies.industry'
+            'companies.industry',
+            'companies.country',
+            'companies.created_at',
+            'companies.updated_at'
         ];
 
-        $user  = $request->user();
+        $user = $request->user();
+
         $query = DB::table('companies')
                     ->select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
                     ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id')
@@ -60,8 +61,8 @@ class CompanyController extends Controller
         return parent::results(
             $request,
             $query,
-            $rules,
-            $searchFields,
+            [],
+            $fields,
             'companies.created_at'
         );
     }
@@ -195,6 +196,10 @@ class CompanyController extends Controller
         ]);
     }
 
+    /**
+     * Bulk Delete
+     * 
+     */
     public function bulkDelete(Request $request)
     {
         $validator = validator($request->input(), [

@@ -12,6 +12,7 @@ use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
 use App\Rules\DateRangeRule;
 use App\Rules\SearchFieldsRule;
+use App\Rules\ConditionsRule;
 use DateTime;
 
 use Validator;
@@ -20,20 +21,19 @@ class Controller extends BaseController
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HandlesDateFilters;
 
-    public function results(Request $request, $query, $additionalRules = [], $searchFields = [], $rangeField = 'created_at', $orderDir = 'DESC')
+    public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'DESC')
     {
         $rules = array_merge([
             'limit'         => 'numeric',
             'page'          => 'numeric',
             'order_by'       => 'in:' . $rangeField,
             'order_dir'      => 'in:asc,desc',
-            'search'         => 'max:255',
-            'search_fields'  => [new SearchFieldsRule($searchFields)],
+            'conditions'     => ['json', new ConditionsRule($fields)],
             'date_range'     => ['json', new DateRangeRule()],
+            'order_by'       => 'in:' . implode(',', $fields)
         ], $additionalRules);
 
         $validator = Validator::make($request->input(), $rules);
-
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -56,16 +56,43 @@ class Controller extends BaseController
         $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'))
               ->where($rangeField, '<', $endDate->format('Y-m-d H:i:s'));
 
-        if( $request->search ){
-            $searchFields = $request->search_fields ? explode(',', $request->search_fields) : $searchFields;
-            $searchFields = array_unique($searchFields);
-
-            $query->where(function($query) use($request, $searchFields){
-                foreach( $searchFields as $i => $searchField ){
-                    if( $i === 0 )
-                        $query->where($searchField, 'like', '%' . $request->search . '%');
-                    else
-                        $query->orWhere($searchField, 'like', '%' . $request->search . '%');
+        if( $request->conditions ){
+            $conditions = json_decode($request->conditions);
+            $query->where(function($query) use($conditions){
+                foreach( $conditions as $condition ){
+                    if( $condition->operator === 'EQUALS' ){
+                        if( ! empty($condition->inputs[0]) )
+                            $query->where($condition->field, '=', $condition->inputs[0]);
+                    }elseif( $condition->operator === 'NOT_EQUALS' ){
+                        if( ! empty($condition->inputs[0]) )
+                            $query->where($condition->field, '!=', $condition->inputs[0]);
+                    }elseif( $condition->operator === 'IN' ){
+                        $hasValue = false;
+                        foreach($condition->inputs as $input){
+                            if( $input )
+                                $hasValue = true;
+                        }
+                        if( $hasValue )
+                           $query->whereIn($condition->field, $condition->inputs);
+                    }elseif( $condition->operator === 'NOT_IN' ){
+                        $hasValue = false;
+                        foreach($condition->inputs as $input){
+                            if( $input ) 
+                                $hasValue = true;
+                        }
+                        if( $hasValue )
+                            $query->whereNotIn($condition->field, $condition->inputs);
+                    }elseif( $condition->operator === 'EMPTY' ){
+                        $query->where(function($query) use($condition){
+                            $query->whereNull($condition->field)
+                                  ->orWhere($condition->field, '=', '');
+                        });
+                    }elseif( $condition->operator === 'NOT_EMPTY' ){
+                        $query->where(function($query) use($condition){
+                            $query->whereNotNull($condition->field)
+                                  ->orWhere($condition->field, '!=', '');
+                        });
+                    }
                 }
             });
         }
