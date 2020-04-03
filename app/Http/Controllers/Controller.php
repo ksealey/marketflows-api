@@ -8,18 +8,16 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
 use App\Rules\DateRangeRule;
-use App\Rules\SearchFieldsRule;
 use App\Rules\ConditionsRule;
 use DateTime;
-
+use DateTimeZone;
 use Validator;
 
 class Controller extends BaseController
 {
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HandlesDateFilters;
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
     public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'DESC')
     {
@@ -45,16 +43,26 @@ class Controller extends BaseController
         $page       = intval($request->page)  ?: 1;
         $orderBy    = $request->order_by  ?: $rangeField;
         $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
-        $search     = $request->search;
 
-        $user = $request->user();
+        if( $request->date_range ){
+            $dateRange = json_decode($request->date_range);
 
+            $user   = $request->user();
+            $userTZ = new DateTimeZone($user->timezone);
+            $utcTZ  = new DateTimeZone('UTC');
 
-        $startDate = $this->startDate($request->date_range, $user->timezone);
-        $endDate   = $this->endDate($request->date_range, $user->timezone); 
+            if( ! empty($dateRange->start ) ){
+                $startDate = new DateTime($dateRange->start . ' 00:00:00', $userTZ);
+                $startDate->setTimeZone($utcTZ);
+                $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'));
+            }
 
-        $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'))
-              ->where($rangeField, '<', $endDate->format('Y-m-d H:i:s'));
+            if( ! empty($dateRange->end ) ){
+                $endDate = new DateTime($dateRange->end . ' 23:59:59', $userTZ);
+                $endDate->setTimeZone($utcTZ);
+                $query->where($rangeField, '<=', $endDate->format('Y-m-d H:i:s'));
+            }
+        }
 
         if( $request->conditions ){
             $conditions = json_decode($request->conditions);
