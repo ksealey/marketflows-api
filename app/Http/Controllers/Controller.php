@@ -9,7 +9,6 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Models\User;
-use App\Rules\DateRangeRule;
 use App\Rules\ConditionsRule;
 use DateTime;
 use DateTimeZone;
@@ -27,7 +26,8 @@ class Controller extends BaseController
             'order_by'       => 'in:' . $rangeField,
             'order_dir'      => 'in:asc,desc',
             'conditions'     => ['json', new ConditionsRule($fields)],
-            'date_range'     => ['json', new DateRangeRule()],
+            'start_date'     => 'nullable|date_format:Y-m-d',
+            'end_date'       => 'nullable|date_format:Y-m-d',
             'order_by'       => 'in:' . implode(',', $fields)
         ], $additionalRules);
 
@@ -44,21 +44,19 @@ class Controller extends BaseController
         $orderBy    = $request->order_by  ?: $rangeField;
         $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
 
-        if( $request->date_range ){
-            $dateRange = json_decode($request->date_range);
-
+        if( $request->start_date || $request->end_date){
             $user   = $request->user();
             $userTZ = new DateTimeZone($user->timezone);
             $utcTZ  = new DateTimeZone('UTC');
 
-            if( ! empty($dateRange->start ) ){
-                $startDate = new DateTime($dateRange->start . ' 00:00:00', $userTZ);
+            if( $request->start_date ){
+                $startDate = new DateTime($request->start_date . ' 00:00:00', $userTZ);
                 $startDate->setTimeZone($utcTZ);
                 $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'));
             }
 
-            if( ! empty($dateRange->end ) ){
-                $endDate = new DateTime($dateRange->end . ' 23:59:59', $userTZ);
+            if( $request->end_date  ){
+                $endDate = new DateTime($request->end_date. ' 23:59:59', $userTZ);
                 $endDate->setTimeZone($utcTZ);
                 $query->where($rangeField, '<=', $endDate->format('Y-m-d H:i:s'));
             }
