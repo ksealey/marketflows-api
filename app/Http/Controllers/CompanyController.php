@@ -57,7 +57,7 @@ class CompanyController extends Controller
                                 ->where('user_id', $user->id);
                     })
                     ->whereNull('companies.deleted_at');
-
+        
         return parent::results(
             $request,
             $query,
@@ -213,17 +213,18 @@ class CompanyController extends Controller
         }
 
         $results = DB::table('companies')
-                        ->select(['companies.id', DB::raw('COUNT(phone_numbers.id) as phone_number_count')])
+                        ->select(['companies.id', 'companies.name', DB::raw('COUNT(phone_numbers.id) as phone_number_count')])
                         ->leftJoin('phone_numbers', 'phone_numbers.company_id', 'companies.id')
                         ->whereIn('companies.id', json_decode($request->ids))
-                        ->groupBy(['companies.id'])
+                        ->groupBy('companies.id', 'companies.name')
                         ->get();
 
-        $errors  = [];
-        $deleted = [];
+        $warnings = [];
+        $errors   = [];
+        $deleted  = [];
         foreach( $results as $result ){
             if( $result->phone_number_count ){
-                $errors[] = 'Company with id ' . $result->id . ' has attached phone numbers. Please detach and try again.';
+                $warnings[] = 'Company "' . $result->name . '" has attached phone numbers. Please detach and try again.';
                 continue;
             }
             $deleted[] = $result->id;
@@ -244,8 +245,33 @@ class CompanyController extends Controller
         }
 
         return response([
-            'errors'  => $errors,
-            'deleted' => $deleted
+            'errors'   => $errors,
+            'warnings' => $warnings,
+            'deleted'  => $deleted
         ]);
+    }
+
+    /**
+     * Export results
+     * 
+     */
+    public function export(Request $request)
+    {
+        $fields = [
+            'companies.id',
+            'companies.name',
+            'companies.industry',
+            'companies.country',
+            'companies.created_at',
+            'companies.updated_at'
+        ];
+        
+        return parent::exportResults(
+            Company::class,
+            $request,
+            [],
+            $fields,
+            'companies.created_at'
+        );
     }
 }

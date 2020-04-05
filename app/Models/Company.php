@@ -4,11 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Company\PhoneNumber;
+use \App\Contracts\Exportable;
+use \App\Traits\PerformsExport;
+use \App\Models\Company\PhoneNumber;
+use DB;
 
-class Company extends Model
+class Company extends Model implements Exportable
 {
-    use SoftDeletes;
+    use SoftDeletes, PerformsExport;
 
     protected $table = 'companies'; 
 
@@ -32,6 +35,30 @@ class Company extends Model
         'link',
         'kind'
     ];
+
+    static public $exports = [
+        'id'        => 'Id',
+        'name'      => 'Name',
+        'industry'  => 'Industry',
+        'country'   => 'Country',
+        'created_at'=> 'Created'
+    ];
+
+    static public $exportFileName = 'Companies';
+
+    static public function exportQuery($user, array $input)
+    {
+        return DB::table('companies')
+                    ->select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
+                    ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id')
+                    ->where('companies.account_id', $user->account_id)
+                    ->whereIn('companies.id', function($query) use($user){
+                        $query->select('company_id')
+                                ->from('user_companies')
+                                ->where('user_id', $user->id);
+                    })
+                    ->whereNull('companies.deleted_at');
+    }
 
     public function getLinkAttribute()
     {

@@ -25,8 +25,7 @@ class AccountBalanceLow extends Mailable
     public function __construct(Account $account, User $user)
     {
         $this->account = $account;
-
-        $this->user = $user;
+        $this->user    = $user;
     }
 
     /**

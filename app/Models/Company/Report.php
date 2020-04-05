@@ -3,11 +3,11 @@
 namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Company\ReportAutomation;
 use League\Flysystem\Adapter\Local;
 use League\Flysystem\Filesystem;
 use Cache\Adapter\Filesystem\FilesystemCachePool;
 use Cache\Bridge\SimpleCache\SimpleCacheBridge;
-use App\Models\Company\ReportAutomation;
 use Spreadsheet;
 use Xlsx;
 use Worksheet;

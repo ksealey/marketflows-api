@@ -32,6 +32,7 @@ class CreateUsersTable extends Migration
             $table->integer('login_attempts')->unsigned()->default(0);
             $table->dateTime('email_alerts_enabled_at')->nullable();
             $table->dateTime('sms_alerts_enabled_at')->nullable();
+            $table->dateTime('last_heartbeat_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('account_id')->references('id')->on('accounts');

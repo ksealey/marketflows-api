@@ -258,11 +258,8 @@ class Account extends Model
             if( ! $alert )
                 continue;
 
-            if( $user->receivesEmailAlerts() )
-                $user->email(new PrimaryPaymentMethodFailed());
-
-            if( $user->receivesSMSAlerts() )
-                $user->sms($message);
+            $user->email(new PrimaryPaymentMethodFailed());
+            $user->sms($message);
         }
 
         //  Try additional payment methods, starting with the newest first
@@ -298,11 +295,8 @@ class Account extends Model
             if( ! $alert )
                 continue;
 
-            if( $user->receivesEmailAlerts() )
-                $user->email(new AutoReloadFailed());
-
-            if( $user->receivesSMSAlerts() )
-                $user->sms($message);
+            $user->email(new AutoReloadFailed());
+            $user->sms($message);
         }
     }
 
@@ -325,11 +319,8 @@ class Account extends Model
             if( ! $alert )
                 continue;
 
-            if( $user->receivesEmailAlerts() )
-                $user->email(new AccountBalanceLow());
-
-            if( $user->receivesSMSAlerts() )
-                $user->sms($message);
+            $user->email(new AccountBalanceLow());
+            $user->sms($message);
         }
     }
 

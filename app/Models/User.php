@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\EmailVerification;
 use App\Models\Company;
 use Mail;
+use DateTime;
 
 class User extends Authenticatable
 {
@@ -46,7 +47,8 @@ class User extends Authenticatable
         'last_login_at',
         'disabled_until',
         'login_attempts',
-        'deleted_at'
+        'deleted_at',
+        'last_heartbeat_at'
     ];
 
     /**
@@ -122,31 +124,16 @@ class User extends Authenticatable
     }
 
     /**
-     * Determine if a user receives email alerts
-     * 
-     */
-    public function receivesEmailAlerts()
-    {
-        return $this->email_alerts_enabled_at;
-    }
-
-    /**
-     * Determine if a user receives sms alerts
-     * 
-     */
-    public function receivesSMSAlerts()
-    {
-        return $this->phone_verified_at && $this->sms_alerts_enabled_at;
-    }
-
-    /**
      * Send mail to this user
      * 
      */
     public function email($mail)
     {
+        if( ! $this->email_alerts_enabled_at )
+            return;
+            
         Mail::to($this->email)
-             ->send($mail);
+            ->send($mail);
     }
 
     /**
@@ -155,6 +142,22 @@ class User extends Authenticatable
      */
     public function sms($message)
     {
-        //  Send an SMS... 
+        if( ! $this->phone_verified_at || ! $this->sms_alerts_enabled_at )
+            return; 
+    }
+
+    /**
+     * Determine if a user is online
+     * 
+     */
+    public function isOnline()
+    {
+        //  If user has not had a hearbeat in 5 minutes, they are offline
+        $fiveMinutesAgo = new DateTime();
+        $fiveMinutesAgo->modify('-5 minutes');
+
+        $lastHeartbeat  = new DateTime($this->last_heartbeat_at);
+        
+        return $lastHeartbeat->format('U') >= $fiveMinutesAgo->format('U');
     }
 }

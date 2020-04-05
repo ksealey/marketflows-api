@@ -10,19 +10,21 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Rules\ConditionsRule;
+use App\Traits\AppliesConditions;
+use App\Jobs\ExportResultsJob;
 use DateTime;
 use DateTimeZone;
 use Validator;
 
 class Controller extends BaseController
 {
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, AppliesConditions;
 
-    public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'DESC')
+    public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc')
     {
         $rules = array_merge([
-            'limit'         => 'numeric',
-            'page'          => 'numeric',
+            'limit'         => 'required|numeric|min:1|max:250',
+            'page'          => 'required|numeric|min:1|max:250',
             'order_by'       => 'in:' . $rangeField,
             'order_dir'      => 'in:asc,desc',
             'conditions'     => ['json', new ConditionsRule($fields)],
@@ -38,9 +40,6 @@ class Controller extends BaseController
             ], 400);
         }
 
-        $limit      = intval($request->limit) ?: 250;
-        $limit      = $limit > 250 ? 250 : $limit;
-        $page       = intval($request->page)  ?: 1;
         $orderBy    = $request->order_by  ?: $rangeField;
         $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
 
@@ -63,46 +62,12 @@ class Controller extends BaseController
         }
 
         if( $request->conditions ){
-            $conditions = json_decode($request->conditions);
-            $query->where(function($query) use($conditions){
-                foreach( $conditions as $condition ){
-                    if( $condition->operator === 'EQUALS' ){
-                        if( ! empty($condition->inputs[0]) )
-                            $query->where($condition->field, '=', $condition->inputs[0]);
-                    }elseif( $condition->operator === 'NOT_EQUALS' ){
-                        if( ! empty($condition->inputs[0]) )
-                            $query->where($condition->field, '!=', $condition->inputs[0]);
-                    }elseif( $condition->operator === 'IN' ){
-                        $hasValue = false;
-                        foreach($condition->inputs as $input){
-                            if( $input )
-                                $hasValue = true;
-                        }
-                        if( $hasValue )
-                           $query->whereIn($condition->field, $condition->inputs);
-                    }elseif( $condition->operator === 'NOT_IN' ){
-                        $hasValue = false;
-                        foreach($condition->inputs as $input){
-                            if( $input ) 
-                                $hasValue = true;
-                        }
-                        if( $hasValue )
-                            $query->whereNotIn($condition->field, $condition->inputs);
-                    }elseif( $condition->operator === 'EMPTY' ){
-                        $query->where(function($query) use($condition){
-                            $query->whereNull($condition->field)
-                                  ->orWhere($condition->field, '=', '');
-                        });
-                    }elseif( $condition->operator === 'NOT_EMPTY' ){
-                        $query->where(function($query) use($condition){
-                            $query->whereNotNull($condition->field)
-                                  ->orWhere($condition->field, '!=', '');
-                        });
-                    }
-                }
-            });
+            $query = $this->applyConditions($query,  json_decode($request->conditions));
         }
-       
+
+        $page  = intval($request->page); 
+        $limit = intval($request->limit);
+
         $resultCount = $query->count();
         $records     = $query->offset(( $page - 1 ) * $limit)
                              ->limit($limit)
@@ -121,5 +86,87 @@ class Controller extends BaseController
             'total_pages'          => ceil($resultCount / $limit),
             'next_page'            => $nextPage
         ]);
+    }
+
+    /**
+     * Export Data
+     * 
+     */
+    public function exportResults($model, Request $request, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc')
+    {
+        $rules = array_merge([
+            'limit'         => 'nullable|numeric|min:1|max:250',
+            'page'          => 'nullable|numeric|min:1',
+            'order_by'       => 'in:' . $rangeField,
+            'order_dir'      => 'in:asc,desc',
+            'conditions'     => ['json', new ConditionsRule($fields)],
+            'start_date'     => 'nullable|date_format:Y-m-d',
+            'end_date'       => 'nullable|date_format:Y-m-d',
+            'order_by'       => 'in:' . implode(',', $fields)
+        ], $additionalRules);
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $limit      = intval($request->limit) >= 0 ? $request->limit : 0;
+        $page       = intval($request->page)  >= 0 ? $request->page : 1;
+        $orderBy    = $request->order_by  ?: $rangeField;
+        $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
+
+        $input =  array_merge($request->input(), [
+            'order_by'    => $orderBy,
+            'order_dir'   => $orderDir,
+            'range_field' => $rangeField
+        ]);
+
+        if( ! $limit ){
+            //  Create export job and end
+            //  ...
+            ExportResultsJob::dispatch(
+                $model,
+                $request->user(),
+                $input
+            );
+
+            return response([
+                'message' => 'Queued'
+            ]);
+        }
+
+        $query = $model::exportQuery($request->user(), $input);
+        
+        if( $request->start_date || $request->end_date){
+            $user   = $request->user();
+            $userTZ = new DateTimeZone($user->timezone);
+            $utcTZ  = new DateTimeZone('UTC');
+
+            if( $request->start_date ){
+                $startDate = new DateTime($request->start_date . ' 00:00:00', $userTZ);
+                $startDate->setTimeZone($utcTZ);
+                $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'));
+            }
+
+            if( $request->end_date  ){
+                $endDate = new DateTime($request->end_date. ' 23:59:59', $userTZ);
+                $endDate->setTimeZone($utcTZ);
+                $query->where($rangeField, '<=', $endDate->format('Y-m-d H:i:s'));
+            }
+        }
+
+        if( $request->conditions )
+            $query = $this->applyConditions($query,  json_decode($request->conditions));
+
+        $query->orderBy($orderBy, $orderDir);
+
+          
+        $records = $query->offset(( $page - 1 ) * $limit)
+                         ->limit($limit)
+                         ->get();
+
+        $model::onExport($records);
     }
 }

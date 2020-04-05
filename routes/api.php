@@ -65,6 +65,14 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
             return response($user);
         })->name('me');
 
+        Route::post('/heartbeat', function(Request $request){
+            $user = $request->user();
+            $user->last_heartbeat_at = now();
+            $user->save();
+
+            return response(['message' => 'I love you too.']);
+        });
+
         /*
         |----------------------------------------
         | Handle alerts
@@ -270,6 +278,10 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
         Route::post('/', 'CompanyController@create')
              ->middleware('can:create,\App\Models\Company')
              ->name('create-company');
+
+        Route::get('/export', 'CompanyController@export')
+             ->middleware('can:list,\App\Models\Company')
+             ->name('export-companies');  
 
         Route::get('/{company}', 'CompanyController@read')
              ->middleware('can:read,company')
