@@ -12,6 +12,8 @@ use \App\Traits\AppliesConditions;
 use \App\Traits\HandlesStorage;
 use \App\Models\Alert;
 use Storage;
+use DateTime;
+use DateTimeZone;
 
 class ExportResultsJob implements ShouldQueue
 {
@@ -41,6 +43,7 @@ class ExportResultsJob implements ShouldQueue
     public function handle()
     {
         $model = $this->model;
+        $user  = $this->user;
         $query = $model::exportQuery($this->user, $this->input);
 
         $startDate  = $this->input['start_date'] ?? null;
@@ -51,7 +54,6 @@ class ExportResultsJob implements ShouldQueue
         $orderDir   = $this->input['order_dir'];
 
         if( $startDate || $endDate ){
-            $user   = $request->user();
             $userTZ = new DateTimeZone($user->timezone);
             $utcTZ  = new DateTimeZone('UTC');
 
