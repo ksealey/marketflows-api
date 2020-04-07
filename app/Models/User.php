@@ -36,6 +36,7 @@ class User extends Authenticatable
         'login_attempts',
         'email_alerts_enabled',
         'sms_alerts_enabled',
+        'last_heartbeat_at',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -50,7 +51,7 @@ class User extends Authenticatable
         'deleted_at',
         'last_heartbeat_at'
     ];
-
+    
     /**
      * Relationships
      * 

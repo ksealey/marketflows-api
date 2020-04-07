@@ -65,14 +65,6 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
             return response($user);
         })->name('me');
 
-        Route::post('/heartbeat', function(Request $request){
-            $user = $request->user();
-            $user->last_heartbeat_at = now();
-            $user->save();
-
-            return response(['message' => 'I love you too.']);
-        });
-
         /*
         |----------------------------------------
         | Handle alerts
@@ -82,14 +74,9 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
             Route::get('/', 'AlertController@list')
                  ->name('list-alerts');
 
-            Route::get('/{alert}', 'AlertController@read')
-                 ->name('read-alert');
-
-            Route::put('/{alert}', 'AlertController@update')
-                 ->name('update-alert');
-
             Route::delete('/{alert}', 'AlertController@delete')
-                 ->name('delete-alert');
+                 ->middleware('can:delete,alert')
+                 ->name('delete-alert'); 
         });
         
     });

@@ -76,7 +76,7 @@ class RegisterController extends Controller
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
                 'password_hash'             => bcrypt($request->password),
-                'auth_token'                => str_random(128),
+                'auth_token'                => str_random(255),
                 'email_alerts_enabled_at'   => now(),
                 'last_heartbeat_at'         => now()
             ]);

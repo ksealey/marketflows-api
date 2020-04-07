@@ -19,9 +19,13 @@ class CreateAlertsTable extends Migration
             $table->string('type', 32);
             $table->string('title', 128)->nullable();
             $table->string('message', 255);
+            $table->string('icon', 16)->nullable();
             $table->string('url', 255)->nullable();
-            $table->boolean('seen')->default(0);
+            $table->string('url_label', 64)->nullable();
+            $table->dateTime('dismissed_at')->nullable();
+            $table->dateTime('hidden_after')->nullable();
             $table->timestamps();
+            $table->softDeletes();
             $table->foreign('user_id')->references('id')->on('users');
         });
     }

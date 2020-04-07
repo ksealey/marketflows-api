@@ -76,7 +76,7 @@ class LoginController extends Controller
         $user->disabled_until    = null;
         $user->last_login_at     = now();
         $user->last_heartbeat_at = now();
-        $user->auth_token        = str_random(128);
+        $user->auth_token        = str_random(255);
         $user->save();
 
         return response([

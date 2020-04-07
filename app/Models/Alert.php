@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
 use \App\Mail\Alert as AlertMail;
 
 class Alert extends Model
 {
+    use SoftDeletes;
+
     const TYPE_PRIMARY_METHOD_INVALID = 'PRIMARY_METHOD_FAILED';
     const TYPE_AUTO_RELOAD_FAILED     = 'AUTO_RELOAD_FAILED';
     const TYPE_BALANCE_LOW            = 'BALANCE_LOW';
@@ -22,12 +25,20 @@ class Alert extends Model
         'type',
         'title',
         'message',
-        'url'
+        'icon',
+        'url',
+        'url_label',
+        'hidden_after'
     ];
 
     protected $appends = [
         'link',
         'kind'
+    ];
+
+    protected $hidden = [
+        'hidden_after',
+        'deleted_at'
     ];
 
     /**
@@ -36,7 +47,9 @@ class Alert extends Model
      */
     public function getLinkAttribute()
     {
-        return route('read-alert');
+        return route('delete-alert', [
+            'alert' => $this->id
+        ]);
     }
 
     public function getKindAttribute()

@@ -7,13 +7,11 @@ services:
     container_name: mf_app_web
     ports: 
       - "80:80"
+      - "8080:8080"
     networks:
       - mf_net
     volumes: 
       - "$APP_PATH:/var/www/app"
-    environment:
-      PHP_XDEBUG_ENABLED: 1
-      XDEBUG_CONFIG: remote_host=host.docker.internal
   mf_app_db:
     image: mysql:5.7.22
     restart: always
@@ -25,6 +23,14 @@ services:
       - MYSQL_ROOT_PASSWORD=root
     ports:
       - "3306:3306"
+    networks:
+      - mf_net
+  mf_app_cache:
+    image: redis:latest
+    restart: always
+    container_name: mf_app_cache
+    ports: 
+      - "6379:6379"
     networks:
       - mf_net
 networks:

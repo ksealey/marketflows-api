@@ -93,10 +93,13 @@ class ExportResultsJob implements ShouldQueue
 
         //  Send Alert
         Alert::send($this->user, [
-            'type'    => Alert::TYPE_NOTIFICATION,
-            'title'   => 'Your file export is ready',
-            'message' => 'Your file export is now available and will be accessible until ' . $expiresAt->format('m/d/Y') . ' at ' .$expiresAt->format('g:ia') . '.',
-            'url'     => trim(env('CDN_URL'), '/') . '/' . $remotePath . '/' . $fileName
+            'type'          => Alert::TYPE_NOTIFICATION,
+            'title'         => 'Your file export is ready',
+            'message'       => 'Your file export is now available and will be accessible until ' . $expiresAt->format('m/d/Y') . ' at ' .$expiresAt->format('g:ia') . '.',
+            'url'           => trim(env('CDN_URL'), '/') . '/' . $remotePath . '/' . $fileName,
+            'url_label'     => 'Download',
+            'icon'          => 'file',
+            'hidden_after'  =>  $expiresAt
         ]);
     }
 }

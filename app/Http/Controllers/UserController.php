@@ -151,7 +151,7 @@ class UserController extends Controller
         $user->password_hash  = bcrypt($request->password);
         $user->login_attempts = 0;
         $user->disabled_until = null;
-        $user->auth_token     = str_random(128);
+        $user->auth_token     = str_random(255);
         $user->save();
 
         $response = [
