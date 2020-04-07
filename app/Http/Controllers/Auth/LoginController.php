@@ -75,7 +75,6 @@ class LoginController extends Controller
         $user->login_attempts    = 0;
         $user->disabled_until    = null;
         $user->last_login_at     = now();
-        $user->last_heartbeat_at = now();
         $user->auth_token        = str_random(255);
         $user->save();
 
@@ -182,7 +181,6 @@ class LoginController extends Controller
         $user->password_hash     = bcrypt($request->password);
         $user->login_attempts    = 0;
         $user->password_reset_at = now();
-        $user->last_heartbeat_at = now();
         $user->disabled_until    = null;
         $user->auth_token        = str_random(128);
         $user->save();

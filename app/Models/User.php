@@ -9,6 +9,7 @@ use App\Models\EmailVerification;
 use App\Models\Company;
 use Mail;
 use DateTime;
+use Cache;
 
 class User extends Authenticatable
 {
@@ -36,7 +37,6 @@ class User extends Authenticatable
         'login_attempts',
         'email_alerts_enabled',
         'sms_alerts_enabled',
-        'last_heartbeat_at',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -48,8 +48,7 @@ class User extends Authenticatable
         'last_login_at',
         'disabled_until',
         'login_attempts',
-        'deleted_at',
-        'last_heartbeat_at'
+        'deleted_at'
     ];
     
     /**
@@ -153,12 +152,6 @@ class User extends Authenticatable
      */
     public function isOnline()
     {
-        //  If user has not had a hearbeat in 5 minutes, they are offline
-        $fiveMinutesAgo = new DateTime();
-        $fiveMinutesAgo->modify('-5 minutes');
-
-        $lastHeartbeat  = new DateTime($this->last_heartbeat_at);
-        
-        return $lastHeartbeat->format('U') >= $fiveMinutesAgo->format('U');
+        return Cache::has('websockets.users.' . $this->id);
     }
 }

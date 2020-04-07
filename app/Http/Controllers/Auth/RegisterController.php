@@ -77,8 +77,7 @@ class RegisterController extends Controller
                 'email'                     => $request->email,
                 'password_hash'             => bcrypt($request->password),
                 'auth_token'                => str_random(255),
-                'email_alerts_enabled_at'   => now(),
-                'last_heartbeat_at'         => now()
+                'email_alerts_enabled_at'   => now()
             ]);
 
             //  Add verification mail to queue
