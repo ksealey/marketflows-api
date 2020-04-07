@@ -15,9 +15,6 @@ use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Models\BlockedPhoneNumber;
 use \App\Models\BlockedPhoneNumber\BlockedCall;
-
-
-
 use \App\Models\Company\PhoneNumberPool;
 use \App\Rules\CountryRule;
 use \App\Rules\BulkCompanyRule;
@@ -265,7 +262,7 @@ class CompanyController extends Controller
             'companies.created_at',
             'companies.updated_at'
         ];
-        
+
         return parent::exportResults(
             Company::class,
             $request,

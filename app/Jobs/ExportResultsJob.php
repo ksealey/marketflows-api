@@ -11,9 +11,11 @@ use Illuminate\Http\File;
 use \App\Traits\AppliesConditions;
 use \App\Traits\HandlesStorage;
 use \App\Models\Alert;
+use \App\Events\NewAlertEvent;
 use Storage;
 use DateTime;
 use DateTimeZone;
+use Cache;
 
 class ExportResultsJob implements ShouldQueue
 {
@@ -92,7 +94,8 @@ class ExportResultsJob implements ShouldQueue
         unlink($tempFilePath);
 
         //  Send Alert
-        Alert::send($this->user, [
+        $alert = Alert::create([
+            'user_id'       => $this->user->id,
             'type'          => Alert::TYPE_NOTIFICATION,
             'title'         => 'Your file export is ready',
             'message'       => 'Your file export is now available and will be accessible until ' . $expiresAt->format('m/d/Y') . ' at ' .$expiresAt->format('g:ia') . '.',
@@ -101,5 +104,7 @@ class ExportResultsJob implements ShouldQueue
             'icon'          => 'file',
             'hidden_after'  =>  $expiresAt
         ]);
+
+        event(new NewAlertEvent($this->user, $alert));
     }
 }

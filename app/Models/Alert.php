@@ -65,5 +65,7 @@ class Alert extends Model
 
         if( ! $user->isOnline() )
             $user->email(new AlertMail($user, $alert));
+        
+        return $alert;
     }
 }

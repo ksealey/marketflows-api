@@ -1,21 +1,24 @@
 <?php
 namespace App\WebSockets;
 
-use Ratchet\MessageComponentInterface;
+use Ratchet\Wamp\WampServerInterface;
 use Ratchet\ConnectionInterface;
+use Ratchet\MessageComponentInterface;
 use App\Models\User;
 use Exception;
 use Cache;
 
 class WebSocketApp implements MessageComponentInterface
 {
-    protected $clients;
-
     public function __construct()
     {
-        $this->clients = new \SplObjectStorage;
+        $this->clients = [];
     }
 
+    /**
+     * Handle an incoming websocket connection
+     * 
+     */
     public function onOpen(ConnectionInterface $conn)
     {
         $query = $conn->httpRequest->getUri()->getQuery();
@@ -48,44 +51,42 @@ class WebSocketApp implements MessageComponentInterface
         }
 
         //  Add user to connection
-        $conn->user = $user;
+        $conn->user = json_decode(json_encode($user));
         $ip         = getHostByName(php_uname('n'));
 
         //  Start notifications for user
-        Cache::tags(['websockets'])->put('websockets.users.' . $user->id, [
-            'user_id' => $user->id,
-            'host'    => $ip
+        Cache::put('websockets.users.' . $user->id, [
+            'user_id'  => $user->id,
+            'host'     => $ip,
+            'datetime' => date('Y-m-d H:i:s')
         ]);
 
-        $this->clients->attach($conn);
-
-        echo "\nConnection for user {$user->id} established.";
+        $this->clients[$user->id] = $conn;
     }
 
-    public function onMessage(ConnectionInterface $from, $msg)
+    public function onMessage(ConnectionInterface $conn, $message)
     {
-        $message = json_decode($msg);
-        if( ! $message ) return;
-        
-       
-        
+
+    }
+
+    public function onEvent($data)
+    {   
+        $package = json_decode($data);
+        $conn    = $this->clients[$package->to] ?? null;
+        if( $conn ){
+            $conn->send(json_encode($package->content));
+        }
+    }
+
+    public function onError(ConnectionInterface $conn, Exception $e)
+    {
+        echo $e->getMessage();
+
+        $conn->close();
     }
 
     public function onClose(ConnectionInterface $conn)
     {
-        //  End notifications for user
-        $user = $conn->user;
-        Cache::forget('websockets.users.' . $user->id);
-
-        $this->client->detach($conn);
-
-        echo "\nConnection for user {$user->id} closed.";
-    }
-
-    public function onError(ConnectionInterface $conn, \Exception $e)
-    {
-        echo "An error was encountered. " . $e->getMessage();
-
-        $conn->close();
+        unset($this->clients[$conn->user->id]);
     }
 }

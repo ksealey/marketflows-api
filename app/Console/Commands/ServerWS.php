@@ -6,10 +6,15 @@ use Illuminate\Console\Command;
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
-use Ratchet\Http\Router;
+use Ratchet\Wamp\WampServer;
+use \React\EventLoop\Factory as ReactEventLoopFactory;
+use \React\ZMQ\Context as ReactZMQContext;
+use \React\Socket\Server as ReactSocketServer;
 use App\WebSockets\WebSocketApp;
 use App\WebSockets\Http\Auth as HttpAuth;
 use App\WebSockets\Controllers\AlertController;
+use ZMQ;
+use ZMQSocket;
 
 class ServerWS extends Command
 {
@@ -18,7 +23,7 @@ class ServerWS extends Command
      *
      * @var string
      */
-    protected $signature = 'serve-ws {--port=}';
+    protected $signature = 'serve-ws {--socket-port=}  {--pull-port=}';
 
     /**
      * The console command description.
@@ -44,12 +49,26 @@ class ServerWS extends Command
      */
     public function handle()
     {
-        $ws       = new WsServer(new WebSocketApp());
-        $http     = new HttpServer($ws);
-        $server   = IoServer::factory(
-            $http,
-            $this->option('port') ?: env('WS_PORT', 8080)
+        $app = new WebSocketApp();
+
+        // Listen for pushes
+        $eventLoop = ReactEventLoopFactory::create();
+        $context   = new ReactZMQContext($eventLoop);
+        $pull      = $context->getSocket(ZMQ::SOCKET_PULL);
+        $pullPort  = $this->option('pull-port') ?: env('WS_PULL_PORT', 5555);
+        $pull->bind('tcp://0.0.0.0:' . $pullPort); // Allow connections from anywhere on port 5555
+        $pull->on('message', array($app, 'onEvent'));
+
+        // Set up our WebSocket server for clients wanting real-time updates
+        $socketPort = $this->option('socket-port') ?: env('WS_PORT', 8080);
+        $webSocket  = new ReactSocketServer('0.0.0.0:' . $socketPort, $eventLoop); // Binding to 0.0.0.0 means remotes can connect
+        $webServer  = new IoServer(
+            new HttpServer(
+                new WsServer($app)
+            ),
+            $webSocket
         );
-        $server->run();
+
+        $eventLoop->run();
     }
 }

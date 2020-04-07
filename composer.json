@@ -20,6 +20,7 @@
         "phpoffice/phpspreadsheet": "^1.11",
         "piwik/device-detector": "^3.12",
         "predis/predis": "^1.1",
+        "react/zmq": "^0.4.0",
         "stripe/stripe-php": "^6.40",
         "twilio/sdk": "^5.41"
     },
