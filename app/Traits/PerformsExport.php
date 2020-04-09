@@ -41,7 +41,7 @@ trait PerformsExport
         //  Set headers
         $headers = [];
         if( count($results) ){
-            $sample = (array)$results[0];
+            $sample = $results[0]->toArray();
             foreach($sample as $prop => $value){
                 if( isset($exports[$prop]) )
                     $headers[] = $exports[$prop];
@@ -62,7 +62,7 @@ trait PerformsExport
         //  Set data
         foreach( $results as $idx => $result ){
             $col  = 'A';
-            $data = (array)$result;
+            $data = $result->toArray();
             foreach($data as $prop => $value){
                 if( isset($exports[$prop]) ){
                     $sheet->setCellValue($col . $row, $value);
@@ -104,7 +104,7 @@ trait PerformsExport
         $headers = [];
         $_query  = clone $query;
         if( $result = $_query->first() ){
-            $sample = (array)$result;
+            $sample = $result->toArray();
             foreach($sample as $prop => $value){
                 if( isset($exports[$prop]) )
                     $headers[] = $exports[$prop];
@@ -135,7 +135,7 @@ trait PerformsExport
             
             foreach( $results as $idx => $result ){
                 $col  = 'A';
-                $data = (array)$result;
+                $data = $result->toArray();
                 foreach($data as $prop => $value){
                     if( isset($exports[$prop]) ){
                         $sheet->setCellValue($col . $row, $value);

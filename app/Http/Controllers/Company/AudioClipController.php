@@ -20,15 +20,21 @@ class AudioClipController extends Controller
      */
     public function list(Request $request, Company $company)
     {
+        $fields = [
+            'audio_clips.id',
+            'audio_clips.name',
+            'audio_clips.created_at',
+            'audio_clips.updated_at'
+        ];
+
         $query = AudioClip::where('company_id', $company->id);
         
-        if( $request->search )
-            $query->where('name', 'like', '%' . $request->search . '%');
-
         return parent::results(
             $request,
             $query,
-            [ 'order_by'  => 'in:name,created_at,updated_at' ]
+            [],
+            $fields,
+            'audio_clips.created_at'
         );
     }
 

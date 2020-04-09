@@ -162,7 +162,6 @@ class Controller extends BaseController
 
         $query->orderBy($orderBy, $orderDir);
 
-          
         $records = $query->offset(( $page - 1 ) * $limit)
                          ->limit($limit)
                          ->get();

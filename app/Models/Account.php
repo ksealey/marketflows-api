@@ -103,7 +103,7 @@ class Account extends Model
 
     public function getRoundedBalanceAttribute()
     {
-        return money_format('%i', $this->balance);
+        return round($this->balance, 2, PHP_ROUND_HALF_DOWN);
     }
 
     public function getPrimaryPaymentMethodAttribute()

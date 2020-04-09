@@ -39,24 +39,10 @@ class AudioClip extends Model
         //
         return true;
     }
-
-    public function getURL($company = null)
-    {
-        $tempURL = Storage::temporaryUrl(
-            $this->path, now()->addMinutes(60)
-        );
-
-        //
-        //  TODO: Store in cache as HOT data for 55 minutes
-        //  ...
-        //  
-
-        return $tempURL;
-    }
-
+    
     public function getUrlAttribute()
     {
-        return $this->getURL();
+        return env('CDN_URL') . '/' . $this->path;
     }
 
     public function company()

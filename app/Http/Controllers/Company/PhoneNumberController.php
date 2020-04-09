@@ -21,37 +21,33 @@ use DB;
 
 class PhoneNumberController extends Controller
 {
+    static $fields = [
+        'phone_numbers.name',
+        'phone_numbers.number',
+        'phone_numbers.disabled_at',
+        'phone_numbers.created_at',
+        'phone_numbers.updated_at',
+        'call_count'
+    ];
+
     /**
      * List phone numbers
      * 
      */
     public function list(Request $request, Company $company)
     {
-        //  Set additional rules
-        $rules = [
-            'order_by' => 'in:phone_numbers.name,phone_numbers.number,phone_numbers.category,phone_numbers.sub_category,phone_numbers.disabled_at,phone_numbers.created_at,phone_numbers.updated_at'
-        ];
-
         //  Build Query
-        $query = DB::table('phone_numbers')
-                    ->select(['phone_numbers.*', DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count')])
+        $query = PhoneNumber::select(['phone_numbers.*', DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count')])
                     ->whereNull('phone_numbers.phone_number_pool_id')
                     ->whereNull('phone_numbers.deleted_at')
                     ->where('phone_numbers.company_id', $company->id);
-
-        $searchFields = [
-            'phone_numbers.name',
-            'phone_numbers.number',
-            'phone_numbers.category',
-            'phone_numbers.sub_category'
-        ];
 
         //  Pass along to parent for listing
         return parent::results(
             $request,
             $query,
-            $rules,
-            $searchFields,
+            [],
+            self::$fields,
             'phone_numbers.created_at'
         );
     }
@@ -402,5 +398,20 @@ class PhoneNumberController extends Controller
         }
 
         return response($response, $statusCode);
+    }
+
+    /**
+     * Export results
+     * 
+     */
+    public function export(Request $request, Company $company)
+    {
+        return parent::exportResults(
+            PhoneNumber::class,
+            $request,
+            [],
+            self::$fields,
+            'phone_numbers.created_at'
+        );
     }
 }

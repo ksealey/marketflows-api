@@ -418,7 +418,11 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                 Route::get('/available', 'Company\PhoneNumberController@checkNumbersAvailable')
                         ->middleware('can:list,\App\Models\Company\PhoneNumber')
                         ->name('phone-numbers-available');
-                    
+
+                Route::get('/export', 'Company\PhoneNumberController@export')
+                        ->middleware('can:list,\App\Models\Company\PhoneNumber')
+                        ->name('export-phone-numbers');
+
                 Route::get('/', 'Company\PhoneNumberController@list')
                     ->middleware('can:list,\App\Models\Company\PhoneNumber')
                     ->name('list-phone-numbers');
@@ -438,6 +442,8 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                 Route::delete('/{phoneNumber}', 'Company\PhoneNumberController@delete')
                     ->middleware('can:delete,phoneNumber')
                     ->name('delete-phone-number');
+
+                 
             }); 
 
             /*

@@ -9,13 +9,15 @@ use \App\Models\Company\Campaign;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Traits\CanSwapNumbers;
 use \App\Models\Company\PhoneNumberConfig;
+use \App\Contracts\Exportable;
+use \App\Traits\PerformsExport;
 use Twilio\Rest\Client as TwilioClient;
 use App;
 use Exception;
 
-class PhoneNumber extends Model 
+class PhoneNumber extends Model implements Exportable
 {
-    use SoftDeletes, CanSwapNumbers;
+    use SoftDeletes, CanSwapNumbers, PerformsExport;
 
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;
@@ -60,6 +62,33 @@ class PhoneNumber extends Model
         'swap_rules' => 'array'
     ];
 
+    static public $exports = [
+        'id'                => 'Id',
+        'company_id'        => 'Company Id',
+        'category'          => 'Category',
+        'sub_category'      => 'Sub-Category',
+        'name'              => 'Name',
+        'country_code'      => 'Country Code',
+        'number'            => 'Number',
+        'toll_free'         => 'Toll-Free',
+        'source'            => 'Source',
+        'medium'            => 'Medium',
+        'campaign'          => 'Campaign',
+        'content'           => 'Content',
+        'created_at'        => 'Created'
+    ];
+
+    static public $exportFileName = 'Numbers';
+
+    static public function exportQuery($user, array $input)
+    {
+        return PhoneNumber::whereNull('phone_number_pool_id')
+                          ->whereIn('company_id', function($query) use($user){
+                                $query->select('company_id')
+                                      ->from('user_companies')
+                                      ->where('user_id', $user->id);
+                          });
+    }
     /**
      * Relationships
      * 

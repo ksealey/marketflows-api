@@ -199,7 +199,7 @@ class IncomingCallController extends Controller
         if( $config->greeting_audio_clip_id ){
             $audioClip = AudioClip::find($config->greeting_audio_clip_id);
             if( $audioClip )
-                $response->play($audioClip->getURL());
+                $response->play($audioClip->url);
         }elseif( $config->greeting_message ){
             $response->say($config->greetingMessage($call), [
                 'language' => $company->tts_language,
