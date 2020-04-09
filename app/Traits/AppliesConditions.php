@@ -7,6 +7,14 @@ trait AppliesConditions
     {
         $query->where(function($query) use($conditions){
             foreach( $conditions as $condition ){
+                $hasValue = false;
+                if( !empty($condition->inputs) ){
+                    foreach($condition->inputs as $input){
+                        if( $input ) 
+                            $hasValue = true;
+                    }
+                }
+
                 if( $condition->operator === 'EQUALS' ){
                     if( ! empty($condition->inputs[0]) )
                         $query->where($condition->field, '=', $condition->inputs[0]);
@@ -14,19 +22,9 @@ trait AppliesConditions
                     if( ! empty($condition->inputs[0]) )
                         $query->where($condition->field, '!=', $condition->inputs[0]);
                 }elseif( $condition->operator === 'IN' ){
-                    $hasValue = false;
-                    foreach($condition->inputs as $input){
-                        if( $input )
-                            $hasValue = true;
-                    }
                     if( $hasValue )
                         $query->whereIn($condition->field, $condition->inputs);
                 }elseif( $condition->operator === 'NOT_IN' ){
-                    $hasValue = false;
-                    foreach($condition->inputs as $input){
-                        if( $input ) 
-                            $hasValue = true;
-                    }
                     if( $hasValue )
                         $query->whereNotIn($condition->field, $condition->inputs);
                 }elseif( $condition->operator === 'EMPTY' ){
@@ -39,6 +37,12 @@ trait AppliesConditions
                         $query->whereNotNull($condition->field)
                                 ->orWhere($condition->field, '!=', '');
                     });
+                }elseif( $condition->operator === 'LIKE' ){
+                    if( ! empty($condition->inputs[0]) )
+                        $query->where($condition->field, 'like', '%' . $condition->inputs[0] . '%');
+                }elseif( $condition->operator === 'NOT_LIKE' ){
+                    if( ! empty($condition->inputs[0]) )
+                        $query->where($condition->field, 'not like', '%' . $condition->inputs[0] . '%');
                 }
             }
         });

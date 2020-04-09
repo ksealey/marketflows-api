@@ -22,11 +22,8 @@ class CallController extends Controller
      */
     public function list(Request $request, Company $company)
     {
-        $rules = [ 
-            'order_by' => 'in:calls.caller_first_name,calls.caller_number,phone_numbers.name,calls.status,calls.source,calls.content,calls.medium,calls.campaign,calls.created_at,calls.updated_at',
-        ];
-
-        $searchFields = [
+        $fields = [
+            'caller_name',
             'calls.caller_first_name',
             'calls.caller_last_name',
             'calls.caller_number',
@@ -38,12 +35,14 @@ class CallController extends Controller
             'calls.medium',
             'calls.content',
             'calls.campaign',
-            'calls.forwarded_to'
+            'calls.forwarded_to',
+            'calls.created_at'
         ];
 
         $query = DB::table('calls')
                    ->select([
                        'calls.*', 
+                       DB::raw('TRIM(CONCAT(calls.caller_first_name, \' \', calls.caller_last_name)) AS caller_name'),
                        DB::raw('
                             CASE
                                 WHEN call_recordings.path IS NOT NULL
@@ -85,8 +84,8 @@ class CallController extends Controller
         return parent::results(
             $request,
             $query,
-            $rules,
-            $searchFields,
+            [],
+            $fields,
             'calls.created_at'
         );
     }

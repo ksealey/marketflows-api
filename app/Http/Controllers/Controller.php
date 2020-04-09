@@ -24,7 +24,7 @@ class Controller extends BaseController
     {
         $rules = array_merge([
             'limit'         => 'required|numeric|min:1|max:250',
-            'page'          => 'required|numeric|min:1|max:250',
+            'page'          => 'required|numeric|min:1',
             'order_by'       => 'in:' . $rangeField,
             'order_dir'      => 'in:asc,desc',
             'conditions'     => ['json', new ConditionsRule($fields)],

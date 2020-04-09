@@ -98,7 +98,7 @@ class ExportResultsJob implements ShouldQueue
             'user_id'       => $this->user->id,
             'type'          => Alert::TYPE_NOTIFICATION,
             'title'         => 'Your file export is ready',
-            'message'       => 'Your file export is now available and will be accessible until ' . $expiresAt->format('m/d/Y') . ' at ' .$expiresAt->format('g:ia') . '.',
+            'message'       => 'Your file export is now available and will be accessible for 24 hours.',
             'url'           => trim(env('CDN_URL'), '/') . '/' . $remotePath . '/' . $fileName,
             'url_label'     => 'Download',
             'icon'          => 'file',
