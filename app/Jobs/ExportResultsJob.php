@@ -11,7 +11,7 @@ use Illuminate\Http\File;
 use \App\Traits\AppliesConditions;
 use \App\Traits\HandlesStorage;
 use \App\Models\Alert;
-use \App\Events\NewAlertEvent;
+use \App\Events\AlertEvent;
 use Storage;
 use DateTime;
 use DateTimeZone;
@@ -105,6 +105,6 @@ class ExportResultsJob implements ShouldQueue
             'hidden_after'  =>  $expiresAt
         ]);
 
-        event(new NewAlertEvent($this->user, $alert));
+        event(new AlertEvent($this->user, $alert));
     }
 }

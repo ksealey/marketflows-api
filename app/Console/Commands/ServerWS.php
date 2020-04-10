@@ -23,7 +23,7 @@ class ServerWS extends Command
      *
      * @var string
      */
-    protected $signature = 'serve-ws {--socket-port=}  {--pull-port=}';
+    protected $signature = 'serve-ws';
 
     /**
      * The console command description.
@@ -55,12 +55,12 @@ class ServerWS extends Command
         $eventLoop = ReactEventLoopFactory::create();
         $context   = new ReactZMQContext($eventLoop);
         $pull      = $context->getSocket(ZMQ::SOCKET_PULL);
-        $pullPort  = $this->option('pull-port') ?: env('WS_PULL_PORT', 5555);
+        $pullPort  = config('websockets.pull.port');
         $pull->bind('tcp://0.0.0.0:' . $pullPort); // Allow connections from anywhere on port 5555
         $pull->on('message', array($app, 'onEvent'));
 
         // Set up our WebSocket server for clients wanting real-time updates
-        $socketPort = $this->option('socket-port') ?: env('WS_PORT', 8080);
+        $socketPort = config('websockets.serve.port');
         $webSocket  = new ReactSocketServer('0.0.0.0:' . $socketPort, $eventLoop); // Binding to 0.0.0.0 means remotes can connect
         $webServer  = new IoServer(
             new HttpServer(

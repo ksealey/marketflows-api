@@ -54,12 +54,16 @@ class WebSocketApp implements MessageComponentInterface
         $conn->user = json_decode(json_encode($user));
         $ip         = getHostByName(php_uname('n'));
 
-        //  Start notifications for user
-        Cache::put('websockets.users.' . $user->id, [
+        //  Start notifications for user, using account
+        $cacheKey                = 'websockets.accounts.' . $user->account_id;
+        $accountUsers            = Cache::get($cacheKey) ?: [];
+        $accountUsers[$user->id] = [
             'user_id'  => $user->id,
             'host'     => $ip,
             'datetime' => date('Y-m-d H:i:s')
-        ]);
+        ];
+
+        Cache::put($cacheKey, $accountUsers);
 
         $this->clients[$user->id] = $conn;
     }
@@ -87,6 +91,18 @@ class WebSocketApp implements MessageComponentInterface
 
     public function onClose(ConnectionInterface $conn)
     {
+        $cacheKey     = 'websockets.accounts.' . $conn->user->account_id;
+        $accountUsers = Cache::get($cacheKey) ?: [];
+        $accountUsers = array_filter($accountUsers, function($user) use($conn){
+            return $conn->user->id != $user->id;
+        });
+
+        if( count($accountUsers) ){
+            Cache::put($cacheKey, $accountUsers);
+        }else{
+            Cache::remove($cacheKey);
+        }
+
         unset($this->clients[$conn->user->id]);
     }
 }

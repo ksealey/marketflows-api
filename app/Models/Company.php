@@ -48,16 +48,15 @@ class Company extends Model implements Exportable
 
     static public function exportQuery($user, array $input)
     {
-        return DB::table('companies')
-                    ->select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
-                    ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id')
-                    ->where('companies.account_id', $user->account_id)
-                    ->whereIn('companies.id', function($query) use($user){
-                        $query->select('company_id')
-                                ->from('user_companies')
-                                ->where('user_id', $user->id);
-                    })
-                    ->whereNull('companies.deleted_at');
+        return Company::select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
+                        ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id')
+                        ->where('companies.account_id', $user->account_id)
+                        ->whereIn('companies.id', function($query) use($user){
+                            $query->select('company_id')
+                                    ->from('user_companies')
+                                    ->where('user_id', $user->id);
+                        })
+                        ->whereNull('companies.deleted_at');
     }
 
     public function getLinkAttribute()

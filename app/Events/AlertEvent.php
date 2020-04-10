@@ -12,7 +12,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use App\Models\User;
 use App\Models\Alert;
 
-class NewAlertEvent
+class AlertEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
