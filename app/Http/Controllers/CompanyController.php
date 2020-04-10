@@ -4,20 +4,32 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use \App\Models\Company;
+
+
 use \App\Models\User;
+use \App\Models\Company;
 use \App\Models\UserCompany;
+use \App\Models\BlockedPhoneNumber;
+use \App\Models\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company\Report;
 use \App\Models\Company\ReportAutomation;
 use \App\Models\Company\AudioClip;
-use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
-use \App\Models\BlockedPhoneNumber;
-use \App\Models\BlockedPhoneNumber\BlockedCall;
+use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberPool;
+use \App\Models\Company\PhoneNumberConfig;
+
 use \App\Rules\CountryRule;
 use \App\Rules\BulkCompanyRule;
+
+use \App\Events\CompanyEvent;
+use \App\Events\Company\PhoneNumberEvent;
+use \App\Events\Company\PhoneNumberPoolEvent;
+use \App\Events\Company\BlockedPhoneNumberEvent;
+use \App\Events\Company\PhoneNumberConfigEvent;
+use \App\Events\Company\AudioClipEvent;
+
 use Validator;
 use Exception;
 use DB;
@@ -113,6 +125,8 @@ class CompanyController extends Controller
 
         $company->phone_number_pool_id = null;
 
+        event(new CompanyEvent($user, [$company], 'create')); 
+
         return response($company, 201);
     }
 
@@ -166,8 +180,9 @@ class CompanyController extends Controller
         $company->save();
 
         $pool = PhoneNumberPool::where('company', $company->id)->first();
-
         $company->phone_number_pool_id = $pool ? $pool->id : null;
+
+        event(new CompanyEvent($request->user(), [$company], 'update'));
 
         return response($company);
     }
@@ -182,11 +197,58 @@ class CompanyController extends Controller
      */
     public function delete(Request $request, Company $company)
     {
-        //  Remove any users attached
-        UserCompany::where('company_id', $company->id)
-                   ->delete();
-
         $company->delete();
+
+        //  Remove all links from users to deleted companies
+        UserCompany::where('company_id', $company->id)->delete();
+
+        $phoneNumbers = PhoneNumber::where('company_id', $company->id)->get();
+        PhoneNumber::where('company_id', $company->id)->delete();
+
+        $pools = PhoneNumberPool::where('company_id', $company->id)->get();
+        PhoneNumberPool::where('company_id', $company->id)->delete();
+
+        //  Remove phone number configs
+        $configs = PhoneNumberConfig::where('company_id', $company->id)->get();
+        PhoneNumberConfig::where('company_id', $company->id)->delete();
+
+        //  Remove audio clips
+        $audioClips = AudioClip::where('company_id', $company->id)->get();
+        AudioClip::where('company_id', $company->id)->delete();
+
+        //  Remove Blocked Phone Numbers
+        $blockedPhoneNumbers = BlockedPhoneNumber::whereIn('company_id', $company->id)->get();
+        BlockedPhoneNumber::where('company_id', $company->id)->delete();
+
+        //  Remove all reports for company
+        $reports = Report::where('company_id', $company->id)->get();
+        ReportAutomation::whereIn('report_id', function($q) use($company){
+            $q->select('id')
+              ->from('reports')
+              ->where('reports.company_id', $company->id);
+        })->delete();
+         
+        $user = $request->user();
+
+        event(new CompanyEvent($user, [$company], 'delete'));
+
+        if( count($phoneNumbers) )
+            event(new PhoneNumberEvent($user, $phoneNumbers, 'delete'));
+
+        if( count($pools) )
+            event(new PhoneNumberPoolEvent($user, $pools, 'delete'));
+
+        if( count($configs) )
+            event(new PhoneNumberConfigEvent($user, $configs, 'delete'));
+
+        if( count($audioClips) )
+            event(new AudioClipEvent($user, $audioClips, 'delete'));
+        
+        if( count($blockedPhoneNumbers) )
+            event(new BlockedPhoneNumberEvent($user, $blockedPhoneNumbers, 'delete'));
+        
+        if( count($reports) )
+            event(new ReportEvent($user, $reports, 'delete'));
 
         return response([
             'message' => 'deleted'
@@ -209,42 +271,69 @@ class CompanyController extends Controller
             ], 400);
         }
 
-        $results = DB::table('companies')
-                        ->select(['companies.id', 'companies.name', DB::raw('COUNT(phone_numbers.id) as phone_number_count')])
-                        ->leftJoin('phone_numbers', 'phone_numbers.company_id', 'companies.id')
-                        ->whereIn('companies.id', json_decode($request->ids))
-                        ->groupBy('companies.id', 'companies.name')
-                        ->get();
+        $companyIds = json_decode($request->ids);
+        $companies  = Company::whereIn('companies.id', $companyIds)->get();
 
-        $warnings = [];
-        $errors   = [];
-        $deleted  = [];
-        foreach( $results as $result ){
-            if( $result->phone_number_count ){
-                $warnings[] = 'Company "' . $result->name . '" has attached phone numbers. Please detach and try again.';
-                continue;
-            }
-            $deleted[] = $result->id;
-        }
+        if( count($companies) ){
+            //  Get list of deleted companies, then delete
+            Company::whereIn('id', $companyIds)->delete();
 
-        if( count($deleted) ){
-            Company::whereIn('id', $deleted)->delete();
-            UserCompany::whereIn('company_id', $deleted)->delete();
-            Report::whereIn('company_id', $deleted)->delete();
-            ReportAutomation::whereIn('report_id', function($q) use($deleted){
+            //  Remove all links from users to deleted companies
+            UserCompany::whereIn('company_id', $companyIds)->delete();
+
+            $phoneNumbers = PhoneNumber::whereIn('company_id', $companyIds)->get();
+            PhoneNumber::whereIn('company_id', $companyIds)->delete();
+
+            $pools = PhoneNumberPool::whereIn('company_id', $companyIds)->get();
+            PhoneNumberPool::whereIn('company_id', $companyIds)->delete();
+
+            //  Remove phone number configs
+            $configs = PhoneNumberConfig::whereIn('company_id', $companyIds)->get();
+            PhoneNumberConfig::whereIn('company_id', $companyIds)->delete();
+
+            //  Remove audio clips
+            $audioClips = AudioClip::whereIn('company_id', $companyIds)->get();
+            AudioClip::whereIn('company_id', $companyIds)->delete();
+
+            //  Remove Blocked Phone Numbers
+            $blockedPhoneNumbers = BlockedPhoneNumber::whereIn('company_id', $companyIds)->get();
+            BlockedPhoneNumber::whereIn('company_id', $companyIds)->delete();
+
+            //  Remove all reports for company
+            $reports = Report::whereIn('company_id', $companyIds)->get();
+            Report::whereIn('company_id', $companyIds)->delete();
+            ReportAutomation::whereIn('report_id', function($q) use($companyIds){
                 $q->select('id')
-                    ->from('reports')
-                    ->whereIn('reports.company_id', $deleted);
+                  ->from('reports')
+                  ->whereIn('reports.company_id', $companyIds);
             })->delete();
-            AudioClip::whereIn('company_id', $deleted)->delete();
-            BlockedPhoneNumber::whereIn('company_id', $deleted)->delete();
-            PhoneNumberConfig::whereIn('company_id', $deleted)->delete();
+             
+            $user = $request->user();
+
+            if( count($companies) )
+                event(new CompanyEvent($user, $companies, 'delete'));
+
+            if( count($phoneNumbers) )
+                event(new PhoneNumberEvent($user, $phoneNumbers, 'delete'));
+
+            if( count($pools) )
+                event(new PhoneNumberPoolEvent($user, $pools, 'delete'));
+
+            if( count($configs) )
+                event(new PhoneNumberConfigEvent($user, $configs, 'delete'));
+
+            if( count($audioClips) )
+                event(new AudioClipEvent($user, $audioClips, 'delete'));
+            
+            if( count($blockedPhoneNumbers) )
+                event(new BlockedPhoneNumberEvent($user, $blockedPhoneNumbers, 'delete'));
+            
+            if( count($reports) )
+                event(new ReportEvent($user, $reports, 'delete'));
         }
 
         return response([
-            'errors'   => $errors,
-            'warnings' => $warnings,
-            'deleted'  => $deleted
+            'message' => 'Deleted.'
         ]);
     }
 

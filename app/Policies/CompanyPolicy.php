@@ -23,20 +23,17 @@ class CompanyPolicy
 
     public function read(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id) 
-            && $user->canDoAction('companies.read');
+        return $user->canDoCompanyAction($company->id, 'companies.read');
     }
 
     public function update(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id) 
-            && $user->canDoAction('companies.update');
+        return $user->canDoCompanyAction($company->id, 'companies.update');
     }
 
     public function delete(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id) 
-            && $user->canDoAction('companies.delete');
+        return $user->canDoCompanyAction($company->id, 'companies.delete');
     }
 
     public function bulkDelete(User $user)

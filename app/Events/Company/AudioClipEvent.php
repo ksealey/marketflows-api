@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Events;
+namespace App\Events\Company;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Queue\SerializesModels;
@@ -9,15 +9,13 @@ use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use App\Models\User;
-use App\Models\Alert;
 
-class AlertEvent
+class AudioClipEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $user;
-    public $alerts;
+    public $audioClips;
     public $action;
 
     /**
@@ -25,10 +23,10 @@ class AlertEvent
      *
      * @return void
      */
-    public function __construct(User $user, $alerts, $action)
+    public function __construct($user, $audioClips, $action)
     {
-        $this->user   = $user; 
-        $this->alerts = $alerts;
-        $this->action = $action;
+        $this->user         = $user;
+        $this->audioClips   = $audioClips;
+        $this->action       = $action;
     }
 }

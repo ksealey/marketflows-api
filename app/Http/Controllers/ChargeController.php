@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Rules\DateFilterRule;
 use App\Models\PaymentMethod;
 use App\Models\Charge;
 use Validator;

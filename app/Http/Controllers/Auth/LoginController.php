@@ -84,7 +84,7 @@ class LoginController extends Controller
             'user'          => $user,
             'account'       => $user->account,
             'first_login'   => false
-        ], 201);
+        ], 200);
     }
 
     /**

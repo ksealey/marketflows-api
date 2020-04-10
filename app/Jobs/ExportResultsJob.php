@@ -105,6 +105,6 @@ class ExportResultsJob implements ShouldQueue
             'hidden_after'  =>  $expiresAt
         ]);
 
-        event(new AlertEvent($this->user, $alert));
+        event(new AlertEvent($this->user, [$alert], 'create'));
     }
 }

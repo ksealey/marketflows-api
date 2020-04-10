@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\Company\AudioClip;
+use App\Events\Company\AudioClipEvent;
 use Storage;
 use DB;
 use Validator;
@@ -83,6 +84,8 @@ class AudioClipController extends Controller
 
         DB::commit();
 
+        event(new AudioClipEvent($user, [$audioClip], 'create'));
+
         return response($audioClip, 201);
     }
 
@@ -135,20 +138,39 @@ class AudioClipController extends Controller
         }
         DB::commit();
 
+        event(new AudioClipEvent($user, [$audioClip], 'update'));
+
         return response($audioClip, 200);
     }
 
     public function delete(Request $request, Company $company, AudioClip $audioClip)
     {
-        if( ! $audioClip->canBeDeleted() ){
+        if( $audioClip->isInUse() ){
             return response([
-                'error' => 'This audio clip cannot be deleted - please remove from all active phone numbers and phone number pools and try again',
+                'error' => 'This audio clip is in use - please remove from all configurations and try again.',
             ], 400);
         }
-
-        Storage::delete($audioClip->path);
         
         $audioClip->delete();
+
+        event(new AudioClipEvent($user, [$audioClip], 'delete'));
+
+        return response([
+            'message' => 'deleted',
+        ], 200);
+    }
+
+    public function bulkDelete(Request $request, Company $company)
+    {
+        if( $audioClip->isInUse() ){
+            return response([
+                'error' => 'This audio clip is in use - please remove from all configurations and try again.',
+            ], 400);
+        }
+        
+        $audioClip->delete();
+
+        event(new AudioClipEvent($user, [$audioClip], 'delete'));
 
         return response([
             'message' => 'deleted',

@@ -44,7 +44,8 @@ class PhoneNumber extends Model implements Exportable
         'campaign',
         'swap_rules',
         'assignments',
-        'last_assigned_at'
+        'last_assigned_at',
+        'purchased_at'
     ];
 
     protected $hidden = [

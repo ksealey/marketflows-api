@@ -78,7 +78,7 @@ class WebSocketApp implements MessageComponentInterface
         $package = json_decode($data);
         $conn    = $this->clients[$package->to] ?? null;
         if( $conn ){
-            $conn->send(json_encode($package->content));
+            $conn->send(json_encode($package));
         }
     }
 

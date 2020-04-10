@@ -12,7 +12,10 @@ use App\Models\Transaction;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use App\Rules\SwapRulesRule;
-use App\Rules\DateFilterRule;
+use App\Rules\Company\BulkPhoneNumberRule;
+
+use App\Events\Company\PhoneNumberEvent;
+
 use Validator;
 use Exception;
 use App;
@@ -59,6 +62,7 @@ class PhoneNumberController extends Controller
     public function create(Request $request, Company $company)
     {
         $rules = [
+            'name'                => 'bail|required|max:64',
             'category'            => 'bail|required|in:ONLINE,OFFLINE',
             'source'              => 'bail|required|max:64', 
             'medium'              => 'bail|max:64',
@@ -69,11 +73,6 @@ class PhoneNumberController extends Controller
                 'required',
                 (new PhoneNumberConfigRule($company))
             ],
-            'phone_number_pool_id' => [
-                'bail',
-                (new PhoneNumberPoolRule($company))
-            ],
-            'name'          => 'bail|max:64',
             'toll_free'     => 'bail|boolean',
             'starts_with'   => 'bail|digits_between:1,10'
         ];
@@ -162,6 +161,8 @@ class PhoneNumberController extends Controller
         }
 
         $phoneNumber->call_count = 0;
+        
+        event(new PhoneNumberEvent($user, [$phoneNumber], 'create'));
 
         return response($phoneNumber, 201);
     }
@@ -252,6 +253,8 @@ class PhoneNumberController extends Controller
         
         $phoneNumber->save();
 
+        event(new PhoneNumberEvent($request->user(), [$phoneNumber], 'update'));
+
         return response($phoneNumber);
     }
 
@@ -261,16 +264,55 @@ class PhoneNumberController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        if( $phoneNumber->isInUse() ){
+        $phoneNumber->delete();
+
+        event(new PhoneNumberEvent($request->user(), [$phoneNumber], 'delete'));
+        
+        return response([
+            'message' => 'deleted'
+        ]);
+    }
+
+     /**
+     * Bulk Delete
+     * 
+     */
+    public function bulkDelete(Request $request, Company $company)
+    {
+        $user = $request->user();
+
+        $validator = validator($request->input(), [
+            'ids' => ['required','json']
+        ]);
+
+        if( $validator->fails() ){
             return response([
-                'error' => 'This phone number is in use - please detach from all related entities and try again'
+                'error' => $validator->errors()->first()
             ], 400);
         }
 
-        $phoneNumber->release();
+        $phoneNumberIds = array_values(json_decode($request->ids, true) ?: []);
+        $phoneNumberIds = array_filter($phoneNumberIds, function($item){
+            return is_string($item) || is_numeric($item);
+        });
+        $phoneNumbers = PhoneNumber::whereIn('id', $phoneNumberIds)
+                                   ->whereIn('company_id', function($query) use($user){
+                                         $query->select('company_id')
+                                               ->from('user_companies')
+                                               ->where('user_id', $user->id);
+                                    })
+                                    ->get()
+                                    ->toArray();
+
+        $phoneNumberIds = array_column($phoneNumbers, 'id');
+        if( count($phoneNumbers) ){
+            PhoneNumber::whereIn('id', $phoneNumberIds)->delete();
+
+            event(new PhoneNumberEvent($user, $phoneNumbers, 'delete'));
+        }
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted.'
         ]);
     }
 
