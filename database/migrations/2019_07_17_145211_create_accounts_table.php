@@ -25,6 +25,8 @@ class CreateAccountsTable extends Migration
             $table->dateTime('disabled_at')->nullable();
             $table->dateTime('last_billed_at')->nullable();
             $table->dateTime('bill_at');
+            $table->string('default_tts_voice', 32);
+            $table->string('default_tts_language', 32);
             $table->timestamps();
             $table->softDeletes();
         });

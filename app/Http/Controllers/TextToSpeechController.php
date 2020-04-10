@@ -10,22 +10,8 @@ class TextToSpeechController extends Controller
 {
     public function say(Request $request)
     {
-        $settings = config('services.twilio');
-
-        $rules = [
-            'text'      => 'required|max:128',
-            'language'  => 'in:' . implode(',', array_keys($settings['languages'])),
-            'voice'     => 'in:' . implode(',', array_keys($settings['voices-aws-map']))
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() )
-            return response([
-                'error' =>  $validator->errors()->first()
-            ], 400);
-
         $language = $request->language ?? 'en-US';
-        $voice    = $request->voice ?? 'Amy';
+        $voice    = $request->voice    ?? 'Joanna';
 
         $client = AWS::createClient('polly');
 

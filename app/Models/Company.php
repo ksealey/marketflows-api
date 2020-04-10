@@ -22,7 +22,7 @@ class Company extends Model implements Exportable
         'industry',
         'country',
         'tts_voice',
-        'tts_llanguage'
+        'tts_language'
     ];
 
     protected $hidden = [

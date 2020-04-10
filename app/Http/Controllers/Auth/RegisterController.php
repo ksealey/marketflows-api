@@ -58,7 +58,9 @@ class RegisterController extends Controller
                 'balance'             => 0.00,
                 'auto_reload_minimum' => 10.00,
                 'auto_reload_amount'  => 20.00,
-                'bill_at'             => now()->addMonths(1)
+                'bill_at'             => now()->addMonths(1),
+                'default_tts_voice'   => 'Joanna',
+                'default_tts_language'=> 'en-US',
             ]);
             
             //  Create an admin role

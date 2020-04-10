@@ -56,8 +56,7 @@ class CompanyController extends Controller
 
         $user = $request->user();
 
-        $query = DB::table('companies')
-                    ->select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
+        $query = Company::select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
                     ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id')
                     ->where('companies.account_id', $user->account_id)
                     ->whereIn('companies.id', function($query) use($user){
@@ -98,7 +97,8 @@ class CompanyController extends Controller
             ], 400);
         }
 
-        $user = $request->user();
+        $user    = $request->user();
+        $account = $user->account;
 
         DB::beginTransaction();
 
@@ -108,7 +108,9 @@ class CompanyController extends Controller
                 'user_id'           => $user->id,
                 'name'              => $request->name,
                 'industry'          => $request->industry,
-                'country'           => $request->country
+                'country'           => $request->country,
+                'tts_voice'         => $account->default_tts_voice ?: 'Joanna',
+                'tts_language'      => $account->default_tts_language ?: 'en-US'        
             ]);
 
             UserCompany::create([
@@ -157,13 +159,23 @@ class CompanyController extends Controller
      */
     public function update(Request $request, Company $company)
     {
+        $tts       = config('services.twilio');
+        $languages = $tts['languages'];
+        $voices    = !empty($languages[$request->tts_language]) 
+                        ? array_keys($languages[$request->tts_language]['voices']) 
+                        : [];
         $rules = [
-            'name'      => 'min:1|max:64',
-            'industry'  => 'min:1|max:64',
-            'country'   => [new CountryRule()]
+            'name'          => 'min:1|max:64',
+            'industry'      => 'min:1|max:64',
+            'country'       => [new CountryRule()],
+            'tts_language'  => 'bail|in:' . implode(',', array_keys($languages)),
         ];
-        
+
         $validator = Validator::make($request->input(), $rules);
+        $validator->sometimes('tts_voice', ['bail', 'required', 'in:' . implode(',', $voices)], function($input){
+            return $input->filled('tts_language');
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -176,10 +188,14 @@ class CompanyController extends Controller
             $company->industry = $request->industry;
         if( $request->filled('country') )
             $company->country = $request->country;
+        if( $request->filled('tts_voice') )
+            $company->tts_voice = $request->tts_voice;
+        if( $request->filled('tts_language') )
+            $company->tts_language = $request->tts_language;
 
         $company->save();
 
-        $pool = PhoneNumberPool::where('company', $company->id)->first();
+        $pool = PhoneNumberPool::where('company_id', $company->id)->first();
         $company->phone_number_pool_id = $pool ? $pool->id : null;
 
         event(new CompanyEvent($request->user(), [$company], 'update'));
@@ -217,7 +233,7 @@ class CompanyController extends Controller
         AudioClip::where('company_id', $company->id)->delete();
 
         //  Remove Blocked Phone Numbers
-        $blockedPhoneNumbers = BlockedPhoneNumber::whereIn('company_id', $company->id)->get();
+        $blockedPhoneNumbers = BlockedPhoneNumber::where('company_id', $company->id)->get();
         BlockedPhoneNumber::where('company_id', $company->id)->delete();
 
         //  Remove all reports for company

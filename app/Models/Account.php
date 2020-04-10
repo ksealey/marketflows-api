@@ -28,7 +28,9 @@ class Account extends Model
         'auto_reload_minimum',
         'auto_reload_amount',
         'bill_at',
-        'last_billed_at'        
+        'last_billed_at',
+        'default_tts_voice',
+        'default_tts_language'     
     ];
 
     protected $hidden = [

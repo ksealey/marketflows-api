@@ -203,7 +203,7 @@ class IncomingCallController extends Controller
         }elseif( $config->greeting_message ){
             $response->say($config->greetingMessage($call), [
                 'language' => $company->tts_language,
-                'voice'    => $company->tts_voice
+                'voice'    => 'Polly.' . $company->tts_voice
             ]);
         }
 
@@ -292,29 +292,14 @@ class IncomingCallController extends Controller
      */
     public function handleCallWhisper(Request $request)
     {
-        $config = config('services.twilio');
-
-        $rules = [
-            'whisper_language'  => 'in:' . implode(',', array_keys($config['languages'])),
-            'whisper_voice'     => 'in:' . implode(',', array_keys($config['voices'])),
-            'whisper_message'   => 'max:255',
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() )
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-
-        $response = new VoiceResponse();
-
-        $config = [];
+        $config   = [];
         if( $request->whisper_language )
             $config['language'] = $request->whisper_language;
 
         if( $request->whisper_voice )
-            $config['voice'] = $request->whisper_voice;
+            $config['voice'] = 'Polly.' . $request->whisper_voice;
 
+        $response = new VoiceResponse();
         $response->say($request->whisper_message, $config);
 
         return Response::xmlResponse($response);
