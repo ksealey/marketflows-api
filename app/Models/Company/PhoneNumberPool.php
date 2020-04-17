@@ -25,10 +25,7 @@ class PhoneNumberPool extends Model
         'phone_number_config_id',
         'override_campaigns',
         'name',
-        'referrer_aliases',
         'swap_rules',
-        'toll_free',
-        'starts_with',
         'disabled_at'
     ];
 
@@ -42,8 +39,7 @@ class PhoneNumberPool extends Model
     ];
 
     protected $casts = [
-        'swap_rules'       => 'array',
-        'referrer_aliases' => 'array'
+        'swap_rules' => 'array'
     ];
 
     protected $dateFormat = 'Y-m-d H:i:s.u';  

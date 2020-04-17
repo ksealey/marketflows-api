@@ -18,7 +18,7 @@ class CreateCallsTable extends Migration
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned();
-            $table->boolean('toll_free')->default(0);
+            $table->string('type', 16);
             $table->string('category', 32)->nullable();
             $table->string('sub_category', 32)->nullable();
 

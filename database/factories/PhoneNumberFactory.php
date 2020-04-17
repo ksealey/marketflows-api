@@ -18,7 +18,7 @@ $factory->define(\App\Models\Company\PhoneNumber::class, function (Faker $faker)
         'external_id'               => str_random(40),
         'category'                  => 'ONLINE',
         'sub_category'              => 'WEBSITE',
-        'toll_free'                 => false,
+        'type'                      => 'Local',
         'country_code'              => '1',
         'number'                    => substr($faker->e164PhoneNumber, -10),
         'voice'                     => true,

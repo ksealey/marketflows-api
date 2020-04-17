@@ -8,6 +8,7 @@ use App\Rules\Company\AudioClipRule;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberConfig;
+use App\Events\Company\PhoneNumberConfigEvent;
 use Validator;
 use DateTime;
 use DateTimeZone;
@@ -58,14 +59,22 @@ class PhoneNumberConfigController extends Controller
             'greeting_message'           => 'bail|nullable|max:128',
             'greeting_audio_clip_id'     => ['bail', 'nullable', 'numeric', new AudioClipRule($company->id)],
             'keypress_enabled'           => 'bail|boolean',
-            'keypress_key'               => 'bail|required_with:keypress_enabled|in:1,2,3,4,5,6,7,8,9,0',
-            'keypress_attempts'          => 'bail|required_with:keypress_enabled|in:1,2,3,4,5',
-            'keypress_timeout'           => 'bail|required_with:keypress_enabled|digits_between:1,2',
+            'keypress_timeout'           => '',
             'keypress_audio_clip_id'     => ['bail', 'nullable',  'numeric', new AudioClipRule($company->id)],
             'keypress_message'           => 'bail|nullable|max:128',
         ];
 
         $validator = Validator::make($request->input(), $rules);
+        $validator->sometimes('keypress_key', 'bail|required|numeric|min:0|max:9', function($input){
+            return !!$input->keypress_enabled;
+        });
+        $validator->sometimes('keypress_attempts', 'bail|required|numeric|min:1|max:5', function($input){
+            return !!$input->keypress_enabled;
+        });
+        $validator->sometimes('keypress_timeout', 'bail|required|numeric|min:5|max:60', function($input){
+            return !!$input->keypress_enabled;
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -77,9 +86,10 @@ class PhoneNumberConfigController extends Controller
                 'error' => 'You must either provide a greeting audio clip id or greeting message, but not both.'
             ], 400);
 
+        $user = $request->user();
         $phoneNumberConfig = PhoneNumberConfig::create([
             'company_id'                => $company->id,
-            'user_id'                   => $request->user()->id,
+            'user_id'                   => $user->id,
             'name'                      => $request->name,
             'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number) ?: null,
             'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
@@ -95,6 +105,8 @@ class PhoneNumberConfigController extends Controller
             'keypress_audio_clip_id'    => $request->keypress_audio_clip_id ?: null,
             'keypress_message'          => $request->keypress_message ?: null,
         ]);
+
+        event(new PhoneNumberConfigEvent($user, [$phoneNumberConfig], 'create'));
 
         return response($phoneNumberConfig, 201);
     }
@@ -127,49 +139,59 @@ class PhoneNumberConfigController extends Controller
             'greeting_message'           => 'bail|nullable|max:128',
             'greeting_audio_clip_id'     => ['bail', 'nullable', 'numeric', new AudioClipRule($company->id)],
             'keypress_enabled'           => 'bail|boolean',
-            'keypress_key'               => 'bail|required_with:keypress_enabled|in:1,2,3,4,5,6,7,8,9,0',
-            'keypress_attempts'          => 'bail|required_with:keypress_enabled|in:1,2,3,4,5',
-            'keypress_timeout'           => 'bail|required_with:keypress_enabled|digits_between:1,2',
             'keypress_audio_clip_id'     => ['bail', 'nullable',  'numeric', new AudioClipRule($company->id)],
             'keypress_message'           => 'bail|nullable|max:128',
         ];
+
         $validator = Validator::make($request->input(), $rules);
+        $validator->sometimes('keypress_key', 'bail|required|numeric|min:0|max:9', function($input){
+            return !!$input->keypress_enabled;
+        });
+        $validator->sometimes('keypress_attempts', 'bail|required|numeric|min:1|max:5', function($input){
+            return !!$input->keypress_enabled;
+        });
+        $validator->sometimes('keypress_timeout', 'bail|required|numeric|min:5|max:60', function($input){
+            return !!$input->keypress_enabled;
+        });
+
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
         }
 
-        if( $request->has('name') )
+        if( $request->filled('name') )
             $phoneNumberConfig->name = $request->name;
-        if( $request->has('forward_to_country_code') )
+        if( $request->filled('forward_to_number') ){
             $phoneNumberConfig->forward_to_country_code = PhoneNumber::countryCode($request->forward_to_number) ?: null;
-        if( $request->has('forward_to_number') )
-            $phoneNumberConfig->forward_to_number = PhoneNumber::number($request->forward_to_number);
-        if( $request->has('greeting_audio_clip_id') )
+            $phoneNumberConfig->forward_to_number       = PhoneNumber::number($request->forward_to_number);
+        }
+        if( $request->filled('greeting_audio_clip_id') )
             $phoneNumberConfig->greeting_audio_clip_id = $request->greeting_audio_clip_id;
-        if( $request->has('greeting_message') )
+        if( $request->filled('greeting_message') )
             $phoneNumberConfig->greeting_message = $request->greeting_message;
-        if( $request->has('record') )
+        if( $request->filled('record') )
             $phoneNumberConfig->recording_enabled_at = $request->record ? ( $phoneNumberConfig->recording_enabled_at ?: date('Y-m-d H:i:s') ) : null;
-        if( $request->has('caller_id') )
+        if( $request->filled('caller_id') )
             $phoneNumberConfig->caller_id_enabled_at = $request->caller_id ? ( $phoneNumberConfig->caller_id_enabled_at ?: date('Y-m-d H:i:s') ) : null;
-        if( $request->has('whisper_message') )
+        if( $request->filled('whisper_message') )
             $phoneNumberConfig->whisper_message = $request->whisper_message;
-        if( $request->has('keypress_enabled') )
+        if( $request->filled('keypress_enabled') )
             $phoneNumberConfig->keypress_enabled_at = $request->keypress_enabled ? ($request->keypress_enabled_at ?: now()) : null;
-        if( $request->has('keypress_key') )
+        if( $request->filled('keypress_key') )
             $phoneNumberConfig->keypress_key = intval($request->keypress_key);
-        if( $request->has('keypress_attempts') )
+        if( $request->filled('keypress_attempts') )
             $phoneNumberConfig->keypress_attempts = intval($request->keypress_attempts);
-        if( $request->has('keypress_timeout') )
+        if( $request->filled('keypress_timeout') )
             $phoneNumberConfig->keypress_timeout = intval($request->keypress_timeout);
-        if( $request->has('keypress_audio_clip_id') )
+        if( $request->filled('keypress_audio_clip_id') )
             $phoneNumberConfig->keypress_audio_clip_id = $request->keypress_audio_clip_id;
-        if( $request->has('keypress_message') )
+        if( $request->filled('keypress_message') )
             $phoneNumberConfig->keypress_message = $request->keypress_message;
     
         $phoneNumberConfig->save();
+
+        event(new PhoneNumberConfigEvent($user, [$phoneNumberConfig], 'update'));
 
         return response( $phoneNumberConfig );
     }
@@ -187,6 +209,8 @@ class PhoneNumberConfigController extends Controller
         }
 
         $phoneNumberConfig->delete();
+
+        event(new PhoneNumberConfigEvent($user, [$phoneNumberConfig], 'delete'));
 
         return response([
             'message' => 'deleted'

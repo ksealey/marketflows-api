@@ -29,6 +29,20 @@ class PhoneNumberConfigListener
      */
     public function handle(PhoneNumberConfigEvent $event)
     {
-        //
+        $user = $event->user;
+        $accountOnlineUsers = Cache::get('websockets.accounts.' . $user->account_id) ?: [];
+        if( count($accountOnlineUsers) ){
+            foreach( $accountOnlineUsers as $connectionInfo ){
+                if( $connectionInfo ){
+                    $package = [
+                        'to'      => $connectionInfo['user_id'],
+                        'type'    => 'PhoneNumberConfig',
+                        'action'  => $event->action,
+                        'content' => $event->phoneNumberConfigs
+                    ];
+                    $this->pushSocketData($connectionInfo['host'], $package);
+                }
+            }            
+        }
     }
 }

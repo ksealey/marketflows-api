@@ -207,17 +207,17 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
 
     /*
     |----------------------------------------
-    | Handle transactions
+    | Handle purchases
     |----------------------------------------
     */
-    Route::prefix('transactions')->group(function(){
-        Route::get('/', 'TransactionController@list')
-            ->middleware('can:list,\App\Models\Transaction')
-            ->name('list-transactions'); 
+    Route::prefix('purchases')->group(function(){
+        Route::get('/', 'PurchaseController@list')
+            ->middleware('can:list,\App\Models\Purchase')
+            ->name('list-purchases'); 
         
-        Route::get('/{transaction}', 'TransactionController@read')
-            ->middleware('can:read,\App\Models\Transaction')
-            ->name('read-transaction'); 
+        Route::get('/{purchase}', 'PurchaseController@read')
+            ->middleware('can:read,purchase')
+            ->name('read-purchase'); 
     });
 
     /*
@@ -367,6 +367,26 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                 Route::delete('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@delete')
                     ->middleware('can:delete,phoneNumberPool')
                     ->name('delete-phone-number-pool');
+
+                Route::get('/{phoneNumberPool}/numbers', 'Company\PhoneNumberPoolController@numbers')
+                    ->middleware('can:update,phoneNumberPool')
+                    ->name('get-phone-number-pool-numbers');
+
+                Route::post('/{phoneNumberPool}/add-numbers', 'Company\PhoneNumberPoolController@addNumbers')
+                    ->middleware('can:update,phoneNumberPool')
+                    ->name('add-phone-number-pool-numbers');
+
+                Route::post('/{phoneNumberPool}/attach-numbers', 'Company\PhoneNumberPoolController@attachNumbers')
+                    ->middleware('can:update,phoneNumberPool')
+                    ->name('attach-phone-number-pool-numbers');
+
+                Route::post('/{phoneNumberPool}/detach-numbers', 'Company\PhoneNumberPoolController@detachNumbers')
+                     ->middleware('can:update,phoneNumberPool')
+                     ->name('detach-phone-number-pool-numbers');
+
+                Route::delete('/{phoneNumberPool}/delete-numbers', 'Company\PhoneNumberPoolController@deleteNumbers')
+                     ->middleware('can:update,phoneNumberPool')
+                     ->name('delete-phone-number-pool-numbers');
             }); 
             
             /*
@@ -436,15 +456,15 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->name('create-phone-number');
 
                 Route::get('/{phoneNumber}', 'Company\PhoneNumberController@read')
-                    ->middleware('can:read,phoneNumber')
+                    ->middleware('can:read,phoneNumber,company')
                     ->name('read-phone-number');
 
                 Route::put('/{phoneNumber}', 'Company\PhoneNumberController@update')
-                    ->middleware('can:update,phoneNumber')
+                    ->middleware('can:update,phoneNumber,company')
                     ->name('update-phone-number');
 
                 Route::delete('/{phoneNumber}', 'Company\PhoneNumberController@delete')
-                    ->middleware('can:delete,phoneNumber')
+                    ->middleware('can:delete,phoneNumber,company')
                     ->name('delete-phone-number');
 
                  

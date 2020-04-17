@@ -13,7 +13,7 @@ class Call extends Model
         'account_id',
         'company_id',
         'phone_number_id',
-        'toll_free',
+        'type',
         'category',
         'sub_category',
         

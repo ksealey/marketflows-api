@@ -46,9 +46,9 @@ class Account extends Model
         'BASIC' => [
             'Plan'                 => 9.99,
             'PhoneNumber.Local'    => 3.00,
-            'PhoneNumber.TollFree' => 5.00,
+            'PhoneNumber.Toll-Free' => 5.00,
             'Minute.Local'         => 0.045,
-            'Minute.TollFree'      => 0.07,
+            'Minute.Toll-Free'      => 0.07,
             'Minute.Recording'     => 0.01,
             'CallerId.Lookup'      => 0.02,
             'SMS'                  => 0.025
@@ -56,9 +56,9 @@ class Account extends Model
         'AGENCY' =>  [
             'Plan'                 => 29.00,
             'PhoneNumber.Local'    => 2.00,
-            'PhoneNumber.TollFree' => 4.00, 
+            'PhoneNumber.Toll-Free' => 4.00, 
             'Minute.Local'         => 0.04,
-            'Minute.TollFree'      => 0.07,
+            'Minute.Toll-Free'      => 0.07,
             'Minute.Recording'     => 0.01,
             'CallerId.Lookup'      => 0.02,
             'SMS'                  => 0.025
@@ -66,9 +66,9 @@ class Account extends Model
         'ENTERPRISE' =>  [
             'Plan'                 => 79.00,
             'PhoneNumber.Local'    => 2.00,
-            'PhoneNumber.TollFree' => 4.00,
+            'PhoneNumber.Toll-Free' => 4.00,
             'Minute.Local'         => 0.035,
-            'Minute.TollFree'      => 0.065,
+            'Minute.Toll-Free'      => 0.065,
             'Minute.Recording'     => 0.01,
             'CallerId.Lookup'      => 0.02,
             'SMS'                  => 0.02
@@ -105,7 +105,7 @@ class Account extends Model
 
     public function getRoundedBalanceAttribute()
     {
-        return round($this->balance, 2, PHP_ROUND_HALF_DOWN);
+        return number_format($this->balance, 2);
     }
 
     public function getPrimaryPaymentMethodAttribute()
@@ -131,9 +131,7 @@ class Account extends Model
      */
     public function price($object)
     {
-        $rates = $this->rates[$this->plan];
-
-        return floatval($rates[$object]);
+        return floatval($this->rates[$this->plan][$object]);
     }
 
     /**
@@ -142,14 +140,7 @@ class Account extends Model
      */
     public function balanceCovers($object, $count = 1)
     {
-        $requiredBalance = $this->price($object) * $count;
-        
-        //  Check account balance
-        if( $this->balance >= $requiredBalance )
-            return true;
-
-        //  If auto reload is turned on and there is a valid payent method
-        return $this->auto_reload_enabled_at && $this->hasValidPaymentMethod();
+        return $this->balance >= ($this->price($object) * $count);
     }
 
     /**
@@ -166,38 +157,14 @@ class Account extends Model
         return false;
     }
 
-    /**
-     * Create transaction, reducing the account balance
-     * 
-     */
-    public function transaction($type, $item, $table, $recordId, $label, $companyId = null, $userId = null)
-    {
-        $price = $this->price($item);
-
-        //  Log transaction
-        $transaction = Transaction::create([
-            'account_id'    => $this->id,
-            'amount'        => $price,
-            'type'          => $type,
-            'item'          => $item,
-            'table'         => $table,
-            'record_id'     => $recordId,
-            'label'         => $label,
-            'company_id'    => $companyId,
-            'user_id'       => $userId,
-            'created_at'    => now()
-        ]);
-
-        $this->reduceBalance($price);
-
-        return $transaction;
-    }
-
     public function reduceBalance($amount)
     {
         $this->balance -= $amount;
         $this->save();
 
+        //
+        //  TODO: Move to job so it doesn't interfere with other processing
+        //
         if( $this->shouldAutoReload() )
             $this->autoReload();
 
@@ -227,7 +194,7 @@ class Account extends Model
      * Auto-reload account when balance gets below threshold
      * 
      */
-    public function autoReload()
+    public function autoReload(User $user)
     {
         $primaryMethod  = $this->primary_payment_method;
         $amount         = $this->auto_reload_amount;
@@ -237,9 +204,8 @@ class Account extends Model
         $charge = $primaryMethod->charge($amount, $desc);
         if( $charge ){
             $this->balance += floatval($charge->amount);
-
             $this->save();
-
+            event( new AccountEvent($user, [$this], 'update') );
             return;
         }
         

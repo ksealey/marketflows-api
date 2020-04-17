@@ -56,9 +56,7 @@ class CompanyController extends Controller
 
         $user = $request->user();
 
-        $query = Company::select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
-                    ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id')
-                    ->where('companies.account_id', $user->account_id)
+        $query = Company::where('companies.account_id', $user->account_id)
                     ->whereIn('companies.id', function($query) use($user){
                         $query->select('company_id')
                                 ->from('user_companies')
@@ -125,8 +123,6 @@ class CompanyController extends Controller
 
         DB::commit();
 
-        $company->phone_number_pool_id = null;
-
         event(new CompanyEvent($user, [$company], 'create')); 
 
         return response($company, 201);
@@ -142,10 +138,6 @@ class CompanyController extends Controller
      */
     public function read(Request $request, Company $company)
     {   
-        $pool = PhoneNumberPool::where('company_id', $company->id)->first();
-
-        $company->phone_number_pool_id = $pool ? $pool->id : null;
-
         return response($company);
     }
 
@@ -194,9 +186,6 @@ class CompanyController extends Controller
             $company->tts_language = $request->tts_language;
 
         $company->save();
-
-        $pool = PhoneNumberPool::where('company_id', $company->id)->first();
-        $company->phone_number_pool_id = $pool ? $pool->id : null;
 
         event(new CompanyEvent($request->user(), [$company], 'update'));
 

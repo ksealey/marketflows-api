@@ -8,29 +8,9 @@ use Faker\Generator as Faker;
 $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $faker) {
     return [
         'name'                      => $faker->company,
-        'toll_free'                 => false,
+        'type'                      => 'Local',
         'starts_with'               => '813',
         'size'                      => 0,
-        'referrer_aliases'          => [
-            'aliases' => [
-                [
-                    'domain' => 'google.com',
-                    'alias'  =>  'Google Organic'
-                ],
-                [
-                    'domain' => 'facebook.com',
-                    'alias'  => 'Facebook Organic',
-                ],
-                [
-                    'domain' => 'yahoo.com',
-                    'alias'  => 'Yahoo Organic',
-                ],
-                [
-                    'domain' => 'bing.com',
-                    'alias'  => 'Bing Organic',
-                ]
-            ]
-        ],
         'swap_rules'                => [
             'targets' => [
                 '813557####',

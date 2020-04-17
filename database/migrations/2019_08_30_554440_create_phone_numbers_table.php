@@ -24,12 +24,13 @@ class CreatePhoneNumbersTable extends Migration
             $table->string('name', 64)->index();
             $table->string('category', 32)->nullable();
             $table->string('sub_category', 32)->nullable();
+            $table->string('country', 16);
             $table->string('country_code', 8)->nullable();
             $table->string('number', 16)->index();
             $table->boolean('voice')->default(0);
             $table->boolean('sms')->default(0);
             $table->boolean('mms')->default(0);
-            $table->boolean('toll_free');
+            $table->string('type', 32);
             $table->string('source', 64)->nullable();
             $table->string('medium', 64)->nullable();
             $table->string('campaign', 64)->nullable();

@@ -37,7 +37,7 @@ Artisan::command('fill-calls', function(){
             'account_id'                => 2,
             'company_id'                => 1,
             'phone_number_id'           => 1,
-            'toll_free'                 => 1,
+            'type'                      => 'Toll-Free',
             'category'                  => 'OFFLINE',
             'sub_category'              => 'EMAIL',
 

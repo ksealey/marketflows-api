@@ -31,7 +31,8 @@ class PhoneNumber extends Model implements Exportable
         'phone_number_config_id',
         'category',
         'sub_category',
-        'toll_free',
+        'type',
+        'country',
         'country_code',
         'number',
         'voice',
@@ -71,7 +72,7 @@ class PhoneNumber extends Model implements Exportable
         'name'              => 'Name',
         'country_code'      => 'Country Code',
         'number'            => 'Number',
-        'toll_free'         => 'Toll-Free',
+        'type'              => 'Toll-Free',
         'source'            => 'Source',
         'medium'            => 'Medium',
         'campaign'          => 'Campaign',
@@ -104,6 +105,10 @@ class PhoneNumber extends Model implements Exportable
         return $this->belongsTo('\App\Models\Company\PhoneNumberConfig');
     }
 
+    public function calls()
+    {
+        return $this->hasMany('\App\Models\Company\Call');
+    }
 
     static private function client()
     {
@@ -119,11 +124,49 @@ class PhoneNumber extends Model implements Exportable
         return new TwilioClient($config['test_sid'], $config['test_token']);
     }
 
+
     /**
-     * List local phone numbers available for a gived area code
+     * Get the link
      * 
      */
-    static public function listAvailable($contains = '' , $limit = 20, $tollFree = false, $country = 'US')
+    public function getLinkAttribute()
+    {
+        return route('read-phone-number', [
+            'companyId'     => $this->company_id,
+            'phoneNumberId' => $this->id
+        ]);
+    }
+
+    /**
+     * Get the kind
+     * 
+     */
+    public function getKindAttribute()
+    {
+        return 'PhoneNumber';
+    }
+
+    /**
+     * Get a formatted version of the number
+     * 
+     */
+    public function getFormattedNumberAttribute()
+    {
+        return  '+' 
+                . $this->country_code 
+                . ' (' 
+                . substr($this->number, 0, 3)
+                . ') '
+                . substr($this->number, 3, 3)
+                . '-'
+                . substr($this->number, 6, 4);
+    }
+
+    /**
+     * List local phone numbers available for a given area code
+     * 
+     */
+    static public function listAvailable($contains = '' , $limit = 20, $type, $country = 'US')
     {
         $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
 
@@ -137,15 +180,9 @@ class PhoneNumber extends Model implements Exportable
         $numbers = [];
 
         try{
-            if( $tollFree ){
-                $numbers = $client->availablePhoneNumbers($country)
-                          ->tollFree
-                          ->read($config, $limit);
-            }else{
-                $numbers = $client->availablePhoneNumbers($country)
-                          ->local
-                          ->read($config, $limit);
-            }
+            $numbers = $client->availablePhoneNumbers($country);
+            $numbers = $type === 'Toll-Free' ? $numbers->tollFree : $numbers->local;
+            $numbers = $numbers->read($config, $limit);
         }catch(Exception $e){ }
 
         return $numbers ?: [];
@@ -194,8 +231,6 @@ class PhoneNumber extends Model implements Exportable
                 ->incomingPhoneNumbers($this->external_id)
                 ->delete();
         }
-
-        $this->delete();
        
         return $this;
     }
@@ -234,90 +269,6 @@ class PhoneNumber extends Model implements Exportable
         $len = strlen($fullPhone) - strlen($phone);
 
         return substr($fullPhone, 0, $len);
-    }
-
-    /**
-     * Get the link
-     * 
-     */
-    public function getLinkAttribute()
-    {
-        return route('read-phone-number', [
-            'companyId'     => $this->company_id,
-            'phoneNumberId' => $this->id
-        ]);
-    }
-
-    /**
-     * Get the kind
-     * 
-     */
-    public function getKindAttribute()
-    {
-        return 'PhoneNumber';
-    }
-
-    /**
-     * Get a formatted version of the number
-     * 
-     */
-    public function getFormattedNumberAttribute()
-    {
-        return  '+' 
-                . $this->country_code 
-                . ' (' 
-                . substr($this->number, 0, 3)
-                . ') '
-                . substr($this->number, 3, 3)
-                . '-'
-                . substr($this->number, 6, 4);
-    }
-
-    /**
-     * Determine if this phone number is in use
-     * 
-     * @return boolean
-     */
-    public function isInUse()
-    {
-        //  If not attached to a pool
-        return $this->campaign_id || $this->phone_number_pool_id  ? true : false;
-    }
-
-    /**
-     * Given a list of number ids, return the phone number ids of records in use
-     * This included phone numbers attached to a campaign or a phone number pool
-     * 
-     * @param array $numberIds    An array of phone number ids
-     * 
-     * @return array
-     */
-    static public function numbersInUse(array $numberIds = [], $excludingCampaignId = null)
-    {
-        if( count($numberIds) ){
-            $query = PhoneNumber::whereIn('id', $numberIds)
-                                ->where(function($q){
-                                    $q->where(function($q){
-                                        //  Where not attached to a pool, but attached to a campaign
-                                        $q->whereNull('phone_number_pool_id')
-                                          ->whereNotNull('campaign_id');
-                                    })
-                                    ->orWhere(function($q){
-                                        //  Where attached to a pool
-                                        $q->whereNotNull('phone_number_pool_id');
-                                    });
-                                });
-
-            if( $excludingCampaignId )
-                $query->where('campaign_id', '!=', $excludingCampaignId);
-
-            $phoneNumbersInUse = $query->get();
-
-            if( count($phoneNumbersInUse) )
-                return array_column($phoneNumbersInUse->toArray(), 'id');
-        }
-     
-        return [];
     }
 
     /**

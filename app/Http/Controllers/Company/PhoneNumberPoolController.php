@@ -8,14 +8,15 @@ use Illuminate\Http\Request;
 use \App\Rules\Company\AudioClipRule;
 use \App\Models\Company;
 use App\Rules\Company\PhoneNumberConfigRule;
-use App\Rules\Company\NumbersRule;
 use App\Rules\Company\SingleWebsiteSessionPoolRule;
-use App\Rules\ReferrerAliasesRule;
 use App\Rules\SwapRulesRule;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
-use \App\Models\Transaction;
+use \App\Models\Company\BankedPhoneNumber;
+use \App\Models\Purchase;
+use \App\Events\Company\PhoneNumberEvent;
+use \App\Events\Company\PhoneNumberPoolEvent;
 use Validator;
 use Exception;
 use Log;
@@ -23,6 +24,15 @@ use DB;
 
 class PhoneNumberPoolController extends Controller
 {
+    //  Pass along to parent for listing
+    static $fields = [
+        'phone_number_pools.company_id',
+        'phone_number_pools.name',
+        'phone_numbers.disabled_at',
+        'phone_numbers.created_at',
+        'phone_numbers.updated_at'
+    ];
+
     /**
      * List phone number pools
      * 
@@ -34,12 +44,14 @@ class PhoneNumberPoolController extends Controller
     public function list(Request $request, Company $company)
     {
         $query = PhoneNumberPool::where('company_id', $company->id);
-        
-        
+
+        //  Pass along to parent for listing
         return parent::results(
             $request,
             $query,
-            [ 'order_by'  => 'in:name,created_at,updated_at' ]
+            [],
+            self::$fields,
+            'phone_number_pools.created_at'
         );
     }
 
@@ -67,14 +79,10 @@ class PhoneNumberPoolController extends Controller
                 'json', 
                 new SwapRulesRule()
             ],    
-            'referrer_aliases', [
-                'bail', 
-                'json', 
-                new ReferrerAliasesRule()
-            ],
             'override_campaigns'    => 'bail|boolean',
-            'toll_free'             => 'bail|boolean',
-            'starts_with'           => 'bail|digits_between:1,10',
+            'type'                  => 'bail|required|in:Local,Toll-Free',
+            'starts_with'           => 'bail|nullable|digits_between:1,10',
+            'disabled'              => 'bail|nullable|boolean'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -84,9 +92,8 @@ class PhoneNumberPoolController extends Controller
             ], 400);
         }
 
-        //  Make no pools exist for this company
-        $existingPool = PhoneNumberPool::where('company_id', $company->id)->first();
-        if( $existingPool ){
+        //  Make sure no pools exist for this company
+        if( PhoneNumberPool::where('company_id', $company->id)->count() ){
             return response([
                 'error' => 'Only 1 online number pool allowed per company.'
             ], 400);
@@ -94,11 +101,14 @@ class PhoneNumberPoolController extends Controller
 
         $user               = $request->user();
         $account            = $company->account;
-        $purchaseObject     = 'PhoneNumber.' . ($request->toll_free ? 'TollFree' : 'Local'); 
+        $startsWith         = $request->starts_with;
+        $type               = $request->type;
+        $purchaseObject     = 'PhoneNumber.' . ($tollFree ? 'TollFree' : 'Local'); 
+        $price              = $account->price($purchaseObject);
         $poolSize           = intval($request->size);
 
         //  Make sure this account can purchase the amount of numbers requested
-        if( ! $account->balanceCovers($purchaseObject, $poolSize, true) ){
+        if( ! $account->balanceCovers($purchaseObject, $poolSize) ){
                 return response([
                     'error' => 'Your account balance(' 
                                 . $account->rounded_balance 
@@ -108,90 +118,180 @@ class PhoneNumberPoolController extends Controller
                 ], 400);
         }
 
-            
-        //  Make sure we have enough numbers available
-        $availableNumbers = PhoneNumber::listAvailable(
-            $request->starts_with, 
-            $poolSize, 
-            $request->toll_free ?: false, 
-            $company->country
+        //  Check bank for phone numbers
+        $bankedNumbers = BankedPhoneNumber::availableNumbers(
+            $user->account_id, 
+            $company->country, 
+            $type, 
+            $startsWith, 
+            $poolSize
         );
 
-        if( count($availableNumbers) < $poolSize ){
-            if( $request->toll_free ){
+        $totalNumbersFound = count($bankedNumbers);
+        $availableNumbers  = [];
+        if( $totalNumbersFound < $poolSize ){
+            //  Make sure we have enough numbers available
+            $availableNumbers = PhoneNumber::listAvailable(
+                $startsWith, 
+                $poolSize, 
+                $type, 
+                $company->country
+            );
+            $totalNumbersFound += count($availableNumbers);
+        }
+           
+        if( $totalNumbersFound < $poolSize ){
+            if( $tollFree){
                 $error = 'Not enough toll free numbers available. Try using local numbers.';
             }else{
                 $error = 'Not enough local numbers available. Try again with a different area code.';
             }
-
-            return response([
+            return response([ 
                 'error' => $error
             ], 400);
         }
-
-        //  Step 1: Create Pool
-        $swapRules       = json_decode($request->swap_rules);
-        $referrerAliases = $request->referrer_aliases ? json_decode($request->referrer_aliases) : null;
-    
-        $pool = PhoneNumberPool::create([
+        
+        //  Create Pool
+        DB::beginTransaction();
+        $phoneNumberPool = PhoneNumberPool::create([
             'company_id'                => $company->id,
             'user_id'                   => $user->id,
             'phone_number_config_id'    => $request->phone_number_config_id,
             'name'                      => $request->name,
-            'referrer_aliases'          => $referrerAliases,
-            'swap_rules'                => $swapRules,
-            'toll_free'                 => $request->toll_free ? true : false,
-            'override_campaigns'        => $request->override_campaigns ? true : false,
-            'starts_with'               => $request->starts_with ?: null
+            'swap_rules'                => json_decode($request->swap_rules),
+            'override_campaigns'        => !!$request->override_campaigns,
+            'starts_with'               => $startsWith ?: null,
+            'disabled_at'               => $request->disabled ? now() : null
         ]);
 
-        for($i = 0; $i < $request->size; $i++){
-            try{
-                //  Create Remote Resource
-                $availableNumber = $availableNumbers[$i];
-                $purchasedPhone = PhoneNumber::purchase($availableNumber->phoneNumber);
+        $purchaseDescription = '';
+        
+        //
+        //  Use banked phone numbers first
+        //
+        $inserts = [];
+        foreach( $bankedNumbers as $bankedNumber ){
+            //  Add to phone number insert list
+            $now       = now();
+            $inserts[] = [
+                'uuid'                      => Str::uuid(),
+                'phone_number_pool_id'      => $phoneNumberPool->id,
+                'external_id'               => $bankedNumber->external_id,
+                'company_id'                => $company->id,
+                'user_id'                   => $user->id,
+                'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
+                'category'                  => 'ONLINE',
+                'sub_category'              => 'WEBSITE',
+                'type'                      => $bankedNumber->type,
+                'country'                   => $bankedNumber->country,
+                'country_code'              => $bankedNumber->country_code,
+                'number'                    => $bankedNumber->number,
+                'voice'                     => $bankedNumber->voice,
+                'sms'                       => $bankedNumber->sms,
+                'mms'                       => $bankedNumber->mms,
+                'name'                      => $bankedNumber->country_code . $bankedNumber->number,
+                'source'                    => '-',
+                'medium'                    => null,
+                'content'                   => null,
+                'campaign'                  => null,
+                'swap_rules'                => json_encode($phoneNumberPool->swap_rules),
+                'purchased_at'              => $bankedNumber->purchased_at,
+                'created_at'                => $now,
+                'updated_at'                => $now
+            ];
 
-                //  Tie to company and make local record
-                $phoneNumber = PhoneNumber::create([
+            $purchaseDescription .= 'Phone +' . $bankedNumber->country_code . $bankedNumber->number . ' @ $' . $price . "\n";
+        }
+        
+        //  Write banked phone numbers
+        if( count($bankedNumbers) ){
+            $deleteIds = array_column($bankedNumbers->toArray(), 'id');
+            try{
+                BankedPhoneNumber::whereIn('id', $deleteIds)->delete();
+            }catch(Exception $e){
+                Log::error($e->getTraceAsString());
+                DB::rollBack();
+                return response([
+                    'error' => 'An error occurred while attempting to purchase numbers - Please try again later.'
+                ], 500);
+            }
+        }
+             
+        //  See if we need more numbers
+        $numbersNeeded = $poolSize - count($inserts); 
+        if( $numbersNeeded ){
+            for( $i = 0; $i < $numbersNeeded; $i++ ){
+                $now             = now();
+                $availableNumber = $availableNumbers[$i];
+                $purchasedPhone  = null;
+                try{
+                    $purchasedPhone = PhoneNumber::purchase($availableNumber->phoneNumber);
+                }catch(Exception $e){
+                    Log::error($e->getTraceAsString());
+                    continue;
+                }
+
+                $inserts[] = [
                     'uuid'                      => Str::uuid(),
+                    'phone_number_pool_id'      => $phoneNumberPool->id,
                     'external_id'               => $purchasedPhone->sid,
-                    'phone_number_pool_id'      => $pool->id,
-                    'company_id'                => $pool->company_id,
-                    'user_id'                   => $pool->user_id,
-                    'toll_free'                 => $request->toll_free ? 1 : 0,
+                    'company_id'                => $company->id,
+                    'user_id'                   => $user->id,
+                    'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
                     'category'                  => 'ONLINE',
-                    'sub_category'              => 'WEBSITE_SESSION',
+                    'sub_category'              => 'WEBSITE',
+                    'type'                      => $tollFree,
+                    'country'                   => $company->country,
                     'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
                     'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
                     'voice'                     => $purchasedPhone->capabilities['voice'],
                     'sms'                       => $purchasedPhone->capabilities['sms'],
                     'mms'                       => $purchasedPhone->capabilities['mms'],
-                    'name'                      => $purchasedPhone->phoneNumber
-                ]);
-                
-                //  Log transaction while adjusting balance
-                $account->transaction(
-                    Transaction::TYPE_PURCHASE,
-                    $purchaseObject,
-                    $phoneNumber->getTable(),
-                    $phoneNumber->id,
-                    'Purchased Number ' . $purchasedPhone->phoneNumber,
-                    $company->id,
-                    $user->id
-                );
-            }catch(Exception $e){
+                    'name'                      => $purchasedPhone->phoneNumber,
+                    'source'                    => '-',
+                    'medium'                    => null,
+                    'content'                   => null,
+                    'campaign'                  => null,
+                    'swap_rules'                => $request->swap_rules,
+                    'purchased_at'              => $now,
+                    'created_at'                => $now,
+                    'updated_at'                => $now
+                ];
 
-                Log::error($e->getTraceAsString());
-
-                break; // Stop loop once we run into an issue
+                $purchaseDescription .= 'Phone ' . $purchasedPhone->phoneNumber . ' @ $' . $price . "\n";
             }
         }
+        
+        try{
+            //  Add numbers to account
+            PhoneNumber::insert($inserts);
 
-        $pool->save();
+            //  Log purchase
+            $purchase = Purchase::create([
+                'account_id'    => $account->id,
+                'company_id'    => $company->id,
+                'user_id'       => $user->id,
+                'item'          => $purchaseObject,
+                'total'         => $price * count($inserts),
+                'description'   => $purchaseDescription
+            ]);
 
-        $pool->phone_numbers; //    Attach phone numbers
+            //  Decrease account balance
+            $account->balance -= $purchase->total;
+            $account->save();
+        }catch(Exception $e){
+            Log::error($e->getTraceAsString());
+            DB::rollBack();
+            return response([
+                'error' => 'An error occurred while attempting to purchase numbers - Please try again later.'
+            ], 500);
+        }
 
-        return response($pool, 201);
+        DB::commit();
+
+        event( new PhoneNumberPoolEvent($user, [$phoneNumberPool], 'create') );
+
+        return response($phoneNumberPool, 201);
     }
 
     /**
@@ -205,8 +305,6 @@ class PhoneNumberPoolController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        //$phoneNumberPool->phone_numbers;
-
         return response($phoneNumberPool);
     }
 
@@ -222,25 +320,18 @@ class PhoneNumberPoolController extends Controller
     public function update(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
         $rules = [
-            'name'              => 'bail|max:64',
-            'size'              => 'bail|numeric|min:5|max:50',  
+            'name' => 'bail|max:64',
             'phone_number_config_id' => [
                 'bail',
                 (new PhoneNumberConfigRule($company))
             ],
-            'swap_rules'    => [
+            'override_campaigns'    => 'bail|boolean',
+            'swap_rules' => [
                 'bail', 
                 'json', 
                 new SwapRulesRule()
-            ],    
-            'referrer_aliases', [
-                'bail', 
-                'json', 
-                new ReferrerAliasesRule()
             ],
-            'override_campaigns'    => 'bail|boolean',
-            'toll_free'             => 'bail|boolean',
-            'starts_with'           => 'bail|digits_between:1,10'
+            'disabled' => 'nullable|boolean'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -250,143 +341,26 @@ class PhoneNumberPoolController extends Controller
             ], 400);
         }
 
-        //  Update Pool
-        if( $request->filled('phone_number_config_id') )
-            $phoneNumberPool->phone_number_config_id = $request->phone_number_config_id;
         if( $request->filled('name') )
             $phoneNumberPool->name = $request->name;
+
+        if( $request->filled('phone_number_config_id') )
+            $phoneNumberPool->phone_number_config_id = $request->phone_number_config_id;
+        
         if( $request->filled('override_campaigns') )
             $phoneNumberPool->override_campaigns = $request->override_campaigns ? true : false;
-        if( $request->filled('starts_with') )
-            $phoneNumberPool->starts_with = $request->starts_with;
-        if( $request->filled('toll_free') )
-            $phoneNumberPool->toll_free = $request->toll_free ? true : false;
-        if( $request->filled('referrer_aliases') ){
-            $referrerAliases = json_decode($request->referrer_aliases);
-            $phoneNumberPool->referrer_aliases = $referrerAliases;
-        }
+
         if( $request->filled('swap_rules') ){
             $swapRules = json_decode($request->swap_rules);
             $phoneNumberPool->swap_rules = $swapRules;
         }
 
-        //  If the size hasn't changed, stop here
-        $currentPoolSize    = count($phoneNumberPool->phone_numbers);
-        if( ! $request->filled('size') || $request->size ==  $currentPoolSize ){
-            $phoneNumberPool->save();
-
-            $phoneNumberPool->phone_numbers; //    Attach phone numbers
-
-            return response($phoneNumberPool, 200);
-        }
-
-        //  If there are numbers added, charge account
-        $newPoolSize        = intval($request->size); 
-        $account            = $company->account;
-        $user               = $request->user();
-
-        //  If we are purchasing numbers
-        if( $newPoolSize > $currentPoolSize ){
-            //  Make sure this account can purchase the amount of numbers requested
-            $purchaseCount  = $newPoolSize - $currentPoolSize;
-            $purchaseObject = 'PhoneNumber.' . ($phoneNumberPool->toll_free ? 'TollFree' : 'Local'); 
-            if( ! $account->balanceCovers($purchaseObject, $purchaseCount, true) ){
-                    return response([
-                        'error' => 'Your account balance(' 
-                                    . $account->rounded_balance 
-                                    . ') is too low to complete this purchase. '
-                                    . 'Reload account balance or turn on auto-reload in your account payment settings and try again. '
-                                    . 'If auto-reload is already on, your payment method may be invalid.'
-                    ], 400);
-            }
-            
-            //  Make sure we have enough numbers available
-            $availableNumbers = PhoneNumber::listAvailable(
-                $phoneNumberPool->starts_with, 
-                $purchaseCount, 
-                $phoneNumberPool->toll_free, 
-                $company->country
-            );
-
-            if( count($availableNumbers) < $purchaseCount ){
-                if( $tollFree ){
-                    $error = 'Not enough toll free numbers available. Try using local numbers.';
-                }else{
-                    $error = 'Not enough local numbers available. Try again with a different area code.';
-                }
-
-                return response([
-                    'error' => $error
-                ], 400);
-            }
-
-            //  Purchase Numbers and add to pool
-            for($i = 0; $i < $purchaseCount; $i++){
-                try{
-                    //  Create Remote Resource
-                    $availableNumber = $availableNumbers[$i];
-                    $purchasedPhone = PhoneNumber::purchase($availableNumber->phoneNumber);
-    
-                    //  Tie to company and make local record
-                    $phoneNumber = PhoneNumber::create([
-                        'uuid'                      => Str::uuid(),
-                        'external_id'               => $purchasedPhone->sid,
-                        'phone_number_pool_id'      => $phoneNumberPool->id,
-                        'company_id'                => $phoneNumberPool->company_id,
-                        'user_id'                   => $phoneNumberPool->user_id,
-                        'toll_free'                 => $phoneNumberPool->toll_free ? 1 : 0,
-                        'category'                  => 'ONLINE',
-                        'sub_category'              => 'WEBSITE_SESSION',
-                        'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
-                        'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
-                        'voice'                     => $purchasedPhone->capabilities['voice'],
-                        'sms'                       => $purchasedPhone->capabilities['sms'],
-                        'mms'                       => $purchasedPhone->capabilities['mms'],
-                        'name'                      => $purchasedPhone->phoneNumber
-                    ]);
-                    
-                    //  Log transaction
-                    $account->transaction(
-                        Transaction::TYPE_PURCHASE,
-                        $purchaseObject,
-                        $phoneNumber->getTable(),
-                        $phoneNumber->id,
-                        'Purchased Number ' . $purchasedPhone->phoneNumber,
-                        $company->id,
-                        $user->id
-                    );
-                }catch(Exception $e){
-                    Log::error($e->getTraceAsString());
-    
-                    break; // Stop loop once we run into an issue
-                }
-            }
-        }elseif( $newPoolSize < $currentPoolSize ){
-            //  If we are releasing numbers
-            $phoneNumbers = $phoneNumberPool->phone_numbers;
-            $releaseCount = $currentPoolSize - $newPoolSize;
-            $released     = [];
-            $remaining    = [];
-            foreach( $phoneNumbers as $phoneNumber ){
-                if( count($released) >= $releaseCount )
-                    break;
-                    
-                try{
-                    $phoneNumber->release();
-
-                    $released[] = $phoneNumber->id;
-                }catch(Exception $e){
-                    Log::error($e->getTraceAsString());
-
-                    break;
-                }
-            }
-        }
-
-
+        if( $request->filled('disabled') )
+            $phoneNumberPool->disabled_at = $request->disabled ? ($phoneNumberPool->disabled_at ?: now()) : null;
+        
         $phoneNumberPool->save();
 
-        $phoneNumberPool->load('phone_numbers');
+        event(new PhoneNumberPoolEvent($request->user(), [$phoneNumberPool], 'update'));
 
         return response($phoneNumberPool);
     }
@@ -402,18 +376,390 @@ class PhoneNumberPoolController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        //  Detach numbers then remove pool
-        $phoneNumbers = PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
-                                    ->get();
-        
-        foreach( $phoneNumbers as $phoneNumber ){
-            $phoneNumber->release();
-        }
-       
+        //  Remove Pool
+        $user         = $request->user();
+        $phoneNumbers = $phoneNumberPool->phone_numbers; 
+
         $phoneNumberPool->delete();
+        PhoneNumber::whereIn('id', array_column($phoneNumbers->toArray(),'id'))->delete();
+       
+        event( new PhoneNumberPoolEvent($user, [$phoneNumberPool], 'delete') );
+        event( new PhoneNumberEvent($user, $phoneNumbers, 'delete') );
 
         return response([
             'message' => 'Deleted.'
         ]);
+    }
+
+    /**
+     * Get list of numbers attached to this pool
+     * 
+     * @param Request $company
+     * @param Company $company
+     * @param PhoneNumberPool $phoneNumberPool
+     * 
+     * @return Response
+     */
+    public function numbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
+    {
+         //  Build Query
+         $query =PhoneNumber::select([
+                                    'phone_numbers.*', 
+                                    DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
+                                    DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
+                                ])
+                                ->where('phone_numbers.phone_number_pool_id', $phoneNumberPool->id)
+                                ->whereNull('phone_numbers.deleted_at');
+
+            //  Pass along to parent for listing
+        return parent::results(
+            $request,
+            $query,
+            [],
+            [
+                'phone_numbers.name',
+                'phone_numbers.number',
+                'phone_numbers.disabled_at',
+                'phone_numbers.created_at',
+                'phone_numbers.updated_at',
+                'call_count'
+            ],
+            'phone_numbers.created_at'
+        );
+
+        return response($phoneNumberPool->phoneNumbers);
+    }
+
+    /**
+     * Add phone numbers to pool
+     * 
+     * @param Request $company
+     * @param Company $company
+     * @param PhoneNumberPool $phoneNumberPool
+     * 
+     * @return Response
+     */
+    public function addNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
+    {
+        $rules = [
+            'count'       => 'bail|required|numeric|min:1|max:30',
+            'type'        => 'bail|required|in:Local,Toll-Free',
+            'starts_with' => 'bail|nullable|digits_between:1,3'
+        ];
+        $validator = validator($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $user           = $request->user();
+        $account        = $user->account;
+        $startsWith     = $request->starts_with;
+        $type           = $request->type;
+        $count          = intval($request->count);
+        $purchaseObject = 'PhoneNumber.' . $type;
+        $price          = $account->price($purchaseObject);
+
+        //  Check balance
+        if( ! $account->balanceCovers($purchaseObject, $count, true) ){
+            return response([
+                'error' => 'Your account balance(' 
+                            . $account->rounded_balance 
+                            . ') is too low to complete this purchase. '
+                            . 'Reload account balance or turn on auto-reload in your account payment settings and try again. '
+                            . 'If auto-reload is already on, your payment method may be invalid.'
+            ], 400);
+        }
+        
+        $bankedNumbers = BankedPhoneNumber::availableNumbers(
+            $user->account_id, 
+            $company->country, 
+            $type, 
+            $startsWith, 
+            $count
+        );
+
+        $totalNumbersFound = count($bankedNumbers);
+        $availableNumbers  = [];
+        if( $totalNumbersFound < $count ){
+            //  Make sure we have enough numbers available
+            $availableNumbers = PhoneNumber::listAvailable(
+                $startsWith, 
+                $count, 
+                $type, 
+                $company->country
+            );
+            $totalNumbersFound += count($availableNumbers);
+        }
+           
+        if( $totalNumbersFound < $count ){
+            if( $tollFree){
+                $error = 'Not enough toll free numbers available. Try using local numbers.';
+            }else{
+                $error = 'Not enough local numbers available. Try again with a different area code.';
+            }
+            return response([
+                'error' => $error
+            ], 400);
+        }
+        
+        //
+        //  Use banked phone numbers first
+        //
+        $inserts             = [];
+        $purchaseDescription = '';
+        foreach( $bankedNumbers as $bankedNumber ){
+            //  Add to phone number insert list
+            $now       = now();
+            $inserts[] = [
+                'uuid'                      => Str::uuid(),
+                'phone_number_pool_id'      => $phoneNumberPool->id,
+                'external_id'               => $bankedNumber->external_id,
+                'company_id'                => $company->id,
+                'user_id'                   => $user->id,
+                'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
+                'category'                  => 'ONLINE',
+                'sub_category'              => 'WEBSITE',
+                'type'                      => $bankedNumber->type,
+                'country'                   => $bankedNumber->country,
+                'country_code'              => $bankedNumber->country_code,
+                'number'                    => $bankedNumber->number,
+                'voice'                     => $bankedNumber->voice,
+                'sms'                       => $bankedNumber->sms,
+                'mms'                       => $bankedNumber->mms,
+                'name'                      => $bankedNumber->country_code . $bankedNumber->number,
+                'source'                    => '-',
+                'medium'                    => null,
+                'content'                   => null,
+                'campaign'                  => null,
+                'swap_rules'                => json_encode($phoneNumberPool->swap_rules),
+                'purchased_at'              => $bankedNumber->purchased_at,
+                'created_at'                => $now,
+                'updated_at'                => $now
+            ];
+            $purchaseDescription .= 'Phone +' . $bankedNumber->country_code . $bankedNumber->number . ' @ $' . $price . "\n";
+        }
+
+        //  Write banked phone numbers
+        DB::beginTransaction();
+
+        if( count($bankedNumbers) ){
+            $deleteIds = array_column($bankedNumbers->toArray(), 'id');
+            try{
+                BankedPhoneNumber::whereIn('id', $deleteIds)->delete();
+            }catch(Exception $e){
+                Log::error($e->getTraceAsString());
+                DB::rollBack();
+                return response([
+                    'error' => 'An error occurred while attempting to purchase numbers - Please try again later.'
+                ], 500);
+            }
+        }
+             
+        //  See if we need more numbers
+        $numbersNeeded = $count - count($inserts); 
+        if( $numbersNeeded ){
+            for( $i = 0; $i < $numbersNeeded; $i++ ){
+                $now             = now();
+                $availableNumber = $availableNumbers[$i];
+                $purchasedPhone  = null;
+                try{
+                    $purchasedPhone = PhoneNumber::purchase($availableNumber->phoneNumber);
+                }catch(Exception $e){
+                    Log::error($e->getTraceAsString());
+                    continue;
+                }
+
+                $inserts[] = [
+                    'uuid'                      => Str::uuid(),
+                    'phone_number_pool_id'      => $phoneNumberPool->id,
+                    'external_id'               => $purchasedPhone->sid,
+                    'company_id'                => $company->id,
+                    'user_id'                   => $user->id,
+                    'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
+                    'category'                  => 'ONLINE',
+                    'sub_category'              => 'WEBSITE',
+                    'type'                      => $type,
+                    'country'                   => $company->country,
+                    'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
+                    'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
+                    'voice'                     => $purchasedPhone->capabilities['voice'],
+                    'sms'                       => $purchasedPhone->capabilities['sms'],
+                    'mms'                       => $purchasedPhone->capabilities['mms'],
+                    'name'                      => $purchasedPhone->phoneNumber,
+                    'source'                    => '-',
+                    'medium'                    => null,
+                    'content'                   => null,
+                    'campaign'                  => null,
+                    'swap_rules'                => json_encode($phoneNumberPool->swap_rules),
+                    'purchased_at'              => $now,
+                    'created_at'                => $now,
+                    'updated_at'                => $now
+                ];
+
+                $purchaseDescription .= 'Phone ' . $purchasedPhone->phoneNumber . ' @ $' . $price . "\n";
+            }
+        }
+        
+        try{
+            //  Add numbers to account
+            PhoneNumber::insert($inserts);
+
+            //  Log purchase
+            $purchase = Purchase::create([
+                'account_id'    => $account->id,
+                'company_id'    => $company->id,
+                'user_id'       => $user->id,
+                'item'          => $purchaseObject,
+                'total'         => $price * count($inserts),
+                'description'   => $purchaseDescription
+            ]);
+
+            //  Decrease account balance
+            $account->reduceBalance($purchase->total);
+        }catch(Exception $e){
+            Log::error($e->getTraceAsString());
+
+            DB::rollBack();
+
+            return response([
+                'error' => 'An error occurred while attempting to purchase numbers - Please try again later.'
+            ], 500);
+        }
+
+        DB::commit();
+
+        return response([
+            'message' => 'Added.',
+            'count'   => count($inserts)
+        ], 201);
+    }
+
+   /**
+     * Attach phone numbers to pool
+     * 
+     * @param Request $company
+     * @param Company $company
+     * @param PhoneNumberPool $phoneNumberPool
+     * 
+     * @return Response
+     */
+    public function attachNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
+    {
+        $validator = validator($request->input, [
+            'numbers' => 'required|json'
+        ]);
+
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+
+        $numberIds = json_decode($request->numbers);
+        if( ! is_array($numberIds) ){
+            return response([
+                'error' => 'Numbers must be a json array of phone number ids'
+            ], 400);
+        }
+
+        $numberIds = array_filter($numberIds, function($numId){
+            return is_int($numId);
+        });
+    
+        PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
+                    ->whereIn('id', $numberIds)
+                    ->update([
+                        'phone_number_pool_id' => $phoneNumberPool->id
+                    ]);
+
+        return response([
+            'message' => 'Attached.'
+        ]);
+    } 
+
+   /**
+    * Detach phone numbers from pool
+    * 
+    * @param Request $company
+    * @param Company $company
+    * @param PhoneNumberPool $phoneNumberPool
+    * 
+    * @return Response
+    */
+    public function detachNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
+    {
+        $validator = validator($request->input, [
+            'numbers' => 'required|json'
+        ]);
+
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+
+        $numberIds = json_decode($request->numbers);
+        if( ! is_array($numberIds) ){
+            return response([
+                'error' => 'Numbers must be a json array of phone number ids'
+            ], 400);
+        }
+
+        $numberIds = array_filter($numberIds, function($numId){
+            return is_int($numId);
+        });
+    
+        PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
+                    ->whereIn('id', $numberIds)
+                    ->update([
+                        'phone_number_pool_id' => null,
+                        'assignments'          => 0
+                    ]);
+
+        return response([ 'message' => 'Detached.' ]);
+    }
+
+   /**
+    * Delete phone numbers from pool
+    * 
+    * @param Request $company
+    * @param Company $company
+    * @param PhoneNumberPool $phoneNumberPool
+    * 
+    * @return Response
+    */
+    public function deleteNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
+    {
+        $validator = validator($request->input, [
+            'numbers' => 'required|json'
+        ]);
+
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+
+        $numberIds = json_decode($request->numbers);
+        if( ! is_array($numberIds) ){
+            return response([
+                'error' => 'Numbers must be a json array of phone number ids'
+            ], 400);
+        }
+
+        $numberIds = array_filter($numberIds, function($numId){
+            return is_int($numId);
+        });
+    
+        $phoneNumbers = PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
+                                    ->whereIn('id', $numberIds)
+                                    ->get();
+
+        PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
+                    ->whereIn('id', $numberIds)
+                    ->delete();
+
+        event(new PhoneNumberEvent($request->user, $phoneNumbers, 'delete'));
+
+        return response([ 'message' => 'Deleted.' ]);
     }
 }

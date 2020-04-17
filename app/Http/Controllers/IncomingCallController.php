@@ -152,7 +152,7 @@ class IncomingCallController extends Controller
             'account_id'                => $company->account_id,
             'company_id'                => $company->id,
             'phone_number_id'           => $phoneNumber->id,
-            'toll_free'                 => $phoneNumber->toll_free,
+            'type'                      => $phoneNumber->type,
             'category'                  => $phoneNumber->category,
             'sub_category'              => $phoneNumber->sub_category,
 
@@ -267,9 +267,9 @@ class IncomingCallController extends Controller
         if( $call->duration && ! $call->cost ){
             $account        = Account::withTrashed()->find($call->account_id);
 
-            $pricePerMinute = $account->price('Minute.' . ($call->toll_free ? 'TollFree' : 'Local'));
+            $pricePerMinute  = $account->price('Minute.' . ($call->type));
             $pricePerMinute += $call->recording_enabled ? $account->price('Minute.Recording') : 0;
-            $cost           = ceil($call->duration / 60) * $pricePerMinute;
+            $cost            = ceil($call->duration / 60) * $pricePerMinute;
             $cost           += $call->caller_id_enabled ? $account->price('CallerId.Lookup') : 0;
 
             $call->cost = $cost;

@@ -84,8 +84,8 @@ class ConditionsRule implements Rule
                 }
 
                 foreach( $condition->inputs as $inputIdx => $input ){
-                    if( ! is_string($input) ){
-                        $this->message = 'Condition at index ' . $idx . ' inputs must only contain strings.';
+                    if( ! is_string($input) && ! is_numeric($input) ){
+                        $this->message = 'Condition at index ' . $idx . ' inputs must only contain strings or numbers.';
                         return false;
                     }
                 }

@@ -10,6 +10,7 @@ use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
 use App\Models\Transaction;
 use App\Models\Company\PhoneNumber;
+use App\Models\Company\BankedPhoneNumber;
 use App\Models\Company\Call;
 use App\Rules\SwapRulesRule;
 use App\Rules\Company\BulkPhoneNumberRule;
@@ -40,7 +41,11 @@ class PhoneNumberController extends Controller
     public function list(Request $request, Company $company)
     {
         //  Build Query
-        $query = PhoneNumber::select(['phone_numbers.*', DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count')])
+        $query = PhoneNumber::select([
+                        'phone_numbers.*', 
+                        DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
+                        DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
+                    ])
                     ->whereNull('phone_numbers.phone_number_pool_id')
                     ->whereNull('phone_numbers.deleted_at')
                     ->where('phone_numbers.company_id', $company->id);
@@ -73,7 +78,7 @@ class PhoneNumberController extends Controller
                 'required',
                 (new PhoneNumberConfigRule($company))
             ],
-            'toll_free'     => 'bail|boolean',
+            'type'          => 'bail|required|in:Toll-Free,Local',
             'starts_with'   => 'bail|digits_between:1,10'
         ];
 
@@ -86,8 +91,6 @@ class PhoneNumberController extends Controller
         $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,BILLBOARD,OTHER'], function($input){
             return $input->category === 'OFFLINE';
         });
-
-        //  Make sure the swap rules are there and valid when it's for a website
         $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
             return $input->sub_category == 'WEBSITE';
         });
@@ -98,7 +101,7 @@ class PhoneNumberController extends Controller
             ], 400);
 
         //  Make sure that account balance can purchase object
-        $purchaseObject = 'PhoneNumber.' . ($request->toll_free ? 'TollFree' : 'Local'); 
+        $purchaseObject = 'PhoneNumber.' . $request->type; 
         $user           = $request->user(); 
         $account        = $company->account; 
         
@@ -107,17 +110,67 @@ class PhoneNumberController extends Controller
                 'error' => 'Your account balance(' . $account->rounded_balance  . ') is too low to complete purchase. Reload account balance or turn on auto-reload in your account payment settings and try again.'
             ], 400);
 
-        //  Look for a phone number that matches the start_with
-        $startsWith   = $request->starts_with;
-        $foundNumbers = PhoneNumber::listAvailable($startsWith, 1, $request->toll_free, $company->country) ?: [];
-        if( ! count($foundNumbers) )
-            return response([
-                'error' => 'No phone number could be found for purchase'
-            ], 400);
+         //  See if we can find an available number in the number bank 
+         //  that didn't previously belong to this account
+        $startsWith  = $request->starts_with;
+        $bankedQuery = BankedPhoneNumber::where('status', 'Available')
+                                        ->where('released_by_account_id', '!=', $account->id)
+                                        ->where('country', $company->country)
+                                        ->where('type', $request->type);
+        
+        if( $startsWith )
+             $bankedQuery->where('number', 'like', $startsWith . '%');
 
-        //  Attempt to purchase phone numbers
-        try{
-            $purchasedPhone = PhoneNumber::purchase($foundNumbers[0]->phoneNumber);
+        $bankedNumber = $bankedQuery->orderBy('release_by', 'ASC')
+                                    ->first();
+
+        if( $bankedNumber ){
+            $phoneNumber = PhoneNumber::create([
+                'uuid'                      => Str::uuid(),
+                'external_id'               => $bankedNumber->external_id,
+                'company_id'                => $company->id,
+                'user_id'                   => $user->id,
+                'phone_number_config_id'    => $request->phone_number_config_id,
+                'category'                  => $request->category,
+                'sub_category'              => $request->sub_category,
+                'type'                      => $request->type,
+                'country'                   => $bankedNumber->country,
+                'country_code'              => $bankedNumber->country_code,
+                'number'                    => $bankedNumber->number,
+                'voice'                     => $bankedNumber->voice,
+                'sms'                       => $bankedNumber->sms,
+                'mms'                       => $bankedNumber->mms,
+                'name'                      => $request->name ?: '+' . $bankedNumber->country_code . $bankedNumber->number,
+                'source'                    => $request->source,
+                'medium'                    => $request->medium,
+                'content'                   => $request->content,
+                'campaign'                  => $request->campaign,
+                'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null,
+                'purchased_at'              => $bankedNumber->purchased_at
+            ]);
+        }else{
+             //  Look for a phone number that matches the start_with
+            $foundNumbers = PhoneNumber::listAvailable(
+                $startsWith, 
+                1, 
+                $request->type, 
+                $company->country
+            ) ?: [];
+
+            if( ! count($foundNumbers) )
+                return response([
+                    'error' => 'No phone number could be found for purchase'
+                ], 400);
+
+            try{
+                $purchasedPhone = PhoneNumber::purchase($foundNumbers[0]->phoneNumber);
+            }catch(Exception $e){
+                Log::error($e->getTraceAsString());
+                
+                return response([
+                    'error' => 'Unable to purchase number - Please try again later.'
+                ], 400);
+            }
 
             $phoneNumber = PhoneNumber::create([
                 'uuid'                      => Str::uuid(),
@@ -125,10 +178,10 @@ class PhoneNumberController extends Controller
                 'company_id'                => $company->id,
                 'user_id'                   => $user->id,
                 'phone_number_config_id'    => $request->phone_number_config_id,
-                'phone_number_pool_id'      => $request->phone_number_pool_id,
                 'category'                  => $request->category,
                 'sub_category'              => $request->sub_category,
-                'toll_free'                 => $request->toll_free ? 1 : 0,
+                'type'                      => $request->type,
+                'country'                   => $company->country,
                 'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
                 'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
                 'voice'                     => $purchasedPhone->capabilities['voice'],
@@ -139,25 +192,9 @@ class PhoneNumberController extends Controller
                 'medium'                    => $request->medium,
                 'content'                   => $request->content,
                 'campaign'                  => $request->campaign,
-                'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null
+                'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null,
+                'purchased_at'              => now()
             ]);
-
-           //  Log transaction
-           $account->transaction(
-                Transaction::TYPE_PURCHASE,
-                $purchaseObject,
-                $phoneNumber->getTable(),
-                $phoneNumber->id,
-                'Purchased Number ' . $purchasedPhone->phoneNumber,
-                $company->id,
-                $user->id
-            );
-        }catch(Exception $e){
-            Log::error($e->getTraceAsString());
-            
-            return response([
-                'error' => $e->getMessage()
-            ], 400);
         }
 
         $phoneNumber->call_count = 0;
@@ -398,8 +435,8 @@ class PhoneNumberController extends Controller
     public function checkNumbersAvailable(Request $request, Company $company)
     {
         $rules = [
-            'toll_free'     => 'required|boolean',
-            'count'         => 'required|digits_between:1,2',
+            'type'          => 'required|in:Local,Toll-Free',
+            'count'         => 'required|numeric|min:1|max:30',
             'starts_with'   => 'digits_between:1,10'
         ];
 
@@ -410,36 +447,65 @@ class PhoneNumberController extends Controller
             ], 400);
         }
 
-        $numbers = [];
+        $user        = $request->user();
+        $bankedQuery = BankedPhoneNumber::where('status', 'Available')
+                                        ->where('released_by_account_id', '!=', $user->account_id)
+                                        ->where('country', $company->country)
+                                        ->where('type', $request->type);
+
+        if( $request->starts_with )
+            $bankedQuery->where('number', 'like', $request->starts_with . '%');
+
+        $bankedNumbers = $bankedQuery->orderBy('release_by', 'ASC')
+                                   ->limit($request->count)
+                                   ->get();
+        $bankedCount   = count($bankedNumbers);
+
+        if( $bankedCount == $request->count ){
+            return response([
+                'available' => true,
+                'count'     => $bankedCount,
+                'type'      => $request->type
+            ]);
+        }
+
+        $neededCount = $request->count - $bankedCount;
+        $numbers     = [];
         try{
             $numbers = PhoneNumber::listAvailable(
                 $request->starts_with, 
-                $request->count, 
-                $request->toll_free,
+                $neededCount, 
+                $request->type,
                 $company->country
             );
         }catch(\Exception $e){}
-
-        $response = [
-            'available' => count($numbers) ? true : false,
-            'count'     => count($numbers),
-            'toll_free' => boolval($request->toll_free)
-        ];
-        $statusCode = 200;
-
-        if( ! count($numbers) ){
-            $error = 'No phone numbers could be found for this company\'s country(' 
-                                . $company->country 
-                                . ')';
-            if( $request->starts_with )
-                $error .= ' starting with ' . $request->starts_with;
-
-            $response['error'] = $error;
-
-            $statusCode = 400;
+        
+        //  No numbers found
+        $totalFound = count($numbers) + $bankedCount;
+        if( $totalFound === 0 ){
+            return response([
+                'available' => false,
+                'error'     => 'No numbers found - Please try again with a different search.',
+                'count'     => $totalFound,
+                'type'      => $request->type
+            ], 400);
         }
 
-        return response($response, $statusCode);
+        //  Not enough numbers found
+        if( $totalFound < $request->count ){
+            return response([
+                'available' => false,
+                'error'     => 'Not enough numbers found(' . $totalFound. ') for purchase - Please try again with a different search.',
+                'count'     => $totalFound,
+                'type'      => $request->type
+            ], 400);
+        }
+
+        return response([
+            'available' => true,
+            'count'     => $totalFound,
+            'type'      => $request->type
+        ], 200);
     }
 
     /**
