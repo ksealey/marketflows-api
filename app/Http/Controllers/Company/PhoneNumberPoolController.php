@@ -103,7 +103,7 @@ class PhoneNumberPoolController extends Controller
         $account            = $company->account;
         $startsWith         = $request->starts_with;
         $type               = $request->type;
-        $purchaseObject     = 'PhoneNumber.' . ($tollFree ? 'TollFree' : 'Local'); 
+        $purchaseObject     = 'PhoneNumber.' . $type; 
         $price              = $account->price($purchaseObject);
         $poolSize           = intval($request->size);
 
@@ -141,13 +141,8 @@ class PhoneNumberPoolController extends Controller
         }
            
         if( $totalNumbersFound < $poolSize ){
-            if( $tollFree){
-                $error = 'Not enough toll free numbers available. Try using local numbers.';
-            }else{
-                $error = 'Not enough local numbers available. Try again with a different area code.';
-            }
-            return response([ 
-                'error' => $error
+            return response([
+                'error' => 'Not enough ' . $type . ' numbers available. Try again with a different number type or area code.'
             ], 400);
         }
         
@@ -240,7 +235,7 @@ class PhoneNumberPoolController extends Controller
                     'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
                     'category'                  => 'ONLINE',
                     'sub_category'              => 'WEBSITE',
-                    'type'                      => $tollFree,
+                    'type'                      => $type,
                     'country'                   => $company->country,
                     'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
                     'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
@@ -494,13 +489,8 @@ class PhoneNumberPoolController extends Controller
         }
            
         if( $totalNumbersFound < $count ){
-            if( $tollFree){
-                $error = 'Not enough toll free numbers available. Try using local numbers.';
-            }else{
-                $error = 'Not enough local numbers available. Try again with a different area code.';
-            }
             return response([
-                'error' => $error
+                'error' => 'Not enough ' . $type . ' numbers available. Try again with a different number type or area code.'
             ], 400);
         }
         

@@ -21,7 +21,6 @@ class CreatePhoneNumberPoolsTable extends Migration
             $table->boolean('override_campaigns');
             $table->string('name', 64)->nullable();
             $table->json('swap_rules')->nullable();
-            $table->string('type', 32);
             $table->string('starts_with', 16)->nullable();
             $table->dateTime('disabled_at', 6)->nullable();
             $table->dateTime('created_at', 6);
