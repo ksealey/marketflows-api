@@ -369,8 +369,12 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->name('delete-phone-number-pool');
 
                 Route::get('/{phoneNumberPool}/numbers', 'Company\PhoneNumberPoolController@numbers')
-                    ->middleware('can:update,phoneNumberPool')
+                    ->middleware('can:read,phoneNumberPool')
                     ->name('get-phone-number-pool-numbers');
+
+                Route::get('/{phoneNumberPool}/numbers/export', 'Company\PhoneNumberPoolController@exportNumbers')
+                    ->middleware('can:read,phoneNumberPool')
+                    ->name('export-phone-number-pool-numbers');
 
                 Route::post('/{phoneNumberPool}/add-numbers', 'Company\PhoneNumberPoolController@addNumbers')
                     ->middleware('can:update,phoneNumberPool')

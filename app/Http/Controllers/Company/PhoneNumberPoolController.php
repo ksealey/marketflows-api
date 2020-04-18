@@ -33,6 +33,16 @@ class PhoneNumberPoolController extends Controller
         'phone_numbers.updated_at'
     ];
 
+    static $numberFields = [
+        'phone_numbers.name',
+        'phone_numbers.number',
+        'phone_numbers.disabled_at',
+        'phone_numbers.created_at',
+        'phone_numbers.updated_at',
+        'phone_numbers.assignments',
+        'call_count',
+    ];
+
     /**
      * List phone number pools
      * 
@@ -411,14 +421,7 @@ class PhoneNumberPoolController extends Controller
             $request,
             $query,
             [],
-            [
-                'phone_numbers.name',
-                'phone_numbers.number',
-                'phone_numbers.disabled_at',
-                'phone_numbers.created_at',
-                'phone_numbers.updated_at',
-                'call_count'
-            ],
+            self::$numberFields,
             'phone_numbers.created_at'
         );
 
@@ -637,7 +640,7 @@ class PhoneNumberPoolController extends Controller
      */
     public function attachNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        $validator = validator($request->input, [
+        $validator = validator($request->input(), [
             'numbers' => 'required|json'
         ]);
 
@@ -657,14 +660,15 @@ class PhoneNumberPoolController extends Controller
             return is_int($numId);
         });
     
-        PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
+        PhoneNumber::where('company_id', $company->id)
                     ->whereIn('id', $numberIds)
                     ->update([
                         'phone_number_pool_id' => $phoneNumberPool->id
                     ]);
 
         return response([
-            'message' => 'Attached.'
+            'message' => 'Attached.',
+            'count'   => count($numberIds)
         ]);
     } 
 
@@ -679,7 +683,7 @@ class PhoneNumberPoolController extends Controller
     */
     public function detachNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        $validator = validator($request->input, [
+        $validator = validator($request->input(), [
             'numbers' => 'required|json'
         ]);
 
@@ -720,7 +724,7 @@ class PhoneNumberPoolController extends Controller
     */
     public function deleteNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        $validator = validator($request->input, [
+        $validator = validator($request->input(), [
             'numbers' => 'required|json'
         ]);
 
@@ -751,5 +755,25 @@ class PhoneNumberPoolController extends Controller
         event(new PhoneNumberEvent($request->user, $phoneNumbers, 'delete'));
 
         return response([ 'message' => 'Deleted.' ]);
+    }
+
+    /**
+     * Export results
+     * 
+     */
+    public function exportNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
+    {
+        $request->merge([
+            'phone_number_pool_id'   => $phoneNumberPool->id,
+            'phone_number_pool_name' => $phoneNumberPool->name
+        ]);
+
+        return parent::exportResults(
+            PhoneNumberPool::class,
+            $request,
+            [],
+            self::$numberFields,
+            'phone_numbers.created_at'
+        );
     }
 }

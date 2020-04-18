@@ -515,7 +515,7 @@ class PhoneNumberController extends Controller
     public function export(Request $request, Company $company)
     {
         return parent::exportResults(
-            PhoneNumber::class,
+            PhoneNumberPool::class,
             $request,
             [],
             self::$fields,

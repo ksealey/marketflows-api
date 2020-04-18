@@ -36,15 +36,21 @@ class Company extends Model implements Exportable
         'kind'
     ];
 
-    static public $exports = [
-        'id'        => 'Id',
-        'name'      => 'Name',
-        'industry'  => 'Industry',
-        'country'   => 'Country',
-        'created_at'=> 'Created'
-    ];
+    static public function exports() : array
+    {
+        return [
+            'id'        => 'Id',
+            'name'      => 'Name',
+            'industry'  => 'Industry',
+            'country'   => 'Country',
+            'created_at'=> 'Created'
+        ];
+    }
 
-    static public $exportFileName = 'Companies';
+    static public function exportFileName($user, array $input) : string
+    {
+        return 'Companies';
+    }
 
     static public function exportQuery($user, array $input)
     {

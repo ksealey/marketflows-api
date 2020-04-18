@@ -9,7 +9,6 @@ $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $fa
     return [
         'name'                      => $faker->company,
         'type'                      => 'Local',
-        'starts_with'               => '813',
         'size'                      => 0,
         'swap_rules'                => [
             'targets' => [

@@ -137,10 +137,10 @@ class Controller extends BaseController
             ]);
         }
 
-        $query = $model::exportQuery($request->user(), $input);
+        $user  = $request->user();
+        $query = $model::exportQuery($user, $input);
         
         if( $request->start_date || $request->end_date){
-            $user   = $request->user();
             $userTZ = new DateTimeZone($user->timezone);
             $utcTZ  = new DateTimeZone('UTC');
 
@@ -166,6 +166,6 @@ class Controller extends BaseController
                          ->limit($limit)
                          ->get();
 
-        $model::onExport($records);
+        $model::onExport($user, $input, $records);
     }
 }

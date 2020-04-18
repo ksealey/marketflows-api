@@ -77,9 +77,9 @@ class ExportResultsJob implements ShouldQueue
 
         $query->orderBy($orderBy, $orderDir);
 
-        $tempFilePath = $model::onChunkedExport($query);
+        $tempFilePath = $model::onChunkedExport($this->user, $this->input, $query);
         $remotePath   = 'temp/exports/accounts/' . $this->user->account_id . '/' . str_random(64);
-        $fileName     = $model::exportFileName() . '.xlsx';
+        $fileName     = $model::exportFileName($this->user, $this->input) . '.xlsx';
         $expiresAt    = now()->addDays(1);
         
         //  Store remote file

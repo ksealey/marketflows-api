@@ -8,14 +8,16 @@ use Illuminate\Support\Str;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Traits\CanSwapNumbers;
+use \App\Traits\PerformsExport;
 use Exception;
 use DateTime;
 use DateTimeZone;
 use stdClass;
+use DB;
 
 class PhoneNumberPool extends Model
 {
-    use SoftDeletes, CanSwapNumbers;
+    use SoftDeletes, CanSwapNumbers, PerformsExport;
 
     static public $currentAvailablePhoneList = [];
 
@@ -42,7 +44,41 @@ class PhoneNumberPool extends Model
         'swap_rules' => 'array'
     ];
 
-    protected $dateFormat = 'Y-m-d H:i:s.u';  
+    protected $dateFormat = 'Y-m-d H:i:s.u'; 
+
+    static public function exports() : array
+    {
+        return [
+            'id'                => 'Id',
+            'company_id'        => 'Company Id',
+            'category'          => 'Category',
+            'sub_category'      => 'Sub-Category',
+            'name'              => 'Name',
+            'country_code'      => 'Country Code',
+            'number'            => 'Number',
+            'type'              => 'Type',
+            'assignments'       => 'Assignments',
+            'call_count'        => 'Calls',
+            'last_call_at'      => 'Last Call Date',
+            'created_at'        => 'Created'
+        ];
+    }
+
+    static public function exportFileName($user, array $input) : string
+    {
+        return 'Keyword Tracking Pool Numbers - ' . $input['phone_number_pool_name'];
+    }
+
+    static public function exportQuery($user, array $input)
+    {
+        return PhoneNumber::select([
+                    'phone_numbers.*',
+                    DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
+                    DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
+                ])
+                ->leftJoin('calls', 'calls.phone_number_id', 'phone_numbers.id')
+                ->where('phone_numbers.phone_number_pool_id', $input['phone_number_pool_id']);
+    }
 
     /**
      * Relationships

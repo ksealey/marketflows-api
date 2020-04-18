@@ -15,19 +15,9 @@ use DateTimeZone;
 
 trait PerformsExport
 {
-    static public function exports() : array
+    static public function onExport($user, $input, $results)
     {
-        return self::$exports;
-    }
-
-    static public function exportFileName() : string
-    {
-        return self::$exportFileName;
-    }
-
-    static public function onExport($results)
-    {
-        $exportName  = self::exportFileName();
+        $exportName  = self::exportFileName($user, $input);
         $exports     = self::exports();
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()
@@ -87,9 +77,9 @@ trait PerformsExport
         $writer->save('php://output');
     }
 
-    static public function onChunkedExport($query) : string
+    static public function onChunkedExport($user, $input, $query) : string
     {
-        $exportName  = self::exportFileName();
+        $exportName  = self::exportFileName($user, $input);
         $exports     = self::exports();
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()

@@ -13,6 +13,7 @@ use \App\Contracts\Exportable;
 use \App\Traits\PerformsExport;
 use Twilio\Rest\Client as TwilioClient;
 use App;
+use DB;
 use Exception;
 
 class PhoneNumber extends Model implements Exportable
@@ -64,28 +65,43 @@ class PhoneNumber extends Model implements Exportable
         'swap_rules' => 'array'
     ];
 
-    static public $exports = [
-        'id'                => 'Id',
-        'company_id'        => 'Company Id',
-        'category'          => 'Category',
-        'sub_category'      => 'Sub-Category',
-        'name'              => 'Name',
-        'country_code'      => 'Country Code',
-        'number'            => 'Number',
-        'type'              => 'Toll-Free',
-        'source'            => 'Source',
-        'medium'            => 'Medium',
-        'campaign'          => 'Campaign',
-        'content'           => 'Content',
-        'created_at'        => 'Created'
-    ];
+    static public function exports() : array
+    {
+        return [
+            'id'                => 'Id',
+            'company_id'        => 'Company Id',
+            'category'          => 'Category',
+            'sub_category'      => 'Sub-Category',
+            'name'              => 'Name',
+            'country_code'      => 'Country Code',
+            'number'            => 'Number',
+            'type'              => 'Type',
+            'source'            => 'Source',
+            'medium'            => 'Medium',
+            'campaign'          => 'Campaign',
+            'content'           => 'Content',
+            'call_count'        => 'Calls',
+            'last_call_at'      => 'Last Call Date',
+            'created_at'        => 'Created',
+            
+        ];
+    }
 
-    static public $exportFileName = 'Numbers';
+    static public function exportFileName($user, array $input) : string
+    {
+        'Numbers - ' . $this->company->name;
+    }
 
     static public function exportQuery($user, array $input)
     {
-        return PhoneNumber::whereNull('phone_number_pool_id')
-                          ->whereIn('company_id', function($query) use($user){
+        return PhoneNumber::select([
+                                'phone_numbers.*',
+                                DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
+                                DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
+                          ])
+                          ->leftJoin('calls', 'calls.phone_number_id', 'phone_numbers.id')
+                          ->whereNull('phone_numbers.phone_number_pool_id')
+                          ->whereIn('phone_numbers.company_id', function($query) use($user){
                                 $query->select('company_id')
                                       ->from('user_companies')
                                       ->where('user_id', $user->id);
