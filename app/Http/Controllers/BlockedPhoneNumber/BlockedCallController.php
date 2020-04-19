@@ -11,22 +11,20 @@ use DB;
 
 class BlockedCallController extends Controller
 {
+    static $fields = [
+        'blocked_calls.created_at',
+        'blocked_calls.updated_at',
+        'phone_numbers.number',
+        'phone_numbers.name'
+    ];
+
     public function list(Request $request, Company $company, BlockedPhoneNumber $blockedPhoneNumber)
     {
-        $rules = [ 
-            'order_by'  => 'in:phone_numbers.number,blocked_calls.created_at' 
-        ];
-
-        $searchFields = [
-            'phone_numbers.number'
-        ];
-
-        $query = DB::table('blocked_calls')
-                    ->select([
+        $query = BlockedCall::select([
                         'blocked_calls.*', 
-                        'phone_numbers.number AS phone_number_number', 
-                        'phone_numbers.country_code AS phone_number_country_code',
-                        'phone_numbers.deleted_at AS phone_number_deleted_at',
+                        'phone_numbers.number', 
+                        'phone_numbers.country_code', 
+                        'phone_numbers.name'
                     ])
                     ->where('blocked_calls.blocked_phone_number_id', $blockedPhoneNumber->id)
                     ->leftJoin('phone_numbers', 'phone_numbers.id', 'blocked_calls.phone_number_id');
@@ -34,9 +32,31 @@ class BlockedCallController extends Controller
         return parent::results(
             $request,
             $query,
-            $rules,
-            $searchFields,
+            [],
+            static::$fields,
             'blocked_calls.created_at'
+        );
+    }
+
+    /**
+     * Export results
+     * 
+     */
+    public function export(Request $request, Company $company, BlockedPhoneNumber $blockedPhoneNumber)
+    {
+        $request->merge([
+            'company_id'                => $company->id,
+            'company_name'              => $company->name,
+            'blocked_phone_number_id'   => $blockedPhoneNumber->id,
+            'blocked_phone_number_name' => $blockedPhoneNumber->name
+        ]);
+
+        return parent::exportResults(
+            BlockedCall::class,
+            $request,
+            [],
+            self::$fields,
+            'blocked_phone_numbers.created_at'
         );
     }
 }

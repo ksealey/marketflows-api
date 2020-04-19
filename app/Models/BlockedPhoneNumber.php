@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\BlockedPhoneNumber\BlockedCall;
+use App\Traits\PerformsExport;
+use DB;
 
 class BlockedPhoneNumber extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, PerformsExport;
     
     protected $table = 'blocked_phone_numbers';
 
@@ -30,6 +32,32 @@ class BlockedPhoneNumber extends Model
         'link',
         'kind'
     ];
+
+    static public function exports() : array
+    {
+        return [
+            'id'         => 'Id',
+            'company_id' => 'Company Id',
+            'name'       => 'Name',
+            'number'     => 'Number',
+            'call_count' => 'Calls',
+            'created_at' => 'Created'
+        ];
+    }
+
+    static public function exportFileName($user, array $input) : string
+    {
+        return 'Blocked Numbers - ' . $input['company_name'];
+    }
+
+    static public function exportQuery($user, array $input)
+    {
+        return BlockedPhoneNumber::select([
+                                'blocked_phone_numbers.*',
+                                DB::raw('(SELECT count(*) FROM blocked_calls WHERE blocked_calls.blocked_phone_number_id = blocked_phone_numbers.id) AS call_count')
+                          ])
+                          ->where('blocked_phone_numbers.company_id', $input['company_id']);
+    }
 
     /**
      * Relationships

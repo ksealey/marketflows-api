@@ -73,11 +73,10 @@ class Controller extends BaseController
                              ->limit($limit)
                              ->orderBy($orderBy, $orderDir)
                              ->get();
-
         $nextPage = null;
         if( $resultCount > ($page * $limit) )
             $nextPage = $page + 1;
-
+       
         return response([
             'results'              => $records,
             'result_count'         => $resultCount,
@@ -86,6 +85,8 @@ class Controller extends BaseController
             'total_pages'          => ceil($resultCount / $limit),
             'next_page'            => $nextPage
         ]);
+
+        
     }
 
     /**

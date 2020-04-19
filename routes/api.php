@@ -403,7 +403,15 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
             Route::prefix('blocked-phone-numbers')->group(function(){
                 Route::get('/', 'Company\BlockedPhoneNumberController@list')
                     ->middleware('can:list,\App\Models\BlockedPhoneNumber')
-                    ->name('list-company-blocked-phone-numbers'); 
+                    ->name('list-company-blocked-phone-numbers');
+                    
+                Route::get('/export', 'Company\BlockedPhoneNumberController@export')
+                    ->middleware('can:list,\App\Models\BlockedPhoneNumber')
+                    ->name('list-company-blocked-phone-numbers');
+
+                Route::delete('/', 'Company\BlockedPhoneNumberController@bulkDelete')
+                    ->middleware('can:list,\App\Models\BlockedPhoneNumber')
+                    ->name('list-company-blocked-phone-numbers');
 
                 Route::post('/', 'Company\BlockedPhoneNumberController@create')
                     ->middleware('can:create,\App\Models\BlockedPhoneNumber')
@@ -431,6 +439,10 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                         Route::get('/', 'BlockedPhoneNumber\BlockedCallController@list')
                             ->middleware('can:list,\App\Models\BlockedPhoneNumber\BlockedCall')
                             ->name('list-blocked-calls'); 
+
+                        Route::get('/export', 'BlockedPhoneNumber\BlockedCallController@export')
+                            ->middleware('can:list,\App\Models\BlockedPhoneNumber\BlockedCall')
+                            ->name('export-blocked-calls'); 
                     });
                 });
             });
