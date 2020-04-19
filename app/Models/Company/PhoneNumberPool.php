@@ -51,8 +51,6 @@ class PhoneNumberPool extends Model
         return [
             'id'                => 'Id',
             'company_id'        => 'Company Id',
-            'category'          => 'Category',
-            'sub_category'      => 'Sub-Category',
             'name'              => 'Name',
             'country_code'      => 'Country Code',
             'number'            => 'Number',

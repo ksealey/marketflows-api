@@ -28,36 +28,30 @@ trait PerformsExport
                     
         $sheet = $spreadsheet->getActiveSheet();
 
-        //  Set headers
-        $headers = [];
-        if( count($results) ){
-            $sample = $results[0]->toArray();
-            foreach($sample as $prop => $value){
-                if( isset($exports[$prop]) )
-                    $headers[] = $exports[$prop];
-            }
-        }else{
-            $headers = array_values($exports);
-        }
         
-        $row     = 1;
-        $col     = 'A';
+        $headers           = array_values($exports);
+        $col               = 'A';
+        $headerToColumnMap = [];
+        foreach( $headers as $h ){
+            $headerToColumnMap[$h] = $col;
+            $col ++;
+        }
+
+        $col = 'A';
         foreach( $headers as $header ){
-            $sheet->setCellValue($col . $row, $header);
+            $sheet->setCellValue($col . '1', $header);
             $col++;
         }
-        $row++;
         $sheet->getStyle("A1:{$col}1")->getFont()->setBold(true); // Make header bold
 
-        //  Set data
+        $row = 2;
         foreach( $results as $idx => $result ){
-            $col  = 'A';
             $data = $result->toArray();
             foreach($data as $prop => $value){
-                if( isset($exports[$prop]) ){
-                    $sheet->setCellValue($col . $row, $value);
-                    $col++;
-                } 
+                $header = $exports[$prop] ?? null;
+                if( $header ){
+                    $sheet->setCellValue($headerToColumnMap[$header] . $row, $value);
+                }
             }
             $row++;
         }
@@ -91,17 +85,7 @@ trait PerformsExport
         $sheet = $spreadsheet->getActiveSheet();
 
         //  Set headers
-        $headers = [];
-        $_query  = clone $query;
-        if( $result = $_query->first() ){
-            $sample = $result->toArray();
-            foreach($sample as $prop => $value){
-                if( isset($exports[$prop]) )
-                    $headers[] = $exports[$prop];
-            }
-        }else{
-            $headers = array_values($exports);
-        }
+        $headers = array_values($exports);
         
         $row     = 1;
         $col     = 'A';

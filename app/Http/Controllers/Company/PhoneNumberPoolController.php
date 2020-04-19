@@ -641,7 +641,7 @@ class PhoneNumberPoolController extends Controller
     public function attachNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
         $validator = validator($request->input(), [
-            'numbers' => 'required|json'
+            'ids' => 'required|json'
         ]);
 
         if( $validator->fails() )
@@ -649,7 +649,7 @@ class PhoneNumberPoolController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        $numberIds = json_decode($request->numbers);
+        $numberIds = json_decode($request->ids);
         if( ! is_array($numberIds) ){
             return response([
                 'error' => 'Numbers must be a json array of phone number ids'
@@ -663,7 +663,8 @@ class PhoneNumberPoolController extends Controller
         PhoneNumber::where('company_id', $company->id)
                     ->whereIn('id', $numberIds)
                     ->update([
-                        'phone_number_pool_id' => $phoneNumberPool->id
+                        'phone_number_pool_id' => $phoneNumberPool->id,
+                        'assignments'          => 0
                     ]);
 
         return response([
@@ -684,7 +685,7 @@ class PhoneNumberPoolController extends Controller
     public function detachNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
         $validator = validator($request->input(), [
-            'numbers' => 'required|json'
+            'ids' => 'required|json'
         ]);
 
         if( $validator->fails() )
@@ -692,7 +693,7 @@ class PhoneNumberPoolController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        $numberIds = json_decode($request->numbers);
+        $numberIds = json_decode($request->ids);
         if( ! is_array($numberIds) ){
             return response([
                 'error' => 'Numbers must be a json array of phone number ids'
@@ -710,7 +711,10 @@ class PhoneNumberPoolController extends Controller
                         'assignments'          => 0
                     ]);
 
-        return response([ 'message' => 'Detached.' ]);
+        return response([
+            'message' => 'Attached.',
+            'count'   => count($numberIds)
+        ]);
     }
 
    /**
@@ -725,7 +729,7 @@ class PhoneNumberPoolController extends Controller
     public function deleteNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
         $validator = validator($request->input(), [
-            'numbers' => 'required|json'
+            'ids' => 'required|json'
         ]);
 
         if( $validator->fails() )
@@ -733,7 +737,7 @@ class PhoneNumberPoolController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        $numberIds = json_decode($request->numbers);
+        $numberIds = json_decode($request->ids);
         if( ! is_array($numberIds) ){
             return response([
                 'error' => 'Numbers must be a json array of phone number ids'
@@ -752,9 +756,12 @@ class PhoneNumberPoolController extends Controller
                     ->whereIn('id', $numberIds)
                     ->delete();
 
-        event(new PhoneNumberEvent($request->user, $phoneNumbers, 'delete'));
+        event(new PhoneNumberEvent($request->user(), $phoneNumbers, 'delete'));
 
-        return response([ 'message' => 'Deleted.' ]);
+        return response([ 
+            'message' => 'Deleted.',
+            'count'   => count($phoneNumbers)
+        ]);
     }
 
     /**
