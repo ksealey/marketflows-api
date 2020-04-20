@@ -18,7 +18,6 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('user_id')->unsigned();
             $table->string('name', 64);
-            $table->string('forward_to_country_code', 8)->nullable();
             $table->string('forward_to_number', 16);
             $table->bigInteger('greeting_audio_clip_id')->unsigned()->nullable();
             $table->string('greeting_message', 128)->nullable();

@@ -7,17 +7,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use App\Models\Company\PhoneNumberPool;
+use \App\Traits\PerformsExport;
 use DB;
 
 class PhoneNumberConfig extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, PerformsExport;
 
     protected $fillable = [
         'company_id',
         'user_id',
         'name',
-        'forward_to_country_code',
         'forward_to_number',
         'greeting_audio_clip_id',
         'greeting_message',
@@ -67,22 +67,33 @@ class PhoneNumberConfig extends Model
         return 'PhoneNumberConfig';
     }
 
-    public function getPhoneNumberPoolsAttribute()
+    static public function exports() : array
     {
-        return PhoneNumberPool::where('phone_number_config_id', $this->id)->get();
+        return [
+            'id'                => 'Id',
+            'name'              => 'Name',
+            'forward_to_number' => 'Forwarding Number',
+            'created_at'        => 'Created'
+        ];
     }
 
-    public function getPhoneNumbersAttribute()
+    static public function exportFileName($user, array $input) : string
     {
-        return PhoneNumber::where('phone_number_config_id', $this->id)->get();
+        return 'Numbers Configurations - ' . $input['company_name'];
     }
+
+    static public function exportQuery($user, array $input)
+    {
+        return PhoneNumberConfig::where('company_id', $input['company_id']);
+    }
+
 
     public function isInUse()
     {
-        if( count($this->phone_number_pools) )
+        if( PhoneNumberPool::where('phone_number_config_id', $this->id)->count() )
             return true;
 
-        if( count($this->phone_numbers) )
+        if( PhoneNumber::where('phone_number_config_id', $this->id)->count() )
             return true;
 
         return false;
@@ -90,8 +101,11 @@ class PhoneNumberConfig extends Model
 
     public function forwardToPhoneNumber()
     {
-        return  ($this->forward_to_country_code ? '+' . $this->forward_to_country_code : '') 
-                . $this->forward_to_number;
+        $number = $this->forward_to_number;
+        if( strlen($number) > 10 )
+            $number = '+' . $number;
+            
+        return $number;
     }
 
     public function greetingMessage(Call $call)

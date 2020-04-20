@@ -514,6 +514,11 @@ class PhoneNumberController extends Controller
      */
     public function export(Request $request, Company $company)
     {
+        $request->merge([
+            'company_id'   => $company->id,
+            'company_name' => $company->name
+        ]);
+        
         return parent::exportResults(
             PhoneNumberPool::class,
             $request,

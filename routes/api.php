@@ -325,6 +325,14 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:list,\App\Models\Company\PhoneNumberConfig')
                     ->name('list-phone-number-configs');
 
+                Route::delete('/', 'Company\PhoneNumberConfigController@bulkDelete')
+                    ->middleware('can:list,\App\Models\Company\PhoneNumberConfig')
+                    ->name('list-phone-number-configs');
+
+                Route::get('/export', 'Company\PhoneNumberConfigController@export')
+                    ->middleware('can:list,\App\Models\Company\PhoneNumberConfig')
+                    ->name('export-phone-number-configs');
+
                 Route::post('/', 'Company\PhoneNumberConfigController@create')
                     ->middleware('can:create,App\Models\Company\PhoneNumberConfig')
                     ->name('create-phone-number-config');

@@ -16,30 +16,26 @@ use DB;
 
 class PhoneNumberConfigController extends Controller
 {
+    static $fields = [
+        'phone_number_configs.name',
+        'phone_number_configs.forward_to_number',
+        'phone_number_configs.created_at',
+        'phone_number_configs.updated_at'
+    ];
+
     /**
      * List phone number configs
      * 
      */
     public function list(Request $request, Company $company)
     {
-        $rules = [
-            'order_by' => 'in:phone_number_configs.name,phone_number_configs.created_at,phone_number_configs.updated_at,phone_number_configs.forward_to_number',
-        ];
+        $query = PhoneNumberConfig::where('phone_number_configs.company_id', $company->id);
 
-        $query = DB::table('phone_number_configs')
-                    ->where('phone_number_configs.company_id', $company->id)
-                    ->whereNull('phone_number_configs.deleted_at');
-
-        $searchFields = [
-            'phone_number_configs.name',
-            'phone_number_configs.forward_to_number'
-        ];
-       
         return parent::results(
             $request,
             $query,
-            $rules,
-            $searchFields,
+            [],
+            self::$fields,
             'phone_number_configs.created_at'
         );
     }
@@ -59,7 +55,6 @@ class PhoneNumberConfigController extends Controller
             'greeting_message'           => 'bail|nullable|max:128',
             'greeting_audio_clip_id'     => ['bail', 'nullable', 'numeric', new AudioClipRule($company->id)],
             'keypress_enabled'           => 'bail|boolean',
-            'keypress_timeout'           => '',
             'keypress_audio_clip_id'     => ['bail', 'nullable',  'numeric', new AudioClipRule($company->id)],
             'keypress_message'           => 'bail|nullable|max:128',
         ];
@@ -91,8 +86,7 @@ class PhoneNumberConfigController extends Controller
             'company_id'                => $company->id,
             'user_id'                   => $user->id,
             'name'                      => $request->name,
-            'forward_to_country_code'   => PhoneNumber::countryCode($request->forward_to_number) ?: null,
-            'forward_to_number'         => PhoneNumber::number($request->forward_to_number),
+            'forward_to_number'         => $request->forward_to_number,
             'greeting_audio_clip_id'    => $request->greeting_audio_clip_id ?: null,
             'greeting_message'          => $request->greeting_message ?: null,
             'recording_enabled_at'      => $request->record ? now() : null,
@@ -117,11 +111,7 @@ class PhoneNumberConfigController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
-        $phoneNumberConfig->phone_number_pools = $phoneNumberConfig->phone_number_pools;
-
-        $phoneNumberConfig->phone_numbers      = $phoneNumberConfig->phone_numbers;
-
-        return response( $phoneNumberConfig );
+        return response($phoneNumberConfig);
     }
 
     /**
@@ -131,7 +121,7 @@ class PhoneNumberConfigController extends Controller
     public function update(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
         $rules = [
-            'name'                       => 'bail|max:64',
+            'name'                       => 'bail|min:1,max:64',
             'forward_to_number'          => 'bail|digits_between:10,13',
             'record'                     => 'bail|boolean',
             'caller_id'                  => 'bail|boolean',
@@ -160,38 +150,36 @@ class PhoneNumberConfigController extends Controller
             ], 400);
         }
 
-        if( $request->filled('name') )
+        if( $request->has('name') )
             $phoneNumberConfig->name = $request->name;
-        if( $request->filled('forward_to_number') ){
-            $phoneNumberConfig->forward_to_country_code = PhoneNumber::countryCode($request->forward_to_number) ?: null;
-            $phoneNumberConfig->forward_to_number       = PhoneNumber::number($request->forward_to_number);
-        }
-        if( $request->filled('greeting_audio_clip_id') )
-            $phoneNumberConfig->greeting_audio_clip_id = $request->greeting_audio_clip_id;
-        if( $request->filled('greeting_message') )
-            $phoneNumberConfig->greeting_message = $request->greeting_message;
-        if( $request->filled('record') )
-            $phoneNumberConfig->recording_enabled_at = $request->record ? ( $phoneNumberConfig->recording_enabled_at ?: date('Y-m-d H:i:s') ) : null;
-        if( $request->filled('caller_id') )
-            $phoneNumberConfig->caller_id_enabled_at = $request->caller_id ? ( $phoneNumberConfig->caller_id_enabled_at ?: date('Y-m-d H:i:s') ) : null;
-        if( $request->filled('whisper_message') )
+        if( $request->has('forward_to_number') )
+            $phoneNumberConfig->forward_to_number = $request->forward_to_number;
+        if( $request->has('greeting_audio_clip_id') )
+            $phoneNumberConfig->greeting_audio_clip_id = $request->greeting_audio_clip_id ?: null;
+        if( $request->has('greeting_message') )
+            $phoneNumberConfig->greeting_message = $request->greeting_message ?: null;
+        if( $request->has('record') )
+            $phoneNumberConfig->recording_enabled_at = $request->record ? ( $phoneNumberConfig->recording_enabled_at ?: now() ) : null;
+        if( $request->has('caller_id') )
+            $phoneNumberConfig->caller_id_enabled_at = $request->caller_id ? ( $phoneNumberConfig->caller_id_enabled_at ?: now() ) : null;
+        if( $request->has('whisper_message') )
             $phoneNumberConfig->whisper_message = $request->whisper_message;
-        if( $request->filled('keypress_enabled') )
-            $phoneNumberConfig->keypress_enabled_at = $request->keypress_enabled ? ($request->keypress_enabled_at ?: now()) : null;
-        if( $request->filled('keypress_key') )
+        if( $request->has('keypress_enabled') )
+            $phoneNumberConfig->keypress_enabled_at = $request->keypress_enabled ? ($phoneNumberConfig->keypress_enabled_at ?: now()) : null;
+        if( $request->has('keypress_key') )
             $phoneNumberConfig->keypress_key = intval($request->keypress_key);
-        if( $request->filled('keypress_attempts') )
+        if( $request->has('keypress_attempts') )
             $phoneNumberConfig->keypress_attempts = intval($request->keypress_attempts);
-        if( $request->filled('keypress_timeout') )
+        if( $request->has('keypress_timeout') )
             $phoneNumberConfig->keypress_timeout = intval($request->keypress_timeout);
-        if( $request->filled('keypress_audio_clip_id') )
+        if( $request->has('keypress_audio_clip_id') )
             $phoneNumberConfig->keypress_audio_clip_id = $request->keypress_audio_clip_id;
-        if( $request->filled('keypress_message') )
+        if( $request->has('keypress_message') )
             $phoneNumberConfig->keypress_message = $request->keypress_message;
     
         $phoneNumberConfig->save();
 
-        event(new PhoneNumberConfigEvent($user, [$phoneNumberConfig], 'update'));
+        event(new PhoneNumberConfigEvent($request->user(), [$phoneNumberConfig], 'update'));
 
         return response( $phoneNumberConfig );
     }
@@ -210,10 +198,74 @@ class PhoneNumberConfigController extends Controller
 
         $phoneNumberConfig->delete();
 
-        event(new PhoneNumberConfigEvent($user, [$phoneNumberConfig], 'delete'));
+        event(new PhoneNumberConfigEvent($request->user(), [$phoneNumberConfig], 'delete'));
 
         return response([
             'message' => 'deleted'
         ]);
+    }
+
+    public function bulkDelete(Request $request, Company $company)
+    {
+        $user = $request->user();
+
+        $validator = validator($request->input(), [
+            'ids' => ['required','json']
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $phoneNumberConfigIds = array_values(json_decode($request->ids, true) ?: []);
+        $phoneNumberConfigIds = array_filter($phoneNumberConfigIds, function($item){
+            return is_string($item) || is_numeric($item);
+        });
+        $phoneNumberConfigs = PhoneNumberConfig::whereIn('id', $phoneNumberConfigIds)
+                                                ->where('company_id', $company->id)
+                                                ->whereNotIn('id', function($query){
+                                                    $query->select('phone_number_config_id')
+                                                          ->from('phone_numbers');
+                                                })
+                                                ->whereNotIn('id', function($query){
+                                                    $query->select('phone_number_config_id')
+                                                          ->from('phone_number_pools');
+                                                })
+                                                ->get()
+                                                ->toArray();
+
+        $phoneNumberConfigIds = array_column($phoneNumberConfigs, 'id');
+        if( count($phoneNumberConfigs) ){
+            PhoneNumberConfig::whereIn('id', $phoneNumberConfigIds)->delete();
+
+            event(new PhoneNumberConfigEvent($user, $phoneNumberConfigs, 'delete'));
+        }
+
+        return response([
+            'message' => 'Deleted.',
+            'count'   => count($phoneNumberConfigIds)
+        ]);
+    }
+
+    /**
+     * Export results
+     * 
+     */
+    public function export(Request $request, Company $company)
+    {
+        $request->merge([
+            'company_id'   => $company->id,
+            'company_name' => $company->name
+        ]);
+
+        return parent::exportResults(
+            PhoneNumberConfig::class,
+            $request,
+            [],
+            self::$fields,
+            'phone_number_configs.created_at'
+        );
     }
 }

@@ -89,7 +89,7 @@ class PhoneNumber extends Model implements Exportable
 
     static public function exportFileName($user, array $input) : string
     {
-        'Numbers - ' . $this->company->name;
+        return 'Numbers - ' . $input['company_name'];
     }
 
     static public function exportQuery($user, array $input)
@@ -101,12 +101,9 @@ class PhoneNumber extends Model implements Exportable
                           ])
                           ->leftJoin('calls', 'calls.phone_number_id', 'phone_numbers.id')
                           ->whereNull('phone_numbers.phone_number_pool_id')
-                          ->whereIn('phone_numbers.company_id', function($query) use($user){
-                                $query->select('company_id')
-                                      ->from('user_companies')
-                                      ->where('user_id', $user->id);
-                          });
+                          ->whereIn('phone_numbers.company_id', $input['company_id']);
     }
+
     /**
      * Relationships
      * 
