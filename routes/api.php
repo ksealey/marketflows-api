@@ -509,6 +509,14 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                 Route::post('/', 'Company\ReportController@create')
                     ->middleware('can:create,\App\Models\Company\Report')
                     ->name('create-report');
+                
+                Route::delete('/', 'Company\ReportController@bulkDelete')
+                    ->middleware('can:list,\App\Models\Company\Report')
+                    ->name('create-report');
+                
+                Route::get('/export', 'Company\ReportController@export')
+                    ->middleware('can:list,\App\Models\Company\Report')
+                    ->name('export-reports');
 
                 Route::get('/{report}', 'Company\ReportController@read')
                     ->middleware('can:read,report')
@@ -520,7 +528,7 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
 
                 Route::delete('/{report}', 'Company\ReportController@delete')
                     ->middleware('can:delete,report')
-                    ->name('delete-phone-number');
+                    ->name('delete-report');
 
                 Route::get('/{report}/results', 'Company\ReportController@listResults')
                     ->middleware('can:read,report')
@@ -530,7 +538,7 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:read,report')
                     ->name('read-report-chart');
 
-                Route::get('/{report}/export', 'Company\ReportController@export')
+                Route::get('/{report}/export', 'Company\ReportController@exportReport')
                     ->middleware('can:read,report')
                     ->name('export-report');
             }); 

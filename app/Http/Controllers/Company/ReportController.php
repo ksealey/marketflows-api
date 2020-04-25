@@ -66,8 +66,7 @@ class ReportController extends Controller
             'date_type'                 => ['bail', 'required', 'in:CUSTOM,LAST_7_DAYS,LAST_14_DAYS,LAST_28_DAYS,LAST_30_DAYS,LAST_60_DAYS,LAST_90_DAYS,YEAR_TO_DATE,ALL_TIME'],
             'comparisons'               => ['bail', 'nullable', 'json', new DateComparisonRule()],
             'conditions'                => ['bail', 'nullable', 'json', new ConditionsRule(self::$metricFields)],
-            'automations'               => ['bail', 'nullable', 'json', new AutomationsRule()],
-            'export_separate_tabs'      => ['bail', 'boolean'],
+            'automations'               => ['bail', 'nullable', 'json', new AutomationsRule()]
         ];
         $validator = validator($request->input(), $rules);
         $validator->sometimes('start_date', 'bail|required|date', function($input){
@@ -96,8 +95,7 @@ class ReportController extends Controller
             'start_date'                => $request->date_type === 'CUSTOM' ? $request->start_date : null,
             'end_date'                  => $request->date_type === 'CUSTOM' ? $request->end_date : null,
             'comparisons'               => $request->comparisons ? json_decode($request->comparisons) : [],
-            'conditions'                => $request->conditions  ? json_decode($request->conditions)  : [],
-            'export_separate_tabs'      => $request->filled('export_separate_tabs') ? $request->export_separate_tabs : true,
+            'conditions'                => $request->conditions  ? json_decode($request->conditions)  : []
         ];
 
         $report = new Report();
@@ -157,8 +155,7 @@ class ReportController extends Controller
             'date_type'                 => ['bail', 'in:CUSTOM,LAST_7_DAYS,LAST_14_DAYS,LAST_28_DAYS,LAST_30_DAYS,LAST_60_DAYS,LAST_90_DAYS,YEAR_TO_DATE,ALL_TIME'],
             'comparisons'               => ['bail', 'nullable', 'json', new DateComparisonRule()],
             'conditions'                => ['bail', 'nullable', 'json', new ConditionsRule(self::$metricFields)],
-            'automations'               => ['bail', 'nullable', 'json', new AutomationsRule()],
-            'export_separate_tabs'      => ['bail', 'boolean'],
+            'automations'               => ['bail', 'nullable', 'json', new AutomationsRule()]
         ];
         $validator = validator($request->input(), $rules);
         $validator->sometimes('start_date', 'bail|required|date', function($input){
@@ -199,9 +196,6 @@ class ReportController extends Controller
 
         if( $request->has('conditions') )
             $report->conditions = json_decode($request->conditions) ?: [];
-        
-        if( $request->has('export_separate_tabs') )
-            $report->export_separate_tabs = $request->export_separate_tabs;
 
         $user = $request->user();
         if( $report->dateOffset(new DateTimeZone($user->timezone)) > 90 ){
@@ -237,6 +231,66 @@ class ReportController extends Controller
         $report->automations = $report->automations ?: [];
         
         return response($report, 200);
+    }
+
+    public function export(Request $request, Company $company)
+    {
+        $request->merge([
+            'company_id'   => $company->id,
+            'company_name' => $company->name
+        ]);
+        
+        return parent::exportResults(
+            Report::class,
+            $request,
+            [],
+            self::$fields,
+            'reports.created_at'
+        );
+    }   
+
+    /**
+     * Bulk delete reports
+     * 
+     */
+    public function bulkDelete(Request $request, Company $company)
+    {
+        $user = $request->user();
+
+        $validator = validator($request->input(), [
+            'ids' => ['required','json']
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $reportIds = array_values(json_decode($request->ids, true) ?: []);
+        $reportIds = array_filter($reportIds, function($item){
+            return is_string($item) || is_numeric($item);
+        });
+
+        $reports = Report::whereIn('id', $reportIds)
+                            ->whereIn('company_id', function($query) use($user){
+                                    $query->select('company_id')
+                                        ->from('user_companies')
+                                        ->where('user_id', $user->id);
+                            })
+                            ->get()
+                            ->toArray();
+
+        $reportIds = array_column($reports, 'id');
+
+        if( count($reportIds) ){
+            ReportAutomation::whereIn('report_id', $reportIds)->delete();
+            Report::whereIn('id', $reportIds)->delete();
+        }
+        
+        return response([
+            'message' => 'Deleted.'
+        ]);
     }
 
     /**
@@ -276,17 +330,11 @@ class ReportController extends Controller
      * Export a report's results
      * 
      */
-    public function export(Request $request, Company $company, Report $report)
+    public function exportReport(Request $request, Company $company, Report $report)
     {
         $user     = $request->user();
         $timezone = new DateTimeZone($user->timezone);
-
-        if( $report->recordCount($timezone) > 2500 ){
-            return response([
-                'error' => 'No more than 2500 records can be exported at a time - Please modify your date range.'
-            ], 400);
-        }
-
+        
         $report->export($timezone);
     }
 }

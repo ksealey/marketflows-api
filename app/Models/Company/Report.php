@@ -9,6 +9,7 @@ use League\Flysystem\Filesystem;
 use Cache\Adapter\Filesystem\FilesystemCachePool;
 use Cache\Bridge\SimpleCache\SimpleCacheBridge;
 use App\Traits\AppliesConditions;
+use \App\Traits\PerformsExport;
 use Spreadsheet;
 use Xlsx;
 use Worksheet;
@@ -19,7 +20,7 @@ use DateTimeZone;
 
 class Report extends Model
 {
-    use AppliesConditions;
+    use AppliesConditions, PerformsExport;
 
     protected $fillable = [
         'company_id',
@@ -33,7 +34,6 @@ class Report extends Model
         'conditions',
         'start_date',
         'end_date',
-        'export_separate_tabs',
         'is_system_report'
     ];
 
@@ -43,9 +43,8 @@ class Report extends Model
     ];
 
     protected $casts = [
-        'export_separate_tabs' => 'int',
-        'comparisons'          => 'array',
-        'conditions'           => 'array'
+        'comparisons' => 'array',
+        'conditions'  => 'array'
     ];
 
     protected $timezone;
@@ -146,6 +145,26 @@ class Report extends Model
         ]
     ];
 
+    static public function exports() : array
+    {
+        return [
+            'id'                => 'Id',
+            'company_id'        => 'Company Id',
+            'name'              => 'Name',
+            'created_at'        => 'Created'
+        ];
+    }
+
+    static public function exportFileName($user, array $input) : string
+    {
+        return 'Reports - ' . $input['company_name'];
+    }
+
+    static public function exportQuery($user, array $input)
+    {
+        return Report::where('reports.company_id', $input['company_id']);
+    }
+
     /**
      * Attributes
      * 
@@ -192,11 +211,7 @@ class Report extends Model
         $chartType = $this->metric ? 'bar' : 'line';
 
         //  Get the chart's title
-        $chartTitle  = $this->moduleLabel();
-        if( $this->metric )
-            $chartTitle .= ' by ' . $this->metricLabel();
-        if( $this->comparisons )
-            $chartTitle .= ' (Comparison)';
+        $chartTitle  = $this->chartTitle();
     
         //  Get the charts labels
         $chartLabels = $this->chartLabels($timezone);
@@ -223,6 +238,16 @@ class Report extends Model
                 ]
             ]
         ]; 
+    }
+
+    public function chartTitle()
+    {
+        $chartTitle  = $this->moduleLabel();
+        if( $this->metric )
+            $chartTitle .= ' by ' . $this->metricLabel();
+        if( $this->comparisons )
+            $chartTitle .= ' (Comparison)';
+        return $chartTitle;
     }
 
     /**
@@ -623,7 +648,6 @@ class Report extends Model
      */
     public function export(DateTimeZone $timezone)
     {
-        
         /*
         $filesystemAdapter = new Local(storage_path());
         $filesystem        = new Filesystem($filesystemAdapter);
@@ -640,111 +664,57 @@ class Report extends Model
                     ->setSubject($this->name);
                     
         $moduleLabel = $this->moduleLabel();
-        $dataLabels  = $this->dataLabels($timezone);
+        $chartLabels = $this->chartLabels($timezone);
         $datasets    = $this->datasets($timezone);
 
         if( $this->metric ){
-            //  Export counts with metric
+            //  Export counts with metrics
             $metricLabel = $this->metricLabel();
 
-            if( $this->export_separate_tabs ){
-                //  With separate tabs
-                foreach( $dataLabels as $idx => $tabName ){
-                    if( ! $idx ) // Remove initial worksheet
-                        $spreadsheet->removeSheetByIndex($idx);
+            $sheet = $spreadsheet->getActiveSheet();
+            $row   = 0;
+            foreach( $chartLabels as $idx => $datasetName ){
+                ++$row;
+                $sheet->setCellValue('A' . $row, $datasetName);
+                $sheet->getStyle("A$row:B$row")->getFont()->setBold(true);
+                $sheet->mergeCells("A$row:B$row");
 
-                    $sheet = new Worksheet($spreadsheet, $tabName);
-                    $spreadsheet->addSheet($sheet, $idx);
-
-                    //  Set headers
-                    $sheet->setCellValue('A1', 'Metric: ' . $metricLabel);
-                    $sheet->setCellValue('B1', 'Total ' . $moduleLabel);
-
-                    //  Set data
-                    $row = 2;
-                    foreach( $datasets as $dataset ){
-                        $sheet->setCellValue('A' . $row, $dataset['label']);
-                        $sheet->setCellValue('B' . $row, $dataset['data'][$idx]);
-
-                        ++$row;
-                    }
-
-                    //  Auto-resize columns
-                    $sheet->getColumnDimension('A')->setAutoSize(true);
-                    $sheet->getColumnDimension('B')->setAutoSize(true);
-                }
-            }else{
-                //  On same tab
-                $sheet = $spreadsheet->getActiveSheet();
-                $row   = 0;
-                foreach( $dataLabels as $idx => $datasetName ){
-                    ++$row;
-                    $sheet->setCellValue('A' . $row, $datasetName);
-                    $sheet->getStyle("A$row:B$row")->getFont()->setBold(true);
-                    $sheet->mergeCells("A$row:B$row");
-
-                    ++$row;
-                    $sheet->setCellValue('A' . $row, 'Metric: ' . $metricLabel);
-                    $sheet->setCellValue('B' . $row, 'Total ' . $moduleLabel);
-                    
-                    foreach( $datasets as $dataset ){
-                        ++$row;
-                        $sheet->setCellValue('A' . $row, $dataset['label']);
-                        $sheet->setCellValue('B' . $row, $dataset['data'][$idx]); 
-                    }
-                }
-                $sheet->getColumnDimension('A')->setAutoSize(true);
-                $sheet->getColumnDimension('B')->setAutoSize(true);
-            }
-        }else{
-            //  Export counts without metrics
-            $rangeLabel  = $this->rangeLabel();
-            if( $this->export_separate_tabs ){
-                //  ... on separate tabs
-                foreach( $datasets as $idx => $dataset ){
-                    if( ! $idx ) // Remove initial worksheet
-                        $spreadsheet->removeSheetByIndex($idx);
-                        
-                    $sheet = new Worksheet($spreadsheet, $dataset['label']);
-                    $spreadsheet->addSheet($sheet, $idx);
-
-                    $sheet->setCellValue('A1', $rangeLabel);
-                    $sheet->setCellValue('B1', 'Total ' . $moduleLabel);
-
-                    $row = 2;
-                    foreach( $dataLabels as $dlIdx => $dataLabel ){
-                        $sheet->setCellValue('A' . $row, $dataLabel);
-                        $sheet->setCellValue('B' . $row, $dataset['data'][$dlIdx]);
-                        ++$row;
-                    }
-                    //  Auto-resize columns
-                    $sheet->getColumnDimension('A')->setAutoSize(true);
-                    $sheet->getColumnDimension('B')->setAutoSize(true);
-                } 
-            }else{
-                //  ... on same tab
-                $sheet = $spreadsheet->getActiveSheet();
-                $row   = 0;
-                foreach( $datasets as $idx => $dataset ){
+                ++$row;
+                $sheet->setCellValue('A' . $row, 'Metric: ' . $metricLabel);
+                $sheet->setCellValue('B' . $row, 'Total ' . $moduleLabel);
+                
+                foreach( $datasets as $dataset ){
                     ++$row;
                     $sheet->setCellValue('A' . $row, $dataset['label']);
-                    $sheet->getStyle("A$row:B$row")->getFont()->setBold(true);
-                    $sheet->mergeCells("A$row:B$row");
-
-                    ++$row;
-                    $sheet->setCellValue('A' . $row, $rangeLabel);
-                    $sheet->setCellValue('B' . $row, 'Total ' . $moduleLabel);
-
-                    foreach( $dataLabels as $dlIdx => $dataLabel ){
-                        ++$row;
-                        $sheet->setCellValue('A' . $row, $dataLabel);
-                        $sheet->setCellValue('B' . $row, $dataset['data'][$dlIdx]);
-                    }
-                } 
-                //  Auto-resize columns
-                $sheet->getColumnDimension('A')->setAutoSize(true);
-                $sheet->getColumnDimension('B')->setAutoSize(true);
+                    $sheet->setCellValue('B' . $row, $dataset['data'][$idx]['y']); 
+                }
             }
+            $sheet->getColumnDimension('A')->setAutoSize(true);
+            $sheet->getColumnDimension('B')->setAutoSize(true);
+
+        }else{
+            //  Export counts without metrics
+            $sheet = $spreadsheet->getActiveSheet();
+            $row   = 0;
+
+            foreach( $datasets as $idx => $dataset ){
+                ++$row;
+                $sheet->setCellValue('A' . $row, $dataset['label']);
+                $sheet->getStyle("A$row:B$row")->getFont()->setBold(true);
+                $sheet->mergeCells("A$row:B$row");
+
+                ++$row;
+
+                $sheet->setCellValue('A' . $row, 'Total ' . $moduleLabel);
+                $total = 0;
+                foreach( $dataset['data'] as $d ){
+                    $total += ($d['y'] ?: 0);
+                }
+                $sheet->setCellValue('B' . $row, $total);
+            } 
+            //  Auto-resize columns
+            $sheet->getColumnDimension('A')->setAutoSize(true);
+            $sheet->getColumnDimension('B')->setAutoSize(true);
         }
 
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -753,186 +723,6 @@ class Report extends Model
 
         $writer   = new Xlsx($spreadsheet);
         $writer->save('php://output');
-    }
-
-    /**
-     * Labels
-     * 
-     */
-    public function metricLabels(DateTimeZone $timezone)
-    {
-        //  Use date ranges as bottom labels
-        $dateRanges = $this->dateRanges($timezone);
-        $offsetDays = $this->dateOffset($timezone);
-        $labels     = [];
-
-        if( ! $offsetDays ){ // Same day, return nothing since this will be handled
-           
-        }
-
-        foreach( $dateRanges as $dateRange ){
-            switch( $this->date_unit ){
-                case 'YEARS':
-                    $labels[] = $dateRange['start']->format('Y');
-                break;
-
-                case 'ALL_TIME':
-                    $labels[] = $this->moduleLabel() . ' by ' . $this->metricLabel();
-                break;
-
-                default: 
-                    $start = $dateRange['start']->format('M d, Y');
-                    $end   = $dateRange['end']->format('M d, Y');
-                    $labels[] = $start . ( $start == $end ? '' : (' - ' . $end));
-                break;
-            }
-        }
-
-        return $labels;
-    }
-
-    public function nonMetricWithComparisonDatasets(DateTimeZone $timezone)
-    {
-        $datasets     = [];
-        $dateRanges   = $this->dateRanges($timezone);
-        $dateFormat   = 'Y-m-d';
-        $dbDateFormat = '%Y-%m-%d';
-
-        foreach( $dateRanges as $idx => $dateRange ){
-            $query = DB::table('calls')
-                        ->select([DB::raw('COUNT(*) AS total'), DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "'),'" . $dbDateFormat . "') AS create_date") ])
-                        ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $dateRange['start']->format('Y-m-d H:i:s.u'))
-                        ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $dateRange['end']->format('Y-m-d H:i:s.u'))
-                        ->where('calls.company_id', $this->company_id);
-
-            $query   = $this->applyConditions($query, $this->conditions);
-            $results =  $query->groupBy('create_date')
-                                ->orderBy('total', $this->order)
-                                ->get();
-                                
-            if( ! $offset ){ // Time
-                
-            }else{ // Days
-
-                if( $this->comparisons ){
-                    //  Add to map by date
-                    $resultsByDate = [];
-                    foreach( $results as $result ){
-                        $resultsByDate[$result->create_date] = $result->total;
-                    }
-
-                    //  Loop for each day
-                    $start       = clone $dateRange['start'];
-                    $end         = clone $dateRange['end'];
-                    $data        = [];
-                    while( $start->format('U') <= $end->format('U') ){
-                        $data[]       = [
-                            'label' => $start->format('M jS, Y'),
-                            'x'     => null,
-                            'y'     => $resultsByDate[$start->format('Y-m-d')] ?? 0
-                        ];
-                        $start->modify('+1 day');
-                    }
-                    
-                    $label = $dateRange['start']->format('M d, Y') . ' - ' . $dateRange['end']->format('M d, Y') ;
-                    
-                    $datasets[] = [
-                        'label'         => $label,
-                        'data'          => $data
-                    ];
-                }else{
-
-                }
-            }
-        }
-    }
-    
-    /**
-     * Get a dataset for a report that has a metric
-     * 
-     * @return array
-     */
-    public function metricWithComparisonDatasets(DateTimeZone $timezone)
-    {
-        // Prep
-        $datasets       = [];
-        $metricCounts   = [];
-        $metricKey      = explode('.', $this->metric);
-        $metricKey      = end($metricKey);
-        $dateRanges     = $this->dateRanges($timezone);
-
-        //  First get a list of all the metrics for the timeframe
-        $earliestDateRange = $dateRanges[0];
-        $latestDateRange   = $dateRanges[count($dateRanges)-1];
-
-        if( $this->module == 'calls' ){
-            $query = DB::table('calls')
-                        ->select([DB::raw('COUNT(*) AS total'), $this->metric])
-                        ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
-                        ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
-                        ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $earliestDateRange['start']->format('Y-m-d H:i:s.u'))
-                        ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $latestDateRange['end']->format('Y-m-d H:i:s.u'))
-                        ->where('calls.company_id', $this->company_id);
-            
-            $query   = $this->applyConditions($query, $this->conditions);
-            $query->groupBy($this->metric)
-                  ->orderBy('total', $this->order);
-            $results = $query->get();
-       
-            $metricList = array_column($results->toArray(), $metricKey);
-            $datasets  = [];
-            foreach( $metricList as $idx => $metricValue ){
-                if( $idx >= 10 )
-                    break;
-
-                $datasets[$metricValue] = [];
-            }
-            
-            foreach( $dateRanges as $idx => $dateRange ){
-                $query = DB::table('calls')
-                            ->select([DB::raw('COUNT(*) AS total'), $this->metric])
-                            ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
-                            ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
-                            ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $dateRange['start']->format('Y-m-d H:i:s.u'))
-                            ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $dateRange['end']->format('Y-m-d H:i:s.u'))
-                            ->where('calls.company_id', $this->company_id);
-
-                $query   = $this->applyConditions($query, $this->conditions);
-                $results = $query->groupBy($this->metric)
-                                 ->get();
-                
-                $resultMap = [];
-                foreach( $results as $result ){
-                    $resultMap[$result->$metricKey] = $result->total;
-                }
-
-                $counter    = 0;
-                $otherTotal = 0;
-                foreach($metricList as $metricValue){
-                    $total = !empty($resultMap[$metricValue]) ? $resultMap[$metricValue] : 0;
-                    if( $counter >= 10 ){
-                        $otherTotal += $total; // Attribute to "Other" and move on
-                        continue;
-                    }
-                    
-                    $datasets[$metricValue][] = $total;
-                    $counter++;
-                }
-
-                if( $counter >= 10 )
-                    $datasets['Other'][] = $otherTotal;
-            }
-        }
-
-        $returnSet = [];
-        foreach( $datasets as $key => $data ){
-            $returnSet[] = [
-                'label' => $key,
-                'data'  => $data
-            ];
-        }
-
-        return $returnSet;
     }
 
     /**

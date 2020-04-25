@@ -101,7 +101,7 @@ class AutomationsRule implements Rule
                 return false;
             }
 
-            if( ! is_string($automation->time) || ! preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/', $automation->time) ){
+            if( ! is_string($automation->time) || ! preg_match('/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9](:00)?$/', $automation->time) ){
                 $this->message = 'Automation at index ' . $idx . ' time must be a time string formatted as HH:mm using the 24 hour format - Ex, 14:30 for 2:30PM.';
                 return false;
             }

@@ -26,7 +26,6 @@ class CreateReportsTable extends Migration
             $table->dateTime('end_date')->nullable();
             $table->string('comparisons', 64)->nullable();
             $table->string('conditions', 2048)->nullable();
-            $table->boolean('export_separate_tabs');
             $table->boolean('is_system_report')->default(0);
             $table->timestamps();
 
