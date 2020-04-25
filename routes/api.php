@@ -526,7 +526,7 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:read,report')
                     ->name('read-report-results');
 
-                Route::get('/{report}/chart', 'Company\ReportController@chart')
+                Route::get('/{report}/charts', 'Company\ReportController@charts')
                     ->middleware('can:read,report')
                     ->name('read-report-chart');
 

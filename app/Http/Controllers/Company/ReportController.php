@@ -7,9 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Company\Report;
 use App\Models\Company\ReportAutomation;
-use App\Rules\Company\ReportConditionsRule;
-use App\Rules\Company\ReportMetricRule;
-use App\Rules\Company\ReportAutomationsRule;
+use App\Rules\ConditionsRule;
+use App\Rules\DateComparisonRule;
+use App\Rules\AutomationsRule;
 use App\Rules\ReportDateOffsetsRule;
 use App\Rules\ReportCustomDateRangesRule;
 use DB;
@@ -19,26 +19,35 @@ use DateTimeZone;
 
 class ReportController extends Controller
 {
+    static $fields = [
+        'reports.name',
+        'reports.created_at',
+        'reports.updated_at'
+    ];
+
+    static $metricFields = [
+        'calls.source',
+        'calls.medium',
+        'calls.campaign',
+        'calls.content',
+        'calls.category',
+        'calls.sub_category',
+        'calls.caller_city',
+        'calls.caller_state',
+        'calls.caller_zip',
+        'phone_numbers.name'
+    ];
 
     public function list(Request $request, Company $company)
     {
-        $rules = [
-            'order_by' => 'in:reports.name,reports.created_at,reports.updated_at'
-        ];
-
-        $query = DB::table('reports')
-                    ->select(['reports.*'])
-                    ->where('reports.company_id', $company->id);
-
-        $searchFields = [
-            'reports.name'
-        ];
+        
+        $query = Report::where('reports.company_id', $company->id);
 
         return parent::results(
             $request,
             $query,
-            $rules,
-            $searchFields,
+            [],
+            self::$fields,
             'reports.created_at'
         );
     }
@@ -52,45 +61,55 @@ class ReportController extends Controller
         $rules = [
             'name'                      => ['bail', 'required', 'max:64'],
             'module'                    => ['bail', 'required', 'in:calls'],
-            'metric'                    => ['bail', 'nullable', new ReportMetricRule($request->module)],
-            'conditions'                => ['bail', 'nullable', 'json', new ReportConditionsRule($request->module)],
+            'metric'                    => ['bail', 'nullable', 'in:' . implode(',',self::$metricFields)],
             'order'                     => ['bail', 'in:asc,desc'],
-            'date_unit'                 => ['bail', 'required', 'in:YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS,CUSTOM,ALL_TIME'],
+            'date_type'                 => ['bail', 'required', 'in:CUSTOM,LAST_7_DAYS,LAST_14_DAYS,LAST_28_DAYS,LAST_30_DAYS,LAST_60_DAYS,LAST_90_DAYS,YEAR_TO_DATE,ALL_TIME'],
+            'comparisons'               => ['bail', 'nullable', 'json', new DateComparisonRule()],
+            'conditions'                => ['bail', 'nullable', 'json', new ConditionsRule(self::$metricFields)],
+            'automations'               => ['bail', 'nullable', 'json', new AutomationsRule()],
             'export_separate_tabs'      => ['bail', 'boolean'],
-            'automations'               => ['bail', 'nullable', 'json', new ReportAutomationsRule()],
         ];
-
         $validator = validator($request->input(), $rules);
-        $validator->sometimes('date_offsets', ['bail', 'required', 'json', new ReportDateOffsetsRule()], function($input){
-            return in_array($input->date_unit, ['YEARS','90_DAYS','60_DAYS','28_DAYS','14_DAYS','7_DAYS', 'DAYS']);
+        $validator->sometimes('start_date', 'bail|required|date', function($input){
+            return $input->date_type === 'CUSTOM';
         });
-        $validator->sometimes('date_ranges', ['bail', 'required', 'json', new ReportCustomDateRangesRule()], function($input){
-            return $input->date_unit === 'CUSTOM';
+        $validator->sometimes('end_date', 'bail|required|date|after_or_equal:start_date', function($input){
+            return $input->date_type === 'CUSTOM';
         });
 
-        if( $validator->fails() ){
+        if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
-        }
 
         $user = $request->user();
-        $report = Report::create([
+        
+        //  If this is a comparison, do not allow offsets of more then 90 days(Clutters charts)
+        $reportData = [
             'company_id'                => $company->id,
             'user_id'                   => $user->id,
             'name'                      => $request->name,
             'module'                    => $request->module,
             'metric'                    => $request->metric ?: null,
-            'conditions'                => $request->conditions ? $request->conditions : null,
             'order'                     => $request->order ?: 'asc',
-            'date_unit'                 => $request->date_unit,
-            'date_offsets'              => $request->date_unit === 'CUSTOM' || $request->date_unit === 'ALL_TIME' ? null : $request->date_offsets,
-            'date_ranges'               => $request->date_unit === 'CUSTOM' ? $request->date_ranges : null,
-            'export_separate_tabs'      => $request->has('export_separate_tabs') ? $request->export_separate_tabs : true,
-        ]);
+            'date_type'                 => $request->date_type,
+            'start_date'                => $request->date_type === 'CUSTOM' ? $request->start_date : null,
+            'end_date'                  => $request->date_type === 'CUSTOM' ? $request->end_date : null,
+            'comparisons'               => $request->comparisons ? json_decode($request->comparisons) : [],
+            'conditions'                => $request->conditions  ? json_decode($request->conditions)  : [],
+            'export_separate_tabs'      => $request->filled('export_separate_tabs') ? $request->export_separate_tabs : true,
+        ];
 
+        $report = new Report();
+        $report->fill($reportData);
+        if( $report->dateOffset(new DateTimeZone($user->timezone)) > 90 ){
+            return response([
+                'error' => 'Time span between dates cannot exceed 90 days'
+            ], 400);
+        }
+
+        $report = Report::create($reportData);
         if( $request->automations ){
-            $targetTZ     = new DateTimeZone('UTC');
             $automations  = json_decode($request->automations);
             $inserts      = [];
             foreach( $automations as $automation ){
@@ -108,7 +127,7 @@ class ReportController extends Controller
             ReportAutomation::insert($inserts);
         }
 
-        $report->automations = $report->automations;
+        $report->automations = $report->automations ?: [];
 
         return response($report, 201);
     }
@@ -133,21 +152,22 @@ class ReportController extends Controller
         $rules = [
             'name'                      => ['bail', 'max:64'],
             'module'                    => ['bail', 'in:calls'],
-            'metric'                    => ['bail', 'nullable', new ReportMetricRule($request->module ?: $report->module)],
-            'conditions'                => ['bail', 'nullable', 'json', new ReportConditionsRule($request->module ?: $report->module)],
+            'metric'                    => ['bail', 'nullable', 'in:' . implode(',',self::$metricFields)],
             'order'                     => ['bail', 'in:asc,desc'],
-            'date_unit'                 => ['bail', 'in:YEARS,90_DAYS,60_DAYS,28_DAYS,14_DAYS,7_DAYS,DAYS,CUSTOM,ALL_TIME'],
+            'date_type'                 => ['bail', 'in:CUSTOM,LAST_7_DAYS,LAST_14_DAYS,LAST_28_DAYS,LAST_30_DAYS,LAST_60_DAYS,LAST_90_DAYS,YEAR_TO_DATE,ALL_TIME'],
+            'comparisons'               => ['bail', 'nullable', 'json', new DateComparisonRule()],
+            'conditions'                => ['bail', 'nullable', 'json', new ConditionsRule(self::$metricFields)],
+            'automations'               => ['bail', 'nullable', 'json', new AutomationsRule()],
             'export_separate_tabs'      => ['bail', 'boolean'],
-            'automations'               => ['bail', 'nullable', 'json', new ReportAutomationsRule()],
         ];
-
         $validator = validator($request->input(), $rules);
-        $validator->sometimes('date_offsets', ['bail', 'required', 'json', new ReportDateOffsetsRule()], function($input){
-            return in_array($input->date_unit, ['YEARS','90_DAYS','60_DAYS','28_DAYS','14_DAYS','7_DAYS' ,'DAYS']);
+        $validator->sometimes('start_date', 'bail|required|date', function($input){
+            return $input->date_type === 'CUSTOM';
         });
-        $validator->sometimes('date_ranges', ['bail', 'required', 'json', new ReportCustomDateRangesRule()], function($input){
-            return $input->date_unit === 'CUSTOM';
+        $validator->sometimes('end_date', 'bail|required|date|after_or_equal:start_date', function($input){
+            return $input->date_type === 'CUSTOM';
         });
+
         if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first()
@@ -165,32 +185,35 @@ class ReportController extends Controller
         if( $request->has('order') )
             $report->order = $request->order;
 
-        if( $request->has('date_unit') ){
-            $report->date_unit = $request->date_unit;
-            if( $report->date_unit === 'CUSTOM' ){
-                $report->date_offsets = null;
-                if( $request->has('date_ranges') ){
-                    $report->date_ranges = $request->date_ranges;
-                }
-            }elseif( $report->date_unit === 'ALL_TIME' ){
-                $report->date_offsets = null;
-                $report->date_ranges  = null;
-            }else{
-                $report->date_ranges = null;
-                if( $request->has('date_offsets') ){
-                    $report->date_offsets = $request->date_offsets;
-                }
-            }
-        }
+        if( $request->has('date_type') )
+            $report->date_type = $request->date_type;
 
+        if( $request->has('start_date') && $request->date_type === 'CUSTOM' )
+            $report->start_date = $request->start_date;
+
+        if( $request->has('end_date') && $request->date_type === 'CUSTOM' )
+            $report->end_date = $request->end_date;
+
+        if( $request->has('comparisons') )
+            $report->comparisons = json_decode($request->comparisons) ?: [];
+
+        if( $request->has('conditions') )
+            $report->conditions = json_decode($request->conditions) ?: [];
+        
         if( $request->has('export_separate_tabs') )
             $report->export_separate_tabs = $request->export_separate_tabs;
+
+        $user = $request->user();
+        if( $report->dateOffset(new DateTimeZone($user->timezone)) > 90 ){
+            return response([
+                'error' => 'Time span between dates cannot exceed 90 days'
+            ], 400);
+        }
 
         if( $request->has('automations') ){
             ReportAutomation::where('report_id', $report->id)->delete();
 
             if( $request->automations ){
-                $targetTZ     = new DateTimeZone('UTC');
                 $automations  = json_decode($request->automations);
                 $inserts      = [];
                 foreach( $automations as $automation ){
@@ -211,7 +234,7 @@ class ReportController extends Controller
         
         $report->save();
 
-        $report->automations = $report->automations;
+        $report->automations = $report->automations ?: [];
         
         return response($report, 200);
     }
@@ -240,12 +263,12 @@ class ReportController extends Controller
      * View a report's chart
      * 
      */
-    public function chart(Request $request, Company $company, Report $report)
+    public function charts(Request $request, Company $company, Report $report)
     {
         $user = $request->user();
 
         return response(
-            $report->chart(new DateTimeZone($user->timezone))
+            $report->charts(new DateTimeZone($user->timezone))
         );
     }
 

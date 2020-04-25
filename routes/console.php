@@ -32,9 +32,12 @@ Artisan::command('report:start-jobs', function(){
 });
 
 Artisan::command('fill-calls', function(){
+    $sources = [
+        'Facebook', 'Twitter', 'Yahoo', 'WebMD', 'Kellogs', 'Google'
+    ];
     for( $i = 0; $i < 1000; $i++){
         Call::create([
-            'account_id'                => 2,
+            'account_id'                => 1,
             'company_id'                => 1,
             'phone_number_id'           => 1,
             'type'                      => 'Toll-Free',
@@ -62,7 +65,7 @@ Artisan::command('fill-calls', function(){
             'caller_country'            => 'US',
             
         
-            'source'                    => 'Facebook',
+            'source'                    => $sources[mt_rand(0, count($sources)-1)],
             'medium'                    => 'Medium',
             'content'                   => 'Content',
             'campaign'                  => 'Campaign',

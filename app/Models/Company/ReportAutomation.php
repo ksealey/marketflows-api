@@ -23,7 +23,9 @@ class ReportAutomation extends Model
 
     protected $hidden = [
         'report_id',
-        'run_at'
+        'run_at',
+        'created_at',
+        'updated_at'
     ];
 
     /**
