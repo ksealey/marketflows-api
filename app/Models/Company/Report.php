@@ -28,7 +28,8 @@ class Report extends Model
         'name',
         'module',
         'metric',
-        'order',
+        'metric_order',
+        'timezone',
         'date_type',
         'comparisons',
         'conditions',
@@ -46,8 +47,6 @@ class Report extends Model
         'comparisons' => 'array',
         'conditions'  => 'array'
     ];
-
-    protected $timezone;
 
     protected $allTimeStart = '';
 
@@ -182,6 +181,11 @@ class Report extends Model
         return 'Report';
     }
 
+    public function getTimezoneAttribute($timezone)
+    {
+        return new DateTimeZone($timezone);
+    }
+
     /*
     public function getConditionsAttribute($conditions)
     {
@@ -201,11 +205,11 @@ class Report extends Model
      * Fetch a chart
      * 
      */
-    public function charts(DateTimeZone $timezone)
+    public function charts()
     {
         //  Get the date unit
-        $unit      = $this->timeUnit($timezone);
-        $unitLabel = $this->timeUnitLabel($timezone, $unit);
+        $unit      = $this->timeUnit();
+        $unitLabel = $this->timeUnitLabel($unit);
         
         //  Get the chart's type
         $chartType = $this->metric ? 'bar' : 'line';
@@ -214,13 +218,13 @@ class Report extends Model
         $chartTitle  = $this->chartTitle();
     
         //  Get the charts labels
-        $chartLabels = $this->chartLabels($timezone);
+        $chartLabels = $this->chartLabels();
 
         //  Get step size
-        $stepSize = $this->stepSize($timezone);
+        $stepSize = $this->stepSize();
 
         //  Get the datasets
-        $datasets = $this->datasets($timezone);
+        $datasets = $this->datasets();
         
         return [
             'charts' => [
@@ -271,15 +275,16 @@ class Report extends Model
         return null;
     }
 
-    public function chartLabels(DateTimeZone $timezone)
+    public function chartLabels()
     {
+        $timezone   = $this->timezone;
         $labels     = [];
-        $timeUnit   = $this->timeUnit($timezone);
-        $dateOffset = $this->dateOffset($timezone);
+        $timeUnit   = $this->timeUnit();
+        $dateOffset = $this->dateOffset();
 
         if( $this->metric ){
             //  With metric
-            $dateRanges  = $this->dateRanges($timezone);
+            $dateRanges  = $this->dateRanges();
             foreach( $dateRanges as $dateRange ){
                 $label    = $dateRange['start']->format('M, j Y');
                 if( $dateRange['start']->format('Y-m-d') !== $dateRange['end']->format('Y-m-d') ){
@@ -307,7 +312,7 @@ class Report extends Model
                         $labels[] = $i + 1;
                     }
                 }else{
-                    $dateRange  = $this->dateRanges($timezone)[0];
+                    $dateRange  = $this->dateRanges()[0];
                     $start      = clone $dateRange['start'];
                     $end        = clone $dateRange['end'];
                     $dateFormat = $start->format('Y') === $end->format('Y') ? 'M j' : 'M j, Y';
@@ -322,7 +327,7 @@ class Report extends Model
         return $labels;
     }
 
-    public function stepSize(DateTimeZone $timezone)
+    public function stepSize()
     {
         return 10; // TODO: Actually calulate step size
     }
@@ -331,9 +336,10 @@ class Report extends Model
      * Get the amount of days between the current date range
      * 
      */
-    public function dateOffset(DateTimeZone $timezone)
+    public function dateOffset()
     {
-        $offset = 0;
+        $timezone = $this->timezone;
+        $offset   = 0;
         switch($this->date_type){
             case 'LAST_7_DAYS':  $offset = 7;  break;
             case 'LAST_14_DAYS': $offset = 14; break;
@@ -361,20 +367,20 @@ class Report extends Model
         return $offset;
     }
 
-    public function timeUnit($timezone)
+    public function timeUnit()
     {
-        $dateOffset = $this->dateOffset($timezone);
+        $dateOffset = $this->dateOffset();
         if( ! $dateOffset )
             return 'hour';
         return 'day';
     }
 
-    public function timeUnitLabel($timezone, $unit = null)
+    public function timeUnitLabel($unit = null)
     {
         if( $this->metric )
             return '';
 
-        if( ! $unit ) $unit = $this->timeUnit($timezone);
+        if( ! $unit ) $unit = $this->timeUnit();
         
         return $unit === 'hour' ? 'Time' : 'Day';
     }
@@ -383,12 +389,13 @@ class Report extends Model
      * Convert a report's settings into date ranges, ordered from earliest to most recent
      * 
      */
-    public function dateRanges(DateTimeZone $timezone)
+    public function dateRanges()
     {
+        $timezone   = $this->timezone;
         $dateSets   = [];
         $dateRanges = [];
 
-        $offset     = $this->dateOffset($timezone);
+        $offset     = $this->dateOffset();
         $utcTZ      = new DateTimeZone('UTC');
         $startDate  = $this->start_date ? new DateTime($this->start_date, $timezone) : null;
         $endDate    = $this->end_date   ? new DateTime($this->end_date, $timezone)   : null; 
@@ -472,11 +479,12 @@ class Report extends Model
      * Datasets
      * 
      */
-    public function datasets(DateTimeZone $timezone, $metricLimit = 10)
+    public function datasets($metricLimit = 10)
     {
-        $dateRanges = $this->dateRanges($timezone);
-        $offset     = $this->dateOffset($timezone);
-        $timeUnit   = $this->timeUnit($timezone);
+        $timezone   = $this->timezone;
+        $dateRanges = $this->dateRanges();
+        $offset     = $this->dateOffset();
+        $timeUnit   = $this->timeUnit();
         $datasets   = [];
         
         if( $this->metric ){
@@ -502,7 +510,7 @@ class Report extends Model
                             ->groupBy($this->metric);
 
             $results = $this->applyConditions($query, $this->conditions)
-                            ->orderBy('total', $this->order)
+                            ->orderBy('total', $this->metric_order)
                             ->orderBy($this->metric, 'ASC')
                             ->limit($metricLimit)
                             ->get(); 
@@ -544,7 +552,7 @@ class Report extends Model
                                 ->groupBy($this->metric);
 
                     $results = $this->applyConditions($query, $this->conditions)
-                                    ->orderBy('total', $this->order)
+                                    ->orderBy('total', $this->metric_order)
                                     ->orderBy($this->metric, 'ASC')
                                     ->limit($metricLimit)
                                     ->get(); 
@@ -646,7 +654,7 @@ class Report extends Model
      * Return a stream of exported data
      * 
      */
-    public function export(DateTimeZone $timezone)
+    public function export($toFile = false)
     {
         /*
         $filesystemAdapter = new Local(storage_path());
@@ -664,8 +672,8 @@ class Report extends Model
                     ->setSubject($this->name);
                     
         $moduleLabel = $this->moduleLabel();
-        $chartLabels = $this->chartLabels($timezone);
-        $datasets    = $this->datasets($timezone);
+        $chartLabels = $this->chartLabels();
+        $datasets    = $this->datasets();
 
         if( $this->metric ){
             //  Export counts with metrics
@@ -721,7 +729,13 @@ class Report extends Model
         header('Content-Disposition: attachment;filename="'.$fileName.'"');
         header('Cache-Control: max-age=0');
 
-        $writer   = new Xlsx($spreadsheet);
+        $writer = new Xlsx($spreadsheet);
+        if( $toFile ){
+            $path = storage_path() . '/' . date('U') . '-' . $fileName;
+            $writer->save($path);
+            return $path;
+        }
+
         $writer->save('php://output');
     }
 

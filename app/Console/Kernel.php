@@ -29,9 +29,11 @@ class Kernel extends ConsoleKernel
                  ->onOneServer();
 
         //  Send automated reports
-        $schedule->command('report:start-jobs')
-                 ->everyMinute()
+        $schedule->command('reports:dispatch-automations')
+                 ->everyFifteenMinutes()
                  ->onOneServer();
+
+        
     }
 
     /**

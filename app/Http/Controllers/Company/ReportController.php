@@ -61,8 +61,9 @@ class ReportController extends Controller
         $rules = [
             'name'                      => ['bail', 'required', 'max:64'],
             'module'                    => ['bail', 'required', 'in:calls'],
+            'timezone'                  => ['bail', 'timezone'],
             'metric'                    => ['bail', 'nullable', 'in:' . implode(',',self::$metricFields)],
-            'order'                     => ['bail', 'in:asc,desc'],
+            'metric_order'              => ['bail', 'in:asc,desc'],
             'date_type'                 => ['bail', 'required', 'in:CUSTOM,LAST_7_DAYS,LAST_14_DAYS,LAST_28_DAYS,LAST_30_DAYS,LAST_60_DAYS,LAST_90_DAYS,YEAR_TO_DATE,ALL_TIME'],
             'comparisons'               => ['bail', 'nullable', 'json', new DateComparisonRule()],
             'conditions'                => ['bail', 'nullable', 'json', new ConditionsRule(self::$metricFields)],
@@ -85,12 +86,13 @@ class ReportController extends Controller
         
         //  If this is a comparison, do not allow offsets of more then 90 days(Clutters charts)
         $reportData = [
+            'timezone'                  => $request->timezone ?: $user->timezone,
             'company_id'                => $company->id,
             'user_id'                   => $user->id,
             'name'                      => $request->name,
             'module'                    => $request->module,
             'metric'                    => $request->metric ?: null,
-            'order'                     => $request->order ?: 'asc',
+            'metric_order'              => $request->metric_order ?: 'desc',
             'date_type'                 => $request->date_type,
             'start_date'                => $request->date_type === 'CUSTOM' ? $request->start_date : null,
             'end_date'                  => $request->date_type === 'CUSTOM' ? $request->end_date : null,
@@ -100,7 +102,7 @@ class ReportController extends Controller
 
         $report = new Report();
         $report->fill($reportData);
-        if( $report->dateOffset(new DateTimeZone($user->timezone)) > 90 ){
+        if( $report->dateOffset() > 90 ){
             return response([
                 'error' => 'Time span between dates cannot exceed 90 days'
             ], 400);
@@ -108,16 +110,20 @@ class ReportController extends Controller
 
         $report = Report::create($reportData);
         if( $request->automations ){
+            $user         = $request->user();
+            $timezone     = new DateTimeZone($user->timezone);
             $automations  = json_decode($request->automations);
             $inserts      = [];
+            $utcTZ        = new DateTimeZone('UTC');
             foreach( $automations as $automation ){
+                $time = new DateTime($automation->time, $timezone);
+                $time->setTimeZone($utcTZ);
                 $inserts[] = [
                     'report_id'         => $report->id,
                     'type'              => $automation->type,
                     'email_addresses'   => json_encode($automation->email_addresses),
                     'day_of_week'       => $automation->day_of_week,
-                    'time'              => $automation->time,
-                    'run_at'            => ReportAutomation::runAt($automation->day_of_week, $automation->time, new DateTimeZone($user->timezone)),
+                    'time'              => $time->format('H:i:s'),
                     'created_at'        => now(),
                     'updated_at'        => now()
                 ];
@@ -150,8 +156,9 @@ class ReportController extends Controller
         $rules = [
             'name'                      => ['bail', 'max:64'],
             'module'                    => ['bail', 'in:calls'],
+            'timezone'                  => ['bail', 'timezone'],
             'metric'                    => ['bail', 'nullable', 'in:' . implode(',',self::$metricFields)],
-            'order'                     => ['bail', 'in:asc,desc'],
+            'metric_order'              => ['bail', 'in:asc,desc'],
             'date_type'                 => ['bail', 'in:CUSTOM,LAST_7_DAYS,LAST_14_DAYS,LAST_28_DAYS,LAST_30_DAYS,LAST_60_DAYS,LAST_90_DAYS,YEAR_TO_DATE,ALL_TIME'],
             'comparisons'               => ['bail', 'nullable', 'json', new DateComparisonRule()],
             'conditions'                => ['bail', 'nullable', 'json', new ConditionsRule(self::$metricFields)],
@@ -176,11 +183,14 @@ class ReportController extends Controller
         if( $request->has('module') )
             $report->module = $request->module;
 
+        if( $request->has('timezone') )
+            $report->timezone = $request->timezone;
+            
         if( $request->has('metric') )
             $report->metric = $request->metric ?: null;
 
-        if( $request->has('order') )
-            $report->order = $request->order;
+        if( $request->has('metric_order') )
+            $report->metric_order = $request->metric_order;
 
         if( $request->has('date_type') )
             $report->date_type = $request->date_type;
@@ -196,9 +206,8 @@ class ReportController extends Controller
 
         if( $request->has('conditions') )
             $report->conditions = json_decode($request->conditions) ?: [];
-
-        $user = $request->user();
-        if( $report->dateOffset(new DateTimeZone($user->timezone)) > 90 ){
+        
+        if( $report->dateOffset() > 90 ){
             return response([
                 'error' => 'Time span between dates cannot exceed 90 days'
             ], 400);
@@ -206,18 +215,21 @@ class ReportController extends Controller
 
         if( $request->has('automations') ){
             ReportAutomation::where('report_id', $report->id)->delete();
-
             if( $request->automations ){
+                $user         = $request->user();
+                $timezone     = new DateTimeZone($user->timezone);
                 $automations  = json_decode($request->automations);
                 $inserts      = [];
+                $utcTZ        = new DateTimeZone('UTC');
                 foreach( $automations as $automation ){
+                    $time = new DateTime($automation->time, $timezone);
+                    $time->setTimeZone($utcTZ);
                     $inserts[] = [
                         'report_id'         => $report->id,
                         'type'              => $automation->type,
                         'email_addresses'   => json_encode($automation->email_addresses),
                         'day_of_week'       => $automation->day_of_week,
-                        'time'              => $automation->time,
-                        'run_at'            => ReportAutomation::runAt($automation->day_of_week, $automation->time, new DateTimeZone($request->user()->timezone)),
+                        'time'              => $time->format('H:i:s'),
                         'created_at'        => now(),
                         'updated_at'        => now()
                     ];
@@ -319,11 +331,7 @@ class ReportController extends Controller
      */
     public function charts(Request $request, Company $company, Report $report)
     {
-        $user = $request->user();
-
-        return response(
-            $report->charts(new DateTimeZone($user->timezone))
-        );
+        return response( $report->charts() );
     }
 
     /**
@@ -332,9 +340,6 @@ class ReportController extends Controller
      */
     public function exportReport(Request $request, Company $company, Report $report)
     {
-        $user     = $request->user();
-        $timezone = new DateTimeZone($user->timezone);
-        
-        $report->export($timezone);
+        $report->export();
     }
 }

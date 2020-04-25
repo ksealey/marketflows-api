@@ -93,7 +93,7 @@ class Controller extends BaseController
      * Export Data
      * 
      */
-    public function exportResults($model, Request $request, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc')
+    public function exportResults($model, Request $request, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc', $formatter = null)
     {
         $rules = array_merge([
             'limit'         => 'nullable|numeric|min:1|max:250',

@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Inspiring;
 use \App\Models\Company\Call;
 use \App\Models\Company\ReportAutomation;
+use  \App\Jobs\ExecuteReportAutomation;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,17 +20,55 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->describe('Display an inspiring quote');
 
+
 Artisan::command('clear:password-resets', function () {
     \App\Models\Auth\PasswordReset::where('expires_at', '<', date('Y-m-d H:i:s'))->delete();
 })->describe('Clear expired password resets');
 
-Artisan::command('report:start-jobs', function(){
+
+Artisan::command('reports:dispatch-automations', function(){
+    //  
+    //  Pull pending
+    //
     $now         = now();
-    $automations = ReportAutomation::where('TIME(schedules->"$[*]"->time)', '<=', now('H:i:s'))
-                                    ->where(function($query){
-                                        $query->where('last_run_at', '<', $now->format('Y-m-d'));
-                                    });
+    $dayOfWeek   = $now->format('N');
+    $time        = $now->format('H:i:s');
+    $today       = $now->format('Y-m-d');
+    $automations = ReportAutomation::where('day_of_week', $dayOfWeek)
+                                   ->where('time', '<=', $time)
+                                   ->where(function($query) use($today){
+                                        $query->whereNull('last_ran_at')
+                                              ->orWhere('last_ran_at', '!=', $today);
+                                   })
+                                   ->whereNull('locked_since')
+                                   ->get();
+
+    //
+    //  Place lock on current records
+    //
+    $ids = array_column($automations->toArray(), 'id');
+    if( count($ids) ){
+        ReportAutomation::whereIn('id', $ids)->update([
+            'locked_since' => now()
+        ]);
+    }
+
+    //
+    //  Dispatch jobs
+    //
+    foreach($automations as $automation){
+        ExecuteReportAutomation::dispatch($automation);
+    }
+
+    //
+    //  Clear any old locks for a retry
+    //
+    $fifteenMinutesAgo = now()->subMinutes(15);
+    ReportAutomation::where('locked_since', '<=', $fifteenMinutesAgo)->update([
+        'locked_since' => null
+    ]);
 });
+
 
 Artisan::command('fill-calls', function(){
     $sources = [

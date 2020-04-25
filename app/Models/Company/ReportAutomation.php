@@ -14,7 +14,7 @@ class ReportAutomation extends Model
         'email_addresses',
         'day_of_week',
         'time',
-        'run_at'
+        'last_ran_at'
     ];
 
     public $casts = [
@@ -23,11 +23,16 @@ class ReportAutomation extends Model
 
     protected $hidden = [
         'report_id',
-        'run_at',
+        'last_ran_at',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'locked_since'
     ];
 
+    public function report()
+    {
+        return $this->belongsTo('App\Models\Company\Report');
+    }
     /**
      * Determine the time a report should be ran
      * 

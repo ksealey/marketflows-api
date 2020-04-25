@@ -18,9 +18,10 @@ class CreateReportAutomationsTable extends Migration
             $table->bigInteger('report_id')->unsigned();
             $table->string('type', 32);
             $table->string('email_addresses', 2048)->nullable();
-            $table->tinyInteger('day_of_week');
-            $table->time('time');
-            $table->dateTime('run_at');
+            $table->tinyInteger('day_of_week')->index();
+            $table->time('time')->index();
+            $table->date('last_ran_at')->nullable()->index();
+            $table->dateTime('locked_since')->nullable();
             $table->timestamps();
             $table->foreign('report_id')->references('id')->on('reports');
         });
