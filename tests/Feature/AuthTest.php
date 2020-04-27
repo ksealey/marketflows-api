@@ -33,17 +33,14 @@ class AuthTest extends TestCase
             "user" => [
                 "id",
                 "account_id",
-                "role_id",
+                "role",
                 "timezone",
                 "first_name",
                 "email"
             ],
             "account" => [
                 "name",
-                "plan",
-                "balance",
-                "auto_reload_minimum",
-                "auto_reload_amount",
+                "account_type",
                 "default_tts_voice",
                 "default_tts_language",
                 "link",

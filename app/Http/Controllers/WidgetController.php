@@ -113,4 +113,189 @@ class WidgetController extends Controller
             ]
         ]); 
     }
+
+    /**
+     * Current usage balance by item. Used for Chart.
+     * 
+     */
+    public function billingCurrentUsageBalanceByItem(Request $request)
+    {
+        $account = $request->user()->account;
+        $usage   = $account->currentUsage();
+        $storage = $account->currentStorage();
+
+        $datasets = [
+            [ 
+                'data'            => [
+                    $usage['local']['numbers']['cost'], 
+                    $usage['local']['minutes']['cost'], 
+                    $usage['toll_free']['numbers']['cost'], 
+                    $usage['toll_free']['minutes']['cost'], 
+                    $storage['total']['cost'],
+                ],
+                'backgroundColor' =>  [
+                    '#9086D6',
+                    '#D3DEE5',
+                    '#7DA9E4',
+                    '#80ADBD',
+                    '#F08080'
+                ]
+            ]
+        ];
+
+        return response([
+            'title' => 'Month-to-Date Balance by Item',
+            'type'  => 'doughnut',
+            'data'  => [
+                'labels'   => ['Local Numbers', 'Local Minutes', 'Toll-Free Numbers', 'Toll-Free Minutes', 'Storage'],
+                'datasets' => $datasets,
+                'total'    => number_format(
+                    $usage['local']['numbers']['cost'] + 
+                    $usage['local']['minutes']['cost'] + 
+                    $usage['toll_free']['numbers']['cost'] + 
+                    $usage['toll_free']['minutes']['cost'] + 
+                    $storage['total']['cost']
+                , 2)
+            ]
+        ]); 
+    }
+
+    /**
+     * Current usage balance breakdown of each item. 
+     * 
+     */
+    public function billingCurrentUsageBalanceBreakdown(Request $request)
+    {
+        $user    = $request->user();
+        $account = $user->account;
+        $usage   = $account->currentUsage();
+        $storage = $account->currentStorage();
+        
+        
+        $userTZ             = new DateTimeZone($user->timezone);
+        $billingPeriod      = $account->currentBillingPeriod();
+        $startBillingPeriod = clone $billingPeriod['start'];
+        $endBillingPeriod   = clone $billingPeriod['end'];
+
+        $startBillingPeriod->setTimeZone($userTZ);
+        $endBillingPeriod->setTimeZone($userTZ);
+
+        return response([
+            'title' => 'Month-to-Date Usage Breakdown',
+            'type'  => 'breakdown',
+            'data'  =>  [
+                'total'  => number_format($usage['total']['cost'] + $storage['total']['cost'], 2),
+                'items'  => [
+                    [
+                        'title'       => 'Billing Period: ' . $startBillingPeriod->format('M j, Y') . ' - ' . $endBillingPeriod->format('M j, Y'),
+                        'description' => '',
+                        'items' => []
+                    ],
+                    [
+                        'title' => 'Local Numbers',
+                        'description' => 'Owned local numbers and minutes used, including numbers deleted within the current billing period.',
+                        'items' => [
+                            [
+                                'label'       => 'Numbers',
+                                'details'     => $usage['local']['numbers']['count'],
+                                'value'       => number_format($usage['local']['numbers']['cost'], 2)
+                            ],
+                            [
+                                'label'       => 'Minutes',
+                                'details'     => $usage['local']['minutes']['count'],
+                                'value'       => number_format($usage['local']['minutes']['cost'], 2)
+                            ],
+                        ]
+                    ],
+                    [
+                        'title' => 'Toll-Free Numbers',
+                        'description' => 'Owned local numbers and minutes used, including numbers deleted within the current billing period.',
+                        'items' => [
+                            [
+                                'label'       => 'Numbers',
+                                'details'     => number_format($usage['toll_free']['numbers']['count']),
+                                'value'       => number_format($usage['toll_free']['numbers']['cost'],2)
+                            ],
+                            [
+                                'label'       => 'Minutes',
+                                'details'     => number_format($usage['toll_free']['minutes']['count']),
+                                'value'       => number_format($usage['toll_free']['minutes']['cost'],2)
+                            ],
+                        ]
+                    ],
+                    [
+                        'title'       => 'Storage',
+                        'description' => 'Storage costs for files and call recordings.',
+                        'items' => [
+                            [
+                                'label'       => 'Call Recordings',
+                                'details'     => number_format($storage['call_recordings']['size_gb'],2) . ' GB',
+                                'value'       => number_format($storage['call_recordings']['cost'],2)
+                            ],
+                            [
+                                'label'       => 'Files',
+                                'details'     => number_format($storage['files']['size_gb'],2) . ' GB',
+                                'value'       => number_format($storage['files']['cost'], 2)
+                            ]
+                        ]
+                    ],
+                    
+                ]
+            ]
+        ]); 
+    }
+
+    /**
+     * Get the next bill information
+     * 
+     */
+    public function billingNextBill(Request $request)
+    {
+        $account = $request->user()->account;
+        $storage = $account->currentStorage();
+        $usage   = $account->currentUsage();
+
+        return response([
+            'title' => 'Month-to-Date Balance Breakdown',
+            'type'  => 'breakdown',
+            'data'  => [
+                'total' => number_format($storage['total']['cost'] + $usage['total']['cost'] + $account->monthly_fee, 2),
+                'items' => [
+                    [
+                        'title' => 'Monthly Service Fee',
+                        'description' => 'The monthly service fee charged for your account type.',
+                        'items' => [
+                            [
+                                'label'       => $account->pretty_account_type,
+                                'details'     => '',
+                                'value'       => number_format($account->monthly_fee, 2)
+                            ]
+                        ]
+                    ],
+                    [
+                        'title' => 'Usage',
+                        'description' => 'The balance owed for all usage. This includes additional numbers and minutes along with call recordings and caller id lookups.',
+                        'items' => [
+                            [
+                                'label'       => 'Total Usage',
+                                'details'     => '',
+                                'value'       => number_format($usage['total']['cost'], 2)
+                            ]
+                        ]
+                    ],
+                    [
+                        'title' => 'Storage',
+                        'description' => 'Storage costs for current period.',
+                        'items' => [
+                            [
+                                'label'       => 'Total Storage',
+                                'details'     => number_format($storage['total']['size_gb'],2) . 'GB',
+                                'value'       => number_format($storage['total']['cost'],2)
+                            ]
+                        ]
+                    ],
+                ]
+            ]
+        ]); 
+    }
 }

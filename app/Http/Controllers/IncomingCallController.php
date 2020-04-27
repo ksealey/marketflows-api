@@ -262,21 +262,9 @@ class IncomingCallController extends Controller
         //  Update call
         $call->status   = substr(ucfirst(strtolower($request->CallStatus)), 0, 64);
         $call->duration = intval($request->CallDuration) ?: null;
-
-        //  If this is a completed call, determine cost and apply to account balance
-        if( $call->duration && ! $call->cost ){
-            $account        = Account::withTrashed()->find($call->account_id);
-
-            $pricePerMinute  = $account->price('Minute.' . ($call->type));
-            $pricePerMinute += $call->recording_enabled ? $account->price('Minute.Recording') : 0;
-            $cost            = ceil($call->duration / 60) * $pricePerMinute;
-            $cost           += $call->caller_id_enabled ? $account->price('CallerId.Lookup') : 0;
-
-            $call->cost = $cost;
-
-            $account->reduceBalance($cost);
-        }
-
+         
+        //  ... 
+        
         $call->save();
         //  Let the rest of the system know it happened
         //

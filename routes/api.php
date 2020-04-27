@@ -94,14 +94,6 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
         Route::put('/', 'AccountController@update')
              ->middleware('can:update,\App\Models\Account')
              ->name('update-account');
-
-        Route::post('/fund', 'AccountController@fund')
-             ->middleware('can:update,\App\Models\Account')
-             ->name('fund-account');
-
-        Route::post('/apply-credit-code', 'AccountController@applyCreditCode')
-             ->middleware('can:update,\App\Models\Account')
-             ->name('apply-credit-code');
     });
 
     /*
@@ -161,6 +153,20 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
         Route::get('/total-calls', 'WidgetController@totalCalls')
              ->middleware('can:read,\App\Models\Account')
              ->name('widget-total-calls');
+
+        Route::prefix('billing')->group(function(){
+            Route::get('/next-bill', 'WidgetController@billingNextBill')
+                 ->name('widget-billing-next-bill');
+
+            Route::prefix('current')->group(function(){
+                Route::get('/usage-balance-by-item', 'WidgetController@billingCurrentUsageBalanceByItem')
+                     ->name('widget-billing-current-usage-balance-by-item');
+                     
+                Route::get('/usage-balance-breakdown', 'WidgetController@billingCurrentUsageBalanceBreakdown')
+                     ->name('widget-billing-current-usage-balance-breakdown');;
+            });
+            
+        });
     });
 
     /*

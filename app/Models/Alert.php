@@ -56,16 +56,4 @@ class Alert extends Model
     {
         return 'Alert';
     }
-
-    static public function send(User $user, $fields)
-    {
-        $fields['user_id'] = $user->id;
-
-        $alert = self::create($fields);
-
-        if( ! $user->isOnline() )
-            $user->email(new AlertMail($user, $alert));
-        
-        return $alert;
-    }
 }

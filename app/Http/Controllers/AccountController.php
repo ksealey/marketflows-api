@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\PaymentMethod;
 use App\Models\CreditCode;
 use Illuminate\Validation\Rule;
+use DateTime;
 use Validator;
 use Exception;
 use DB;
@@ -24,28 +25,11 @@ class AccountController extends Controller
     public function update(Request $request)
     {
         $rules = [
-            'name'                  => 'bail|min:1|max:64',
-            'plan'                  => 'bail|in:BASIC,AGENCY,ENTERPRISE',
-            'auto_reload_enabled'   => 'bail|boolean',
-            'auto_reload_minimum'   => [
-                'bail', 
-                Rule::requiredIf($request->filled('auto_reload_amount')), 
-                'numeric',
-                'min:10', 
-                'max:9999',
-                'lte:auto_reload_amount'
-            ],
-            'auto_reload_amount'    => [
-                'bail', 
-                Rule::requiredIf($request->filled('auto_reload_minimum')), 
-                'numeric',
-                'min:10', 
-                'max:9999'
-            ]
+            'name'         => 'bail|min:1|max:64',
+            'account_type' => 'bail|in:' . implode(',', Account::types()),
         ];
 
-        $validator = Validator::make($request->all(), $rules);
-
+        $validator = validator($request->all(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -53,118 +37,28 @@ class AccountController extends Controller
         }
 
         $account = $request->user()->account;
-
-        if( $request->filled('auto_reload_minimum') )
-            $account->auto_reload_minimum = $request->auto_reload_minimum;
         
-        if( $request->filled('auto_reload_amount') )
-            $account->auto_reload_amount = $request->auto_reload_amount;
+        //  Only allow account type changes once  month
+        if( $request->filled('account_type') && $account->account_type_updated_at ){
+            $now              = new DateTime();
+            $allowUpdateAfter = new DateTime($account->account_type_updated_at);
+            $allowUpdateAfter->modify('+1 month');
 
-        if( $request->filled('auto_reload_enabled') ){
-            //  Enable or disable auto-reload
-            $account->auto_reload_enabled_at = $request->auto_reload_enabled ? ($account->auto_reload_enabled_at ?: now() ) : null;
-            
-            if( $account->auto_reload_enabled_at && ! $account->primary_payment_method )
+            if( $now->format('Y-m-d') <= $allowUpdateAfter->format('Y-m-d') ){
                 return response([
-                    'error' => 'You must first add a primary payment method before before enabling auto reload.'
-                ], 400);
-
-            //  Charge account immediately if the balance is too low
-            if( $account->shouldAutoReload() )
-                $account->autoReload();
+                    'error' => 'account type can only be updated once a month'
+                ], 404);
+            }
         }
 
         if( $request->filled('name') )
             $account->name = $request->name;
 
-        if( $request->filled('plan') )
-            $account->plan = $request->plan;
+        if( $request->filled('account_type') )
+            $account->account_type = $request->account_type;
 
         $account->save();
 
         return response($account);
-    }
-
-    /**
-     * Fund account
-     * 
-     */
-    public function fund(Request $request)
-    {
-        $rules = [
-            'amount'            => 'bail|required|numeric|min:10|max:9999',
-            'payment_method_id' => ['bail', 'required'],
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $account = $request->user()->account;
-
-        $paymentMethod = PaymentMethod::find($request->payment_method_id);
-        if( ! $paymentMethod || $paymentMethod->account_id !== $account->id ){
-            return response([
-                'error' => 'Payment method invalid'
-            ], 400);
-        }
-
-        //  Charge the payment method provided
-        $amount = floatval($request->amount);
-        $charge = $paymentMethod->charge($amount, env('APP_NAME') . ' - Fund Account');
-        if( ! $charge )
-            return response([
-                'error' => 'Payment declined - please try another payment method'
-            ], 400);
-        
-        $account->balance += $amount;
-        $account->save();
-
-        return response($charge);
-    }
-
-    public function applyCreditCode(Request $request)
-    {
-        $rules = [
-            'code' => [
-                'required',
-                'regex:/^\bMKT-\b[0-9A-z]{16}$/'
-            ]
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $user       = $request->user();
-        $creditCode = CreditCode::where('code', $request->code)->first();
-        if( ! $creditCode || ($creditCode->account_id && $creditCode->account_id != $user->account_id ) )
-            return response([
-                'error' => 'Invalid credit code'
-            ], 400);
-
-        DB::beginTransaction();
-       
-        try{
-            $account = $user->account;
-            $account->balance = $account->balance + $creditCode->amount;
-            $account->save();
-
-            $creditCode->delete();
-
-            DB::commit();
-
-            return response($account);
-        }catch(Exception $e){
-            DB::rollBack();
-
-            throw $e;
-        }
     }
 }

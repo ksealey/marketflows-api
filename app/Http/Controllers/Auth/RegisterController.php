@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\User;
-use App\Models\Role;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use \App\Rules\CountryRule;
@@ -14,6 +13,7 @@ use Validator;
 use DB;
 use Exception;
 use Mail;
+use Log;
 
 class RegisterController extends Controller
 {
@@ -28,8 +28,8 @@ class RegisterController extends Controller
     {
         $rules = [
             'account_name'          => 'bail|required|min:4|max:64',
+            'account_type'          => 'bail|required|in:BASIC,ANALYTICS,ANALYTICS_PRO',
             'timezone'              => 'bail|required|timezone',
-            'plan'                  => 'bail|required|in:BASIC,AGENCY,ENTERPRISE',
             'first_name'            => 'bail|required|min:2|max:32',
             'last_name'             => 'bail|required|min:2|max:32',
             'email'                 => 'bail|required|email|max:128|unique:users,email',
@@ -54,44 +54,43 @@ class RegisterController extends Controller
             //  Create account
             $account = Account::create([
                 'name'                => $request->account_name,
-                'plan'                => $request->plan,
-                'balance'             => 0.00,
-                'auto_reload_minimum' => 10.00,
-                'auto_reload_amount'  => 20.00,
-                'bill_at'             => now()->addMonths(1),
+                'account_type'        => $request->account_type,
+                'bill_at'             => now()->addDays(7),
                 'default_tts_voice'   => 'Joanna',
                 'default_tts_language'=> 'en-US',
             ]);
             
-            //  Create an admin role
-            $adminRole = Role::createAdminRole($account);
-            
-            //  Create a sample role for reporting
-            Role::createReportingRole($account);
-
             //  Create this user
             $user = User::create([
                 'account_id'                => $account->id,
-                'role_id'                   => $adminRole->id,
+                'role'                      => User::ROLE_ADMIN,
                 'timezone'                  => $request->timezone,
                 'first_name'                => $request->first_name,
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
                 'password_hash'             => bcrypt($request->password),
                 'auth_token'                => str_random(255),
-                'email_alerts_enabled_at'   => now()
+                'settings'                  => [
+                    'email_alerts_enabled' => true
+                ]
             ]);
 
             //  Add verification mail to queue
             Mail::to($user->email)
-                ->later(now(), new UserEmailVerificationMail($user));
+                ->later(
+                    now(), 
+                    new UserEmailVerificationMail($user)
+                );
         }catch(Exception $e){
             DB::rollBack();
-            
+           
             throw $e;
         }
 
         DB::commit(); 
+
+        $account->payment_methods = [];
+        $account->past_due_amount = number_format(0.00, 2);
         
         return response([
             'auth_token'    => $user->auth_token,

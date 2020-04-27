@@ -17,9 +17,7 @@ class UserController extends Controller
      */
     public function read(User $user)
     {
-        return response([
-            'user' => $user
-        ]);
+        return response($user);
     }
 
     /**
@@ -32,7 +30,7 @@ class UserController extends Controller
             'first_name'            => 'bail|required|min:2|max:32',
             'last_name'             => 'bail|required|min:2|max:32',
             'email'                 => 'bail|required|email|max:128',
-            'roles'                 => [],
+            'role'                  => 'bail',
             'companies'             => 'required|array',
             'companies.*'           => 'numeric',
         ];
@@ -112,7 +110,6 @@ class UserController extends Controller
         $user->first_name   = $request->first_name;
         $user->last_name    = $request->last_name;
         $user->email        = $request->email;
-        $user->role_id      = $request->role;
         $user->save();
 
         return response([

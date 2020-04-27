@@ -22,6 +22,9 @@ class PhoneNumber extends Model implements Exportable
 
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;
+
+    const TYPE_LOCAL     = 'Local';
+    const TYPE_TOLL_FREE = 'Toll-Free';
     
     protected $fillable = [
         'uuid',
@@ -313,6 +316,14 @@ class PhoneNumber extends Model implements Exportable
             'uuid'          => $this->uuid,
             'country_code'  => $this->country_code,
             'number'        => $this->number
+        ];
+    }
+
+    public function types()
+    {
+        return [
+            self::TYPE_LOCAL,
+            self::TYPE_TOLL_FREE
         ];
     }
 }

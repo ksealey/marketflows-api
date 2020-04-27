@@ -109,25 +109,18 @@ class PhoneNumberPoolController extends Controller
             ], 400);
         }
 
-        $user               = $request->user();
-        $account            = $company->account;
-        $startsWith         = $request->starts_with;
-        $type               = $request->type;
-        $purchaseObject     = 'PhoneNumber.' . $type; 
-        $price              = $account->price($purchaseObject);
-        $poolSize           = intval($request->size);
+        $user       = $request->user(); 
+        $account    = $company->account; 
+        $poolSize   = intval($request->size);
+        $startsWith = $request->starts_with;
+        $type       = $request->type;
 
-        //  Make sure this account can purchase the amount of numbers requested
-        if( ! $account->balanceCovers($purchaseObject, $poolSize) ){
-                return response([
-                    'error' => 'Your account balance(' 
-                                . $account->rounded_balance 
-                                . ') is too low to complete this purchase. '
-                                . 'Reload account balance or turn on auto-reload in your account payment settings and try again. '
-                                . 'If auto-reload is already on, your payment method may be invalid.'
-                ], 400);
+        if( ! $account->canPurchaseNumbers($poolSize) ){
+            return response([
+                'error' => 'Unable to purchase numbers for this account - Verify a valid payment method has been added and try again.'
+            ], 400);
         }
-
+       
         //  Check bank for phone numbers
         $bankedNumbers = BankedPhoneNumber::availableNumbers(
             $user->account_id, 
@@ -168,16 +161,14 @@ class PhoneNumberPoolController extends Controller
             'starts_with'               => $startsWith ?: null,
             'disabled_at'               => $request->disabled ? now() : null
         ]);
-
-        $purchaseDescription = '';
         
         //
         //  Use banked phone numbers first
         //
         $inserts = [];
+        $now     = now();
         foreach( $bankedNumbers as $bankedNumber ){
             //  Add to phone number insert list
-            $now       = now();
             $inserts[] = [
                 'uuid'                      => Str::uuid(),
                 'phone_number_pool_id'      => $phoneNumberPool->id,
@@ -204,8 +195,6 @@ class PhoneNumberPoolController extends Controller
                 'created_at'                => $now,
                 'updated_at'                => $now
             ];
-
-            $purchaseDescription .= 'Phone +' . $bankedNumber->country_code . $bankedNumber->number . ' @ $' . $price . "\n";
         }
         
         //  Write banked phone numbers
@@ -262,31 +251,16 @@ class PhoneNumberPoolController extends Controller
                     'created_at'                => $now,
                     'updated_at'                => $now
                 ];
-
-                $purchaseDescription .= 'Phone ' . $purchasedPhone->phoneNumber . ' @ $' . $price . "\n";
             }
         }
         
         try{
-            //  Add numbers to account
             PhoneNumber::insert($inserts);
-
-            //  Log purchase
-            $purchase = Purchase::create([
-                'account_id'    => $account->id,
-                'company_id'    => $company->id,
-                'user_id'       => $user->id,
-                'item'          => $purchaseObject,
-                'total'         => $price * count($inserts),
-                'description'   => $purchaseDescription
-            ]);
-
-            //  Decrease account balance
-            $account->balance -= $purchase->total;
-            $account->save();
         }catch(Exception $e){
-            Log::error($e->getTraceAsString());
             DB::rollBack();
+
+            Log::error($e->getTraceAsString());
+            
             return response([
                 'error' => 'An error occurred while attempting to purchase numbers - Please try again later.'
             ], 500);
@@ -294,7 +268,7 @@ class PhoneNumberPoolController extends Controller
 
         DB::commit();
 
-        event( new PhoneNumberPoolEvent($user, [$phoneNumberPool], 'create') );
+        event(new PhoneNumberPoolEvent($user, [$phoneNumberPool], 'create'));
 
         return response($phoneNumberPool, 201);
     }
@@ -451,22 +425,15 @@ class PhoneNumberPoolController extends Controller
             ], 400);
         }
 
-        $user           = $request->user();
-        $account        = $user->account;
-        $startsWith     = $request->starts_with;
-        $type           = $request->type;
-        $count          = intval($request->count);
-        $purchaseObject = 'PhoneNumber.' . $type;
-        $price          = $account->price($purchaseObject);
-
-        //  Check balance
-        if( ! $account->balanceCovers($purchaseObject, $count, true) ){
+        //  Do not allow users to purchase a number if
+        $user       = $request->user(); 
+        $account    = $company->account; 
+        $startsWith = $request->starts_with;
+        $type       = $request->type;
+        $count      = intval($request->count);
+        if( ! $account->canPurchaseNumbers($count) ){
             return response([
-                'error' => 'Your account balance(' 
-                            . $account->rounded_balance 
-                            . ') is too low to complete this purchase. '
-                            . 'Reload account balance or turn on auto-reload in your account payment settings and try again. '
-                            . 'If auto-reload is already on, your payment method may be invalid.'
+                'error' => 'Unable to purchase numbers for this account - Verify a valid payment method has been added and try again.'
             ], 400);
         }
         
@@ -531,7 +498,6 @@ class PhoneNumberPoolController extends Controller
                 'created_at'                => $now,
                 'updated_at'                => $now
             ];
-            $purchaseDescription .= 'Phone +' . $bankedNumber->country_code . $bankedNumber->number . ' @ $' . $price . "\n";
         }
 
         //  Write banked phone numbers
@@ -590,27 +556,12 @@ class PhoneNumberPoolController extends Controller
                     'created_at'                => $now,
                     'updated_at'                => $now
                 ];
-
-                $purchaseDescription .= 'Phone ' . $purchasedPhone->phoneNumber . ' @ $' . $price . "\n";
             }
         }
         
         try{
             //  Add numbers to account
             PhoneNumber::insert($inserts);
-
-            //  Log purchase
-            $purchase = Purchase::create([
-                'account_id'    => $account->id,
-                'company_id'    => $company->id,
-                'user_id'       => $user->id,
-                'item'          => $purchaseObject,
-                'total'         => $price * count($inserts),
-                'description'   => $purchaseDescription
-            ]);
-
-            //  Decrease account balance
-            $account->reduceBalance($purchase->total);
         }catch(Exception $e){
             Log::error($e->getTraceAsString());
 

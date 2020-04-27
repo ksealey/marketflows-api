@@ -15,13 +15,18 @@ class User extends Authenticatable
 {
     use SoftDeletes;
 
+    const ROLE_ADMIN     = 'ADMIN';
+    const ROLE_SYSTEM    = 'SYSTEM';
+    const ROLE_REPORTING = 'REPORTING';
+    const ROLE_CLIENT    = 'CLIENT';
+
     private $emailVerification;
 
     protected $fillable = [
         'id',
         'account_id',
         'company_id',
-        'role_id',
+        'role',
         'timezone',
         'first_name',
         'last_name',
@@ -35,7 +40,7 @@ class User extends Authenticatable
         'password_reset_at',
         'disabled_until',
         'login_attempts',
-        'email_alerts_enabled',
+        'settings',
         'sms_alerts_enabled',
         'created_at',
         'updated_at',
@@ -49,6 +54,10 @@ class User extends Authenticatable
         'disabled_until',
         'login_attempts',
         'deleted_at'
+    ];
+
+    public $casts = [
+        'settings' => 'array'
     ];
     
     /**
@@ -65,48 +74,13 @@ class User extends Authenticatable
         return $this->belongsToMany('App\Models\Company', 'user_companies');
     }
 
-    public function role()
-    {
-        return $this->belongsTo('\App\Models\Role');
-    }
-
     /**
      * Determine if a user can take an action
      * 
      */
     public function canDoAction($action)
     {
-        list($requestedModule, $requestedAction) = explode('.', $action);
-
-        //  This user can't do a thing...
-        if( ! $myRole = $this->role )
-            return false;
-
-        $myPolicy = $myRole->policy;
-        if( ! $myPolicy )
-            return false;
-
-        $policyRules = json_decode($myPolicy);
-        if( ! $policyRules || empty($policyRules->policy) )
-            return false;
-        
-        foreach( $policyRules->policy as $rule ){
-            $myModule = trim(strtolower($rule->module));
-            //  Module found
-            if( $myModule == '*' || $myModule == $requestedModule ){
-                //  Can we do this action?
-                $myActions = trim(strtolower($rule->permissions));
-                if( $myActions == '*' )
-                    return true;
-                $myActions = explode(',', $myActions);
-                foreach( $myActions as $myAction ){
-                    if( $myAction == $requestedAction )
-                        return true;
-                }
-            }
-        }
-
-        return false;
+        return true;
     }
 
     /**
@@ -129,29 +103,6 @@ class User extends Authenticatable
     public function canDoCompanyAction($companyId, $action)
     {
         return $this->canViewCompany($companyId) && $this->canDoAction($action);
-    }
-
-    /**
-     * Send mail to this user
-     * 
-     */
-    public function email($mail)
-    {
-        if( ! $this->email_alerts_enabled_at )
-            return;
-            
-        Mail::to($this->email)
-            ->send($mail);
-    }
-
-    /**
-     * Send sms to this user
-     * 
-     */
-    public function sms($message)
-    {
-        if( ! $this->phone_verified_at || ! $this->sms_alerts_enabled_at )
-            return; 
     }
 
     /**

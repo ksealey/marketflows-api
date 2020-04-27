@@ -23,6 +23,7 @@ class Call extends Model
         'external_id',
         'direction',
         'status',
+        'duration',
 
         'caller_first_name',
         'caller_last_name',

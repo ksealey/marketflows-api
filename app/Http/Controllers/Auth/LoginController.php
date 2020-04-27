@@ -78,11 +78,15 @@ class LoginController extends Controller
         $user->auth_token        = str_random(255);
         $user->save();
 
+        $account  = $user->account();
+        $account->payment_methods = $account->payment_methods;
+        $account->past_due_amount = number_format($account->past_due_amount, 2);
+
         return response([
             'message'       => 'created',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
-            'account'       => $user->account,
+            'account'       => $account,
             'first_login'   => false
         ], 200);
     }
@@ -188,10 +192,16 @@ class LoginController extends Controller
         //  Delete password reset
         $passwordReset->delete();
 
+        $account  = $user->account();
+        $account->payment_methods = $account->payment_methods;
+        $account->past_due_amount = number_format($account->past_due_amount, 2);
+
         return response([
-            'message'       => 'success',
+            'message'       => 'created',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
+            'account'       => $account,
+            'first_login'   => false
         ], 200);
     }
 

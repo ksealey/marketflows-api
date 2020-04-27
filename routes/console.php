@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use \App\Models\Company\Call;
+use \App\Models\Company\CallRecording;
 use \App\Models\Company\ReportAutomation;
 use  \App\Jobs\ExecuteReportAutomation;
 
@@ -74,20 +75,27 @@ Artisan::command('fill-calls', function(){
     $sources = [
         'Facebook', 'Twitter', 'Yahoo', 'WebMD', 'Kellogs', 'Google'
     ];
+
+    
+    
     for( $i = 0; $i < 1000; $i++){
-        Call::create([
+        $recordingEnabled = mt_rand(0,1);
+        $callerIdEnabled  = mt_rand(0,1);
+        $created          = mt_rand(0,1) ? now() : now()->subtract('-' . mt_rand(1,10) .' days');
+        $type   = mt_rand(0,1) ? 'Toll-Free' : 'Local';
+        $call = Call::create([
             'account_id'                => 1,
             'company_id'                => 1,
             'phone_number_id'           => 1,
-            'type'                      => 'Toll-Free',
+            'type'                      => $type,
             'category'                  => 'OFFLINE',
             'sub_category'              => 'EMAIL',
 
             'phone_number_pool_id'      => null,
             'session_id'                => null,
 
-            'caller_id_enabled'         => true,
-            'recording_enabled'         => true,
+            'caller_id_enabled'         => $callerIdEnabled,
+            'recording_enabled'         => $recordingEnabled,
             'forwarded_to'              => '8135573005',
             
             'external_id'               => str_random(40),
@@ -103,13 +111,25 @@ Artisan::command('fill-calls', function(){
             'caller_zip'                => '409483',
             'caller_country'            => 'US',
             
-        
+            'duration'                  => mt_rand(0, 100),
             'source'                    => $sources[mt_rand(0, count($sources)-1)],
             'medium'                    => 'Medium',
             'content'                   => 'Content',
             'campaign'                  => 'Campaign',
-            'created_at'                => now()->subtract('1 day')->format('Y-m-d H:i:s.u'),
-            'updated_at'                => now()->subtract('1 day')->format('Y-m-d H:i:s.u')
+            'created_at'                => $created ,
+            'updated_at'                => $created 
         ]);
+
+        if( $recordingEnabled ){
+            CallRecording::create([
+                'call_id' => $call->id,
+                'external_id' => str_random(32),
+                'duration' => mt_rand(0, 100),
+                'file_size' => mt_rand(1024, 1024 * 1024 * 20),
+                'path' => '/path/to/file/' . str_random(20) . '.mp3',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
     }
 });

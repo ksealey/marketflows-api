@@ -82,7 +82,7 @@ class PhoneNumberController extends Controller
             'starts_with'   => 'bail|digits_between:1,10'
         ];
 
-        $validator = Validator::make($request->input(), $rules);
+        $validator = validator($request->input(), $rules);
 
         //  Make sure the sub_category is valid for the category
         $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
@@ -100,18 +100,16 @@ class PhoneNumberController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        //  Make sure that account balance can purchase object
-        $purchaseObject = 'PhoneNumber.' . $request->type; 
-        $user           = $request->user(); 
-        $account        = $company->account; 
-        
-        if( ! $account->balanceCovers($purchaseObject, 1, true) )
+        $user    = $request->user(); 
+        $account = $company->account; 
+        if( ! $account->canPurchaseNumbers(1) ){
             return response([
-                'error' => 'Your account balance(' . $account->rounded_balance  . ') is too low to complete purchase. Reload account balance or turn on auto-reload in your account payment settings and try again.'
+                'error' => 'Unable to purchase numbers for this account - Verify a valid payment method has been added and try again.'
             ], 400);
-
-         //  See if we can find an available number in the number bank 
-         //  that didn't previously belong to this account
+        }
+       
+        //  See if we can find an available number in the number bank 
+        //  that didn't previously belong to this account
         $startsWith  = $request->starts_with;
         $bankedQuery = BankedPhoneNumber::where('status', 'Available')
                                         ->where('released_by_account_id', '!=', $account->id)
@@ -241,7 +239,7 @@ class PhoneNumberController extends Controller
             ]
         ];
 
-        $validator = Validator::make($request->input(), $rules);
+        $validator = validator($request->input(), $rules);
 
         //  Require a category when the subcategory is set
         $validator->sometimes('category', ['bail', 'required', 'in:ONLINE,OFFLINE'], function($input){

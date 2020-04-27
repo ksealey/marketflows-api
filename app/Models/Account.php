@@ -7,26 +7,44 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\Alert;
-use App\Mail\Errors\AutoReloadFailed;
+use App\Models\Company\PhoneNumber;
+use App\Models\Company\Call;
+use App\Models\Company\CallRecording;
 use App\Mail\Errors\PrimaryPaymentMethodFailed;
-use App\Mail\Errors\AccountBalanceLow;
 use Mail;
 use Exception;
 use DB;
+use DateTime;
 
 class Account extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'accounts'; 
+    const TYPE_BASIC              = 'BASIC';
+    const TYPE_ANALYTICS          = 'ANALYTICS';
+    const TYPE_ANALYTICS_PRO      = 'ANALYTICS_PRO';
+
+    const TIER_NUMBERS_LOCAL      = 10;
+    const TIER_NUMBERS_TOLL_FREE  = 0;
+    const TIER_MINUTES_LOCAL      = 500;
+    const TIER_MINUTES_TOLL_FREE  = 0;
+    const TIER_STORAGE            = 1;
+
+    const COST_TYPE_BASIC         = 45.00;
+    const COST_TYPE_ANALYTICS     = 90.00;
+    const COST_TYPE_ANALYTICS_PRO = 90.00;
+    const COST_STORAGE_GB         = 0.25;
+    const COST_NUMBER_LOCAL       = 3.00;
+    const COST_NUMBER_TOLL_FREE   = 5.00;
+    const COST_MINUTE_LOCAL       = 0.05;
+    const COST_MINUTE_TOLL_FREE   = 0.08;
+
 
     protected $fillable = [
-        'plan',
         'name',
-        'balance',
-        'auto_reload_enabled_at',
-        'auto_reload_minimum',
-        'auto_reload_amount',
+        'account_type',
+        'previous_account_type',
+        'account_type_updated_at',
         'bill_at',
         'last_billed_at',
         'default_tts_voice',
@@ -34,51 +52,32 @@ class Account extends Model
     ];
 
     protected $hidden = [
-        'external_id',
-        'disabled_at',
-        'deleted_at',
+        'previous_account_type',
+        'account_type_updated_at',
         'last_billed_at',
-        'bill_at',
         'stripe_id',
-    ];
-
-    private $rates = [
-        'BASIC' => [
-            'Plan'                 => 9.99,
-            'PhoneNumber.Local'    => 3.00,
-            'PhoneNumber.Toll-Free' => 5.00,
-            'Minute.Local'         => 0.045,
-            'Minute.Toll-Free'      => 0.07,
-            'Minute.Recording'     => 0.01,
-            'CallerId.Lookup'      => 0.02,
-            'SMS'                  => 0.025
-        ],
-        'AGENCY' =>  [
-            'Plan'                 => 29.00,
-            'PhoneNumber.Local'    => 2.00,
-            'PhoneNumber.Toll-Free' => 4.00, 
-            'Minute.Local'         => 0.04,
-            'Minute.Toll-Free'      => 0.07,
-            'Minute.Recording'     => 0.01,
-            'CallerId.Lookup'      => 0.02,
-            'SMS'                  => 0.025
-        ],
-        'ENTERPRISE' =>  [
-            'Plan'                 => 79.00,
-            'PhoneNumber.Local'    => 2.00,
-            'PhoneNumber.Toll-Free' => 4.00,
-            'Minute.Local'         => 0.035,
-            'Minute.Toll-Free'      => 0.065,
-            'Minute.Recording'     => 0.01,
-            'CallerId.Lookup'      => 0.02,
-            'SMS'                  => 0.02
-        ]
+        'disabled_at',
+        'deleted_at'
     ];
 
     protected $appends = [
         'link',
-        'kind'
+        'kind',
+        'pretty_account_type',
+        'monthly_fee'
     ];
+
+    protected $currentStorage;
+    protected $currentUsage;
+
+    static public function types()
+    {
+        return [
+            self::TYPE_BASIC,
+            self::TYPE_ANALYTICS,
+            self::TYPE_ANALYTICS_PRO
+        ];
+    }
 
     /**
      * Relationships
@@ -103,9 +102,24 @@ class Account extends Model
         return 'Account';
     }
 
-    public function getRoundedBalanceAttribute()
+    public function getPrettyAccountTypeAttribute()
     {
-        return number_format($this->balance, 2);
+        switch($this->account_type){
+            case self::TYPE_BASIC: return 'Basic';
+            case self::TYPE_ANALYTICS: return 'Analytics';
+            case self::TYPE_ANALYTICS_PRO: return 'Analytics Pro';
+            default: return '';
+        }
+    }
+
+    public function getMonthlyFeeAttribute()
+    {
+        switch($this->account_type){
+            case self::TYPE_BASIC: return self::COST_TYPE_BASIC;
+            case self::TYPE_ANALYTICS: return self::COST_TYPE_ANALYTICS;
+            case self::TYPE_ANALYTICS_PRO: return self::COST_TYPE_ANALYTICS_PRO;
+            default: return '';
+        }
     }
 
     public function getPrimaryPaymentMethodAttribute()
@@ -115,32 +129,30 @@ class Account extends Model
                             ->first();
     }
 
-    public function getAdminUsersAttribute()
+    public function currentBalance()
     {
-        return User::where('account_id', $this->id)
-                   ->whereIn('id', function($query){
-                        $query->select('user_id')
-                              ->from('user_roles')
-                              ->where('');
-                   });
+        $storage = $this->currentStorage();
+        $usage   = $this->currentUsage();
+
+        return $storage['total']['cost'] + $usage['total']['cost'] + $this->monthly_fee;
     }
 
-    /**
-     * Determine the price of an object by rates
-     * 
-     */
-    public function price($object)
+    public function getPastDueAmountAttribute()
     {
-        return floatval($this->rates[$this->plan][$object]);
-    }
+        //  
+        //  Allow an hour for the system to bill the account.
+        //
+        //  If over an hour has passed after it should have been billed and the bill_at date was not pushed to future date
+        //  that means the total owed was not paid
+        // 
+        $now              = new DateTime();
+        $shouldBeBilledBy = new DateTime($this->bill_at);
+        $shouldBeBilledBy->modify('+1 hour');
 
-    /**
-     * Determine if an object can be purchased
-     * 
-     */
-    public function balanceCovers($object, $count = 1)
-    {
-        return $this->balance >= ($this->price($object) * $count);
+        if( $now->format('U') > $shouldBeBilledBy->format('U') )
+            return $this->currentBalance();
+        
+        return 0.00;
     }
 
     /**
@@ -153,165 +165,189 @@ class Account extends Model
             if( $paymentMethod->isValid() )
                 return true;
         }
-
         return false;
     }
 
-    public function reduceBalance($amount)
+    public function canPurchaseNumbers($count)
     {
-        $this->balance -= $amount;
-        $this->save();
-
-        //
-        //  TODO: Move to job so it doesn't interfere with other processing
-        //
-        if( $this->shouldAutoReload() )
-            $this->autoReload();
-
-        if( $this->shouldWarnBalanceLow() )
-            $this->warnBalanceLow();
+        return true;
     }
 
     /**
-     * Determine if we should auto reload account
+     * Get the current billing period
      * 
      */
-    public function shouldAutoReload()
+    public function currentBillingPeriod()
     {
-        return $this->auto_reload_enabled_at && $this->balance < $this->auto_reload_minimum;
-    }
-
-    /**
-     * Determine if we should warn users about a low balance
-     * 
-     */
-    public function shouldWarnBalanceLow()
-    {
-        return ! $this->auto_reload_enabled_at && $this->balance <= 5.00;
-    }
-
-    /**
-     * Auto-reload account when balance gets below threshold
-     * 
-     */
-    public function autoReload(User $user)
-    {
-        $primaryMethod  = $this->primary_payment_method;
-        $amount         = $this->auto_reload_amount;
-        $desc           = env('APP_NAME') . ' - Auto Reload';
-
-        //  Attempt to charge primary method
-        $charge = $primaryMethod->charge($amount, $desc);
-        if( $charge ){
-            $this->balance += floatval($charge->amount);
-            $this->save();
-            event( new AccountEvent($user, [$this], 'update') );
-            return;
-        }
-        
-        //  Let the admins know their default payment method failed
-        $adminUsers = $this->admin_users;
-        foreach( $adminUsers as $user ){
-            $message = 'Your default payment method, card ending in ' 
-                        . $primaryMethod->last_4 
-                        . ' was declined while attempting to reload your account. Please update to avoid disruption in service.';
-        
-            $alert = $this->alert(
-                $user, 
-                Alert::CATEGORY_ERROR, 
-                Alert::TYPE_PRIMARY_METHOD_FAILED,
-                $message
-            );
-
-            if( ! $alert )
-                continue;
-
-            $user->email(new PrimaryPaymentMethodFailed());
-            $user->sms($message);
+        if( $this->last_billed_at ){
+            //  They have been billed before
+            $start = new DateTime($this->last_billed_at);
+            $end   = new DateTime($this->bill_at);
+        }else{
+            //  Never billed
+            //  Billing period will be from the day they sign up, until a month after their first bill
+            $start = new DateTime($this->created_at);
+            $end   = new DateTime($this->bill_at);
+            $end->modify('+1 month');
         }
 
-        //  Try additional payment methods, starting with the newest first
-        $paymentMethods = PaymentMethod::where('account_id', $this->id)
-                                        ->where('primary_method', 0)
-                                        ->orderBy('created_at', 'desc')
-                                        ->get();
+        return [
+            'start' => $start,
+            'end'   => $end,
+        ];
+    }
 
-        foreach( $paymentMethods as $pm ){
-            $charge = $pm->charge($amount, $desc);
+    /**
+     * Get the current usage
+     * 
+     */
+    public function currentUsage()
+    {
+        if( $this->currentUsage ) return $this->currentUsage;
 
-            if( $charge ){
-                $this->balance += floatval($charge->amount);
+        $billingPeriod = $this->currentBillingPeriod();
+
+        //
+        //  Get number usage
+        //
+        $numbers = PhoneNumber::withTrashed()
+                                ->whereIn('company_id', function($query){
+                                    $query->select('id')
+                                        ->from('companies')
+                                        ->where('account_id', $this->id);
+                                })
+                                ->where(function($query) use($billingPeriod){
+                                    $query->whereNull('deleted_at')
+                                          ->orWhere(function($query) use($billingPeriod){
+                                                $query->whereBetween('deleted_at', [
+                                                    $billingPeriod['start'], 
+                                                    $billingPeriod['end']
+                                                ]);
+                                          });
+                                })
+                                ->get()
+                                ->toArray();
+
+        $localNumbers = array_filter($numbers, function($number){
+            return $number['type'] === PhoneNumber::TYPE_LOCAL;
+        });
+
+        $tollFreeNumbers = array_filter($numbers, function($number){
+            return $number['type'] === PhoneNumber::TYPE_TOLL_FREE;
+        });
+
+        $localNumbersCost    = count($localNumbers)    > self::TIER_NUMBERS_LOCAL     ? ((count($localNumbers)- self::TIER_NUMBERS_LOCAL)  * self::COST_NUMBER_LOCAL)            : 0.00;
+        $tollFreeNumbersCost = count($tollFreeNumbers) > self::TIER_NUMBERS_TOLL_FREE ? ((count($tollFreeNumbers) - self::TIER_NUMBERS_TOLL_FREE) * self::COST_NUMBER_TOLL_FREE) : 0.00;
+
+        //
+        //  Get Call usage
+        //
+        $minutes = DB::table('calls')
+                    ->select([
+                            DB::raw('SUM( CEIL(duration / 60) ) AS total_minutes'),
+                            'type'
+                    ])
+                    ->whereIn('calls.company_id', function($query){
+                            $query->select('id')
+                                ->from('companies')
+                                ->where('account_id', $this->id);
+                    })
+                    ->whereBetween('calls.created_at', [$billingPeriod['start'], $billingPeriod['end']])
+                    ->groupBy('type')
+                    ->get();
     
-                $this->save();
-    
-                return;
+        $localMinutes     = 0;
+        $tollFreeMinutes  = 0;
+        foreach( $minutes as $m ){
+            if( $m->type == PhoneNumber::TYPE_LOCAL ){
+                $localMinutes = $m->total_minutes;
+            }elseif($m->type == PhoneNumber::TYPE_TOLL_FREE){
+                $tollFreeMinutes = $m->total_minutes;
             }
         }
 
-        //  Let the admin user know that NO payment methods succedded and their account is subject to disruption
-        foreach( $adminUsers as $user ){
-            $message = 'All payment methods on your account failed and your account balance was not reloaded.' 
-                       . 'Service will be disrupted if your account balance falls below $0.';
+        $localMinutesCost    = $localMinutes > self::TIER_MINUTES_LOCAL ? (($localMinutes - self::TIER_MINUTES_LOCAL) * self::COST_MINUTE_LOCAL) : 0.00;
+        $tollFreeMinutesCost = $tollFreeMinutes > self::TIER_MINUTES_TOLL_FREE ? (($tollFreeMinutes - self::TIER_MINUTES_TOLL_FREE) * self::COST_MINUTE_TOLL_FREE) : 0.00;
 
-            $alert = $this->alert(
-                $user, 
-                Alert::CATEGORY_ERROR, 
-                Alert::TYPE_AUTO_RELOAD_FAILED,
-                $message
-            );
+        $this->currentUsage =  [
+            'local' => [
+                'numbers' => [
+                    'count' => count($localNumbers),
+                    'cost'  => $localNumbersCost
+                ],
+                'minutes' => [
+                    'count' => $localMinutes,
+                    'cost'  => $localMinutesCost
+                ]
+            ],
+            'toll_free' => [
+                'numbers' => [
+                    'count' => count($tollFreeNumbers),
+                    'cost' => $tollFreeNumbersCost
+                ],
+                'minutes' => [
+                    'count' => $tollFreeMinutes,
+                    'cost'  => $tollFreeMinutesCost
+                ]
+            ],
+            'total' => [
+                'cost' => $localNumbersCost + $localMinutesCost + $tollFreeNumbersCost + $tollFreeMinutesCost,
+            ]
 
-            if( ! $alert )
-                continue;
+        ];
 
-            $user->email(new AutoReloadFailed());
-            $user->sms($message);
-        }
+        return $this->currentUsage;
     }
 
     /**
-     * Warn all admin user that their account balance is low
+     * Storage
      * 
      */
-    public function warnBalanceLow()
+    public function currentStorage()
     {
-        foreach( $this->admin_users as $user ){
-            $message = 'Your account balance is less than $5. Please reload your account or turn on auto-reload to avoid disruption in your service.';
-            
-            $alert = $this->alert(
-                $user, 
-                Alert::CATEGORY_ERROR, 
-                Alert::TYPE_BALANCE_LOW,
-                $message
-            );
+        if( $this->currentStorage ) return $this->currentStorage;
 
-            if( ! $alert )
-                continue;
+        $fileStorageSize          = 0;
+        $callRecordingStorageSize = DB::table('call_recordings')
+                                        ->select(
+                                            DB::raw(
+                                                'CASE  
+                                                    WHEN SUM(file_size) IS NOT NULL
+                                                            THEN sum(file_size)
+                                                        ELSE 0
+                                                    END AS storage_size'
+                                            )
+                                        )
+                                        ->first()
+                                        ->storage_size;
+        
+        //  Get storage sizes in GBs
+        $gbSize                     = 1024 * 1024;
+        $fileStorageSizeGB          = round($fileStorageSize / $gbSize, 2);
+        $callRecordingStorageSizeGB = round($callRecordingStorageSize / $gbSize, 2);
+        $totalStorageSizeGB         = $callRecordingStorageSizeGB + $fileStorageSizeGB;
 
-            $user->email(new AccountBalanceLow());
-            $user->sms($message);
-        }
-    }
 
-    /**
-     * Alert a user
-     * 
-     */
-    public function alert(User $user, $category, $type, $message, $gapHours = 24)
-    {
-        $existingAlert = Alert::where('user_id', $user->id)
-                            ->where('category', $category) 
-                            ->where('type', $type)
-                            ->where('created_at', '>=', now()->subHours($gapHours))
-                            ->first();
+        //  Get the cost to account
+        $fileStorageCost          = $fileStorageSizeGB          > self::TIER_STORAGE ? round(self::COST_STORAGE_GB * ($fileStorageSizeGB - self::TIER_STORAGE), 2)          : 0.00;
+        $callRecordingStorageCost = $callRecordingStorageSizeGB > self::TIER_STORAGE ? round(self::COST_STORAGE_GB * ($callRecordingStorageSizeGB - self::TIER_STORAGE), 2) : 0.00;
+        $totalStorageCost         = $callRecordingStorageCost + $fileStorageCost;
 
-        if( $existingAlert )
-            return null;
+        $this->currentStorage = [
+            'call_recordings' => [
+                'cost'    => $callRecordingStorageCost,
+                'size_gb' => $callRecordingStorageSizeGB,
+            ],
+            'files' => [
+                'cost'    => $fileStorageCost,
+                'size_gb' => $fileStorageSizeGB
+            ],
+            'total' => [
+                'cost'    => $totalStorageCost,
+                'size_gb' => $totalStorageSizeGB
+            ]
+        ];
 
-        return Alert::create([
-            'user_id'  => $user->id,
-            'category' => $category,
-            'type'     => $type,
-            'message'  => $message
-        ]);
-    }
+        return $this->currentStorage;
+    }    
 }
