@@ -64,7 +64,7 @@ class Account extends Model
         'link',
         'kind',
         'pretty_account_type',
-        'monthly_fee'
+        'monthly_fee',
     ];
 
     protected $currentStorage;

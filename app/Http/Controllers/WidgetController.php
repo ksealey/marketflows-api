@@ -229,12 +229,12 @@ class WidgetController extends Controller
                         'items' => [
                             [
                                 'label'       => 'Call Recordings',
-                                'details'     => number_format($storage['call_recordings']['size_gb'],2) . ' GB',
+                                'details'     => number_format($storage['call_recordings']['size_gb'],2) . 'GB',
                                 'value'       => number_format($storage['call_recordings']['cost'],2)
                             ],
                             [
                                 'label'       => 'Files',
-                                'details'     => number_format($storage['files']['size_gb'],2) . ' GB',
+                                'details'     => number_format($storage['files']['size_gb'],2) . 'GB',
                                 'value'       => number_format($storage['files']['cost'], 2)
                             ]
                         ]

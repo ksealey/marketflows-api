@@ -15,7 +15,11 @@ class AccountController extends Controller
 {
     public function read(Request $request)
     {
-        return response($request->user()->account);
+        $account = $request->user()->account;
+        $account->primary_payment_method = $account->primary_payment_method;
+        $account->past_due_amount = $account->past_due_amount;
+
+        return response($account);
     }
 
     /**
@@ -58,6 +62,9 @@ class AccountController extends Controller
             $account->account_type = $request->account_type;
 
         $account->save();
+
+        $account->primary_payment_method = $account->primary_payment_method;
+        $account->past_due_amount        = $account->past_due_amount;
 
         return response($account);
     }
