@@ -168,12 +168,13 @@ class WidgetController extends Controller
     {
         $user    = $request->user();
         $account = $user->account;
+        $billing = $account->billing;
         $usage   = $account->currentUsage();
         $storage = $account->currentStorage();
         
         
         $userTZ             = new DateTimeZone($user->timezone);
-        $billingPeriod      = $account->currentBillingPeriod();
+        $billingPeriod      = $billing->current_billing_period;
         $startBillingPeriod = clone $billingPeriod['start'];
         $endBillingPeriod   = clone $billingPeriod['end'];
 
@@ -251,16 +252,26 @@ class WidgetController extends Controller
      */
     public function billingNextBill(Request $request)
     {
-        $account = $request->user()->account;
+        $user    = $request->user();
+        $account = $user->account;
+        $billing = $account->billing;
         $storage = $account->currentStorage();
         $usage   = $account->currentUsage();
 
+        $billAt = new DateTime($billing->bill_at);
+        $billAt->setTimeZone(new DateTimeZone($user->timezone));
+    
         return response([
             'title' => 'Month-to-Date Balance Breakdown',
             'type'  => 'breakdown',
             'data'  => [
                 'total' => number_format($storage['total']['cost'] + $usage['total']['cost'] + $account->monthly_fee, 2),
                 'items' => [
+                    [
+                        'title' => 'Next Bill Date: ' . $billAt->format('M j, Y'),
+                        'description' => '',
+                        'items' => []
+                    ],
                     [
                         'title' => 'Monthly Service Fee',
                         'description' => 'The monthly service fee charged for your account type.',

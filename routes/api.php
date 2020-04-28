@@ -96,6 +96,12 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
              ->name('update-account');
     });
 
+    Route::prefix('billing')->group(function(){
+        Route::get('/', 'BillingController@read')
+             ->middleware('can:read,\App\Models\Billing')
+             ->name('read-billing');
+    });
+
     /*
     |--------------------------------
     | Handle roles
@@ -187,9 +193,9 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
              ->middleware('can:read,paymentMethod')
              ->name('read-payment-method');
 
-        Route::post('/{paymentMethod}/make-default', 'PaymentMethodController@makeDefault')
+        Route::put('/{paymentMethod}/make-default', 'PaymentMethodController@makeDefault')
              ->middleware('can:update,paymentMethod')
-             ->name('update-payment-method');
+             ->name('make-default-payment-method');
 
         Route::delete('/{paymentMethod}', 'PaymentMethodController@delete')
             ->middleware('can:delete,paymentMethod')

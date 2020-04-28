@@ -64,17 +64,11 @@ class PaymentMethodController extends Controller
             ], 400);
         }
 
-        try{
-            $paymentMethod = PaymentMethod::createFromToken(
-                $request->token, 
-                $request->user(), 
-                $request->primary_method
-            );
-        }catch(Exception $e){
-            return response([
-                'error' => 'Unable to add payment method - please try a different card',
-            ], 400);
-        }
+        $paymentMethod = PaymentMethod::createFromToken(
+            $request->token, 
+            $request->user(), 
+            $request->primary_method
+        );
 
         return response($paymentMethod, 201);
     }

@@ -88,19 +88,20 @@ class PaymentMethod extends Model
 
         //  Create customer with source if not exists
         $account = $user->account;
-        if( ! $account->stripe_id ){
+        $billing = $account->billing;
+        if( ! $billing->stripe_id ){
             $primaryMethod = true; // Since there is no primary methon set this as true
             $customer = Customer::create([
                 'description' => $account->name,
                 'source'      => $stripeToken
             ]);
-            $account->stripe_id = $customer->id;
-            $account->save();
+            $billing->stripe_id = $customer->id;
+            $billing->save();
             
             $card = $customer->sources->data[0];
         }else{
             $card = Customer::createSource(
-                $account->stripe_id,
+                $billing->stripe_id,
                 ['source' => $stripeToken]
             );
         }
@@ -118,7 +119,7 @@ class PaymentMethod extends Model
 
         return self::create([
             'account_id'     => $user->account_id,
-            'user_id'     => $user->id,
+            'user_id'        => $user->id,
             'external_id'    => $card->id,
             'last_4'         => $card->last4,
             'expiration'     => $expiration->format('Y-m-d'),
@@ -146,7 +147,7 @@ class PaymentMethod extends Model
 
             //  Create remote charge
             $chargeData = [
-                'customer'      => $this->account->stripe_id,
+                'customer'      => $this->account->billing->stripe_id,
                 'source'        => $this->external_id,
                 'amount'        => $amount * 100,
                 'currency'      => 'usd',

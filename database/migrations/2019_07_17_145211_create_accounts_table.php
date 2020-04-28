@@ -21,10 +21,9 @@ class CreateAccountsTable extends Migration
             $table->dateTime('account_type_updated_at')->nullable();
             $table->string('default_tts_voice', 32);
             $table->string('default_tts_language', 32);
-            $table->string('stripe_id', 64)->nullable();
-            $table->dateTime('bill_at');
-            $table->dateTime('last_billed_at')->nullable();
-            $table->dateTime('disabled_at')->nullable();
+            $table->dateTime('suspended_at')->nullable();
+            $table->smallInteger('suspension_code')->unsigned()->nullable();
+            $table->string('suspension_message', 255)->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

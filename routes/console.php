@@ -1,10 +1,13 @@
 <?php
 
 use Illuminate\Foundation\Inspiring;
+use \App\Models\Billing;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Models\Company\ReportAutomation;
-use  \App\Jobs\ExecuteReportAutomation;
+use \App\Jobs\ExecuteReportAutomation;
+use \App\Jobs\BillAccountJob;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -70,6 +73,30 @@ Artisan::command('reports:dispatch-automations', function(){
     ]);
 });
 
+Artisan::command('billing:bill-accounts', function(){
+    $maxBillAttempts = 3;
+    $billings        = Billing::where('bill_at', '<=', now())
+                              ->where(function($query){
+                                    $query->whereNull('billing_failed_at')
+                                          ->orWhere('billing_failed_at', '<=', now()->subDays(2));
+                              })
+                              ->where('failed_billing_attempts', '<', $maxBillAttempts)
+                              ->whereNull('locked_at')
+                              ->get();
+
+    //  Add a lock so if something happens we don't charge the account twice
+    if( count($billings) ){
+        $ids = array_column($billings->toArray(), 'id');
+        Billing::whereIn('id', $ids)->update([
+            'locked_at' => now()
+        ]);
+    }
+
+    //  Push job to queue
+    foreach( $billings as $billing ){
+        BillAccountJob::dispatch($billing);
+    }
+});
 
 Artisan::command('fill-calls', function(){
     $sources = [

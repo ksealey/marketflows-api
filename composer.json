@@ -21,7 +21,7 @@
         "piwik/device-detector": "^3.12",
         "predis/predis": "^1.1",
         "react/zmq": "^0.4.0",
-        "stripe/stripe-php": "^6.40",
+        "stripe/stripe-php": "^7.29",
         "twilio/sdk": "^5.41"
     },
     "require-dev": {

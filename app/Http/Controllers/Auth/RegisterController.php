@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\Billing;
 use App\Models\User;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
@@ -55,11 +56,17 @@ class RegisterController extends Controller
             $account = Account::create([
                 'name'                => $request->account_name,
                 'account_type'        => $request->account_type,
-                'bill_at'             => now()->addDays(7),
+                
                 'default_tts_voice'   => 'Joanna',
                 'default_tts_language'=> 'en-US',
             ]);
-            
+
+            //  Setup billing for account
+            Billing::create([
+                'account_id' => $account->id,
+                'bill_at'    => now()->addDays(7),
+            ]);
+
             //  Create this user
             $user = User::create([
                 'account_id'                => $account->id,

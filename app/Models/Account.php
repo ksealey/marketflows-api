@@ -39,24 +39,26 @@ class Account extends Model
     const COST_MINUTE_LOCAL       = 0.05;
     const COST_MINUTE_TOLL_FREE   = 0.08;
 
+    const SUSPENSION_CODE_PAYMENT_METHOD = 1;
+    const SUSPENSION_CODE_BALANCE_DUE    = 2;
 
     protected $fillable = [
         'name',
         'account_type',
         'previous_account_type',
         'account_type_updated_at',
-        'bill_at',
-        'last_billed_at',
         'default_tts_voice',
-        'default_tts_language'     
+        'default_tts_language',
+        'suspended_at',
+        'suspension_code',
+        'suspension_message'   
     ];
 
     protected $hidden = [
         'previous_account_type',
         'account_type_updated_at',
-        'last_billed_at',
-        'stripe_id',
-        'disabled_at',
+        'suspended_at',
+        'suspension_reason',
         'deleted_at'
     ];
 
@@ -86,6 +88,11 @@ class Account extends Model
     public function payment_methods()
     {
         return $this->hasMany('\App\Models\PaymentMethod');
+    }
+
+    public function billing()
+    {
+        return $this->hasOne('App\Models\Billing');
     }
 
     /**
@@ -146,7 +153,7 @@ class Account extends Model
         //  that means the total owed was not paid
         // 
         $now              = new DateTime();
-        $shouldBeBilledBy = new DateTime($this->bill_at);
+        $shouldBeBilledBy = new DateTime($this->billing->bill_at);
         $shouldBeBilledBy->modify('+1 hour');
 
         if( $now->format('U') > $shouldBeBilledBy->format('U') )
@@ -174,30 +181,6 @@ class Account extends Model
     }
 
     /**
-     * Get the current billing period
-     * 
-     */
-    public function currentBillingPeriod()
-    {
-        if( $this->last_billed_at ){
-            //  They have been billed before
-            $start = new DateTime($this->last_billed_at);
-            $end   = new DateTime($this->bill_at);
-        }else{
-            //  Never billed
-            //  Billing period will be from the day they sign up, until a month after their first bill
-            $start = new DateTime($this->created_at);
-            $end   = new DateTime($this->bill_at);
-            $end->modify('+1 month');
-        }
-
-        return [
-            'start' => $start,
-            'end'   => $end,
-        ];
-    }
-
-    /**
      * Get the current usage
      * 
      */
@@ -205,7 +188,7 @@ class Account extends Model
     {
         if( $this->currentUsage ) return $this->currentUsage;
 
-        $billingPeriod = $this->currentBillingPeriod();
+        $billingPeriod = $this->billing->current_billing_period;
 
         //
         //  Get number usage

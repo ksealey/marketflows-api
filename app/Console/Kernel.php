@@ -24,16 +24,19 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('clear:password-resets')
-                 ->hourly()
-                 ->onOneServer();
-
         //  Send automated reports
         $schedule->command('reports:dispatch-automations')
                  ->everyFifteenMinutes()
                  ->onOneServer();
 
-        
+        //  Bill accounts
+        $schedule->command('billing:bill-accounts')
+                 ->everyFifteenMinutes()
+                 ->onOneServer();
+
+        $schedule->command('clear:password-resets')
+                 ->hourly()
+                 ->onOneServer();
     }
 
     /**
