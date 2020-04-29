@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
-use \App\Models\Charge;
 use \Stripe\Stripe;
 use \Stripe\Customer;
 use \Stripe\Card;
@@ -52,11 +51,6 @@ class PaymentMethod extends Model
     public function account()
     {
         return $this->belongsTo('\App\Models\Account');
-    }
-
-    public function charges()
-    {
-        return $this->hasMany('\App\Models\Charge');
     }
 
     /**
@@ -109,9 +103,7 @@ class PaymentMethod extends Model
         //  If this is the new primary method, unset existing
         if( $primaryMethod ){
             self::where('account_id', $user->account_id)
-                ->update([
-                    'primary_method' => false
-                ]);
+                ->update([ 'primary_method' => false ]);
         }
 
         $expiration = new DateTime($card->exp_year . '-' . $card->exp_month . '-01 00:00:00'); 
@@ -136,46 +128,35 @@ class PaymentMethod extends Model
      */
     public function charge(float $amount, string $description, $attempts = 1)
     {
-        if( $attempts >= 3 )
+        if( ! $this->external_id )
             return null;
 
-        if( ! $this->external_id )
+        if( $attempts >= 3 )
             return null;
 
         try{
             Stripe::setApiKey(env('STRIPE_SK'));
 
-            //  Create remote charge
-            $chargeData = [
+            $stripeCharge = StripeCharge::create([
                 'customer'      => $this->account->billing->stripe_id,
                 'source'        => $this->external_id,
                 'amount'        => $amount * 100,
                 'currency'      => 'usd',
                 'description'   => $description
-            ];
-
-            $stripeCharge = StripeCharge::create($chargeData);
+            ]);
 
             //  Update used time
             $this->last_used_at = now();
             $this->error        = null;
             $this->save();
 
-            //  Create local charge 
-            return Charge::create([
-                'payment_method_id'     => $this->id,
-                'external_id'           => $stripeCharge->id,
-                'amount'                => $amount,
-                'description'           => $description,
-                'created_at'            => now()
-            ]);
+            return $stripeCharge->id;
         }catch(\Stripe\Exception\CardException $e){
             //  Card declined
             $this->error = substr($e->getError()->message, 0, 128);
         }catch(\Stripe\Exception\RateLimitException $e){
             //  We hit a rate limit, wait 2 seconds and try again
             sleep(2);
-
             return $this->charge($amount, $description, $attempts + 1);
         }catch(Exception $e){
             $this->error = 'Card declined.';
@@ -237,6 +218,4 @@ class PaymentMethod extends Model
     {
         return $this->error ? false : true;
     }
-
-
 }

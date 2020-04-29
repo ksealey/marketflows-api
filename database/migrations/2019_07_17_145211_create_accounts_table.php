@@ -17,13 +17,13 @@ class CreateAccountsTable extends Migration
             $table->bigIncrements('id');
             $table->string('name', 64);
             $table->string('account_type', 32);
-            $table->string('previous_account_type', 32)->nullable();
             $table->dateTime('account_type_updated_at')->nullable();
             $table->string('default_tts_voice', 32);
             $table->string('default_tts_language', 32);
             $table->dateTime('suspended_at')->nullable();
-            $table->smallInteger('suspension_code')->unsigned()->nullable();
+            $table->dateTime('suspension_warning_at')->nullable();
             $table->string('suspension_message', 255)->nullable();
+            $table->smallInteger('suspension_code')->unsigned()->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

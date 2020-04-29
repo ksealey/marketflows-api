@@ -11,11 +11,21 @@ class AccountPolicy
 
     public function read(User $user)
     {
-        return $user->canDoAction('accounts.read');
+        return $user->role === User::ROLE_ADMIN;
     }
 
     public function update(User $user)
     {
-        return $user->canDoAction('accounts.update');
+        return $user->role === User::ROLE_ADMIN;
+    }
+
+    public function upgrade(User $user)
+    {
+        return $user->role === User::ROLE_ADMIN;
+    }
+
+    public function delete(User $user)
+    {
+        return $user->role === User::ROLE_ADMIN;
     }
 }

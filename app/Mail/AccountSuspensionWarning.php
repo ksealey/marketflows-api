@@ -6,8 +6,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use \Carbon\Carbon;
 
-class AccountSuspended extends Mailable
+class AccountSuspensionWarning extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -32,9 +33,12 @@ class AccountSuspended extends Mailable
      */
     public function build()
     {
-        return $this->subject('Your account has been suspended')->view('mail.account-suspended', [
-            'user'    => $this->user,
-            'account' => $this->account
+        $releaseNumbersAt = (new Carbon($this->account->suspended_at))->addDays(7);
+        
+        return $this->view('mail.account-suspension-warning', [
+            'user'              => $this->user,
+            'account'           => $this->account,
+            'releaseNumbersAt'  => $releaseNumbersAt
         ]);
     }
 }

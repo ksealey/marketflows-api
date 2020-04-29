@@ -1,0 +1,1 @@
+Numbers released! {{ count($phoneNumbers) }}

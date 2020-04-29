@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use \App\Models\PaymentMethod;
+use \App\Events\PaymentMethodEvent;
 use Validator;
 use Exception;
 use DB;
@@ -18,29 +19,21 @@ class PaymentMethodController extends Controller
      */
     public function list(Request $request)
     {
-        $rules = [
-            'order_by' => 'in:created_at,updated_at,last_4,brand,expiration'
-        ];
-
-        $searchFields = [
-            'last_4',
-            'brand'
+        $fields = [
+            'payment_methods.last_4',
+            'payment_methods.brand',
+            'payment_methods.created_at',
+            'payment_methods.created_at'
         ];
 
         $query = PaymentMethod::where('account_id', $request->user()->account_id);
-        
-        if( $request->search )
-            $query->where(function($query) use($request){
-                $query->where('last_4', 'like', '%' . $request->search . '%')
-                      ->orWhere('brand', 'like', '%' . $request->search . '%');
-            });
 
         //  Pass along to parent for listing
         return parent::results(
             $request,
             $query,
-            $rules,
-            $searchFields
+            [],
+            $fields
         );
     }
 
@@ -64,11 +57,15 @@ class PaymentMethodController extends Controller
             ], 400);
         }
 
+        $user = $request->user();
+
         $paymentMethod = PaymentMethod::createFromToken(
             $request->token, 
-            $request->user(), 
+            $user, 
             $request->primary_method
         );
+
+        event( new PaymentMethodEvent($user, [$paymentMethod], 'create') );
 
         return response($paymentMethod, 201);
     }

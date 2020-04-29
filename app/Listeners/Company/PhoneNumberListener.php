@@ -34,21 +34,6 @@ class PhoneNumberListener
      */
     public function handle(PhoneNumberEvent $event)
     {
-        $user = $event->user;
-        $accountOnlineUsers = Cache::get('websockets.accounts.' . $user->account_id) ?: [];
-        if( count($accountOnlineUsers) ){
-            $connectionInfo = $accountOnlineUsers[$user->id] ?? null ;
-            if( $connectionInfo ){
-                $package = [
-                    'to'      => $event->user->id,
-                    'type'    => 'PhoneNumber',
-                    'action'  => $event->action,
-                    'content' => $event->phoneNumbers
-                ];
-                $this->pushSocketData($connectionInfo['host'], $package);
-            }
-        }
-
         if( $event->action !== 'delete' )
             return;
 

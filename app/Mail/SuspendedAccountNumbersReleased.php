@@ -7,22 +7,24 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
-class AccountSuspended extends Mailable
+class SuspendedAccountNumbersReleased extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $user;
     public $account;
+    public $phoneNumbers = [];
 
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct($user, $account)
+    public function __construct($user, $account, $phoneNumbers)
     {
-        $this->user    = $user;
-        $this->account = $account;
+        $this->user         = $user;
+        $this->account      = $account;
+        $this->phoneNumbers = $phoneNumbers;
     }
 
     /**
@@ -32,9 +34,10 @@ class AccountSuspended extends Mailable
      */
     public function build()
     {
-        return $this->subject('Your account has been suspended')->view('mail.account-suspended', [
-            'user'    => $this->user,
-            'account' => $this->account
+        return $this->view('mail.suspended-account-numbers-released', [
+            'user' => $this->user,
+            'account' => $this->account,
+            'phoneNumbers' => $this->phoneNumbers
         ]);
     }
 }

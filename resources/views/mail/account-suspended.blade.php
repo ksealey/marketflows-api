@@ -1,1 +1,1 @@
-Your account has been suspended!
+{{ $account->suspension_message }}

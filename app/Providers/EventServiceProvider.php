@@ -18,6 +18,9 @@ class EventServiceProvider extends ServiceProvider
         'App\Events\AccountEvent' => [
             'App\Listeners\AccountListener',
         ],
+        'App\Events\PaymentMethodEvent' => [
+            'App\Listeners\PaymentMethodListener',
+        ],
         'App\Events\AlertEvent' => [
             'App\Listeners\AlertListener',
         ],

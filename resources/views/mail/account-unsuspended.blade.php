@@ -1,0 +1,1 @@
+Your account has been unsuspended {{ $user->first_name }}!

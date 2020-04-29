@@ -12,29 +12,26 @@ class PaymentMethodPolicy
 
     public function create(User $user)
     {
-        return $user->canDoAction('payment-methods.create');
+        return $user->role === User::ROLE_ADMIN;
     }
 
     public function list(User $user)
     {
-        return $user->canDoAction('payment-methods.read');
+        return $user->role === User::ROLE_ADMIN;
     }
 
     public function read(User $user, PaymentMethod $paymentMethod)
     {
-        return $user->account_id == $paymentMethod->account_id 
-            && $user->canDoAction('payment-methods.read');
+        return $user->role === User::ROLE_ADMIN;
     }
 
     public function update(User $user, PaymentMethod $paymentMethod)
     {
-        return $user->account_id == $paymentMethod->account_id 
-            && $user->canDoAction('payment-methods.update');
+        return $user->role === User::ROLE_ADMIN;
     }
 
     public function delete(User $user, PaymentMethod $paymentMethod)
     {
-        return $user->account_id == $paymentMethod->account_id 
-            && $user->canDoAction('payment-methods.delete');
+        return $user->role === User::ROLE_ADMIN;
     }
 }

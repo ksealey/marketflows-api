@@ -39,26 +39,26 @@ class Account extends Model
     const COST_MINUTE_LOCAL       = 0.05;
     const COST_MINUTE_TOLL_FREE   = 0.08;
 
-    const SUSPENSION_CODE_PAYMENT_METHOD = 1;
-    const SUSPENSION_CODE_BALANCE_DUE    = 2;
+    const SUSPENSION_CODE_NO_PAYMENT_METHOD                 = 1;
+    const SUSPENSION_CODE_TOO_MANY_FAILED_BILLING_ATTEMPTS  = 2;
 
     protected $fillable = [
         'name',
         'account_type',
-        'previous_account_type',
         'account_type_updated_at',
         'default_tts_voice',
         'default_tts_language',
         'suspended_at',
         'suspension_code',
-        'suspension_message'   
+        'suspension_warning_at',
+        'suspension_message',
     ];
 
     protected $hidden = [
-        'previous_account_type',
         'account_type_updated_at',
         'suspended_at',
-        'suspension_reason',
+        'suspension_code',
+        'suspension_warning_at',
         'deleted_at'
     ];
 
@@ -87,7 +87,8 @@ class Account extends Model
      */
     public function payment_methods()
     {
-        return $this->hasMany('\App\Models\PaymentMethod');
+        return $this->hasMany('\App\Models\PaymentMethod')
+                    ->orderBy('primary_method', 'desc');
     }
 
     public function billing()
@@ -127,6 +128,13 @@ class Account extends Model
             case self::TYPE_ANALYTICS_PRO: return self::COST_TYPE_ANALYTICS_PRO;
             default: return '';
         }
+    }
+
+    public function getAdminUsersAttribute()
+    {
+        return User::where('account_id', $this->id)
+                   ->where('role', User::ROLE_ADMIN)
+                   ->get();
     }
 
     public function getPrimaryPaymentMethodAttribute()

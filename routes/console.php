@@ -1,13 +1,16 @@
 <?php
 
 use Illuminate\Foundation\Inspiring;
+use \App\Models\Account;
 use \App\Models\Billing;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Models\Company\ReportAutomation;
 use \App\Jobs\ExecuteReportAutomation;
+use \App\Jobs\CreateBillingStatementJob;
 use \App\Jobs\BillAccountJob;
-
+use \App\Jobs\AccountSuspensionWarningJob;
+use \App\Jobs\ReleaseSuspendedAccountNumbersJob;
 
 /*
 |--------------------------------------------------------------------------
@@ -73,22 +76,40 @@ Artisan::command('reports:dispatch-automations', function(){
     ]);
 });
 
+
+Artisan::command('billing:create-statements', function(){
+    $billings = Billing::where('period_ends_at', '<=', now())
+                       ->limit(100)
+                       ->get();
+
+    foreach( $billings as $billing ){
+        CreateBillingStatementJob::dispatch($billing);
+    }
+});
+
+
 Artisan::command('billing:bill-accounts', function(){
-    $maxBillAttempts = 3;
-    $billings        = Billing::where('bill_at', '<=', now())
-                              ->where(function($query){
-                                    $query->whereNull('billing_failed_at')
-                                          ->orWhere('billing_failed_at', '<=', now()->subDays(2));
-                              })
-                              ->where('failed_billing_attempts', '<', $maxBillAttempts)
-                              ->whereNull('locked_at')
-                              ->get();
+    //  Find all accounts with:
+    //  - bill_at date in the past
+    //  - No lock
+    //  - Unpaid statements
+    //  - Less than 3 failed billing attempts
+    $billings = Billing::where('bill_at', '<=', now())
+                       ->whereNull('locked_at')
+                        ->where('attempts', '<', Billing::MAX_ATTEMPTS)
+                        ->whereIn('account_id', function($query){
+                            $query->select('account_id')
+                                  ->from('billing_statements')
+                                  ->whereNull('paid_at');
+                        })
+                        ->limit(100)
+                        ->get();
 
     //  Add a lock so if something happens we don't charge the account twice
     if( count($billings) ){
         $ids = array_column($billings->toArray(), 'id');
         Billing::whereIn('id', $ids)->update([
-            'locked_at' => now()
+           'locked_at' => now()
         ]);
     }
 
@@ -98,12 +119,31 @@ Artisan::command('billing:bill-accounts', function(){
     }
 });
 
+
+Artisan::command('accounts:suspension-warnings', function(){
+    $accounts = Account::where('suspension_warning_at', '<=', now())->get();
+
+    foreach( $accounts as $account ){
+        AccountSuspensionWarningJob::dispatch($account);
+    }
+});
+
+Artisan::command('accounts:release-suspended-numbers', function(){
+    $sevenDaysAgo = now()->subDays(8);
+    $accounts     = Account::where('suspension_warning_at', '<=', $sevenDaysAgo)
+                           ->get();
+
+    foreach( $accounts as $account ){
+        ReleaseSuspendedAccountNumbersJob::dispatch($account);
+    }
+});
+
+
+
 Artisan::command('fill-calls', function(){
     $sources = [
         'Facebook', 'Twitter', 'Yahoo', 'WebMD', 'Kellogs', 'Google'
     ];
-
-    
     
     for( $i = 0; $i < 1000; $i++){
         $recordingEnabled = mt_rand(0,1);

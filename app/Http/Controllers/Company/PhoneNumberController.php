@@ -197,7 +197,7 @@ class PhoneNumberController extends Controller
 
         $phoneNumber->call_count = 0;
         
-        event(new PhoneNumberEvent($user, [$phoneNumber], 'create'));
+        event(new PhoneNumberEvent($account, [$phoneNumber], 'create'));
 
         return response($phoneNumber, 201);
     }
@@ -288,7 +288,7 @@ class PhoneNumberController extends Controller
         
         $phoneNumber->save();
 
-        event(new PhoneNumberEvent($request->user(), [$phoneNumber], 'update'));
+        event(new PhoneNumberEvent([$phoneNumber], 'update'));
 
         return response($phoneNumber);
     }
@@ -301,7 +301,7 @@ class PhoneNumberController extends Controller
     {
         $phoneNumber->delete();
 
-        event(new PhoneNumberEvent($request->user(), [$phoneNumber], 'delete'));
+        event(new PhoneNumberEvent($company->account, [$phoneNumber], 'delete'));
         
         return response([
             'message' => 'deleted'
@@ -343,7 +343,7 @@ class PhoneNumberController extends Controller
         if( count($phoneNumbers) ){
             PhoneNumber::whereIn('id', $phoneNumberIds)->delete();
 
-            event(new PhoneNumberEvent($user, $phoneNumbers, 'delete'));
+            event(new PhoneNumberEvent($company->account, $phoneNumbers, 'delete'));
         }
 
         return response([

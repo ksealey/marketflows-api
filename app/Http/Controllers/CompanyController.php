@@ -202,6 +202,8 @@ class CompanyController extends Controller
      */
     public function delete(Request $request, Company $company)
     {
+        $account = $company->account;
+
         $company->delete();
 
         //  Remove all links from users to deleted companies
@@ -238,7 +240,7 @@ class CompanyController extends Controller
         event(new CompanyEvent($user, [$company], 'delete'));
 
         if( count($phoneNumbers) )
-            event(new PhoneNumberEvent($user, $phoneNumbers, 'delete'));
+            event(new PhoneNumberEvent($account, $phoneNumbers, 'delete'));
 
         if( count($pools) )
             event(new PhoneNumberPoolEvent($user, $pools, 'delete'));
@@ -319,7 +321,7 @@ class CompanyController extends Controller
                 event(new CompanyEvent($user, $companies, 'delete'));
 
             if( count($phoneNumbers) )
-                event(new PhoneNumberEvent($user, $phoneNumbers, 'delete'));
+                event(new PhoneNumberEvent($user->account, $phoneNumbers, 'delete'));
 
             if( count($pools) )
                 event(new PhoneNumberPoolEvent($user, $pools, 'delete'));

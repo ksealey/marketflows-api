@@ -16,8 +16,9 @@ class BillingController extends Controller
             'monthly_fee'           => number_format($account->monthly_fee, 2),
             'primary_payment_method'=> $account->primary_payment_method,
             'past_due_amount'       => number_format($billing->past_due_amount, 2),
-            'current_billing_period'=> $billing->current_billing_period,
-            'bill_at'               => $billing->bill_at
+            'bill_at'               => $billing->bill_at,
+            'period_starts_at'      => $billing->period_starts_at,
+            'period_ends_at'        => $billing->period_ends_at
         ]);
     }
 }

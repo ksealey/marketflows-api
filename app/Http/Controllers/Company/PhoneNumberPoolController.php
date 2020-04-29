@@ -14,7 +14,6 @@ use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\BankedPhoneNumber;
-use \App\Models\Purchase;
 use \App\Events\Company\PhoneNumberEvent;
 use \App\Events\Company\PhoneNumberPoolEvent;
 use Validator;
@@ -363,7 +362,7 @@ class PhoneNumberPoolController extends Controller
         PhoneNumber::whereIn('id', array_column($phoneNumbers->toArray(),'id'))->delete();
        
         event( new PhoneNumberPoolEvent($user, [$phoneNumberPool], 'delete') );
-        event( new PhoneNumberEvent($user, $phoneNumbers, 'delete') );
+        event( new PhoneNumberEvent($company->account, $phoneNumbers, 'delete') );
 
         return response([
             'message' => 'Deleted.'
@@ -707,7 +706,7 @@ class PhoneNumberPoolController extends Controller
                     ->whereIn('id', $numberIds)
                     ->delete();
 
-        event(new PhoneNumberEvent($request->user(), $phoneNumbers, 'delete'));
+        event(new PhoneNumberEvent($company->account, $phoneNumbers, 'delete'));
 
         return response([ 
             'message' => 'Deleted.',

@@ -40,7 +40,7 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
 | Handle authenticated user api calls
 |----------------------------------------
 */
-Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
+Route::middleware(['throttle:120,1', 'auth:api', 'api'])->group(function(){
 
     /*
     |----------------------------------------
@@ -57,12 +57,8 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
     |----------------------------------------
     */
     Route::prefix('me')->group(function(){
-
         Route::get('/', function(Request $request){
-            $user = $request->user();
-            $user->account;
-    
-            return response($user);
+            return response($request->user());
         })->name('me');
 
         /*
@@ -94,6 +90,14 @@ Route::middleware(['throttle:360,1', 'auth:api', 'api'])->group(function(){
         Route::put('/', 'AccountController@update')
              ->middleware('can:update,\App\Models\Account')
              ->name('update-account');
+
+        Route::put('/upgrade', 'AccountController@upgrade')
+             ->middleware('can:upgrade,\App\Models\Account')
+             ->name('upgrade-account');
+
+        Route::delete('/', 'AccountController@delete')
+             ->middleware('can:update,\App\Models\Account')
+             ->name('delete-account');
     });
 
     Route::prefix('billing')->group(function(){

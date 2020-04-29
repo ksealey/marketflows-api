@@ -25,7 +25,6 @@ class User extends Authenticatable
     protected $fillable = [
         'id',
         'account_id',
-        'company_id',
         'role',
         'timezone',
         'first_name',
@@ -41,7 +40,6 @@ class User extends Authenticatable
         'disabled_until',
         'login_attempts',
         'settings',
-        'sms_alerts_enabled',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -74,13 +72,21 @@ class User extends Authenticatable
         return $this->belongsToMany('App\Models\Company', 'user_companies');
     }
 
-    /**
-     * Determine if a user can take an action
-     * 
-     */
     public function canDoAction($action)
     {
-        return true;
+        $action = strtolower($action);
+        switch( $action ){
+            case 'create':
+            case 'update':
+            case 'delete':
+                return $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_SYSTEM;
+
+            case 'read':
+                return true; // Anyone can read
+            
+            default: 
+                return false;
+        }
     }
 
     /**
@@ -93,16 +99,8 @@ class User extends Authenticatable
             if( $company->id === $companyId )
                 return true;
         }
+        
         return false;
-    }
-
-    /**
-     * Determine if a user can take action on behalf of a company
-     * 
-     */
-    public function canDoCompanyAction($companyId, $action)
-    {
-        return $this->canViewCompany($companyId) && $this->canDoAction($action);
     }
 
     /**

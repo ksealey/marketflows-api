@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreatePurchasesTable extends Migration
+class CreateBillingStatementsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,19 +13,17 @@ class CreatePurchasesTable extends Migration
      */
     public function up()
     {
-        Schema::create('purchases', function (Blueprint $table) {
+        Schema::create('billing_statements', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
-            $table->bigInteger('company_id')->unsigned()->nullable();
-            $table->bigInteger('user_id')->unsigned()->nullable();
-            $table->string('item', 32);
-            $table->decimal('total', 8, 2);
-            $table->string('description', 1024);
+            $table->date('billing_period_starts_at');
+            $table->date('billing_period_ends_at');
+            $table->bigInteger('payment_method_id')->unsigned()->nullable();
+            $table->dateTime('paid_at')->nullable();
+            $table->string('charge_id', 64)->nullable();
             $table->timestamps();
-
             $table->foreign('account_id')->references('id')->on('accounts');
-            $table->foreign('company_id')->references('id')->on('companies');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('payment_method_id')->references('id')->on('payment_methods');
         });
     }
 
@@ -36,6 +34,6 @@ class CreatePurchasesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('purchases');
+        Schema::dropIfExists('statements');
     }
 }

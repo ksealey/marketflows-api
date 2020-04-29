@@ -24,19 +24,36 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        //  Send automated reports
+        //  Send automated reports every 15 minutes
         $schedule->command('reports:dispatch-automations')
                  ->everyFifteenMinutes()
                  ->onOneServer();
 
-        //  Bill accounts
-        $schedule->command('billing:bill-accounts')
-                 ->everyFifteenMinutes()
+        //  Create statements every 5 minutes
+        $schedule->command('billing:create-statements')
+                 ->everyFiveMinutes()
                  ->onOneServer();
+       
+        //  Bill accounts every 5 minutes
+        $schedule->command('billing:bill-accounts')
+                 ->everyFiveMinutes()
+                 ->onOneServer();
+
+         // Send suspension warnings every 15 minutes
+         $schedule->command('accounts:suspension-warnings')
+                  ->everyFifteenMinutes()
+                  ->onOneServer();
+
+         // Release suspended account numbers every 15 minutes
+         $schedule->command('accounts:release-suspended-numbers')
+                  ->everyFifteenMinutes()
+                  ->onOneServer();
 
         $schedule->command('clear:password-resets')
                  ->hourly()
                  ->onOneServer();
+
+                 
     }
 
     /**

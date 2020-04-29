@@ -17,11 +17,11 @@ class CreateBillingTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
             $table->string('stripe_id', 64)->nullable();
-            $table->dateTime('bill_at');
+            $table->date('period_starts_at');
+            $table->date('period_ends_at')->index();
+            $table->date('bill_at')->nullable()->index();
             $table->dateTime('last_billed_at')->nullable();
-            $table->dateTime('billing_failed_at')->nullable();
-            $table->smallInteger('failed_billing_attempts')->unsigned()->default(0);
-            $table->string('last_error', 255)->nullable();
+            $table->smallInteger('attempts')->unsigned()->default(0);
             $table->dateTime('locked_at')->nullable();
             $table->timestamps();
             $table->softDeletes();

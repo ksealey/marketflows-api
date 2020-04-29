@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Events\Company;
+namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Queue\SerializesModels;
@@ -10,23 +10,24 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
-class PhoneNumberEvent
+class PaymentMethodEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $account;
-    public $phoneNumbers;
+    public $user;
+    public $paymentMethods;
     public $action;
+
 
     /**
      * Create a new event instance.
      *
      * @return void
      */
-    public function __construct($account, $phoneNumbers, $action)
+    public function __construct($user, $paymentMethods, $action)
     {
-        $this->account      = $account;
-        $this->phoneNumbers = $phoneNumbers;
-        $this->action       = $action;
+        $this->user = $user;
+        $this->paymentMethods = $paymentMethods;
+        $this->action = $action;
     }
 }

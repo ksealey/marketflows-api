@@ -20,7 +20,7 @@ class CreateUsersTable extends Migration
             $table->string('timezone', 64);
             $table->string('first_name', 32);
             $table->string('last_name', 32);
-            $table->string('email', 128)->unique();
+            $table->string('email', 128);
             $table->string('phone', 16)->nullable();
             $table->string('password_hash', 128);
             $table->string('auth_token', 256);

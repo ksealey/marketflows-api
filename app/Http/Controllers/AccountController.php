@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PaymentMethod;
-use App\Models\CreditCode;
 use Illuminate\Validation\Rule;
 use DateTime;
 use Validator;
@@ -15,22 +14,17 @@ class AccountController extends Controller
 {
     public function read(Request $request)
     {
-        $account = $request->user()->account;
-        $account->primary_payment_method = $account->primary_payment_method;
-        $account->past_due_amount = $account->past_due_amount;
-
-        return response($account);
+        return response($request->user()->account);
     }
 
     /**
-     * Update account attached to
+     * Update account
      * 
      */
     public function update(Request $request)
     {
         $rules = [
-            'name'         => 'bail|min:1|max:64',
-            'account_type' => 'bail|in:' . implode(',', Account::types()),
+            'name' => 'bail|min:1|max:64',
         ];
 
         $validator = validator($request->all(), $rules);
@@ -40,32 +34,99 @@ class AccountController extends Controller
             ], 400);
         }
 
-        $account = $request->user()->account;
-        
-        //  Only allow account type changes once  month
-        if( $request->filled('account_type') && $account->account_type_updated_at ){
-            $now              = new DateTime();
-            $allowUpdateAfter = new DateTime($account->account_type_updated_at);
-            $allowUpdateAfter->modify('+1 month');
-
-            if( $now->format('Y-m-d') <= $allowUpdateAfter->format('Y-m-d') ){
-                return response([
-                    'error' => 'account type can only be updated once a month'
-                ], 404);
-            }
-        }
-
         if( $request->filled('name') )
             $account->name = $request->name;
 
-        if( $request->filled('account_type') )
-            $account->account_type = $request->account_type;
-
         $account->save();
 
-        $account->primary_payment_method = $account->primary_payment_method;
-        $account->past_due_amount        = $account->past_due_amount;
+        return response($account);
+    }
+
+    /**
+     * Upgrade account
+     * 
+     */
+    public function upgrade(Request $request)
+    {
+        $validator = validator($request->input(), [
+            'account_type' => [
+                'required',
+                //  Only allow upgrades to analytics or analytics pro
+                'in:' . Account::TYPE_ANALYTICS . ',' . Account::TYPE_ANALYTICS_PRO
+            ]
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        //  If user is already on a pro account, they and can't update inline or downwards
+        $account = $request->user()->account;
+        if( $account->account_type === Account::TYPE_ANALYTICS_PRO ){
+            return response([
+                'error' => 'Your account has already been upgraded to Analytics Pro - Upgrades are not available.'
+            ], 400);
+        }
+
+        $account->account_type            = $request->account_type;
+        $account->account_type_updated_at = now();
+        $account->save();
 
         return response($account);
+    }
+
+    /**
+     * Close Account
+     * 
+     */
+    public function delete(Request $request)
+    {
+        $validator = validator($request->rules(),[
+            'confirm_close' => 'required|boolean'
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        if( ! $request->confirm_close ){
+            return response([
+                'error' => 'You must confirm that you would like to close the account. Do this by setting confirm_close to 1.'
+            ], 400);
+        }
+
+        //  Make sure the account does not have a balance
+        $billing = $account->billing;
+        if( $billing->past_due_amount ){
+            return response([
+                'error' => 'You cannot close an account with a past due amount.'
+            ], 400);
+        }
+
+        //  Delete Phone Numbers
+        
+        //  Delete Users
+
+        //  Delete Billing
+
+        //  Delete Account
+
+        //  
+        //  Delete more stuff...
+        //
+
+        //
+        //  Create closing statement
+        //
+
+        //
+        //  Pay closing statement
+        //
+
+         
     }
 }

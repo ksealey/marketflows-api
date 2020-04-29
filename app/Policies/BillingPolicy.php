@@ -9,18 +9,8 @@ class BillingPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Create a new policy instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        //
-    }
-
     public function read($user)
     {
-        return $user->canDoAction('billing.read');
+        return $user->role === User::ROLE_ADMIN;
     }
 }

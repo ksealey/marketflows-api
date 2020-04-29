@@ -63,8 +63,9 @@ class RegisterController extends Controller
 
             //  Setup billing for account
             Billing::create([
-                'account_id' => $account->id,
-                'bill_at'    => now()->addDays(7),
+                'account_id'          => $account->id,
+                'period_starts_at'    => now()->format('Y-m-d'),
+                'period_ends_at'      => now()->addDays(7)->format('Y-m-d')
             ]);
 
             //  Create this user
@@ -78,7 +79,8 @@ class RegisterController extends Controller
                 'password_hash'             => bcrypt($request->password),
                 'auth_token'                => str_random(255),
                 'settings'                  => [
-                    'email_alerts_enabled' => true
+                    'email_alerts_enabled' => true,
+                    'sms_alerts_enabled'   => false,
                 ]
             ]);
 
