@@ -22,7 +22,7 @@ class AuthTest extends TestCase
         $account = factory(Account::class)->make();
         $user    = factory(User::class)->make([
             'account_name' => $account->name,
-            'plan'         => $account->plan,
+            'account_type' => $account->account_type,
             'password'     => 'Password1!'
         ])->toArray();
 

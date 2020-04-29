@@ -93,14 +93,22 @@ class User extends Authenticatable
      * Determine if a user can take action on behalf of a company
      * 
      */
-    public function canViewCompany($companyId)
+    public function canViewCompany(Company $company)
     {
-        foreach( $this->companies as $company ){
-            if( $company->id === $companyId )
+        if( $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_SYSTEM )
+            return true;
+
+        foreach( $this->companies as $c ){
+            if( $c->id === $company->id )
                 return true;
         }
         
         return false;
+    }
+
+    public function canViewAllCompanies()
+    {
+        return  $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_SYSTEM;
     }
 
     /**

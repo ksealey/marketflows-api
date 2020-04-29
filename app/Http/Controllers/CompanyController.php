@@ -54,15 +54,16 @@ class CompanyController extends Controller
             'companies.updated_at'
         ];
 
-        $user = $request->user();
-
-        $query = Company::where('companies.account_id', $user->account_id)
-                    ->whereIn('companies.id', function($query) use($user){
+        $user  = $request->user();
+        $query = Company::where('companies.account_id', $user->account_id);
+        
+        if( ! $user->canViewAllCompanies() ){
+            $query->whereIn('companies.id', function($query) use($user){
                         $query->select('company_id')
                                 ->from('user_companies')
                                 ->where('user_id', $user->id);
-                    })
-                    ->whereNull('companies.deleted_at');
+                    });
+        }        
         
         return parent::results(
             $request,
@@ -88,7 +89,7 @@ class CompanyController extends Controller
             'country'   => ['bail', 'required', new CountryRule()]
         ];
 
-        $validator = Validator::make($request->input(), $rules);
+        $validator = validator($request->input(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()

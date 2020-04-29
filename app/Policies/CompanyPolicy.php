@@ -13,31 +13,34 @@ class CompanyPolicy
 
     public function list(User $user)
     {
-        return $user->canDoAction('companies.read');
+        return $user->canDoAction('read');
     }
 
     public function create(User $user)
     {
-        return $user->canDoAction('companies.create');
+        return $user->canDoAction('create');
     }
 
     public function read(User $user, Company $company)
     {
-        return $user->canDoCompanyAction($company->id, 'companies.read');
+        return $user->canDoAction('read') &&
+               $user->canViewCompany($company);
     }
 
     public function update(User $user, Company $company)
     {
-        return $user->canDoCompanyAction($company->id, 'companies.update');
+        return $user->canDoAction('update') &&
+               $user->canViewCompany($company);
     }
 
     public function delete(User $user, Company $company)
     {
-        return $user->canDoCompanyAction($company->id, 'companies.delete');
+        return $user->canDoAction('delete') &&
+               $user->canViewCompany($company);
     }
 
     public function bulkDelete(User $user)
     {
-        return $user->canDoAction('companies.delete');
+        return $user->canDoAction('delete');
     }
 }
