@@ -24,13 +24,7 @@ class LoginController extends Controller
             'password' => 'bail|required'
         ];
 
-        $messages = [
-            'email.required' => 'Email required',
-            'email.email'    => 'Email invalid',
-            'password.required' => 'Password required'
-        ];
-
-        $validator = Validator::make($request->input(), $rules, $messages);
+        $validator = validator($request->input(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -46,8 +40,12 @@ class LoginController extends Controller
 
         //  Block disabled users
         if( $user->disabled_until && date('U', strtotime($user->disabled_until)) > date('U')){
+            $now           = new DateTime();
+            $disabledUntil = new DateTime($user->disabled_until);
+            $hours         = ceil(($disabledUntil->format('U') - $now->format('U')) / 3600);
+            
             return response([
-                'error' => 'Account disabled - try again later'
+                'error' => 'Account disabled for the next ' . $hours . ' hours - try again later'
             ], 400);
         }
         
@@ -56,12 +54,11 @@ class LoginController extends Controller
 
             //  If we have another failed attempt, lock for a longer period
             if( $user->login_attempts > 3 ){
-                $lockedHours          = $user->login_attempts * 2;
-                $user->disabled_until = date('Y-m-d H:i:s', strtotime('now +' . $lockedHours . ' hours'));
+                $user->disabled_until = date('Y-m-d H:i:s', strtotime('now +' . $user->login_attempts . ' hours'));
                 $user->save();
 
                 return response([
-                    'error' => 'Too many failed attempts - account disabled for ' . $lockedHours . ' hours',
+                    'error' => 'Too many failed attempts - account disabled for ' . $user->login_attempts . ' hours',
                 ], 400);
             }else{
                 $user->save();
@@ -78,15 +75,11 @@ class LoginController extends Controller
         $user->auth_token        = str_random(255);
         $user->save();
 
-        $account  = $user->account();
-        $account->payment_methods = $account->payment_methods;
-        $account->past_due_amount = number_format($account->past_due_amount, 2);
-
         return response([
             'message'       => 'created',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
-            'account'       => $account,
+            'account'       => $user->account,
             'first_login'   => false
         ], 200);
     }
@@ -104,12 +97,7 @@ class LoginController extends Controller
             'email' => 'required|email|max:128',
         ];
 
-        $messages = [
-            'email.required' => 'Email required',
-            'email.email'    => 'Email address invalid'
-        ];
-
-        $validator = Validator::make($request->input(), $rules, $messages);
+        $validator = validator($request->input(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first(),
@@ -136,8 +124,7 @@ class LoginController extends Controller
             ->later(now(), new PasswordResetEmail($user, $passwordReset));
 
         return response([
-            'message' => 'success',
-            'ok'      => true
+            'message' => 'sent'
         ]);
     }
 
@@ -169,14 +156,8 @@ class LoginController extends Controller
                 'regex:/(?=.*[0-9])(?=.*[A-Z])/'
             ],
         ];
-
-        $messages = [
-            'password.required' => 'Password required',
-            'password.min'      => 'Password must be at least 8 characters',
-            'password.regex'    => 'Password must contain at least one digit and capital letter',
-        ];
-
-        $validator = Validator::make($request->input(), $rules, $messages);
+        
+        $validator = validator($request->input(), $rules);
         if( $validator->fails() )
             return back()->withErrors($validator->errors());
         
@@ -192,15 +173,11 @@ class LoginController extends Controller
         //  Delete password reset
         $passwordReset->delete();
 
-        $account  = $user->account();
-        $account->payment_methods = $account->payment_methods;
-        $account->past_due_amount = number_format($account->past_due_amount, 2);
-
         return response([
-            'message'       => 'created',
+            'message'       => 'reset',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
-            'account'       => $account,
+            'account'       => $user->account,
             'first_login'   => false
         ], 200);
     }
@@ -225,7 +202,7 @@ class LoginController extends Controller
             ], 400);
         
         return response([
-            'message' => 'success'
+            'message' => 'exists'
         ]);
     }
 }

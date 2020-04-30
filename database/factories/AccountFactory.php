@@ -4,8 +4,9 @@
 
 use App\Model;
 use Faker\Generator as Faker;
+use App\Models\Account;
 
-$factory->define(\App\Models\Account::class, function (Faker $faker) {
+$factory->define(Account::class, function (Faker $faker) {
     $accountTypes = Account::types();
     $accounType   = $accountTypes[mt_rand(0, count($accountTypes) - 1)];
     

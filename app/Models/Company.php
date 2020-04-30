@@ -68,7 +68,7 @@ class Company extends Model implements Exportable
     public function getLinkAttribute()
     {
         return route('read-company', [
-            'companyId' => $this->id
+            'company' => $this->id
         ]);
     }
 

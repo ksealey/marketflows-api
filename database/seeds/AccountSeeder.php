@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Database\Seeder;
+use \App\Models\Account;
+use \App\Models\User;
 
 class AccountSeeder extends Seeder
 {
@@ -11,9 +13,9 @@ class AccountSeeder extends Seeder
      */
     public function run()
     {
-        factory(App\Models\Account::class, 100)->create()->each(function ($account) {
+        factory(Account::class, 100)->create()->each(function ($account) {
             $userCount = mt_rand(1, 10);
-            factory(App\Models\User::class, $userCount)->create([
+            factory(User::class, $userCount)->create([
                 'account_id' => $account->id
             ]);
         });
