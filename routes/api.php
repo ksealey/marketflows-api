@@ -40,7 +40,7 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
 | Handle authenticated user api calls
 |----------------------------------------
 */
-Route::middleware(['throttle:120,1', 'auth:api', 'api'])->group(function(){
+Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
 
     /*
     |----------------------------------------
@@ -48,7 +48,8 @@ Route::middleware(['throttle:120,1', 'auth:api', 'api'])->group(function(){
     |----------------------------------------
     */
     Route::prefix('tts')->group(function(){
-        Route::post('/say', 'TextToSpeechController@say');
+        Route::post('/say', 'TextToSpeechController@say')
+             ->name('text-to-speech-say');
     });
 
     /*

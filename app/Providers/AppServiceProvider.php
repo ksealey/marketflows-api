@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Http\Response;
 use Twilio\Rest\Client as Twilio;
+use AWS;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +23,11 @@ class AppServiceProvider extends ServiceProvider
             $config = config('services.twilio');
 
             return new Twilio($config['sid'], $config['token']);
+        });
+
+        //  Register AWS
+        $this->app->bind('App\Helpers\TextToSpeech', function($app){
+            return new \App\Helpers\TextToSpeech(AWS::createClient('polly'));
         });
     }
 
