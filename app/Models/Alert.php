@@ -11,15 +11,11 @@ class Alert extends Model
 {
     use SoftDeletes;
 
-    const TYPE_PRIMARY_METHOD_INVALID = 'PRIMARY_METHOD_FAILED';
-    const TYPE_AUTO_RELOAD_FAILED     = 'AUTO_RELOAD_FAILED';
-    const TYPE_BALANCE_LOW            = 'BALANCE_LOW';
-    const TYPE_NOTIFICATION           = 'Notification';
-
-    const CATEGORY_ERROR              = 'Error';
-    const CATEGORY_WARNING            = 'Warning';
+    const TYPE_DEFAULT    = 'default';
+    const TYPE_DANGER     = 'danger';
+    const TYPE_WARNING    = 'warning';
+    const TYPE_SUCCESS    = 'success';
     
-
     protected $fillable = [
         'user_id',
         'type',

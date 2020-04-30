@@ -23,8 +23,8 @@ class Controller extends BaseController
     public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc')
     {
         $rules = array_merge([
-            'limit'         => 'required|numeric|min:1|max:250',
-            'page'          => 'required|numeric|min:1',
+            'limit'         => 'numeric|min:1|max:250',
+            'page'          => 'numeric|min:1',
             'order_by'       => 'in:' . $rangeField,
             'order_dir'      => 'in:asc,desc',
             'conditions'     => ['json', new ConditionsRule($fields)],
@@ -65,8 +65,8 @@ class Controller extends BaseController
             $query = $this->applyConditions($query,  json_decode($request->conditions));
         }
 
-        $page  = intval($request->page); 
-        $limit = intval($request->limit);
+        $page  = intval($request->page)  ?: 1; 
+        $limit = intval($request->limit) ?: 250;
 
         $resultCount = $query->count();
         $records     = $query->offset(( $page - 1 ) * $limit)
@@ -96,8 +96,8 @@ class Controller extends BaseController
     public function exportResults($model, Request $request, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc', $formatter = null)
     {
         $rules = array_merge([
-            'limit'         => 'nullable|numeric|min:1|max:250',
-            'page'          => 'nullable|numeric|min:1',
+            'limit'         => 'numeric|min:0,max:250',
+            'page'          => 'numeric|min:1',
             'order_by'       => 'in:' . $rangeField,
             'order_dir'      => 'in:asc,desc',
             'conditions'     => ['json', new ConditionsRule($fields)],
@@ -114,7 +114,12 @@ class Controller extends BaseController
         }
 
         $limit      = intval($request->limit) >= 0 ? $request->limit : 0;
-        $page       = intval($request->page)  >= 0 ? $request->page : 1;
+        if( $limit ){
+            $page = intval($request->page)  >= 1 ? $request->page : 1;
+        }else{
+            $page = 1;
+        }
+        
         $orderBy    = $request->order_by  ?: $rangeField;
         $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
 
