@@ -25,13 +25,13 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
     Route::post('/login', 'Auth\LoginController@login')
          ->name('auth-login');
 
-    Route::post('/reset-password', 'Auth\LoginController@resetPassword')
-         ->name('auth-reset-password');
+    Route::post('/request-reset-password', 'Auth\LoginController@requestResetPassword')
+         ->name('auth-request-reset-password');
 
-    Route::get('/reset-password/{userId}/{key}', 'Auth\LoginController@checkResetPassword')
+    Route::get('/reset-password', 'Auth\LoginController@checkResetPassword')
          ->name('auth-check-reset-password');
          
-    Route::post('/reset-password/{userId}/{key}', 'Auth\LoginController@handleResetPassword')
+    Route::post('/reset-password', 'Auth\LoginController@resetPassword')
          ->name('auth-handle-reset-password');  
 });
 
@@ -70,9 +70,11 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
     |----------------------------------------
     */
     Route::prefix('me')->group(function(){
-        Route::get('/', function(Request $request){
-            return response($request->user());
-        })->name('me');
+        Route::get('/', 'ProfileController@me')
+             ->name('read-me');
+
+        Route::put('/', 'ProfileController@updateMe')
+             ->name('update-me');
 
         /*
         |----------------------------------------
@@ -106,9 +108,10 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
     |--------------------------------
     */
     Route::prefix('users')->group(function(){
-        //
-        // TODO: Add route to create a user
-        //
+        Route::post('/', 'UserController@create')
+             ->middleware('can:create,App\Models\User')
+             ->name('create-user');
+
         Route::get('/{user}', 'UserController@read')
              ->middleware('can:read,user')
              ->name('read-user');
@@ -120,10 +123,6 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
         Route::delete('/{user}', 'UserController@delete')
             ->middleware('can:delete,user')
             ->name('delete-user'); 
-
-        Route::put('/{user}/change-password', 'UserController@changePassword')
-            ->middleware('can:update,user')
-            ->name('change-user-password');
     });
 
     Route::prefix('widgets')->group(function(){
@@ -516,6 +515,16 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
             });
         }); 
     });
+
+    /*
+    |----------------------------------------
+    | Miscellaneous
+    |----------------------------------------
+    */
+    Route::prefix('tts')->group(function(){
+        Route::post('/say', 'TextToSpeechController@say')
+             ->name('text-to-speech-say');
+    });
 });
 
 
@@ -569,16 +578,6 @@ Route::middleware('twilio.webhooks')->group(function(){
     Route::middleware('throttle:30,1')->prefix('web-sessions')->group(function(){
         Route::post('/', 'WebSessionController@create');
         Route::any('/{sessionUUID}/end', 'WebSessionController@end');
-    });
-
-    /*
-    |----------------------------------------
-    | Miscellaneous
-    |----------------------------------------
-    */
-    Route::prefix('tts')->group(function(){
-        Route::post('/say', 'TextToSpeechController@say')
-             ->name('text-to-speech-say');
     });
 });
 

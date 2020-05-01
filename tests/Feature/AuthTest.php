@@ -221,32 +221,31 @@ class AuthTest extends TestCase
         ]);
 
         Mail::fake();
-        $response = $this->json('POST', route('auth-reset-password'), [
+
+        $response = $this->json('POST', route('auth-request-reset-password'), [
             'email' => $user->email
         ]);
 
-        Mail::assertQueued(PasswordResetEmail::class);
-
-        $this->assertDatabaseHas('password_resets', [
-            'user_id' => $user->id
-        ]);
-
-        $response = $this->json('POST', route('auth-reset-password'), [
-            'email' => $user->email
-        ]);
         $response->assertStatus(200);
+
         $response->assertJSON([
             'message' => 'sent'
         ]);
-        $passwordReset = PasswordReset::where('user_id', $user->id)->first();
+
+        Mail::assertQueued(PasswordResetEmail::class);
+        
+
+        $user = User::find($user->id);
+        $this->assertNotNull($user->password_reset_token);
+        $this->assertNotNull($user->password_reset_expires_at);
 
         //  
         //  Make sure we can now see the reset password
         //
-        $response = $this->json('GET', route('auth-check-reset-password', [
-            'userId' => $user->id,
-            'key'    => $passwordReset->key
-        ]));
+        $response = $this->json('GET', route('auth-check-reset-password'), [
+            'user_id' => $user->id,
+            'token'   => $user->password_reset_token
+        ]);
         $response->assertStatus(200);
         $response->assertJSON([
             'message' => 'exists'
@@ -255,11 +254,10 @@ class AuthTest extends TestCase
         //  
         //  Use the password reset
         //
-        $response = $this->json('POST', route('auth-handle-reset-password', [
-            'userId' => $user->id,
-            'key'    => $passwordReset->key
-        ]), [
-           'password' => 'Password1!'
+        $response = $this->json('POST', route('auth-handle-reset-password'), [
+            'user_id' => $user->id,
+            'token'   => $user->password_reset_token,
+            'password' => 'Password1!'
         ]);
 
         $response->assertStatus(200);
@@ -282,9 +280,9 @@ class AuthTest extends TestCase
             'first_login' => false
         ]);
 
-        $this->assertDatabaseMissing('password_resets', [
-            'user_id' => $user->id
-        ]);
+        $user = User::find($user->id);
+        $this->assertNull($user->password_reset_token);
+        $this->assertNull($user->password_reset_expires_at);
     }
 }
 

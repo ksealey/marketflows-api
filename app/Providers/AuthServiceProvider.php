@@ -76,6 +76,6 @@ class AuthServiceProvider extends ServiceProvider
 
         $user = $token ? User::where('auth_token', $token)->first() : null;
 
-        return $user && ! $user->disabled_until ? $user : null;
+        return $user && ! $user->login_disabled_until ? $user : null;
     }
 }

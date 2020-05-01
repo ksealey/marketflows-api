@@ -32,12 +32,13 @@ class User extends Authenticatable
         'email',
         'phone',
         'password_hash',
+        'password_reset_token',
+        'password_reset_expires_at',
         'auth_token',
         'email_verified_at',
         'phone_verified_at',
         'last_login_at',
-        'password_reset_at',
-        'disabled_until',
+        'login_disabled_until',
         'login_attempts',
         'settings',
         'created_at',
@@ -49,7 +50,7 @@ class User extends Authenticatable
         'password_hash',
         'auth_token',
         'last_login_at',
-        'disabled_until',
+        'login_disabled_until',
         'login_attempts',
         'deleted_at'
     ];
@@ -58,6 +59,15 @@ class User extends Authenticatable
         'settings' => 'array'
     ];
     
+    static public function roles()
+    {
+        return [ 
+            self::ROLE_ADMIN,
+            self::ROLE_SYSTEM,
+            self::ROLE_REPORTING,
+            self::ROLE_CLIENT
+        ];
+    }
     /**
      * Relationships
      * 
@@ -70,6 +80,11 @@ class User extends Authenticatable
     public function companies()
     {
         return $this->belongsToMany('App\Models\Company', 'user_companies');
+    }
+
+    public function getFullNameAttribute()
+    {
+        return  ucfirst(strtolower($this->first_name)) . ' ' . ucfirst(strtolower($this->last_name));
     }
 
     public function canDoAction($action)

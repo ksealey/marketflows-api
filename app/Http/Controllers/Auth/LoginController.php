@@ -39,9 +39,9 @@ class LoginController extends Controller
         }
 
         //  Block disabled users
-        if( $user->disabled_until && date('U', strtotime($user->disabled_until)) > date('U')){
+        if( $user->login_disabled_until && date('U', strtotime($user->login_disabled_until)) > date('U')){
             $now           = new DateTime();
-            $disabledUntil = new DateTime($user->disabled_until);
+            $disabledUntil = new DateTime($user->login_disabled_until);
             $hours         = ceil(($disabledUntil->format('U') - $now->format('U')) / 3600);
             
             return response([
@@ -54,7 +54,7 @@ class LoginController extends Controller
 
             //  If we have another failed attempt, lock for a longer period
             if( $user->login_attempts > 3 ){
-                $user->disabled_until = date('Y-m-d H:i:s', strtotime('now +' . $user->login_attempts . ' hours'));
+                $user->login_disabled_until = date('Y-m-d H:i:s', strtotime('now +' . $user->login_attempts . ' hours'));
                 $user->save();
 
                 return response([
@@ -69,10 +69,13 @@ class LoginController extends Controller
             }
         }
 
-        $user->login_attempts    = 0;
-        $user->disabled_until    = null;
-        $user->last_login_at     = now();
-        $user->auth_token        = str_random(255);
+        $user->login_attempts            = 0;
+        $user->login_disabled_until      = null;
+        $user->last_login_at             = now();
+        $user->auth_token                = str_random(255);
+        $user->password_reset_token      = null;
+        $user->password_reset_expires_at = null;
+        
         $user->save();
 
         return response([
@@ -85,19 +88,18 @@ class LoginController extends Controller
     }
 
     /**
-     * Trigger a password reset
+     * Request a password reset
      * 
      * @param Illuminate\Http\Request $request
      * 
      * @return Illuminate\Http\Response  
      */
-    public function resetPassword(Request $request)
+    public function requestResetPassword(Request $request)
     {
-        $rules = [
-            'email' => 'required|email|max:128',
-        ];
+        $validator = validator($request->input(),  [
+            'email' => 'required|email|max:128|exists:users,email',
+        ]);
 
-        $validator = validator($request->input(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first(),
@@ -106,22 +108,13 @@ class LoginController extends Controller
 
         //  Look for user requesting password
         $user = User::where('email', $request->email)->first();
-        if( ! $user ){
-            return response([
-                'error' => 'User not found',
-            ], 400);
-        }
 
-        // Create new password reset while removing existing
-        PasswordReset::where('user_id', $user->id)->delete();
-        $passwordReset = PasswordReset::create([
-            'user_id'    => $user->id,
-            'key'        => str_random(40),
-            'expires_at' => date('Y-m-d H:i:s', strtotime('now +24 hours')) 
-        ]);
+        $user->password_reset_token      = str_random(128);
+        $user->password_reset_expires_at = now()->addHours(24);
+        $user->save();
 
-        Mail::to($user->email)
-            ->later(now(), new PasswordResetEmail($user, $passwordReset));
+        Mail::to($user)
+            ->later(now(), new PasswordResetEmail($user));
 
         return response([
             'message' => 'sent'
@@ -135,20 +128,11 @@ class LoginController extends Controller
      * @param int $userId
      * @param string $key 
      */
-    public function handleResetPassword(Request $request, int $userId, string $key)
+    public function resetPassword(Request $request)
     {
-        $passwordReset = PasswordReset::where('user_id', $userId)
-                                        ->where('key', $key)
-                                        ->where('expires_at', '>', date('Y-m-d H:i:s'))
-                                        ->first();
-                                        
-        if( ! $passwordReset )
-            return response([
-                'error' => 'Invalid request'
-            ], 400);
-
-        //  Make sure it's a valid password
         $rules = [
+            'user_id'  => 'required|exists:users,id',
+            'token'    => 'required|min:128',
             'password' => [
                 'bail',
                 'required',
@@ -159,19 +143,29 @@ class LoginController extends Controller
         
         $validator = validator($request->input(), $rules);
         if( $validator->fails() )
-            return back()->withErrors($validator->errors());
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
         
-        //   Find the user and set the new password
-        $user = User::find($passwordReset->user_id);
-        $user->password_hash     = bcrypt($request->password);
-        $user->login_attempts    = 0;
-        $user->password_reset_at = now();
-        $user->disabled_until    = null;
-        $user->auth_token        = str_random(128);
-        $user->save();
+        $user = User::find($request->user_id);
+        if( $user->password_reset_token !== $request->token ){
+            return response([
+                'error' => 'invalid token'
+            ], 400);
+        }
+        if( strtotime($user->password_reset_expires_at) <= strtotime('now') ){
+            return response([
+                'error' => 'token expired'
+            ], 400);
+        }
 
-        //  Delete password reset
-        $passwordReset->delete();
+        $user->password_hash             = bcrypt($request->password);
+        $user->password_reset_token      = null;
+        $user->password_reset_expires_at = null;
+        $user->login_attempts            = 0;
+        $user->login_disabled_until      = null;
+        $user->auth_token                = str_random(128);
+        $user->save();
 
         return response([
             'message'       => 'reset',
@@ -189,17 +183,25 @@ class LoginController extends Controller
      * @param int $userId
      * @param string $key 
      */
-    public function checkResetPassword(Request $request, $userId, $key)
+    public function checkResetPassword(Request $request)
     {
-        $passwordReset = PasswordReset::where('user_id', $userId)
-                                        ->where('key', $key)
-                                        ->where('expires_at', '>', date('Y-m-d H:i:s'))
-                                        ->first();
-                                        
-        if( ! $passwordReset )
+        $rules = [
+            'user_id'  => 'required|exists:users,id', 
+            'token'    => 'required|min:128',
+        ];
+        
+        $validator = validator($request->input(), $rules);
+        if( $validator->fails() )
             return response([
-                'error' => 'Invalid request'
+                'error' => $validator->errors()->first()
             ], 400);
+
+        $user = User::find($request->user_id);
+        if( $user->password_reset_token !== $request->token ){
+            return response([
+                'error' => 'invalid token'
+            ], 400);
+        }
         
         return response([
             'message' => 'exists'

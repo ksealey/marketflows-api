@@ -30,7 +30,6 @@ class RegisterController extends Controller
         $rules = [
             'account_name'          => 'bail|required|min:4|max:64',
             'account_type'          => 'bail|required|in:BASIC,ANALYTICS,ANALYTICS_PRO',
-            'timezone'              => 'bail|required|timezone',
             'first_name'            => 'bail|required|min:2|max:32',
             'last_name'             => 'bail|required|min:2|max:32',
             'email'                 => 'bail|required|email|max:128|unique:users,email',
@@ -39,7 +38,8 @@ class RegisterController extends Controller
                 'required',
                 'min:8',
                 'regex:/(?=.*[0-9])(?=.*[A-Z])/'
-            ]
+            ],
+            'timezone'              => 'bail|required|timezone',
         ];
 
         $validator = Validator::make($request->input(), $rules);

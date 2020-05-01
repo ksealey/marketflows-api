@@ -13,13 +13,13 @@ class MeTest extends TestCase
     use \Tests\CreatesAccount;
 
     /**
-     * Test can fetch /me
+     * Test can fetch self
      * 
      * @group me
      */
     public function testCanFetchSelf()
     {
-        $response = $this->json('GET', route('me'));
+        $response = $this->json('GET', route('read-me'));
 
         $response->assertStatus(200);
         $response->assertJSON([
@@ -31,6 +31,28 @@ class MeTest extends TestCase
             'last_name' => $this->user->last_name,
             'email'     => $this->user->email,
             'phone'     => $this->user->phone
+        ]);
+    }
+
+    /**
+     * Test can update self
+     * 
+     * @group me
+     */
+    public function testCanUpdateSelf()
+    {
+        $user     = factory(User::class)->make();
+        $response = $this->json('PUT', route('update-me'), $user->toArray());
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'id'        => $this->user->id,
+            'account_id'=> $this->user->account_id,
+            'role'      => $this->user->role,
+            'timezone'  => $user->timezone,
+            'first_name'=> $user->first_name,
+            'last_name' => $user->last_name,
+            'email'     => $user->email,
+            'phone'     => $user->phone
         ]);
     }
 
@@ -155,7 +177,5 @@ class MeTest extends TestCase
             'next_page'     => null,
             'total_pages'   => 1
         ]);
-
-
     }
 }

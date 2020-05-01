@@ -3,120 +3,154 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\UserCompany;
+use App\Mail\AddUser as AddUserEmail;
+use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
+use App\Rules\CompanyListRule;
 use Validator;
 use DB;
+use Mail;
+use Exception;
 
 class UserController extends Controller
 {
-    /**
-     * View a user
-     * 
-     */
-    public function read(User $user)
+
+    public function create(Request $request)
+    {
+        $creator = $request->user();
+
+        $rules  = [
+            'first_name' => 'bail|required|min:2|max:32',
+            'last_name'  => 'bail|required|min:2|max:32',
+            'email'      => 'bail|required|email|max:128|unique:users,email',
+            'role'       => 'bail|required|in:' . implode(',', User::roles()),
+            'timezone'   => 'bail|required|timezone',
+        ];
+
+        $validator = validator($request->input(), $rules);
+        $validator->sometimes('companies', ['required', 'json', new CompanyListRule($creator->account_id)], function($input){
+            return $input->role !== User::ROLE_ADMIN && $input->role !== User::ROLE_SYSTEM;
+        });
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try{
+            //  Create this user
+            $resetToken = str_random(128);
+
+            $user = User::create([
+                'account_id'                => $creator->account_id,
+                'role'                      => $request->role,
+                'timezone'                  => $request->timezone,
+                'first_name'                => $request->first_name,
+                'last_name'                 => $request->last_name,
+                'email'                     => $request->email,
+                'password_hash'             => bcrypt($resetToken),
+                'password_reset_token'      => $resetToken,
+                'password_reset_expires_at' => now()->addDays(90),
+                'auth_token'                => str_random(255),
+                'settings'                  => [
+                    'email_alerts_enabled' => true,
+                    'sms_alerts_enabled'   => false,
+                ]
+            ]);
+
+            //  Create company links for lower level users
+            if( ! $user->canViewAllCompanies() ){
+                $companyIds = json_decode($request->companies);
+                $inserts    = [];
+                foreach( $companyIds as $companyId ){
+                    $inserts[] = [
+                        'user_id'    => $user->id,
+                        'company_id' => $companyId
+                    ];
+                }
+                UserCompany::insert($inserts);
+            }
+
+            //  Send out email to user
+            Mail::to($user)->send(new AddUserEmail($creator, $user));
+        }catch(Exception $e){
+            DB::rollBack();
+
+            throw $e;
+        }
+
+        DB::commit();
+
+        return response($user, 201);
+    }
+
+    public function read(Request $request, User $user)
     {
         return response($user);
     }
 
-    /**
-     * Update a user
-     * 
-     */
     public function update(Request $request, User $user)
     {
+        $me    = $request->user();
         $rules = [
-            'first_name'            => 'bail|required|min:2|max:32',
-            'last_name'             => 'bail|required|min:2|max:32',
-            'email'                 => 'bail|required|email|max:128',
-            'role'                  => 'bail',
-            'companies'             => 'required|array',
-            'companies.*'           => 'numeric',
+            'role'       => 'bail|in:' . implode(',', User::roles()),
+            'timezone'   => 'bail|timezone',
+            'first_name' => 'bail|min:1',
+            'last_name'  => 'bail|min:1',
+            'email'      => [
+                'bail',
+                'email',
+                'max:128',
+                Rule::unique('users')->where(function ($query) use($user){
+                    $query->where('account_id', '!=', $user->account_id);
+                })
+            ],
+            'phone' => 'bail|nullable|digits_between:10,13'
         ];
 
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
+        $validator = validator($request->input(), $rules);
+        if($validator->fails()){
             return response([
-                'error' => $validator->errors()->first(),
+                'error' => $validator->errors()->first()
             ], 400);
         }
 
-        //  If the email is changes, make sure it's not in use by another user
-        if( $request->email != $user->email && User::where('email', $request->email)->count() > 0){
-            return response([
-                'error' => 'Email address in use'
-            ], 400);
+        if( $request->filled('role') )
+            $user->role = $request->role;
+
+        if( $request->filled('timezone') )
+            $user->timezone = $request->timezone;
+
+        if( $request->filled('first_name') )
+            $user->first_name = $request->first_name;
+
+        if( $request->filled('last_name') )
+            $user->last_name = $request->last_name;
+
+        if( $request->filled('email') && $user->email != $request->email ){
+            $user->email = $request->email;
+            $user->email_verified_at = null;
+
+            Mail::to($user)->send(new UserEmailVerificationMail($user));
         }
 
-        //  If there is a role, make sure we own it
-        if( $request->role ){
-            $role = Role::find($request->role);
-            if( ! $role || $role->account_id != $user->account_id ){
-                return response([
-                    'error' => 'Invalid role'
-                ], 400);
-            }
+        if( $request->has('phone') && $request->phone != $user->phone ){
+            $user->phone = preg_replace('/[^0-9]+/', '', $request->phone) ?: null;
+            $user->phone_verified_at = null;
         }
 
-        //  Check if companies changed
-        $userCompanies = array_column($user->companies->toArray(), 'id'); 
-        $newCompanies  = array_values($request->companies);
-        sort($userCompanies);
-        sort($newCompanies);
-        
-        if( $userCompanies != $newCompanies ){
-            //  Make sure we own all companies
-            $othersCompanies = Company::whereIn('id', $newCompanies)
-                                      ->where('account_id', '!=', $user->account_id)
-                                      ->count(); 
-            if( $othersCompanies > 0 ){
-                return response([
-                    'error' => 'Invalid company(s) provided'
-                ], 400);
-            }
-
-            $userRemovedCompanies = array_diff($userCompanies, $newCompanies);
-            if( count($userRemovedCompanies) ){
-                UserCompany::where('user_id', $user->id)
-                            ->whereIn('company_id', $userRemovedCompanies)
-                            ->delete();
-
-                //   Set default company to first one on our list in alphabetical order
-                if( in_array($user->company_id, $userRemovedCompanies) ){
-                    $user->company_id = Company::whereIn('id', $newCompanies)
-                                                ->orderBy('name', 'ASC')
-                                                ->first()
-                                                ->id;
-                }
-            }
-
-            $userAddedCompanies = array_diff($newCompanies, $userCompanies);
-            if( count($userAddedCompanies) ){
-                $userCompanies = [];
-                $now = date('Y-m-d H:i:s');
-                foreach( $userAddedCompanies as $companyId ){
-                    $userCompanies[] = [
-                        'user_id'    => $user->id,
-                        'company_id' => $companyId,
-                        'created_at' => $now,
-                        'updated_at' => $now
-                    ];
-                }
-                DB::table('user_companies')->insert($userCompanies);
-            }
-        }
-
-        $user->first_name   = $request->first_name;
-        $user->last_name    = $request->last_name;
-        $user->email        = $request->email;
         $user->save();
 
-        return response([
-            'message' => 'updated',
-            'user'    => $user
-        ]);
+        return response($user);
     }
+
+
 
     public function delete(User $user)
     {
@@ -145,10 +179,10 @@ class UserController extends Controller
             ], 400);
         }
 
-        $user->password_hash  = bcrypt($request->password);
-        $user->login_attempts = 0;
-        $user->disabled_until = null;
-        $user->auth_token     = str_random(255);
+        $user->password_hash        = bcrypt($request->password);
+        $user->login_attempts       = 0;
+        $user->login_disabled_until = null;
+        $user->auth_token           = str_random(255);
         $user->save();
 
         $response = [

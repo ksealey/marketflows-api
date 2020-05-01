@@ -171,7 +171,7 @@ class AccountTest extends TestCase
         //  Add some companies, phone numbers, calls and blocked numbers, blocked calls
         $companies = $this->createCompanies();
 
-
+        $this->assertTrue(true);
 
        
         

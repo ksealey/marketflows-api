@@ -9,23 +9,27 @@ class UserPolicy
 {
     use HandlesAuthorization;
 
+    public function create(User $user)
+    {
+        return $user->role === User::ROLE_ADMIN;
+    }
+
     public function read(User $user, User $otherUser)
     {
-        return $user->account_id == $otherUser->account_id 
-            && ( $user->id == $otherUser->id || $user->canDoAction('users.read') );
+        return $user->role === User::ROLE_ADMIN 
+            && $user->account_id === $otherUser->account_id;
     }
 
     public function update(User $user, User $otherUser)
     {
-        return $user->account_id == $otherUser->account_id 
-            && ( $user->id == $otherUser->id || $user->canDoAction('users.update') );
+        return $user->role === User::ROLE_ADMIN 
+            && $user->account_id === $otherUser->account_id;
     }
 
     public function delete(User $user, User $otherUser)
     {
-        return $user->account_id == $otherUser->account_id 
-            && $user->id != $otherUser->id 
-            && $user->canDoAction('users.delete');
+        return $user->role === User::ROLE_ADMIN 
+            && $user->account_id === $otherUser->account_id;
     }
     
 }
