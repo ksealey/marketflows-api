@@ -169,8 +169,7 @@ Artisan::command('fill-calls', function(){
             'direction'                 => 'Inbound',
             'status'                    => 'Completed',
             
-            'caller_first_name'         => 'Jamie',
-            'caller_last_name'          => 'Smith',
+            'caller_name'               => 'Jamie Smith',
             'caller_country_code'       => 1,
             'caller_number'             => '813' . mt_rand(1111111,9999999),
             'caller_city'               => 'New York',

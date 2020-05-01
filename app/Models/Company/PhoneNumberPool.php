@@ -23,7 +23,9 @@ class PhoneNumberPool extends Model
 
     protected $fillable = [
         'company_id',
-        'user_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
         'phone_number_config_id',
         'override_campaigns',
         'name',
@@ -32,7 +34,8 @@ class PhoneNumberPool extends Model
     ];
 
     protected $hidden = [
-        'deleted_at'
+        'deleted_at',
+        'deleted_by'
     ];
 
     protected $appends = [

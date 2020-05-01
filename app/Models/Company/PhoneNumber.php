@@ -30,7 +30,9 @@ class PhoneNumber extends Model implements Exportable
         'uuid',
         'external_id',
         'company_id',
-        'user_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
         'phone_number_pool_id',
         'phone_number_config_id',
         'category',
@@ -55,7 +57,8 @@ class PhoneNumber extends Model implements Exportable
 
     protected $hidden = [
         'external_id',
-        'deleted_at'
+        'deleted_at',
+        'delete_by'
     ];
 
     protected $appends = [

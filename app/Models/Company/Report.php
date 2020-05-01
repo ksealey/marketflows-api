@@ -3,6 +3,7 @@
 namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\ReportAutomation;
 use League\Flysystem\Adapter\Local;
 use League\Flysystem\Filesystem;
@@ -20,11 +21,13 @@ use DateTimeZone;
 
 class Report extends Model
 {
-    use AppliesConditions, PerformsExport;
+    use AppliesConditions, PerformsExport, SoftDeletes;
 
     protected $fillable = [
         'company_id',
-        'user_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
         'name',
         'module',
         'metric',
@@ -36,6 +39,11 @@ class Report extends Model
         'start_date',
         'end_date',
         'is_system_report'
+    ];
+
+    protected $hidden = [
+        'deleted_by',
+        'deleted_at'
     ];
 
     protected $appends = [
@@ -84,8 +92,7 @@ class Report extends Model
                 'phone_number_pools.name',
                 'calls.phone_number_id',
                 'phone_numbers.name',
-                'calls.caller_first_name',
-                'calls.caller_last_name',
+                'calls.caller_name',
                 'calls.caller_country_code',
                 'calls.caller_number',
                 'calls.caller_city',
@@ -121,8 +128,7 @@ class Report extends Model
                 'phone_number_pool_name'    => 'Keyword Tracking Pool',
                 'phone_number_id'           => 'Tracking Number Id',
                 'phone_number_name'         => 'Tracking Number',
-                'caller_first_name'         => 'Caller First Name',
-                'caller_last_name'          => 'Caller Last Name',
+                'caller_name'               => 'Caller Name',
                 'caller_country_code'       => 'Caller Country Code',
                 'caller_number'             => 'Caller Number',
                 'caller_city'               => 'Caller City',

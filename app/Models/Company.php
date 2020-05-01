@@ -17,18 +17,20 @@ class Company extends Model implements Exportable
 
     protected $fillable = [
         'account_id',
-        'user_id',
         'name',
         'industry',
         'country',
         'tts_voice',
-        'tts_language'
+        'tts_language',
+        'created_by',
+        'updated_by'
     ];
 
     protected $hidden = [
         'account_id',
         'user_id',
-        'deleted_at'
+        'deleted_at',
+        'deleted_by'
     ];
 
     protected $appends = [

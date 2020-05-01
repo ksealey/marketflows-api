@@ -8,8 +8,6 @@ use Faker\Generator as Faker;
 $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $faker) {
     return [
         'name'                      => $faker->company,
-        'type'                      => 'Local',
-        'size'                      => 0,
         'swap_rules'                => [
             'targets' => [
                 '813557####',
@@ -81,5 +79,6 @@ $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $fa
             ]
 
         ],
+        'override_campaigns' => true
     ];
 });

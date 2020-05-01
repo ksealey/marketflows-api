@@ -167,8 +167,7 @@ class IncomingCallController extends Controller
             'direction'                 => ucfirst($request->Direction),
             'status'                    => 'In Progress',
             
-            'caller_first_name'         => substr(ucfirst($callerFirstName), 0, 64),
-            'caller_last_name'          => substr(ucfirst($callerLastName), 0, 64),
+            'caller_name'               => substr(ucfirst($callerFirstName), 0, 64),
             'caller_country_code'       => PhoneNumber::countryCode($request->From) ?: null,
             'caller_number'             => PhoneNumber::number($request->From),
             'caller_city'               => $request->FromCity ? substr($request->FromCity, 0, 64) : null,

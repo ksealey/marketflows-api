@@ -21,9 +21,10 @@ class PaymentMethod extends Model
     protected $hidden = [
         'account_id',
         'external_id',
-        'user_id',
         'external_id',
-        'deleted_at'
+        'created_by',
+        'updated_by'
+        'deleted_at',
     ];
 
     protected $fillable = [
@@ -36,7 +37,8 @@ class PaymentMethod extends Model
         'type',
         'primary_method',
         'last_used_at',
-        'error'
+        'error',
+        'deleted_by'
     ];
 
     protected $appends = [

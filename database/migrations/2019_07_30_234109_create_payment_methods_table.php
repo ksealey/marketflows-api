@@ -25,11 +25,16 @@ class CreatePaymentMethodsTable extends Migration
             $table->boolean('primary_method')->default(0);
             $table->string('error', 128)->nullable();
             $table->dateTime('last_used_at')->nullable();
+            $table->bigInteger('created_by')->unsigned();
+            $table->bigInteger('updated_by')->unsigned()->nullable();
+            $table->bigInteger('deleted_by')->unsigned()->nullable();
             $table->timestamps();
 
             $table->softDeletes();
             $table->foreign('account_id')->references('id')->on('accounts');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
+            $table->foreign('deleted_by')->references('id')->on('users');
         });
     }
 

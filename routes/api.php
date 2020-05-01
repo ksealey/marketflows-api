@@ -41,15 +41,27 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
 |----------------------------------------
 */
 Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
-
     /*
-    |----------------------------------------
-    | Miscellaneous
-    |----------------------------------------
+    |--------------------------------
+    | Handle account
+    |--------------------------------
     */
-    Route::prefix('tts')->group(function(){
-        Route::post('/say', 'TextToSpeechController@say')
-             ->name('text-to-speech-say');
+    Route::prefix('accounts')->group(function(){
+        Route::get('/', 'AccountController@read')
+             ->middleware('can:read,\App\Models\Account')
+             ->name('read-account');
+
+        Route::put('/', 'AccountController@update')
+             ->middleware('can:update,\App\Models\Account')
+             ->name('update-account');
+
+        Route::put('/upgrade', 'AccountController@upgrade')
+             ->middleware('can:upgrade,\App\Models\Account')
+             ->name('upgrade-account');
+
+        Route::delete('/', 'AccountController@delete')
+             ->middleware('can:update,\App\Models\Account')
+             ->name('delete-account');
     });
 
     /*
@@ -75,59 +87,17 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
                  ->middleware('can:delete,alert')
                  ->name('delete-alert'); 
         });
-        
-    });
-
-   /*
-    |--------------------------------
-    | Handle account
-    |--------------------------------
-    */
-    Route::prefix('accounts')->group(function(){
-        Route::get('/', 'AccountController@read')
-             ->middleware('can:read,\App\Models\Account')
-             ->name('read-account');
-
-        Route::put('/', 'AccountController@update')
-             ->middleware('can:update,\App\Models\Account')
-             ->name('update-account');
-
-        Route::put('/upgrade', 'AccountController@upgrade')
-             ->middleware('can:upgrade,\App\Models\Account')
-             ->name('upgrade-account');
-
-        Route::delete('/', 'AccountController@delete')
-             ->middleware('can:update,\App\Models\Account')
-             ->name('delete-account');
-    });
-
-    Route::prefix('billing')->group(function(){
-        Route::get('/', 'BillingController@read')
-             ->middleware('can:read,\App\Models\Billing')
-             ->name('read-billing');
     });
 
     /*
     |--------------------------------
-    | Handle roles
+    | Handle account billing
     |--------------------------------
     */
-    Route::prefix('roles')->group(function(){
-        Route::post('/', 'RoleController@create')
-             ->middleware('can:create,\App\Models\Role')
-             ->name('create-role');
-
-        Route::get('/{role}', 'RoleController@read')
-             ->middleware('can:read,role')
-             ->name('read-role');
-
-        Route::put('/{role}', 'RoleController@update')
-             ->middleware('can:update,role')
-             ->name('update-role');
-
-        Route::delete('/{role}', 'RoleController@delete')
-            ->middleware('can:delete,role')
-            ->name('delete-role'); 
+    Route::prefix('billing')->group(function(){
+        Route::get('/', 'BillingController@read')
+             ->middleware('can:read,\App\Models\Billing')
+             ->name('read-billing');
     });
 
     /*
@@ -205,36 +175,6 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
         Route::delete('/{paymentMethod}', 'PaymentMethodController@delete')
             ->middleware('can:delete,paymentMethod')
             ->name('delete-payment-method'); 
-    });
-
-    /*
-    |----------------------------------------
-    | Handle charges
-    |----------------------------------------
-    */
-    Route::prefix('charges')->group(function(){
-        Route::get('/', 'ChargeController@list')
-            ->middleware('can:list,\App\Models\Charge')
-            ->name('list-charges'); 
-
-        Route::get('/{Charge}', 'ChargeController@read')
-            ->middleware('can:read,\App\Models\Charge')
-            ->name('read-charge'); 
-    });
-
-    /*
-    |----------------------------------------
-    | Handle purchases
-    |----------------------------------------
-    */
-    Route::prefix('purchases')->group(function(){
-        Route::get('/', 'PurchaseController@list')
-            ->middleware('can:list,\App\Models\Purchase')
-            ->name('list-purchases'); 
-        
-        Route::get('/{purchase}', 'PurchaseController@read')
-            ->middleware('can:read,purchase')
-            ->name('read-purchase'); 
     });
 
     /*
@@ -629,6 +569,16 @@ Route::middleware('twilio.webhooks')->group(function(){
     Route::middleware('throttle:30,1')->prefix('web-sessions')->group(function(){
         Route::post('/', 'WebSessionController@create');
         Route::any('/{sessionUUID}/end', 'WebSessionController@end');
+    });
+
+    /*
+    |----------------------------------------
+    | Miscellaneous
+    |----------------------------------------
+    */
+    Route::prefix('tts')->group(function(){
+        Route::post('/say', 'TextToSpeechController@say')
+             ->name('text-to-speech-say');
     });
 });
 

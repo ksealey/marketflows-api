@@ -29,8 +29,7 @@ class CreateCallsTable extends Migration
             $table->string('direction', 16);
             $table->string('status', 64);
 
-            $table->string('caller_first_name', 64)->nullable();
-            $table->string('caller_last_name', 64)->nullable();
+            $table->string('caller_name', 64)->nullable();
             $table->string('caller_country_code', 8)->nullable();
             $table->string('caller_number', 16)->index();
             $table->string('caller_city', 64)->index()->nullable();
@@ -48,7 +47,6 @@ class CreateCallsTable extends Migration
             $table->string('forwarded_to', 24);
 
             $table->integer('duration')->unsigned()->nullable();
-
             $table->decimal('cost', 8, 4)->nullable();
             
             $table->dateTime('created_at', 6);
@@ -56,7 +54,6 @@ class CreateCallsTable extends Migration
             
             $table->softDeletes();
 
-        
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');

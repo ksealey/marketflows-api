@@ -16,7 +16,6 @@ class CreatePhoneNumberConfigsTable extends Migration
         Schema::create('phone_number_configs', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('company_id')->unsigned();
-            $table->bigInteger('user_id')->unsigned();
             $table->string('name', 64);
             $table->string('forward_to_number', 16);
             $table->bigInteger('greeting_audio_clip_id')->unsigned()->nullable();
@@ -30,12 +29,18 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->dateTime('recording_enabled_at')->nullable();
             $table->dateTime('caller_id_enabled_at')->nullable();
             $table->dateTime('keypress_enabled_at')->nullable();
+            $table->bigInteger('created_by')->unsigned();
+            $table->bigInteger('updated_by')->unsigned()->nullable();
+            $table->bigInteger('deleted_by')->unsigned()->nullable();
             $table->timestamps();
             $table->softDeletes();
+
             $table->foreign('company_id')->references('id')->on('companies');
-            $table->foreign('user_id')->references('id')->on('users');
             $table->foreign('greeting_audio_clip_id')->references('id')->on('audio_clips');
             $table->foreign('keypress_audio_clip_id')->references('id')->on('audio_clips');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
+            $table->foreign('deleted_by')->references('id')->on('users');
         });
     }
 

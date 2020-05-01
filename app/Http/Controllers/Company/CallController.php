@@ -24,8 +24,7 @@ class CallController extends Controller
     {
         $fields = [
             'caller_name',
-            'calls.caller_first_name',
-            'calls.caller_last_name',
+            'calls.caller_name',
             'calls.caller_number',
             'phone_numbers.name',
             'calls.category',
@@ -42,7 +41,6 @@ class CallController extends Controller
         $query = DB::table('calls')
                    ->select([
                        'calls.*', 
-                       DB::raw('TRIM(CONCAT(calls.caller_first_name, \' \', calls.caller_last_name)) AS caller_name'),
                        DB::raw('
                             CASE
                                 WHEN call_recordings.path IS NOT NULL

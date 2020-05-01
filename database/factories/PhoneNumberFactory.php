@@ -7,24 +7,21 @@ use Faker\Generator as Faker;
 
 $factory->define(\App\Models\Company\PhoneNumber::class, function (Faker $faker) {
     return [
-        'name'                      => $faker->ein,
+        'uuid'                      => $faker->uuid(),
+        'external_id'               => str_random(40),
+
+        'category'                  => 'ONLINE',
+        'sub_category'              => 'WEBSITE',
+        'type'                      => 'Local',
+        
+        'name'                      => $faker->realText(20),
+        'country'                   => 'US',
         'country_code'              => 1,
         'number'                    => substr($faker->e164PhoneNumber, -10),
         'voice'                     => true,
         'sms'                       => true,
         'mms'                       => true,
-        'external_id'               => str_random(40),
-        'uuid'                      => $faker->uuid(),
-        'external_id'               => str_random(40),
-        'category'                  => 'ONLINE',
-        'sub_category'              => 'WEBSITE',
-        'type'                      => 'Local',
-        'country_code'              => '1',
-        'number'                    => substr($faker->e164PhoneNumber, -10),
-        'voice'                     => true,
-        'sms'                       => true,
-        'mms'                       => true,
-        'name'                      => $faker->realText(20),
+        
         'source'                    => ['Google', 'Facebook', 'Yahoo'][mt_rand(0, 2)],
         'swap_rules'                => [
             'targets' => [
@@ -77,6 +74,7 @@ $factory->define(\App\Models\Company\PhoneNumber::class, function (Faker $faker)
             ]
 
         ],
-        'last_assigned_at'          => null
+        'last_assigned_at' => null,
+        'purchased_at' => now()
     ];
 });

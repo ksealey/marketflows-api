@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Account;
 use App\Models\PaymentMethod;
 use Illuminate\Validation\Rule;
 use DateTime;
@@ -33,6 +34,8 @@ class AccountController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
         }
+
+        $account = $request->user()->account;
 
         if( $request->filled('name') )
             $account->name = $request->name;

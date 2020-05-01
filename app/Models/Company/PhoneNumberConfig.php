@@ -16,7 +16,9 @@ class PhoneNumberConfig extends Model
 
     protected $fillable = [
         'company_id',
-        'user_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
         'name',
         'forward_to_number',
         'greeting_audio_clip_id',
@@ -33,6 +35,7 @@ class PhoneNumberConfig extends Model
     ];
 
     protected $hidden = [
+        'deleted_by',
         'deleted_at'
     ];
 
@@ -131,8 +134,7 @@ class PhoneNumberConfig extends Model
             '${medium}'             => $call->medium,
             '${content}'            => $call->content,
             '${campaign}'           => $call->campaign,
-            '${caller_first_name}'  => $call->caller_first_name,
-            '${caller_last_name}'   => $call->caller_last_name,
+            '${caller_name}'        => $call->caller_name,
             '${caller_country_code}'=> $call->from_country_code,
             '${caller_number}'      => $call->from_number,
             '${caller_city}'        => $call->from_city,

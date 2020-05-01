@@ -15,15 +15,18 @@ class AudioClip extends Model
 
     protected $fillable = [
         'company_id',
-        'user_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
         'name',
         'path',
-        'mime_type'
+        'mime_type',
     ];
 
     protected $hidden = [
         'path',
-        'deleted_at'
+        'deleted_at',
+        'deleted_by'
     ];
 
     protected $appends = [

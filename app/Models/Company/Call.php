@@ -25,7 +25,7 @@ class Call extends Model
         'status',
         'duration',
 
-        'caller_first_name',
+        'caller_name',
         'caller_last_name',
         'caller_country_code',
         'caller_number',

@@ -22,11 +22,19 @@ class CreateBlockedPhoneNumbersTable extends Migration
             $table->string('country_code', 8)->nullable();
             $table->string('number', 16);
             $table->string('batch_id', 16);
+
+            $table->bigInteger('created_by')->unsigned();
+            $table->bigInteger('updated_by')->unsigned()->nullable();
+            $table->bigInteger('deleted_by')->unsigned()->nullable();
+
             $table->timestamps();
             $table->softDeletes();
+
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
+            $table->foreign('deleted_by')->references('id')->on('users');
         });
     }
 

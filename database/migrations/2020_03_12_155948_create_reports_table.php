@@ -16,7 +16,6 @@ class CreateReportsTable extends Migration
         Schema::create('reports', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('company_id')->unsigned();
-            $table->bigInteger('user_id')->unsigned()->nullable(); // Can be created by system
             $table->string('name', 64);
             $table->string('module', 32);
             $table->string('metric', 32)->nullable();
@@ -28,10 +27,17 @@ class CreateReportsTable extends Migration
             $table->string('comparisons', 64)->nullable();
             $table->string('conditions', 2048)->nullable();
             $table->boolean('is_system_report')->default(0);
+            $table->bigInteger('created_by')->unsigned();
+            $table->bigInteger('updated_by')->unsigned()->nullable();
+            $table->bigInteger('deleted_by')->unsigned()->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
-            $table->foreign('user_id')->references('id')->on('users');
+
             $table->foreign('company_id')->references('id')->on('companies');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('updated_by')->references('id')->on('users');
+            $table->foreign('deleted_by')->references('id')->on('users');
         });
     }
 
