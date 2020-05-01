@@ -26,6 +26,5 @@ $factory->define(User::class, function (Faker $faker) {
         'auth_token'            => str_random(128),
         'timezone'              => $faker->timezone,
         'role'                  => User::ROLE_ADMIN,
-        'settings'              => []
     ];
 });

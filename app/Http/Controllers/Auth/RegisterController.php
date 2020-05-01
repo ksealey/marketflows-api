@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Billing;
 use App\Models\User;
+use App\Models\UserSettings;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use \App\Rules\CountryRule;
@@ -77,11 +78,11 @@ class RegisterController extends Controller
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
                 'password_hash'             => bcrypt($request->password),
-                'auth_token'                => str_random(255),
-                'settings'                  => [
-                    'email_alerts_enabled' => true,
-                    'sms_alerts_enabled'   => false,
-                ]
+                'auth_token'                => str_random(255)
+            ]);
+
+            UserSettings::create([
+                'user_id' => $user->id
             ]);
 
             //  Add verification mail to queue

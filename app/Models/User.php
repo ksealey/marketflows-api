@@ -40,7 +40,6 @@ class User extends Authenticatable
         'last_login_at',
         'login_disabled_until',
         'login_attempts',
-        'settings',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -53,10 +52,6 @@ class User extends Authenticatable
         'login_disabled_until',
         'login_attempts',
         'deleted_at'
-    ];
-
-    public $casts = [
-        'settings' => 'array'
     ];
     
     static public function roles()
@@ -80,6 +75,11 @@ class User extends Authenticatable
     public function companies()
     {
         return $this->belongsToMany('App\Models\Company', 'user_companies');
+    }
+
+    public function settings()
+    {
+        $this->hasOne('\App\Models\UserSettings');
     }
 
     public function getFullNameAttribute()

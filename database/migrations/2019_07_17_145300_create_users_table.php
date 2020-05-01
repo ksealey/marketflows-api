@@ -31,7 +31,6 @@ class CreateUsersTable extends Migration
             $table->dateTime('last_login_at')->nullable();
             $table->dateTime('login_disabled_until')->nullable();
             $table->integer('login_attempts')->unsigned()->default(0);
-            $table->json('settings');
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('account_id')->references('id')->on('accounts');

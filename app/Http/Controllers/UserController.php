@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Models\User;
+use App\Models\UserSettings;
 use App\Models\Company;
 use App\Models\UserCompany;
 use App\Mail\AddUser as AddUserEmail;
@@ -57,11 +58,11 @@ class UserController extends Controller
                 'password_hash'             => bcrypt($resetToken),
                 'password_reset_token'      => $resetToken,
                 'password_reset_expires_at' => now()->addDays(90),
-                'auth_token'                => str_random(255),
-                'settings'                  => [
-                    'email_alerts_enabled' => true,
-                    'sms_alerts_enabled'   => false,
-                ]
+                'auth_token'                => str_random(255)
+            ]);
+
+            UserSettings::create([
+                'user_id' => $user->id
             ]);
 
             //  Create company links for lower level users
