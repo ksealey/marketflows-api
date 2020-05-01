@@ -49,7 +49,14 @@ class AuthTest extends TestCase
             ],
             "first_login" => true
         ]);
-
+        $account = $response['account'];
+        $this->assertDatabaseHas('accounts', [
+            'id' => $account['id']
+        ]);
+        $this->assertDatabaseHas('billing', [
+            'account_id' => $account['id']
+        ]);
+        
         Mail::assertQueued(EmailVerificationEmail::class);
     }
 
