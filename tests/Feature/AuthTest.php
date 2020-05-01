@@ -9,7 +9,6 @@ use App\Mail\Auth\EmailVerification as EmailVerificationEmail;
 use App\Mail\Auth\PasswordReset as PasswordResetEmail;
 use App\Models\Account;
 use App\Models\User;
-use App\Models\Auth\PasswordReset;
 use Faker\Generator as Faker;
 use Mail;
 

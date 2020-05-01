@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Auth\PasswordReset;
 use App\Mail\Auth\PasswordReset as PasswordResetEmail;
 use Validator;
 use DateTime;

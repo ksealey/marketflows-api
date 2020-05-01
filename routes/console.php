@@ -27,12 +27,6 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->describe('Display an inspiring quote');
 
-
-Artisan::command('clear:password-resets', function () {
-    \App\Models\Auth\PasswordReset::where('expires_at', '<', date('Y-m-d H:i:s'))->delete();
-})->describe('Clear expired password resets');
-
-
 Artisan::command('reports:dispatch-automations', function(){
     //  
     //  Pull pending

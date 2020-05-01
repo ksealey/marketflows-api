@@ -266,7 +266,72 @@ class UserTest extends TestCase
         ]);
     }
 
+    /**
+     * Test system users cannot delete other users
+     * 
+     * @group users
+     */
+    public function testSystemUsersCannotDeleteUsers()
+    {
+        $this->user = factory(User::class)->create([
+            'account_id' => $this->account->id,
+            'role' => User::ROLE_SYSTEM
+        ]);
 
+        $otherUser = factory(User::class)->create([
+            'account_id' => $this->account->id
+        ]);
 
-    
+        $response = $this->json('DELETE', route('delete-user', [
+            'user' => $otherUser->id
+        ]));
+
+        $response->assertStatus(403); //  Persmission denied
+    }
+
+    /**
+     * Test reporting users cannot delete other users
+     * 
+     * @group users
+     */
+    public function testReportingUsersCannotDeleteUsers()
+    {
+        $this->user = factory(User::class)->create([
+            'account_id' => $this->account->id,
+            'role' => User::ROLE_REPORTING
+        ]);
+
+        $otherUser = factory(User::class)->create([
+            'account_id' => $this->account->id
+        ]);
+
+        $response = $this->json('DELETE', route('delete-user', [
+            'user' => $otherUser->id
+        ]));
+
+        $response->assertStatus(403); //  Persmission denied
+    }
+
+    /**
+     * Test client users cannot delete other users
+     * 
+     * @group users
+     */
+    public function testClientUsersCannotDeleteUsers()
+    {
+        $this->user = factory(User::class)->create([
+            'account_id' => $this->account->id,
+            'role' => User::ROLE_CLIENT
+        ]);
+
+        $otherUser = factory(User::class)->create([
+            'account_id' => $this->account->id
+        ]);
+
+        $response = $this->json('DELETE', route('delete-user', [
+            'user' => $otherUser->id
+        ]));
+
+        $response->assertStatus(403); //  Persmission denied
+    }
 }
