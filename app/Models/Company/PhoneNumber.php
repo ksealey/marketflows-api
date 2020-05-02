@@ -186,18 +186,11 @@ class PhoneNumber extends Model implements Exportable
                 . '-'
                 . substr($this->number, 6, 4);
     }
-
-    /**
-     * List local phone numbers available for a given area code
-     * 
-     */
-    
     
     /**
      * Release a phone number
      * 
      */
-
     public function bankOrRelease()
     {
         //  Move numbers to bank, release if needed
@@ -220,7 +213,9 @@ class PhoneNumber extends Model implements Exportable
         $daysUntilRenew = $today->diffInDays($renewDate);
        
         if( $daysUntilRenew <= 5 ){
-            return $this->release();
+            $this->release();
+
+            return false;
         }
 
         BankedPhoneNumber::create([
@@ -238,6 +233,8 @@ class PhoneNumber extends Model implements Exportable
             'released_by_account_id' => $this->account_id,
             'status'                 => count($calls) > $callThreshold ? 'Banked' : 'Available',
         ]);
+
+        return true;
     }
 
     public function release()

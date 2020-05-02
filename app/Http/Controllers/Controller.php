@@ -40,11 +40,12 @@ class Controller extends BaseController
             ], 400);
         }
 
+        $user = $request->user();
+
         $orderBy    = $request->order_by  ?: $rangeField;
         $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
 
         if( $request->start_date || $request->end_date){
-            $user   = $request->user();
             $userTZ = new DateTimeZone($user->timezone);
             $utcTZ  = new DateTimeZone('UTC');
 

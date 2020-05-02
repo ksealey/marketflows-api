@@ -13,6 +13,7 @@ use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Call;
+use App\Models\Company\CallRecording;
 use \App\Models\BlockedPhoneNumber;
 use \App\Models\BlockedPhoneNumber\BlockedCall;
 use Storage;
@@ -48,7 +49,8 @@ trait CreatesAccount
 
     public function createCompanies()
     {
-
+        Storage::fake();
+        
         //  Company
         $company = factory(Company::class)->create([
             'account_id' => $this->user->account_id,
@@ -82,7 +84,11 @@ trait CreatesAccount
                 'account_id' => $phoneNumber->account_id,
                 'company_id' => $phoneNumber->company_id,
                 'phone_number_id' =>$phoneNumber->id
-            ]);
+            ])->each(function($call){
+                factory(CallRecording::class, 2)->create([
+                    'call_id' => $call->id
+                ]);
+            });
         });
 
         //  A number pool

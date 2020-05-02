@@ -12,35 +12,36 @@ class PhoneNumberConfigPolicy
 {
     use HandlesAuthorization, HandlesCompanyResources;
 
-    public function list(User $user)
+    public function list(User $user, Company $company)
     {
-        return $user->canDoAction('phone-number-configs.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company);
     }
     
-    public function create(User $user)
+    public function create(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id) 
-            && $user->canDoAction('phone-number-configs.create');
+        return $user->canDoAction('create')
+            && $user->canViewCompany($company);
     }
 
-    public function read(User $user, PhoneNumberConfig $phoneNumberConfig)
+    public function read(User $user, PhoneNumberConfig $phoneNumberConfig, , Company $company)
     {
-        return $this->resourceBelongsToCompany($phoneNumberConfig->company_id)
-            && $this->userCanViewCompany($user, $phoneNumberConfig->company_id) 
-            && $user->canDoAction('phone-number-configs.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company)
+            && $phoneNumberConfig->company_id === $company->id;
     }
 
-    public function update(User $user, PhoneNumberConfig $phoneNumberConfig)
+    public function update(User $user, PhoneNumberConfig $phoneNumberConfig, Company $company)
     {
-        return $this->resourceBelongsToCompany($phoneNumberConfig->company_id)
-            && $this->userCanViewCompany($user, $phoneNumberConfig->company_id) 
-            && $user->canDoAction('phone-number-configs.update');
+        return $user->canDoAction('update')
+            && $user->canViewCompany($company)
+            && $phoneNumberConfig->company_id === $company->id;
     }
 
-    public function delete(User $user, PhoneNumberConfig $phoneNumberConfig)
+    public function delete(User $user, PhoneNumberConfig $phoneNumberConfig, Cmopany $company)
     {
-        return $this->resourceBelongsToCompany($phoneNumberConfig->company_id)
-            && $this->userCanViewCompany($user, $phoneNumberConfig->company_id) 
-            && $user->canDoAction('phone-number-configs.delete');
+        return $user->canDoAction('delete')
+            && $user->canViewCompany($company)
+            && $phoneNumberConfig->company_id === $company->id;
     }
 }

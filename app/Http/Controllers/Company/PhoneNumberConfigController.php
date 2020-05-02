@@ -49,8 +49,8 @@ class PhoneNumberConfigController extends Controller
        $rules = [
             'name'                       => 'bail|required|max:64',
             'forward_to_number'          => 'bail|required|numeric|digits_between:10,13',
-            'record'                     => 'bail|boolean',
-            'caller_id'                  => 'bail|boolean',
+            'recording_enabled'          => 'bail|boolean',
+            'caller_id_enabled'          => 'bail|boolean',
             'whisper_message'            => 'bail|nullable|max:128',
             'greeting_message'           => 'bail|nullable|max:128',
             'greeting_audio_clip_id'     => ['bail', 'nullable', 'numeric', new AudioClipRule($company->id)],
@@ -60,7 +60,7 @@ class PhoneNumberConfigController extends Controller
         ];
 
         $validator = Validator::make($request->input(), $rules);
-        $validator->sometimes('keypress_key', 'bail|required|numeric|min:0|max:9', function($input){
+        $validator->sometimes('keypress_key', 'bail|required|digits:1', function($input){
             return !!$input->keypress_enabled;
         });
         $validator->sometimes('keypress_attempts', 'bail|required|numeric|min:1|max:5', function($input){
@@ -76,31 +76,24 @@ class PhoneNumberConfigController extends Controller
             ], 400);
         }
 
-        if( $request->greeting_message && $request->greeting_audio_clip_id )
-            return response([
-                'error' => 'You must either provide a greeting audio clip id or greeting message, but not both.'
-            ], 400);
-
         $user = $request->user();
         $phoneNumberConfig = PhoneNumberConfig::create([
             'company_id'                => $company->id,
-            'user_id'                   => $user->id,
             'name'                      => $request->name,
             'forward_to_number'         => $request->forward_to_number,
             'greeting_audio_clip_id'    => $request->greeting_audio_clip_id ?: null,
             'greeting_message'          => $request->greeting_message ?: null,
-            'recording_enabled_at'      => $request->record ? now() : null,
-            'caller_id_enabled_at'      => $request->caller_id ? now() : null,
             'whisper_message'           => $request->whisper_message ?: null,
-            'keypress_enabled_at'       => $request->keypress_enabled ? now() : null,
+            'recording_enabled'         => !!$request->recording_enabled,
+            'caller_id_enabled'         => !!$request->caller_id_enabled,
+            'keypress_enabled'          => !!$request->keypress_enabled,
             'keypress_key'              => intval($request->keypress_key) ?: null,
             'keypress_attempts'         => intval($request->keypress_attempts) ?: null,
             'keypress_timeout'          => intval($request->keypress_timeout) ?: null,
             'keypress_audio_clip_id'    => $request->keypress_audio_clip_id ?: null,
             'keypress_message'          => $request->keypress_message ?: null,
+            'created_by'                => $user->id,
         ]);
-
-        event(new PhoneNumberConfigEvent($user, [$phoneNumberConfig], 'create'));
 
         return response($phoneNumberConfig, 201);
     }
@@ -121,10 +114,10 @@ class PhoneNumberConfigController extends Controller
     public function update(Request $request, Company $company, PhoneNumberConfig $phoneNumberConfig)
     {
         $rules = [
-            'name'                       => 'bail|min:1,max:64',
-            'forward_to_number'          => 'bail|digits_between:10,13',
-            'record'                     => 'bail|boolean',
-            'caller_id'                  => 'bail|boolean',
+            'name'                       => 'bail|max:64',
+            'forward_to_number'          => 'bail|numeric|digits_between:10,13',
+            'recording_enabled'          => 'bail|boolean',
+            'caller_id_enabled'          => 'bail|boolean',
             'whisper_message'            => 'bail|nullable|max:128',
             'greeting_message'           => 'bail|nullable|max:128',
             'greeting_audio_clip_id'     => ['bail', 'nullable', 'numeric', new AudioClipRule($company->id)],
@@ -134,7 +127,7 @@ class PhoneNumberConfigController extends Controller
         ];
 
         $validator = Validator::make($request->input(), $rules);
-        $validator->sometimes('keypress_key', 'bail|required|numeric|min:0|max:9', function($input){
+        $validator->sometimes('keypress_key', 'bail|required|digits:1', function($input){
             return !!$input->keypress_enabled;
         });
         $validator->sometimes('keypress_attempts', 'bail|required|numeric|min:1|max:5', function($input){

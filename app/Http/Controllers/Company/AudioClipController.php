@@ -101,35 +101,25 @@ class AudioClipController extends Controller
      */
     public function update(Request $request, Company $company, AudioClip $audioClip)
     {
-        $rules = [
+        $validator = validator($request->all(), [
             'audio_clip'  => 'file|mimes:x-flac,mpeg,x-wav',
             'name'        => 'min:1|max:64'
-        ];
+        ]);
 
-        $validator = validator($request->all(), $rules);
-        if( $validator->fails() ){
+        if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first(),
             ], 400);
-        }
 
-        DB::beginTransaction();
-        try{
-            if( $request->hasFile('audio_clip') )
-                //  Replace existing file if provided
-                Storage::put($audioClip->path, $request->audio_clip);
+        if( $request->hasFile('audio_clip') )
+            Storage::put($audioClip->path, $request->audio_clip);
 
-            if( $request->filled('name') )
-                $audioClip->name = $request->name;
+        if( $request->filled('name') )
+            $audioClip->name = $request->name;
 
-            $audioClip->save();
-        }catch(Exception $e){
-            DB::rollBack();
-
-            throw $e;
-        }
-        DB::commit();
-
+        $audioClip->updated_by = $request->user()->id;
+        $audioClip->save();
+    
         return response($audioClip);
     }
 
@@ -141,6 +131,8 @@ class AudioClipController extends Controller
             ], 400);
         }
         
+        $audioClip->deleted_by = $request->user()->id;
+        $audioClip->save();
         $audioClip->deleteRemoteResource();
         $audioClip->delete();
 

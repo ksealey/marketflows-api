@@ -17,7 +17,11 @@ use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumberConfig;
+use \App\Jobs\BatchDeleteAudioJob;
+use \App\Jobs\BatchHandleDeletedPhoneNumbersJob;
+use \App\Jobs\BatchDeleteCallRecordingsJob;
 
+use Exception;
 use DB;
 
 class Company extends Model implements Exportable
@@ -95,49 +99,75 @@ class Company extends Model implements Exportable
         return $this->belongsTo('\App\Models\Account');
     }
 
-    public function purge()
+    public function purge($userId)
     {
-        //  Remove audio clips along with their remote resource
-        AudioClip::where('company_id', $this->id)
-                    ->get()
-                    ->each(function($audioClip){
-                        $audioClip->deleteRemoteResource();
-                        $audioClip->delete();
-                    });
+        DB::beginTransaction();
 
-        //  Bank or release phone number then delete
-        PhoneNumber::where('company_id', $this->id)
-                    ->get()
-                    ->each(function($phoneNumber){
-                        $phoneNumber->bankOrRelease();
-                        $phoneNumber->delete();
-                    });
+        try{
+            AudioClip::where('company_id', $this->id)->update([
+                'deleted_by' => $userId,
+                'deleted_at' => now()
+            ]);
 
-        //
-        //  Then everything else ...
-        //
-        Call::where('company_id', $this->id)->delete();
-        
-        UserCompany::where('company_id', $this->id)->delete();
+            PhoneNumber::where('company_id', $this->id)->update([
+                'deleted_by' => $userId,
+                'deleted_at' => now()
+            ]);
+                        
+            Call::where('company_id', $this->id)->update([
+                'deleted_by' => $userId,
+                'deleted_at' => now()
+            ]);
 
-        PhoneNumberPool::where('company_id', $this->id)->delete();
+            CallRecording::whereIn('call_id', function($q){
+                $q->select('id')
+                ->from('calls')
+                ->where('company_id', $this->id);
+            })->delete();
+            
+            UserCompany::where('company_id', $this->id)->delete();
 
-        PhoneNumberConfig::where('company_id', $this->id)->delete();
+            PhoneNumberPool::where('company_id', $this->id)->update([
+                'deleted_by' => $userId,
+                'deleted_at' => now()
+            ]);
 
-        BlockedCall::whereIn('blocked_phone_number_id', function($q){
-                        $q->select('id')
-                            ->from('blocked_phone_numbers')
-                            ->where('blocked_phone_numbers.company_id', $this->id);
-                    })->delete();
+            PhoneNumberConfig::where('company_id', $this->id)->update([
+                'deleted_by' => $userId,
+                'deleted_at' => now()
+            ]);
 
-        BlockedPhoneNumber::where('company_id', $this->id)->delete();
-
-        ReportAutomation::whereIn('report_id', function($q){
-                              $q->select('id')
-                                ->from('reports')
-                                ->where('reports.company_id', $this->id);
+            BlockedCall::whereIn('blocked_phone_number_id', function($q){
+                            $q->select('id')
+                                ->from('blocked_phone_numbers')
+                                ->where('blocked_phone_numbers.company_id', $this->id);
                         })->delete();
 
-        Report::where('company_id', $this->id)->delete();
+            BlockedPhoneNumber::where('company_id', $this->id)->update([
+                'deleted_by' => $userId,
+                'deleted_at' => now()
+            ]);
+
+            ReportAutomation::whereIn('report_id', function($q){
+                                $q->select('id')
+                                    ->from('reports')
+                                    ->where('reports.company_id', $this->id);
+                            })->delete();
+
+            Report::where('company_id', $this->id)->update([
+                'deleted_by' => $userId,
+                'deleted_at' => now()
+            ]);
+        }catch(Exception $e){
+            DB::rollBack();
+
+            throw $e;
+        }
+
+        DB::commit();
+
+        BatchHandleDeletedPhoneNumbersJob::dispatch($this->id);
+        BatchDeleteAudioJob::dispatch($this->id);
+        BatchDeleteCallRecordingsJob::dispatch($this->id);
     }
 }

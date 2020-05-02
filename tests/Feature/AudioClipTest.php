@@ -99,7 +99,8 @@ class AudioClipTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'company_id' => $company->id,
-            'name'       => 'updated'
+            'name'       => 'updated',
+            'updated_by' => $this->user->id
         ]);
     }
 
@@ -122,18 +123,22 @@ class AudioClipTest extends TestCase
 
         $response = $this->json('DELETE', route('delete-audio-clip', [
             'company'   => $company->id,
-            'audioClip' => $audioClip->id
+            'audioClip' => $audioClip->id,
         ])); 
         $response->assertStatus(200);
         $response->assertJSON([
             'message' => 'deleted'
         ]);
 
-        $this->assertDatabaseMissing('audio_clips', [
-            'id' => $audioClip->id,
-            'deleted_at' => null
+        $this->assertDatabaseHas('audio_clips', [
+            'id'         => $audioClip->id,
+            'deleted_by' => $this->user->id
         ]);
 
+        $this->assertDatabaseMissing('audio_clips', [
+            'id'         => $audioClip->id,
+            'deleted_at' => null
+        ]);
             
         Storage::assertMissing($audioClip->path);
     }

@@ -49,9 +49,11 @@ class CreateCallsTable extends Migration
             $table->integer('duration')->unsigned()->nullable();
             $table->decimal('cost', 8, 4)->nullable();
             
+            $table->bigInteger('updated_by')->unsigned()->nullable();
+            $table->bigInteger('deleted_by')->unsigned()->nullable();
+            
             $table->dateTime('created_at', 6);
             $table->dateTime('updated_at', 6);
-            
             $table->softDeletes();
 
             $table->foreign('account_id')->references('id')->on('accounts');
@@ -59,6 +61,8 @@ class CreateCallsTable extends Migration
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
             $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
             $table->foreign('session_id')->references('id')->on('sessions');
+            $table->foreign('updated_by')->references('id')->on('users');
+            $table->foreign('deleted_by')->references('id')->on('users');
             $table->index(['created_at', 'updated_at']);
         });
     }

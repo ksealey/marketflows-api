@@ -11,6 +11,7 @@ use Twilio\Rest\Client as TwilioClient;
 use App;
 use Storage;
 use Exception;
+use Log;
 
 class CallRecording extends Model
 {
@@ -73,7 +74,7 @@ class CallRecording extends Model
     static public function downloadRecording($url)
     {
         try{
-            $client = new \GuzzleHttp\Client();
+            $client   = new \GuzzleHttp\Client();
             $response = $client->request('GET', $url);
 
             return $response->getBody();
@@ -92,8 +93,6 @@ class CallRecording extends Model
         return $path;
     }
 
-    
-
     static public function deleteRemoteFile($recordingSid)
     {
         $config = config('services.twilio');
@@ -103,7 +102,13 @@ class CallRecording extends Model
         try{
             $twilio->recordings($recordingSid)
                     ->delete();
-        }catch(Exception $e)
-        {}
+        }catch(Exception $e){
+            Log::error($e->getTraceAsString());
+        }
+    }
+
+    public function deleteRemoteResource()
+    {
+        Storage::delete($this->path);
     }
 }

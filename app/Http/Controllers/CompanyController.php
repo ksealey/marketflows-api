@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
-
 use \App\Models\User;
 use \App\Models\Company;
 use \App\Models\Company\Report;
@@ -183,21 +182,13 @@ class CompanyController extends Controller
      */
     public function delete(Request $request, Company $company)
     {
-        $account = $company->account;
+        $user = $request->user();
 
-        DB::beginTransaction();
+        $company->purge($user->id);
 
-        try{
-            $company->purge();
-            
-            $company->delete();
-        }catch(Exception $e){
-            DB::rollBack();
-
-            throw $e;
-        }
-
-        DB::commit();
+        $company->deleted_by = $user->id;
+        $company->deleted_at = now();
+        $company->save();
 
         return response([
             'message' => 'deleted'
