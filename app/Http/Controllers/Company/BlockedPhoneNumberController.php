@@ -75,7 +75,7 @@ class BlockedPhoneNumberController extends Controller
         $wholeNumbers = [];
         $inserts      = [];
         $numbers      = json_decode($request->numbers, true);
-        $batchId      = str_random(16);
+        $createdAt    = now();
 
         foreach($numbers as $number){
             //  Check for uniqueness in set, but be forgiving
@@ -92,11 +92,11 @@ class BlockedPhoneNumberController extends Controller
             $number['number']       = PhoneNumber::number($wholeNumber);
             $number['account_id']   = $company->account_id;
             $number['company_id']   = $company->id;
-            $number['batch_id']     = $batchId;
             $number['user_id']      = $user->id;
-            $number['created_at']   = now();
+            $number['created_at']   = $createdAt;
+            $number['created_by']   = $user->id;
 
-            $inserts[]             = $number;
+            $inserts[]              = $number;
         }
 
         if( ! count($inserts) ){
@@ -107,7 +107,12 @@ class BlockedPhoneNumberController extends Controller
 
         BlockedPhoneNumber::insert($inserts);
 
-        return response(BlockedPhoneNumber::where('batch_id', $batchId)->get(), 201);
+        $blockedNumbers = BlockedPhoneNumber::where('account_id', $user->account_id)
+                                            ->where('company_id', $company->id)
+                                            ->where('created_at', $createdAt)
+                                            ->get();
+
+        return response($blockedNumbers);
     }
 
     /**

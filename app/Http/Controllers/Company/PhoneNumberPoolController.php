@@ -16,6 +16,7 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\BankedPhoneNumber;
 use \App\Events\Company\PhoneNumberEvent;
 use \App\Events\Company\PhoneNumberPoolEvent;
+use App\Helpers\PhoneNumberManager;
 use Validator;
 use Exception;
 use Log;
@@ -23,6 +24,8 @@ use DB;
 
 class PhoneNumberPoolController extends Controller
 {
+    private $numberManager;
+
     //  Pass along to parent for listing
     static $fields = [
         'phone_number_pools.company_id',
@@ -41,6 +44,11 @@ class PhoneNumberPoolController extends Controller
         'phone_numbers.assignments',
         'call_count',
     ];
+
+    public function __construct(PhoneNumberManager $numberManager)
+    {
+        $this->numberManager = $numberManager;
+    }
 
     /**
      * List phone number pools
@@ -133,12 +141,13 @@ class PhoneNumberPoolController extends Controller
         $availableNumbers  = [];
         if( $totalNumbersFound < $poolSize ){
             //  Make sure we have enough numbers available
-            $availableNumbers = PhoneNumber::listAvailable(
-                $startsWith, 
-                $poolSize, 
-                $type, 
-                $company->country
-            );
+            $availableNumbers = $this->numberManager
+                                     ->listAvailable(
+                                        $startsWith, 
+                                        $poolSize, 
+                                        $type, 
+                                        $company->country
+                                     );
             $totalNumbersFound += count($availableNumbers);
         }
            
@@ -218,7 +227,8 @@ class PhoneNumberPoolController extends Controller
                 $availableNumber = $availableNumbers[$i];
                 $purchasedPhone  = null;
                 try{
-                    $purchasedPhone = PhoneNumber::purchase($availableNumber->phoneNumber);
+                    $purchasedPhone = $this->numberManager
+                                           ->purchase($availableNumber->phoneNumber);
                 }catch(Exception $e){
                     Log::error($e->getTraceAsString());
                     continue;
@@ -448,7 +458,7 @@ class PhoneNumberPoolController extends Controller
         $availableNumbers  = [];
         if( $totalNumbersFound < $count ){
             //  Make sure we have enough numbers available
-            $availableNumbers = PhoneNumber::listAvailable(
+            $availableNumbers = $this->numberManager->listAvailable(
                 $startsWith, 
                 $count, 
                 $type, 
@@ -523,7 +533,8 @@ class PhoneNumberPoolController extends Controller
                 $availableNumber = $availableNumbers[$i];
                 $purchasedPhone  = null;
                 try{
-                    $purchasedPhone = PhoneNumber::purchase($availableNumber->phoneNumber);
+                    $purchasedPhone = $this->numberManager
+                                           ->purchase($availableNumber->phoneNumber);
                 }catch(Exception $e){
                     Log::error($e->getTraceAsString());
                     continue;

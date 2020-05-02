@@ -17,11 +17,9 @@ class CreateBlockedPhoneNumbersTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned()->nullable();
-            $table->bigInteger('user_id')->unsigned()->nullable();
             $table->string('name', 64);
             $table->string('country_code', 8)->nullable();
             $table->string('number', 16);
-            $table->string('batch_id', 16);
 
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();

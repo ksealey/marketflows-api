@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Company;
+use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
+
 use DB;
 use DateTime;
 use DateTimeZone;
@@ -32,14 +35,17 @@ class WidgetController extends Controller
 
         $query = DB::table('calls')
                     ->select([ 'calls.source as source', DB::raw('COUNT(*) AS call_count') ])
-                    ->whereIn('company_id', function($query) use($user){
-                        $query->select('company_id')
-                              ->from('user_companies')
-                              ->where('user_id', $user->id);
-                    })
-                    ->groupBy('calls.source')
-                    ->orderBy('call_count', 'DESC')
-                    ->limit(5);
+                    ->where('account_id', $user->account_id);
+        if( ! $user->canViewAllCompanies() ){
+            $query->whereIn('company_id', function($query) use($user){
+                $query->select('company_id')
+                        ->from('user_companies')
+                        ->where('user_id', $user->id);
+            });
+        }
+        $query->groupBy('calls.source')
+              ->orderBy('call_count', 'DESC')
+              ->limit(5);
 
         $results  = $query->get()->toArray();
         $labels   = array_column($results, 'source');
@@ -86,12 +92,14 @@ class WidgetController extends Controller
         $user   = $request->user();
         $userTZ = new DateTimeZone($user->timezone);
         $utcTZ  = new DateTimeZone('UTC');
-        $query = DB::table('calls')
-                    ->whereIn('company_id', function($query) use($user){
-                        $query->select('company_id')
-                              ->from('user_companies')
-                              ->where('user_id', $user->id);
-                    });
+        $query  = Call::where('account_id', $user->account_id);
+        if( ! $user->canViewAllCompanies() ){
+            $query->whereIn('company_id', function($query) use($user){
+                $query->select('company_id')
+                        ->from('user_companies')
+                        ->where('user_id', $user->id);
+            });
+        }
         
         if( $request->start_date ){
             $startDate = new DateTime($request->start_date, $userTZ);
@@ -106,7 +114,114 @@ class WidgetController extends Controller
         }
 
         return response([
-            'title' => 'Top Call Sources',
+            'title' => 'Total Calls',
+            'type'  => 'count',
+            'data'  => [
+                'count' => $query->count()
+            ]
+        ]); 
+    }
+
+    /**
+     * Fetch total companies
+     * 
+     */
+    public function totalCompanies(Request $request)
+    {
+        $validator = validator($request->input(), [
+            'start_date' => 'date_format:Y-m-d',
+            'end_date'   => 'date_format:Y-m-d' 
+        ]);
+
+        if( $validator->fails() ){
+            return response([ 
+                'error' => $validator->errors()->first() 
+            ], 400);
+        }
+
+        $user   = $request->user();
+        $userTZ = new DateTimeZone($user->timezone);
+        $utcTZ  = new DateTimeZone('UTC');
+        $query  = Company::where('account_id', $user->account_id);
+
+        if( ! $user->canViewAllCompanies() ){
+            $query->whereIn('company_id', function($query) use($user){
+                $query->select('company_id')
+                        ->from('user_companies')
+                        ->where('user_id', $user->id);
+            });
+        }
+        
+        if( $request->start_date ){
+            $startDate = new DateTime($request->start_date, $userTZ);
+            $startDate->setTimeZone($utcTZ);
+            $query->where('created_at', '>=', $startDate);
+        }
+
+        if( $request->end_date ){
+            $endDate = new DateTime($request->end_date . ' 23:59:59',$userTZ);
+            $endDate->setTimeZone($utcTZ);
+            $query->where('created_at', '<=', $endDate);
+        }
+
+        return response([
+            'title' => 'Total Companies',
+            'type'  => 'count',
+            'data'  => [
+                'count' => $query->count()
+            ]
+        ]); 
+    }
+
+    /**
+     * Fetch total number count
+     * 
+     */
+    public function totalNumbers(Request $request)
+    {
+        $validator = validator($request->input(), [
+            'start_date' => 'date_format:Y-m-d',
+            'end_date'   => 'date_format:Y-m-d' 
+        ]);
+
+        if( $validator->fails() ){
+            return response([ 
+                'error' => $validator->errors()->first() 
+            ], 400);
+        }
+
+        $user   = $request->user();
+        $userTZ = new DateTimeZone($user->timezone);
+        $utcTZ  = new DateTimeZone('UTC');
+        $query  = PhoneNumber::whereIn('company_id', function($query) use($user){
+            $query->select('id')
+                    ->from('companies')
+                    ->where('account_id', $user->account_id)
+                    ->whereNull('deleted_at');
+        });
+
+        if( ! $user->canViewAllCompanies() ){
+            $query->whereIn('company_id', function($query) use($user){
+                $query->select('company_id')
+                        ->from('user_companies')
+                        ->where('user_id', $user->id);
+            });
+        }
+        
+        if( $request->start_date ){
+            $startDate = new DateTime($request->start_date, $userTZ);
+            $startDate->setTimeZone($utcTZ);
+            $query->where('created_at', '>=', $startDate);
+        }
+
+        if( $request->end_date ){
+            $endDate = new DateTime($request->end_date . ' 23:59:59',$userTZ);
+            $endDate->setTimeZone($utcTZ);
+            $query->where('created_at', '<=', $endDate);
+        }
+
+        return response([
+            'title' => 'Total Numbers',
             'type'  => 'count',
             'data'  => [
                 'count' => $query->count()

@@ -5,16 +5,19 @@ namespace App\Models\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
-use \App\Models\Company\Campaign;
+use \App\Models\Company\Call;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Traits\CanSwapNumbers;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Contracts\Exportable;
 use \App\Traits\PerformsExport;
+use \App\Helpers\PhoneNumberManager;
+
 use Twilio\Rest\Client as TwilioClient;
 use App;
 use DB;
 use Exception;
+use Carbon\Carbon;
 
 class PhoneNumber extends Model implements Exportable
 {
@@ -26,9 +29,12 @@ class PhoneNumber extends Model implements Exportable
     const TYPE_LOCAL     = 'Local';
     const TYPE_TOLL_FREE = 'Toll-Free';
     
+    private $numberManager;
+
     protected $fillable = [
         'uuid',
         'external_id',
+        'account_id',
         'company_id',
         'created_by',
         'updated_by',
@@ -185,73 +191,59 @@ class PhoneNumber extends Model implements Exportable
      * List local phone numbers available for a given area code
      * 
      */
-    static public function listAvailable($contains = '' , $limit = 20, $type, $country = 'US')
-    {
-        $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
-
-        $config   = [
-            'contains'     => $contains,
-            'voiceEnabled' => true,
-            'smsEnabled'   => true,
-        ]; 
-
-        $client  = self::client();
-        $numbers = [];
-
-        try{
-            $numbers = $client->availablePhoneNumbers($country);
-            $numbers = $type === 'Toll-Free' ? $numbers->tollFree : $numbers->local;
-            $numbers = $numbers->read($config, $limit);
-        }catch(Exception $e){ }
-
-        return $numbers ?: [];
-    }
-
-    /**
-     * Purchase a new phone number
-     *
-     * @param string $phone
-     * 
-     * @return array
-     */
-    static public function purchase(string $number, $disableTestSwap = false)
-    {
-        if( App::environment(['prod', 'production']) ){
-            $client = self::client();
-        }else{
-            $client = self::testClient();
-            if( ! $disableTestSwap )
-                $number = config('services.twilio.magic_numbers.available'); 
-        }
-
-        return $client->incomingPhoneNumbers
-                      ->create([
-                            'phoneNumber'           => $number,
-                            'voiceUrl'              => route('incoming-call'),
-                            'voiceMethod'           => 'GET',
-                            'statusCallback'        => route('incoming-call-status-changed'),
-                            'statusCallbackMethod'  => 'GET',
-                            'smsUrl'                => route('incoming-sms'),
-                            'smsMethod'             => 'GET',
-                            'mmsUrl'                => route('incoming-mms'),
-                            'mmsMethod'             => 'GET'
-                        ]);
-        
-    }
+    
     
     /**
      * Release a phone number
      * 
      */
+
+    public function bankOrRelease()
+    {
+        //  Move numbers to bank, release if needed
+        $today            = today();
+        $sevenDaysAgo     = today()->subDays(7);
+        $fiveDaysFromNow  = today()->addDays(5);
+        $callThreshold    = 21; // 3 calls per day for 7 days
+ 
+        //  Determine renewal date
+        $purchaseDate  = new Carbon($this->purchased_at);
+        $renewDate     = new Carbon($today->format('Y-m-' . $purchaseDate->format('d')));
+        if( $today->format('Y-m-d') >= $renewDate->format('Y-m-d') ) // If renew date has passed for month, move to next month
+            $renewDate->addMonths('1');
+
+        //  Determine call count for last 7 days
+        $calls = Call::where('phone_number_id', $this->id)
+                    ->where('created_at', '>=', $sevenDaysAgo)
+                    ->get();
+        
+        $daysUntilRenew = $today->diffInDays($renewDate);
+       
+        if( $daysUntilRenew <= 5 ){
+            return $this->release();
+        }
+
+        BankedPhoneNumber::create([
+            'external_id'            => $this->external_id,
+            'country'                => $this->country,
+            'country_code'           => $this->country_code,
+            'number'                 => $this->number,
+            'voice'                  => $this->voice,
+            'sms'                    => $this->sms,
+            'mms'                    => $this->mms,
+            'type'                   => $this->type,
+            'calls'                  => count($calls),
+            'purchased_at'           => $this->purchased_at,
+            'release_by'             => $renewDate->subDays(2),
+            'released_by_account_id' => $this->account_id,
+            'status'                 => count($calls) > $callThreshold ? 'Banked' : 'Available',
+        ]);
+    }
+
     public function release()
     {
-        if( App::environment(['prod', 'production']) ){
-            self::client()
-                ->incomingPhoneNumbers($this->external_id)
-                ->delete();
-        }
-       
-        return $this;
+        return App::make(PhoneNumberManager::class)
+                  ->release($this->external_id);
     }
 
     /**

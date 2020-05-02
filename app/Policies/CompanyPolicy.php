@@ -38,9 +38,4 @@ class CompanyPolicy
         return $user->canDoAction('delete') &&
                $user->canViewCompany($company);
     }
-
-    public function bulkDelete(User $user)
-    {
-        return $user->canDoAction('delete');
-    }
 }

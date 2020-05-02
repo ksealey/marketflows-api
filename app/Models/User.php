@@ -53,6 +53,10 @@ class User extends Authenticatable
         'login_attempts',
         'deleted_at'
     ];
+
+    public $appends = [
+        'full_name'
+    ];
     
     static public function roles()
     {

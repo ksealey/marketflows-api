@@ -15,7 +15,7 @@ use App\Models\Company\Call;
 use App\Rules\SwapRulesRule;
 use App\Rules\Company\BulkPhoneNumberRule;
 
-use App\Events\Company\PhoneNumberEvent;
+use App\Helpers\PhoneNumberManager;
 
 use Validator;
 use Exception;
@@ -25,6 +25,8 @@ use DB;
 
 class PhoneNumberController extends Controller
 {
+    private $numberManager;
+
     static $fields = [
         'phone_numbers.name',
         'phone_numbers.number',
@@ -33,6 +35,11 @@ class PhoneNumberController extends Controller
         'phone_numbers.updated_at',
         'call_count'
     ];
+
+    public function __construct(PhoneNumberManager $numberManager)
+    {
+        $this->numberManager = $numberManager;
+    }
 
     /**
      * List phone numbers
@@ -126,8 +133,8 @@ class PhoneNumberController extends Controller
             $phoneNumber = PhoneNumber::create([
                 'uuid'                      => Str::uuid(),
                 'external_id'               => $bankedNumber->external_id,
+                'account_id'                => $company->account_id,
                 'company_id'                => $company->id,
-                'user_id'                   => $user->id,
                 'phone_number_config_id'    => $request->phone_number_config_id,
                 'category'                  => $request->category,
                 'sub_category'              => $request->sub_category,
@@ -145,10 +152,11 @@ class PhoneNumberController extends Controller
                 'campaign'                  => $request->campaign,
                 'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null,
                 'purchased_at'              => $bankedNumber->purchased_at
+                'created_by'                => $user->id,
             ]);
         }else{
              //  Look for a phone number that matches the start_with
-            $foundNumbers = PhoneNumber::listAvailable(
+            $foundNumbers = $this->numberManager->listAvailable(
                 $startsWith, 
                 1, 
                 $request->type, 
@@ -161,7 +169,8 @@ class PhoneNumberController extends Controller
                 ], 400);
 
             try{
-                $purchasedPhone = PhoneNumber::purchase($foundNumbers[0]->phoneNumber);
+                $purchasedPhone = $this->numberManager
+                                       ->purchase($foundNumbers[0]->phoneNumber);
             }catch(Exception $e){
                 Log::error($e->getTraceAsString());
                 
@@ -173,8 +182,8 @@ class PhoneNumberController extends Controller
             $phoneNumber = PhoneNumber::create([
                 'uuid'                      => Str::uuid(),
                 'external_id'               => $purchasedPhone->sid,
+                'account_id'                => $company->account_id,
                 'company_id'                => $company->id,
-                'user_id'                   => $user->id,
                 'phone_number_config_id'    => $request->phone_number_config_id,
                 'category'                  => $request->category,
                 'sub_category'              => $request->sub_category,
@@ -191,14 +200,13 @@ class PhoneNumberController extends Controller
                 'content'                   => $request->content,
                 'campaign'                  => $request->campaign,
                 'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null,
-                'purchased_at'              => now()
+                'purchased_at'              => now(),
+                'created_by'                => $user->id
             ]);
         }
 
         $phoneNumber->call_count = 0;
         
-        event(new PhoneNumberEvent($account, [$phoneNumber], 'create'));
-
         return response($phoneNumber, 201);
     }
 
@@ -228,11 +236,11 @@ class PhoneNumberController extends Controller
 
         $rules = [
             'disabled'            => 'bail|boolean',
-            'name'                => 'bail|max:64',
-            'source'              => 'bail|max:64',  
-            'medium'              => 'bail|max:64',  
-            'content'             => 'bail|max:64',  
-            'campaign'            => 'bail|max:64',        
+            'name'                => 'bail|min:1,max:64',
+            'source'              => 'bail|min:1,max:64',  
+            'medium'              => 'bail|nullable|max:64',  
+            'content'             => 'bail|nullable|max:64',  
+            'campaign'            => 'bail|nullable|max:64',        
             'phone_number_config' => [
                 'bail',
                 (new PhoneNumberConfigRule($company))
@@ -276,19 +284,17 @@ class PhoneNumberController extends Controller
             $phoneNumber->name = $request->name;
         if( $request->filled('source') )
             $phoneNumber->source = $request->source;
-        if( $request->filled('medium') )
-            $phoneNumber->medium = $request->medium;
-        if( $request->filled('content') )
-            $phoneNumber->content = $request->content;
-        if( $request->filled('campaign') )
-            $phoneNumber->campaign = $request->campaign;
+        if( $request->has('medium') )
+            $phoneNumber->medium = $request->medium ?: null;
+        if( $request->has('content') )
+            $phoneNumber->content = $request->content ?: null;
+        if( $request->has('campaign') )
+            $phoneNumber->campaign = $request->campaign ?: null;
 
         if( $request->filled('swap_rules') )
             $phoneNumber->swap_rules = $request->sub_category == 'WEBSITE' ? json_decode($request->swap_rules) : null;
         
         $phoneNumber->save();
-
-        event(new PhoneNumberEvent([$phoneNumber], 'update'));
 
         return response($phoneNumber);
     }
@@ -299,58 +305,14 @@ class PhoneNumberController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
+        $phoneNumber->bankOrRelease();
         $phoneNumber->delete();
 
-        event(new PhoneNumberEvent($company->account, [$phoneNumber], 'delete'));
-        
         return response([
             'message' => 'deleted'
         ]);
     }
-
-     /**
-     * Bulk Delete
-     * 
-     */
-    public function bulkDelete(Request $request, Company $company)
-    {
-        $user = $request->user();
-
-        $validator = validator($request->input(), [
-            'ids' => ['required','json']
-        ]);
-
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $phoneNumberIds = array_values(json_decode($request->ids, true) ?: []);
-        $phoneNumberIds = array_filter($phoneNumberIds, function($item){
-            return is_string($item) || is_numeric($item);
-        });
-        $phoneNumbers = PhoneNumber::whereIn('id', $phoneNumberIds)
-                                   ->whereIn('company_id', function($query) use($user){
-                                         $query->select('company_id')
-                                               ->from('user_companies')
-                                               ->where('user_id', $user->id);
-                                    })
-                                    ->get()
-                                    ->toArray();
-
-        $phoneNumberIds = array_column($phoneNumbers, 'id');
-        if( count($phoneNumbers) ){
-            PhoneNumber::whereIn('id', $phoneNumberIds)->delete();
-
-            event(new PhoneNumberEvent($company->account, $phoneNumbers, 'delete'));
-        }
-
-        return response([
-            'message' => 'Deleted.'
-        ]);
-    }
-
+    
     /**
      * Attach a phone number to a phone number pool
      * 
@@ -470,7 +432,7 @@ class PhoneNumberController extends Controller
         $neededCount = $request->count - $bankedCount;
         $numbers     = [];
         try{
-            $numbers = PhoneNumber::listAvailable(
+            $numbers = $this->numberManager->listAvailable(
                 $request->starts_with, 
                 $neededCount, 
                 $request->type,

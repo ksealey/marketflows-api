@@ -161,20 +161,4 @@ class AccountTest extends TestCase
         $this->assertNull($account->account_type_updated_at);
     }
 
-    /**
-     * Test deleting an account calls all neccessary events and deletes resources
-     * 
-     * @group accounts
-     */
-    public function testDeletingAccountCallsEventsAndRemovesResources()
-    {
-        //  Add some companies, phone numbers, calls and blocked numbers, blocked calls
-        $companies = $this->createCompanies();
-
-        $this->assertTrue(true);
-
-       
-        
-    }
-
 }

@@ -54,7 +54,6 @@ class AccountController extends Controller
         $validator = validator($request->input(), [
             'account_type' => [
                 'required',
-                //  Only allow upgrades to analytics or analytics pro
                 'in:' . Account::TYPE_ANALYTICS . ',' . Account::TYPE_ANALYTICS_PRO
             ]
         ]);

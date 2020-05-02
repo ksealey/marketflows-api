@@ -14,10 +14,6 @@ class BlockedPhoneNumber extends Model
     
     protected $table = 'blocked_phone_numbers';
 
-    protected $hidden = [
-        'deleted_at'
-    ];
-
     protected $fillable = [
         'account_id',
         'company_id',
@@ -25,7 +21,14 @@ class BlockedPhoneNumber extends Model
         'name',
         'number', 
         'country_code',
-        'batch_id' 
+        'created_by',
+        'updated_by',
+        'deleted_by'
+    ];
+
+    protected $hidden = [
+        'deleted_at',
+        'deleted_by'
     ];
 
     protected $appends = [

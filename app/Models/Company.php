@@ -6,7 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Contracts\Exportable;
 use \App\Traits\PerformsExport;
+use \App\Models\UserCompany;
+use \App\Models\BlockedPhoneNumber;
+use \App\Models\BlockedPhoneNumber\BlockedCall;
+use \App\Models\Company\Report;
+use \App\Models\Company\ReportAutomation;
+use \App\Models\Company\AudioClip;
+use \App\Models\Company\Call;
+use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\PhoneNumberPool;
+use \App\Models\Company\PhoneNumberConfig;
+
 use DB;
 
 class Company extends Model implements Exportable
@@ -82,5 +93,51 @@ class Company extends Model implements Exportable
     public function account()
     {
         return $this->belongsTo('\App\Models\Account');
+    }
+
+    public function purge()
+    {
+        //  Remove audio clips along with their remote resource
+        AudioClip::where('company_id', $this->id)
+                    ->get()
+                    ->each(function($audioClip){
+                        $audioClip->deleteRemoteResource();
+                        $audioClip->delete();
+                    });
+
+        //  Bank or release phone number then delete
+        PhoneNumber::where('company_id', $this->id)
+                    ->get()
+                    ->each(function($phoneNumber){
+                        $phoneNumber->bankOrRelease();
+                        $phoneNumber->delete();
+                    });
+
+        //
+        //  Then everything else ...
+        //
+        Call::where('company_id', $this->id)->delete();
+        
+        UserCompany::where('company_id', $this->id)->delete();
+
+        PhoneNumberPool::where('company_id', $this->id)->delete();
+
+        PhoneNumberConfig::where('company_id', $this->id)->delete();
+
+        BlockedCall::whereIn('blocked_phone_number_id', function($q){
+                        $q->select('id')
+                            ->from('blocked_phone_numbers')
+                            ->where('blocked_phone_numbers.company_id', $this->id);
+                    })->delete();
+
+        BlockedPhoneNumber::where('company_id', $this->id)->delete();
+
+        ReportAutomation::whereIn('report_id', function($q){
+                              $q->select('id')
+                                ->from('reports')
+                                ->where('reports.company_id', $this->id);
+                        })->delete();
+
+        Report::where('company_id', $this->id)->delete();
     }
 }

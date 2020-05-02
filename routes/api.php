@@ -130,6 +130,14 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
              ->middleware('can:read,\App\Models\Account')
              ->name('widget-top-call-sources');
 
+        Route::get('/total-companies', 'WidgetController@totalCompanies')
+             ->middleware('can:read,\App\Models\Account')
+             ->name('widget-total-companies');
+
+        Route::get('/total-numbers', 'WidgetController@totalNumbers')
+             ->middleware('can:read,\App\Models\Account')
+             ->name('widget-total-companies');
+
         Route::get('/total-calls', 'WidgetController@totalCalls')
              ->middleware('can:read,\App\Models\Account')
              ->name('widget-total-calls');
@@ -210,10 +218,6 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
     |--------------------------------
     */
     Route::prefix('companies')->group(function(){
-        Route::delete('/', 'CompanyController@bulkDelete')
-              ->middleware('can:bulkDelete,\App\Models\Company')
-              ->name('bulk-delete-companies');
-
         Route::get('/', 'CompanyController@list')
             ->middleware('can:list,\App\Models\Company')
             ->name('list-companies');
@@ -278,10 +282,6 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
             */
             Route::prefix('phone-number-configs')->group(function(){
                 Route::get('/', 'Company\PhoneNumberConfigController@list')
-                    ->middleware('can:list,\App\Models\Company\PhoneNumberConfig')
-                    ->name('list-phone-number-configs');
-
-                Route::delete('/', 'Company\PhoneNumberConfigController@bulkDelete')
                     ->middleware('can:list,\App\Models\Company\PhoneNumberConfig')
                     ->name('list-phone-number-configs');
 
@@ -373,10 +373,6 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
                     ->middleware('can:list,\App\Models\BlockedPhoneNumber')
                     ->name('list-company-blocked-phone-numbers');
 
-                Route::delete('/', 'Company\BlockedPhoneNumberController@bulkDelete')
-                    ->middleware('can:list,\App\Models\BlockedPhoneNumber')
-                    ->name('list-company-blocked-phone-numbers');
-
                 Route::post('/', 'Company\BlockedPhoneNumberController@create')
                     ->middleware('can:create,\App\Models\BlockedPhoneNumber')
                     ->name('create-company-blocked-phone-number');
@@ -425,10 +421,6 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
                         ->middleware('can:list,\App\Models\Company\PhoneNumber,company')
                         ->name('export-phone-numbers');
 
-                Route::delete('/', 'Company\PhoneNumberController@bulkDelete')
-                        ->middleware('can:bulkDelete,\App\Models\Company\PhoneNumber,company')
-                        ->name('bulk-delete-phone-numbers');
-
                 Route::get('/', 'Company\PhoneNumberController@list')
                     ->middleware('can:list,\App\Models\Company\PhoneNumber,company')
                     ->name('list-phone-numbers');
@@ -464,10 +456,6 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
     
                 Route::post('/', 'Company\ReportController@create')
                     ->middleware('can:create,\App\Models\Company\Report')
-                    ->name('create-report');
-                
-                Route::delete('/', 'Company\ReportController@bulkDelete')
-                    ->middleware('can:list,\App\Models\Company\Report')
                     ->name('create-report');
                 
                 Route::get('/export', 'Company\ReportController@export')

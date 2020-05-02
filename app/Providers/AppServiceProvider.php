@@ -26,6 +26,13 @@ class AppServiceProvider extends ServiceProvider
         });
 
         //  Register AWS
+        $this->app->bind('App\Helpers\PhoneNumberManager', function($app){
+            $config = config('services.twilio');
+
+            return new \App\Helpers\PhoneNumberManager(new Twilio($config['sid'], $config['token']));
+        });
+
+        //  Register AWS
         $this->app->bind('App\Helpers\TextToSpeech', function($app){
             return new \App\Helpers\TextToSpeech(AWS::createClient('polly'));
         });

@@ -6,10 +6,16 @@ use \App\Models\Account;
 use \App\Models\Billing;
 use \App\Models\User;
 use App\Models\Company;
+use \App\Models\Company\AudioClip;
+use \App\Models\Company\Report;
+use \App\Models\Company\ReportAutomation;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Call;
+use \App\Models\BlockedPhoneNumber;
+use \App\Models\BlockedPhoneNumber\BlockedCall;
+use Storage;
 
 trait CreatesAccount
 {
@@ -35,58 +41,97 @@ trait CreatesAccount
     public function createCompanies()
     {
 
-        $companies = factory(Company::class, 5)->create([
-            'account_id' => $this->account->id,
+        //  Company
+        $company = factory(Company::class)->create([
+            'account_id' => $this->user->account_id,
             'created_by' => $this->user->id
-        ])
-        ->each(function($company){
-            //
-            //  Create phone number configs
-            //
-            $phoneNumberConfigs = factory(PhoneNumberConfig::class, 2)->create([
-                'company_id' => $company->id,
-                'created_by' => $this->user->id
-            ])->each(function($config){
-                //  Create Phone Numbers
-                $phoneNumbers = factory(PhoneNumber::class, mt_rand(1,2))->create([
-                    'company_id' => $config->company_id,
-                    'created_by' => $this->user->id,
-                    'phone_number_config_id' => $config->id
-                ])->each(function($phoneNumber){
-                    factory(Call::class, 4)->create([
-                        'account_id'      => $this->account->id,
-                        'company_id'      => $phoneNumber->company_id,
-                        'phone_number_id' => $phoneNumber->id
-                    ]);
-                });
-            });
+        ]);
 
-            //  
-            //  Create phone number pool
-            //
-            $config = $phoneNumberConfigs[0];
-            $phoneNumberPool = factory(PhoneNumberPool::class, 1)->create([
-                'company_id' => $company->id,
-                'created_by' => $this->user->id,
-                'phone_number_config_id' => $config->id
-            ])->each(function($pool) use($config){
-                //  Create numbers for phone number pool
-                factory(PhoneNumber::class, mt_rand(1,2))->create([
-                    'company_id' => $config->company_id,
-                    'created_by' => $this->user->id,
-                    'phone_number_config_id' => $config->id,
-                    'phone_number_pool_id' => $pool->id
-                ])->each(function($phoneNumber){
-                    factory(Call::class, 4)->create([
-                        'account_id'      => $this->account->id,
-                        'company_id'      => $phoneNumber->company_id,
-                        'phone_number_id' => $phoneNumber->id
-                    ]);
-                });
-            });
-        }); 
+        //  Audio Clip
+        $audioClip  = factory(AudioClip::class)->create([
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+        Storage::put($audioClip->path, 'foobar');
 
-        return $companies;
+        //  Config
+        $config = factory(PhoneNumberConfig::class)->create([
+            'company_id' => $company->id,
+            'created_by' => $this->user->id,
+            'greeting_audio_clip_id' => $audioClip->id,
+        ]);
+
+        //  Some numbers
+        $phoneNumber = factory(PhoneNumber::class)->create([
+            'account_id' => $this->user->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id, 
+            'phone_number_config_id' => $config->id
+        ]);
+        $phoneNumber->each(function($phoneNumber){
+            factory(Call::class, 5)->create([
+                'account_id' => $phoneNumber->account_id,
+                'company_id' => $phoneNumber->company_id,
+                'phone_number_id' =>$phoneNumber->id
+            ]);
+        });
+
+        //  A number pool
+        $pool = factory(PhoneNumberPool::class)->create([
+            'company_id' => $company->id,
+            'created_by' => $this->user->id, 
+            'phone_number_config_id' => $config->id
+        ]);
+        
+        $past = now()->subMonths(1)->addDays(4);
+        $poolNumbers = factory(PhoneNumber::class, mt_rand(3,6))->create([
+            'account_id' => $this->user->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id, 
+            'phone_number_config_id' => $pool->phone_number_config_id,
+            'phone_number_pool_id' => $pool->id,
+            'purchased_at'         => $past // Should be released
+        ]);
+        $poolNumbers->each(function($phoneNumber){
+            factory(Call::class, 15)->create([
+                'account_id' => $phoneNumber->account_id,
+                'company_id' => $phoneNumber->company_id,
+                'phone_number_id' =>$phoneNumber->id
+            ]);
+        });
+
+        //  Blocked Numbers
+        factory(BlockedPhoneNumber::class, 10)->create([
+            'account_id' => $this->account->id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ])->each(function($blockedNumber) use($phoneNumber){
+            factory(BlockedCall::class, 3)->create([
+                'blocked_phone_number_id' => $blockedNumber->id,
+                'phone_number_id'         => $phoneNumber->id,
+            ]);
+        });
+
+        //  Report
+        $report = factory(Report::class)->create([
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+
+        //  Report Automation
+        $automations = factory(ReportAutomation::class)->create([
+            'report_id'  => $report->id
+        ]);
+
+        return [
+            'company' => $company,
+            'audio_clip' => $audioClip,
+            'phone_number_config' => $config,
+            'phone_number' => $phoneNumber,
+            'report' => $report,
+            'phone_number_pool' => $pool,
+            'phone_number_pool_numbers' => $poolNumbers
+        ];
     }
 
     public function json($method, $route, $body = [], $headers = [])

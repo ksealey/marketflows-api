@@ -58,6 +58,11 @@ class AudioClip extends Model
         return $this->belongsTo('\App\Models\Company');
     }
 
+    public function deleteRemoteResource()
+    {
+        Storage::delete($this->path);
+    }
+
     public function isInUse()
     {
         return PhoneNumberConfig::where('audio_clip_id', $this->id)->count() ? true : false;
