@@ -255,23 +255,23 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
             */
             Route::prefix('audio-clips')->group(function(){
                 Route::get('/', 'Company\AudioClipController@list')
-                    ->middleware('can:list,\App\Models\Company\AudioClip')
+                    ->middleware('can:list,\App\Models\Company\AudioClip,company')
                     ->name('list-audio-clips');
 
                 Route::post('/', 'Company\AudioClipController@create')
-                    ->middleware('can:create,App\Models\Company\AudioClip')
+                    ->middleware('can:create,App\Models\Company\AudioClip,company')
                     ->name('create-audio-clip');
 
                 Route::get('/{audioClip}', 'Company\AudioClipController@read')
-                    ->middleware('can:read,audioClip')
+                    ->middleware('can:read,audioClip,company')
                     ->name('read-audio-clip');
 
                 Route::put('/{audioClip}', 'Company\AudioClipController@update')
-                    ->middleware('can:update,audioClip')
+                    ->middleware('can:update,audioClip,company')
                     ->name('update-audio-clip');
 
                 Route::delete('/{audioClip}', 'Company\AudioClipController@delete')
-                    ->middleware('can:delete,audioClip')
+                    ->middleware('can:delete,audioClip,company')
                     ->name('delete-audio-clip');
             });  
 

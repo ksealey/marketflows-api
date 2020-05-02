@@ -14,33 +14,34 @@ class AudioClipPolicy
 
     public function list(User $user)
     {
-        return $user->canDoAction('audio-clips.read');
+        return $user->canDoAction('read');
     }
     
-    public function create(User $user)
+    public function create(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id) 
-            && $user->canDoAction('audio-clips.create');
+        return $user->canDoAction('create')
+            && $user->canViewCompany($company);
+               
     }
 
-    public function read(User $user, AudioClip $audioClip)
+    public function read(User $user, AudioClip $audioClip, Company $company)
     {
-        return $this->resourceBelongsToCompany($audioClip->company_id)
-            && $this->userCanViewCompany($user, $audioClip->company_id) 
-            && $user->canDoAction('audio-clips.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company)
+            && $audioClip->company_id === $company->id;
     }
 
-    public function update(User $user, AudioClip $audioClip)
+    public function update(User $user, AudioClip $audioClip, Company $company)
     {
-        return $this->resourceBelongsToCompany($audioClip->company_id)
-            && $this->userCanViewCompany($user, $audioClip->company_id) 
-            && $user->canDoAction('audio-clips.update');
+        return $user->canDoAction('update')
+            && $user->canViewCompany($company)
+            && $audioClip->company_id === $company->id;
     }
 
-    public function delete(User $user, AudioClip $audioClip)
+    public function delete(User $user, AudioClip $audioClip, Company $company)
     {
-        return $this->resourceBelongsToCompany($audioClip->company_id)
-            && $this->userCanViewCompany($user, $audioClip->company_id) 
-            && $user->canDoAction('audio-clips.delete');
+        return $user->canDoAction('delete')
+            && $user->canViewCompany($company)
+            && $audioClip->company_id === $company->id;
     }
 }

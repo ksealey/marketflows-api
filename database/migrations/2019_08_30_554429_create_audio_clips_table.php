@@ -15,6 +15,7 @@ class CreateAudioClipsTable extends Migration
     {
         Schema::create('audio_clips', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->string('name', 64);
             $table->string('path', 128);
@@ -25,6 +26,7 @@ class CreateAudioClipsTable extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('updated_by')->references('id')->on('users');

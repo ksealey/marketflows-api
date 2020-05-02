@@ -38,6 +38,14 @@ trait CreatesAccount
         ]);
     }
 
+    public function createCompany($with = [])
+    {
+        return factory(Company::class)->create(array_merge([
+            'account_id' => $this->user->account_id,
+            'created_by' => $this->user->id
+        ], $with));
+    }
+
     public function createCompanies()
     {
 
@@ -49,6 +57,7 @@ trait CreatesAccount
 
         //  Audio Clip
         $audioClip  = factory(AudioClip::class)->create([
+            'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);

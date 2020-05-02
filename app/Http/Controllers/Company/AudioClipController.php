@@ -50,7 +50,7 @@ class AudioClipController extends Controller
             'name'        => 'required|max:64'
         ];
 
-        $validator = Validator::make($request->all(), $rules);
+        $validator = validator($request->all(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first(),
@@ -68,23 +68,20 @@ class AudioClipController extends Controller
 
             //  Log in database
             $audioClip = AudioClip::create([
+                'account_id'    => $company->account_id,
                 'company_id'    => $company->id,
-                'user_id'       => $user->id,
                 'name'          => $request->name,
                 'path'          => $filePath,
-                'mime_type'     => $file->getMimeType()
+                'mime_type'     => $file->getMimeType(),
+                'created_by'    => $user->id
             ]);
         }catch(Exception $e){
             DB::rollBack();
 
-            return response([
-                'error' => 'Unable to upload file',
-            ], 400);
+            throw $e;
         }
 
         DB::commit();
-
-        event(new AudioClipEvent($user, [$audioClip], 'create'));
 
         return response($audioClip, 201);
     }
@@ -95,10 +92,7 @@ class AudioClipController extends Controller
      */
     public function read(Request $request, Company $company, AudioClip $audioClip)
     {
-        return response([
-            'message'       => 'success',
-            'audio_clip'    => $audioClip
-        ], 200);
+        return response($audioClip);
     }
 
     /**
@@ -109,10 +103,10 @@ class AudioClipController extends Controller
     {
         $rules = [
             'audio_clip'  => 'file|mimes:x-flac,mpeg,x-wav',
-            'name'        => 'required|max:64'
+            'name'        => 'min:1|max:64'
         ];
 
-        $validator = Validator::make($request->all(), $rules);
+        $validator = validator($request->all(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first(),
@@ -132,45 +126,23 @@ class AudioClipController extends Controller
         }catch(Exception $e){
             DB::rollBack();
 
-            return response([
-                'error' => 'Unable to upload file',
-            ], 400);
+            throw $e;
         }
         DB::commit();
 
-        event(new AudioClipEvent($user, [$audioClip], 'update'));
-
-        return response($audioClip, 200);
+        return response($audioClip);
     }
 
     public function delete(Request $request, Company $company, AudioClip $audioClip)
     {
         if( $audioClip->isInUse() ){
             return response([
-                'error' => 'This audio clip is in use - please remove from all configurations and try again.',
+                'error' => 'This audio clip is in use - please remove from all number configurations and try again.',
             ], 400);
         }
         
+        $audioClip->deleteRemoteResource();
         $audioClip->delete();
-
-        event(new AudioClipEvent($user, [$audioClip], 'delete'));
-
-        return response([
-            'message' => 'deleted',
-        ], 200);
-    }
-
-    public function bulkDelete(Request $request, Company $company)
-    {
-        if( $audioClip->isInUse() ){
-            return response([
-                'error' => 'This audio clip is in use - please remove from all configurations and try again.',
-            ], 400);
-        }
-        
-        $audioClip->delete();
-
-        event(new AudioClipEvent($user, [$audioClip], 'delete'));
 
         return response([
             'message' => 'deleted',

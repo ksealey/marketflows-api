@@ -14,6 +14,7 @@ class AudioClip extends Model
     use SoftDeletes, HandlesStorage;
 
     protected $fillable = [
+        'account_id',
         'company_id',
         'created_by',
         'updated_by',
@@ -38,8 +39,8 @@ class AudioClip extends Model
     public function getLinkAttribute()
     {
         return route('read-audio-clip', [
-            'companyId'     => $this->company_id,
-            'audioClipId'   => $this->id
+            'company'     => $this->company_id,
+            'audioClip'   => $this->id
         ]);
     }
 
@@ -65,6 +66,8 @@ class AudioClip extends Model
 
     public function isInUse()
     {
-        return PhoneNumberConfig::where('audio_clip_id', $this->id)->count() ? true : false;
+        return PhoneNumberConfig::where('greeting_audio_clip_id', $this->id)
+                                ->orWhere('keypress_audio_clip_id', $this->id)
+                                ->count() ? true : false;
     }
 }

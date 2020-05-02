@@ -39,9 +39,4 @@ class PhoneNumberPolicy
         return $user->canDoCompanyAction($company->id, 'phone-numbers.delete')
             && $company->id == $phoneNumber->company_id;
     }
-
-    public function bulkDelete(User $user, Company $company)
-    {
-        return $user->canDoCompanyAction($company->id, 'phone-numbers.delete');
-    }
 }
