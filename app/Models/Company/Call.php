@@ -40,7 +40,6 @@ class Call extends Model
         'campaign',
 
         'recording_enabled',
-        'caller_id_enabled',
         'forwarded_to',
 
         'duration',

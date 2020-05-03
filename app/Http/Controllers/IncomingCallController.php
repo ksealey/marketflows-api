@@ -133,19 +133,17 @@ class IncomingCallController extends Controller
         $callerLastName  = $request->FromState ?: '';
 
         //  Perform Lookups
-        if( $config->caller_id_enabled_at ){
-            try{
-                $caller = $this->twilio
-                               ->lookups
-                               ->v1
-                               ->phoneNumbers($request->from)
-                               ->fetch([
-                                    'type' => ['caller-name']
-                                ]);
-                $callerFirstName = $caller->firstName ?: $callerFirstName;
-                $callerLastName  = $caller->lastName  ?: $callerLastName;
-            }catch(Exception $_){}
-        }
+        try{
+            $caller = $this->twilio
+                            ->lookups
+                            ->v1
+                            ->phoneNumbers($request->from)
+                            ->fetch([
+                                'type' => ['caller-name']
+                            ]);
+            $callerFirstName = $caller->firstName ?: $callerFirstName;
+            $callerLastName  = $caller->lastName  ?: $callerLastName;
+        }catch(Exception $_){}
 
         //  Log call
         $call = Call::create([
@@ -159,8 +157,7 @@ class IncomingCallController extends Controller
             'phone_number_pool_id'      => $pool ? $pool->id : null,
             'session_id'                => $session ? $session->id : null,
 
-            'caller_id_enabled'         => $config->caller_id_enabled_at ? true : false,
-            'recording_enabled'         => $config->recording_enabled_at ? true : false,
+            'recording_enabled'         => $config->recording_enabled,
             'forwarded_to'              => $config->forwardToPhoneNumber(),
             
             'external_id'               => $request->CallSid,
@@ -186,7 +183,7 @@ class IncomingCallController extends Controller
         $dialConfig = ['answerOnBridge' => 'true'];
 
         //  Handle recording
-        if( $config->recording_enabled_at ){
+        if( $config->recording_enabled ){
             $dialConfig['record']                       = 'record-from-ringing-dual';
             $dialConfig['recordingStatusCallback']      = route('incoming-call-recording-available');
             $dialConfig['recordingStatusCallbackEvent'] = 'completed';

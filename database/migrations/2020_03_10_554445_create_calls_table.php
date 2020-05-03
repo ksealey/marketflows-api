@@ -43,7 +43,6 @@ class CreateCallsTable extends Migration
             $table->string('campaign', 128)->nullable();
 
             $table->boolean('recording_enabled');
-            $table->boolean('caller_id_enabled');
             $table->string('forwarded_to', 24);
 
             $table->integer('duration')->unsigned()->nullable();

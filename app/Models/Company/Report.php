@@ -108,7 +108,6 @@ class Report extends Model
                 'calls.status',
                 'calls.duration',
                 'calls.recording_enabled',
-                'calls.caller_id_enabled',
                 'calls.created_at'
             ],
             'aliases' => [
@@ -144,7 +143,6 @@ class Report extends Model
                 'status'                    => 'Status',
                 'duration'                  => 'Duration',
                 'recording_enabled'         => 'Recording Enabled',
-                'caller_id_enabled'         => 'Caller Id Enabled',
                 'created_at'                => 'Call Time'
             ]
         ]

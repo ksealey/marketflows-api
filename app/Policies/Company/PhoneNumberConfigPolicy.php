@@ -24,7 +24,7 @@ class PhoneNumberConfigPolicy
             && $user->canViewCompany($company);
     }
 
-    public function read(User $user, PhoneNumberConfig $phoneNumberConfig, , Company $company)
+    public function read(User $user, PhoneNumberConfig $phoneNumberConfig, Company $company)
     {
         return $user->canDoAction('read')
             && $user->canViewCompany($company)
@@ -38,7 +38,7 @@ class PhoneNumberConfigPolicy
             && $phoneNumberConfig->company_id === $company->id;
     }
 
-    public function delete(User $user, PhoneNumberConfig $phoneNumberConfig, Cmopany $company)
+    public function delete(User $user, PhoneNumberConfig $phoneNumberConfig, Company $company)
     {
         return $user->canDoAction('delete')
             && $user->canViewCompany($company)

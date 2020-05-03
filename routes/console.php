@@ -155,7 +155,6 @@ Artisan::command('fill-calls', function(){
             'phone_number_pool_id'      => null,
             'session_id'                => null,
 
-            'caller_id_enabled'         => $callerIdEnabled,
             'recording_enabled'         => $recordingEnabled,
             'forwarded_to'              => '8135573005',
             

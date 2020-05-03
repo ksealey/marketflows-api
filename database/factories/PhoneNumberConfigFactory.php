@@ -9,7 +9,7 @@ $factory->define(\App\Models\Company\PhoneNumberConfig::class, function (Faker $
     return [
         'name'                      => $faker->ein(),
         'forward_to_number'         => substr($faker->e164PhoneNumber, -10),
-        'recording_enabled_at'      => date('Y-m-d H:i:s'),
+        'recording_enabled'         => 1,
         'whisper_message'           => 'Hello'
     ];
 });

@@ -160,6 +160,7 @@ class PhoneNumberPoolController extends Controller
         //  Create Pool
         DB::beginTransaction();
         $phoneNumberPool = PhoneNumberPool::create([
+            'account_id'                => $company->account_id,
             'company_id'                => $company->id,
             'user_id'                   => $user->id,
             'phone_number_config_id'    => $request->phone_number_config_id,
@@ -181,6 +182,7 @@ class PhoneNumberPoolController extends Controller
                 'uuid'                      => Str::uuid(),
                 'phone_number_pool_id'      => $phoneNumberPool->id,
                 'external_id'               => $bankedNumber->external_id,
+                'account_id'                => $company->account_id,
                 'company_id'                => $company->id,
                 'user_id'                   => $user->id,
                 'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,

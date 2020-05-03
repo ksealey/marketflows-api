@@ -282,27 +282,27 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
             */
             Route::prefix('phone-number-configs')->group(function(){
                 Route::get('/', 'Company\PhoneNumberConfigController@list')
-                    ->middleware('can:list,\App\Models\Company\PhoneNumberConfig')
+                    ->middleware('can:list,\App\Models\Company\PhoneNumberConfig,company')
                     ->name('list-phone-number-configs');
 
                 Route::get('/export', 'Company\PhoneNumberConfigController@export')
-                    ->middleware('can:list,\App\Models\Company\PhoneNumberConfig')
+                    ->middleware('can:list,\App\Models\Company\PhoneNumberConfig,company')
                     ->name('export-phone-number-configs');
 
                 Route::post('/', 'Company\PhoneNumberConfigController@create')
-                    ->middleware('can:create,App\Models\Company\PhoneNumberConfig')
+                    ->middleware('can:create,App\Models\Company\PhoneNumberConfig,company')
                     ->name('create-phone-number-config');
 
                 Route::get('/{phoneNumberConfig}', 'Company\PhoneNumberConfigController@read')
-                    ->middleware('can:read,phoneNumberConfig')
+                    ->middleware('can:read,phoneNumberConfig,company')
                     ->name('read-phone-number-config');
 
                 Route::put('/{phoneNumberConfig}', 'Company\PhoneNumberConfigController@update')
-                    ->middleware('can:update,phoneNumberConfig')
+                    ->middleware('can:update,phoneNumberConfig,company')
                     ->name('update-phone-number-config');
 
                 Route::delete('/{phoneNumberConfig}', 'Company\PhoneNumberConfigController@delete')
-                    ->middleware('can:delete,phoneNumberConfig')
+                    ->middleware('can:delete,phoneNumberConfig,company')
                     ->name('delete-phone-number-config');
             }); 
 

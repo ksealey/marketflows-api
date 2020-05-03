@@ -32,7 +32,6 @@ $factory->define(\App\Models\Company\Call::class, function (Faker $faker) {
         'campaign' => 'Spring Sale ' . date('Y'),
 
         'recording_enabled' => mt_rand(0,1) ? 1 : 0,
-        'caller_id_enabled' => mt_rand(0,1) ? 1 : 0,
         'forwarded_to' => str_replace('+', '', $faker->e164PhoneNumber),
     ];
 });

@@ -29,9 +29,8 @@ class PhoneNumberConfig extends Model
         'keypress_attempts',
         'keypress_audio_clip_id',
         'keypress_message',
-        'recording_enabled_at',
-        'caller_id_enabled_at',
-        'keypress_enabled_at'
+        'recording_enabled',
+        'keypress_enabled'
     ];
 
     protected $hidden = [
@@ -60,8 +59,8 @@ class PhoneNumberConfig extends Model
     public function getLinkAttribute()
     {
         return route('read-phone-number-config', [
-            'companyId'           => $this->company_id,
-            'phoneNumberConfigId' => $this->id
+            'company'           => $this->company_id,
+            'phoneNumberConfig' => $this->id
         ]);
     }
 

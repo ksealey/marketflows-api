@@ -26,9 +26,8 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->tinyInteger('keypress_timeout')->unsigned()->nullable();
             $table->bigInteger('keypress_audio_clip_id')->unsigned()->nullable();
             $table->string('keypress_message', 128)->nullable();
-            $table->dateTime('recording_enabled_at')->nullable();
-            $table->dateTime('caller_id_enabled_at')->nullable();
-            $table->dateTime('keypress_enabled_at')->nullable();
+            $table->boolean('recording_enabled')->default(0);
+            $table->boolean('keypress_enabled')->default(0);
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();

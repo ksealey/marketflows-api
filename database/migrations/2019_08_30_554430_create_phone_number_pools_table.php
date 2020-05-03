@@ -15,6 +15,7 @@ class CreatePhoneNumberPoolsTable extends Migration
     {
         Schema::create('phone_number_pools', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_config_id')->unsigned();
             $table->boolean('override_campaigns');
@@ -27,6 +28,7 @@ class CreatePhoneNumberPoolsTable extends Migration
             $table->timestamps();
             $table->softDeletes();
             
+            $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('phone_number_config_id')->references('id')->on('phone_number_configs');
             $table->foreign('created_by')->references('id')->on('users');

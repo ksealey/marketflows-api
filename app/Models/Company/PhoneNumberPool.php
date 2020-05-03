@@ -22,6 +22,7 @@ class PhoneNumberPool extends Model
     static public $currentAvailablePhoneList = [];
 
     protected $fillable = [
+        'account_id',
         'company_id',
         'created_by',
         'updated_by',
