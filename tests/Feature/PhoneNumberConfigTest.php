@@ -63,6 +63,7 @@ class PhoneNumberConfigTest extends TestCase
     {
             $company = $this->createCompany();
             $config  = factory(PhoneNumberConfig::class)->create([
+                  'account_id' => $company->account_id,
                   'company_id' => $company->id,
                   'created_by' => $this->user->id
             ]);
@@ -89,6 +90,7 @@ class PhoneNumberConfigTest extends TestCase
             $count = mt_rand(5, 15);
             $company = $this->createCompany();
             $config  = factory(PhoneNumberConfig::class, $count)->create([
+                  'account_id' => $company->account_id,
                   'company_id' => $company->id,
                   'created_by' => $this->user->id
             ]);
@@ -124,6 +126,7 @@ class PhoneNumberConfigTest extends TestCase
     {
             $company = $this->createCompany();
             $config  = factory(PhoneNumberConfig::class)->create([
+                  'account_id' => $company->account_id,
                   'company_id' => $company->id,
                   'created_by' => $this->user->id,
                   'recording_enabled'     => 1,
@@ -179,6 +182,7 @@ class PhoneNumberConfigTest extends TestCase
     {
             $company = $this->createCompany();
             $config  = factory(PhoneNumberConfig::class)->create([
+                  'account_id' => $company->account_id,
                   'company_id' => $company->id,
                   'created_by' => $this->user->id,
                   'recording_enabled'     => 1,
@@ -212,6 +216,7 @@ class PhoneNumberConfigTest extends TestCase
     {
             $company = $this->createCompany();
             $config  = factory(PhoneNumberConfig::class)->create([
+                  'account_id' => $company->account_id,
                   'company_id' => $company->id,
                   'created_by' => $this->user->id,
                   'recording_enabled'     => 1,
@@ -253,6 +258,7 @@ class PhoneNumberConfigTest extends TestCase
     {
             $company = $this->createCompany();
             $config  = factory(PhoneNumberConfig::class)->create([
+                  'account_id' => $company->account_id,
                   'company_id' => $company->id,
                   'created_by' => $this->user->id,
                   'recording_enabled'     => 1,

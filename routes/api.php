@@ -125,6 +125,11 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
             ->name('delete-user'); 
     });
 
+    /*
+     |------------------------------
+     |  Handle widgets
+     |------------------------------
+     */
     Route::prefix('widgets')->group(function(){
         Route::get('/top-call-sources', 'WidgetController@topCallSources')
              ->middleware('can:read,\App\Models\Account')
@@ -136,7 +141,7 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
 
         Route::get('/total-numbers', 'WidgetController@totalNumbers')
              ->middleware('can:read,\App\Models\Account')
-             ->name('widget-total-companies');
+             ->name('widget-total-numbers');
 
         Route::get('/total-calls', 'WidgetController@totalCalls')
              ->middleware('can:read,\App\Models\Account')

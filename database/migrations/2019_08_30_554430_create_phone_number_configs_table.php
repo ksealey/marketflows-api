@@ -15,6 +15,7 @@ class CreatePhoneNumberConfigsTable extends Migration
     {
         Schema::create('phone_number_configs', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->string('name', 64);
             $table->string('forward_to_number', 16);
@@ -34,6 +35,7 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('greeting_audio_clip_id')->references('id')->on('audio_clips');
             $table->foreign('keypress_audio_clip_id')->references('id')->on('audio_clips');

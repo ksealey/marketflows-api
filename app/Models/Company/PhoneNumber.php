@@ -157,8 +157,8 @@ class PhoneNumber extends Model implements Exportable
     public function getLinkAttribute()
     {
         return route('read-phone-number', [
-            'companyId'     => $this->company_id,
-            'phoneNumberId' => $this->id
+            'company'     => $this->company_id,
+            'phoneNumber' => $this->id
         ]);
     }
 

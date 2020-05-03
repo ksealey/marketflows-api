@@ -161,7 +161,7 @@ class AudioClipTest extends TestCase
         Storage::put($audioClip->path, 'foobar');
 
         $config    = factory(PhoneNumberConfig::class)->create([
-            //'account_id' => $this->account->id,
+            'account_id' => $this->account->id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
             'greeting_audio_clip_id' => $audioClip->id

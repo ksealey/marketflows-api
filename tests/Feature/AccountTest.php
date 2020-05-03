@@ -7,7 +7,6 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\Account;
 use App\Models\Company;
-use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Call;

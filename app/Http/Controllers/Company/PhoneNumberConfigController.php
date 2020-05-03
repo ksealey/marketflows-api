@@ -77,6 +77,7 @@ class PhoneNumberConfigController extends Controller
 
         $user = $request->user();
         $phoneNumberConfig = PhoneNumberConfig::create([
+            'account_id'                => $company->account_id,
             'company_id'                => $company->id,
             'name'                      => $request->name,
             'forward_to_number'         => $request->forward_to_number,

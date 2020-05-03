@@ -9,7 +9,6 @@ use \App\Models\BlockedPhoneNumber;
 use \App\Models\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company;
 use \App\Models\Company\AudioClip;
-use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;

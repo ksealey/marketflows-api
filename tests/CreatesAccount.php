@@ -67,6 +67,7 @@ trait CreatesAccount
 
         //  Config
         $config = factory(PhoneNumberConfig::class)->create([
+            'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
             'greeting_audio_clip_id' => $audioClip->id,
@@ -80,7 +81,7 @@ trait CreatesAccount
             'phone_number_config_id' => $config->id
         ]);
         $phoneNumber->each(function($phoneNumber){
-            factory(Call::class, 5)->create([
+            factory(Call::class, 2)->create([
                 'account_id' => $phoneNumber->account_id,
                 'company_id' => $phoneNumber->company_id,
                 'phone_number_id' =>$phoneNumber->id
@@ -93,13 +94,14 @@ trait CreatesAccount
 
         //  A number pool
         $pool = factory(PhoneNumberPool::class)->create([
+            'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id, 
             'phone_number_config_id' => $config->id
         ]);
         
         $past = now()->subMonths(1)->addDays(4);
-        $poolNumbers = factory(PhoneNumber::class, mt_rand(3,6))->create([
+        $poolNumbers = factory(PhoneNumber::class, 2)->create([
             'account_id' => $this->user->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id, 
@@ -108,7 +110,7 @@ trait CreatesAccount
             'purchased_at'         => $past // Should be released
         ]);
         $poolNumbers->each(function($phoneNumber){
-            factory(Call::class, 15)->create([
+            factory(Call::class, 2)->create([
                 'account_id' => $phoneNumber->account_id,
                 'company_id' => $phoneNumber->company_id,
                 'phone_number_id' =>$phoneNumber->id
@@ -116,12 +118,12 @@ trait CreatesAccount
         });
 
         //  Blocked Numbers
-        factory(BlockedPhoneNumber::class, 10)->create([
+        factory(BlockedPhoneNumber::class, 2)->create([
             'account_id' => $this->account->id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ])->each(function($blockedNumber) use($phoneNumber){
-            factory(BlockedCall::class, 3)->create([
+            factory(BlockedCall::class, 2)->create([
                 'blocked_phone_number_id' => $blockedNumber->id,
                 'phone_number_id'         => $phoneNumber->id,
             ]);

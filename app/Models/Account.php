@@ -145,28 +145,18 @@ class Account extends Model
 
     public function currentBalance()
     {
+        $usageBalance = $this->usageBalance();
+
+        return $usageBalance + $this->monthly_fee;
+    }
+
+    public function usageBalance()
+    {
         $storage = $this->currentStorage();
         $usage   = $this->currentUsage();
 
-        return $storage['total']['cost'] + $usage['total']['cost'] + $this->monthly_fee;
-    }
+        return $storage['total']['cost'] + $usage['total']['cost'];
 
-    public function getPastDueAmountAttribute()
-    {
-        //  
-        //  Allow an hour for the system to bill the account.
-        //
-        //  If over an hour has passed after it should have been billed and the bill_at date was not pushed to future date
-        //  that means the total owed was not paid
-        // 
-        $now              = new DateTime();
-        $shouldBeBilledBy = new DateTime($this->billing->bill_at);
-        $shouldBeBilledBy->modify('+1 hour');
-
-        if( $now->format('U') > $shouldBeBilledBy->format('U') )
-            return $this->currentBalance();
-        
-        return 0.00;
     }
 
     /**

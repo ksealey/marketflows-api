@@ -143,7 +143,6 @@ class WidgetController extends Controller
         $userTZ = new DateTimeZone($user->timezone);
         $utcTZ  = new DateTimeZone('UTC');
         $query  = Company::where('account_id', $user->account_id);
-
         if( ! $user->canViewAllCompanies() ){
             $query->whereIn('company_id', function($query) use($user){
                 $query->select('company_id')
@@ -373,11 +372,11 @@ class WidgetController extends Controller
         $storage = $account->currentStorage();
         $usage   = $account->currentUsage();
 
-        $billAt = new DateTime($billing->bill_at);
+        $billAt = new DateTime($billing->period_ends_at);
         $billAt->setTimeZone(new DateTimeZone($user->timezone));
     
         return response([
-            'title' => 'Month-to-Date Balance Breakdown',
+            'title' => 'Next Bill',
             'type'  => 'breakdown',
             'data'  => [
                 'total' => number_format($storage['total']['cost'] + $usage['total']['cost'] + $account->monthly_fee, 2),

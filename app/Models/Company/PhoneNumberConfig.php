@@ -15,6 +15,7 @@ class PhoneNumberConfig extends Model
     use SoftDeletes, PerformsExport;
 
     protected $fillable = [
+        'account_id',
         'company_id',
         'created_by',
         'updated_by',
