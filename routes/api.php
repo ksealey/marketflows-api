@@ -112,6 +112,10 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
              ->middleware('can:list,App\Models\User')
              ->name('list-users');
 
+        Route::get('/export', 'UserController@export')
+             ->middleware('can:list,App\Models\User')
+             ->name('export-users');
+
         Route::post('/', 'UserController@create')
              ->middleware('can:create,App\Models\User')
              ->name('create-user');

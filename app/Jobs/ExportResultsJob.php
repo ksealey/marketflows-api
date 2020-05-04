@@ -21,9 +21,9 @@ class ExportResultsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, AppliesConditions, HandlesStorage;
 
-    protected $user;
-    protected $input;
-    protected $model;
+    public $user;
+    public $input;
+    public $model;
 
     /**
      * Create a new job instance.
@@ -96,12 +96,12 @@ class ExportResultsJob implements ShouldQueue
         //  Send Alert
         $alert = Alert::create([
             'user_id'       => $this->user->id,
-            'type'          => Alert::TYPE_NOTIFICATION,
+            'type'          => Alert::TYPE_FILE,
             'title'         => 'Your file export is ready',
             'message'       => 'Your file export is now available and will be accessible for 24 hours.',
             'url'           => trim(env('CDN_URL'), '/') . '/' . $remotePath . '/' . $fileName,
             'url_label'     => 'Download',
-            'icon'          => 'file',
+            'icon'          => Alert::ICON_FILE,
             'hidden_after'  =>  $expiresAt
         ]);
 

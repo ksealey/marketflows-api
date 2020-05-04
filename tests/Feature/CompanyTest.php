@@ -19,8 +19,11 @@ use \App\Helpers\PhoneNumberManager;
 use \App\Jobs\BatchDeleteAudioJob;
 use \App\Jobs\BatchHandleDeletedPhoneNumbersJob;
 use \App\Jobs\BatchDeleteCallRecordingsJob;
+use \App\Jobs\ExportResultsJob;
 use Storage;
 use Queue;
+use DateTime;
+use DateTimeZone;
 
 class CompanyTest extends TestCase
 {
@@ -97,7 +100,7 @@ class CompanyTest extends TestCase
      */
     public function testListCompanies()
     {
-        $companies = factory(Company::class, 30)->create([
+        $companies = factory(Company::class, 5)->create([
             'account_id' => $this->account->id,
             'created_by' => $this->user->id,
         ]);
@@ -105,7 +108,7 @@ class CompanyTest extends TestCase
         $response = $this->json('GET', route('list-companies'));
         $response->assertStatus(200);
         $response->assertJSON([
-            "result_count" => 30,
+            "result_count" => 5,
             "limit" => 250,
             "page" => 1,
             "total_pages" =>  1,
@@ -121,6 +124,208 @@ class CompanyTest extends TestCase
                 ]
             ]
         ]);
+    }
+
+    /**
+     * Test listing companies with conditions
+     * 
+     * @group companies
+     */
+    public function testListCompaniesWithConditions()
+    {
+        $companies = factory(Company::class, 5)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id,
+        ]);
+
+        $firstCompany = $companies->first();
+
+        $conditions = [
+            [
+                'field'    => 'companies.name',
+                'operator' => 'EQUALS',
+                'inputs'   => [
+                    $firstCompany->name
+                ]
+            ]
+        ];
+
+        $response = $this->json('GET', route('list-companies'), [
+            'conditions' => json_encode($conditions)
+        ]);
+
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            "result_count" => 1,
+            "limit" => 250,
+            "page" => 1,
+            "total_pages" =>  1,
+            "next_page" => null,
+            "results" => [
+                [
+                    'id' => $firstCompany->id,
+                    'name' => $firstCompany->name,
+                    'country' => $firstCompany->country,
+                    'industry' => $firstCompany->industry
+                ]
+            ]
+        ]);
+    }
+
+    /**
+     * Test listing companies with date ranges
+     * 
+     * @group companies
+     */
+    public function testListCompaniesWithDateRanges()
+    {
+        $twoDaysAgo  = now()->subDays(2);
+        $oldCompany  = factory(Company::class)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id,
+            'created_at' => $twoDaysAgo,
+            'updated_at' => $twoDaysAgo
+        ]);
+
+        $companies  = factory(Company::class, 2)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id,
+        ]);
+        
+        $twoDaysAgo->setTimeZone(new DateTimeZone($this->user->timezone));
+        $response = $this->json('GET', route('list-companies'), [
+            'start_date' => $twoDaysAgo->format('Y-m-d'),
+            'end_date'   => $twoDaysAgo->format('Y-m-d')
+        ]);
+
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            "result_count" => 1,
+            "limit" => 250,
+            "page" => 1,
+            "total_pages" =>  1,
+            "next_page" => null,
+            "results" => [
+                [
+                    'id' => $oldCompany->id,
+                    'name' => $oldCompany->name,
+                    'country' => $oldCompany->country,
+                    'industry' => $oldCompany->industry
+                ]
+            ]
+        ]);
+    }
+
+    /**
+     * Test exportng companies
+     * 
+     * @group companies
+     */
+    public function testExportCompanies()
+    {
+        Queue::fake();
+        
+        $companies  = factory(Company::class, 2)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->json('GET', route('export-companies'));
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            'message' => 'queued'
+        ]);
+
+        Queue::assertPushed(ExportResultsJob::class, function ($job){
+            return $job->model === Company::class 
+                && $job->user->id === $this->user->id
+                && count($job->input);
+        });
+    }
+
+    /**
+     * Test exporting companies with conditions
+     * 
+     * @group companies
+     */
+    public function testExportCompaniesWithConditions()
+    {
+        Queue::fake();
+        
+        $companies  = factory(Company::class, 2)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id,
+        ]);
+
+        $conditions = [
+            [
+                'field'    => 'companies.name',
+                'operator' => 'EQUALS',
+                'inputs'   => [
+                    $companies->first()->name
+                ]
+            ]
+        ];
+
+        $response = $this->json('GET', route('export-companies'), [
+            'conditions' => json_encode($conditions)
+        ]);
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            'message' => 'queued'
+        ]);
+
+        Queue::assertPushed(ExportResultsJob::class, function ($job) use($conditions){
+            return $job->model === Company::class 
+                && $job->user->id === $this->user->id
+                && json_decode($job->input['conditions'], true) == $conditions;
+        });
+    }
+
+    /**
+     * Test exporting companies with date ranges
+     * 
+     * @group companies-
+     */
+    public function testExportCompaniesWithDateRanges()
+    {
+        Queue::fake();
+
+        $twoDaysAgo  = now()->subDays(2);
+        $oldCompany  = factory(Company::class)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id,
+            'created_at' => $twoDaysAgo,
+            'updated_at' => $twoDaysAgo
+        ]);
+
+        $companies  = factory(Company::class, 2)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id,
+        ]);
+        
+        $twoDaysAgo->setTimeZone(new DateTimeZone($this->user->timezone));
+        $response = $this->json('GET', route('export-companies'), [
+            'start_date' => $twoDaysAgo->format('Y-m-d'),
+            'end_date'   => $twoDaysAgo->format('Y-m-d')
+        ]);
+
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            'message' => 'queued'
+        ]);
+
+        Queue::assertPushed(ExportResultsJob::class, function ($job) use($twoDaysAgo){
+            return $job->model === Company::class 
+                && $job->user->id === $this->user->id
+                && $job->input['start_date'] == $twoDaysAgo->format('Y-m-d')
+                && $job->input['end_date'] == $twoDaysAgo->format('Y-m-d');
+        });
     }
 
     /**
