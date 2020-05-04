@@ -17,6 +17,30 @@ class UserTest extends TestCase
    use \Tests\CreatesAccount;
 
    /**
+    *   Test listing users 
+    *
+    *   @group users
+    */
+    public function testListingUsers()
+    {
+        $users = factory(User::class, 10)->create([
+            'account_id' => $this->account->id,
+        ]);
+
+        $response = $this->json('GET', route('list-users'));
+
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'result_count' => 10,
+            'limit' => 250,
+            'page' => 1,
+            'total_pages' => 1,
+            'next_page' => null,
+            'results' => []
+        ]);
+    }
+
+   /**
      * Test adding a admin user
      * 
      * @group users
