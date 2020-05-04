@@ -70,6 +70,7 @@ class RegisterController extends Controller
             ]);
 
             //  Create this user
+            $now = now();
             $user = User::create([
                 'account_id'                => $account->id,
                 'role'                      => User::ROLE_ADMIN,
@@ -78,7 +79,8 @@ class RegisterController extends Controller
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
                 'password_hash'             => bcrypt($request->password),
-                'auth_token'                => str_random(255)
+                'auth_token'                => str_random(255),
+                'first_login_at'            => now()
             ]);
 
             UserSettings::create([

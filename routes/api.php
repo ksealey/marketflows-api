@@ -108,6 +108,10 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
     |--------------------------------
     */
     Route::prefix('users')->group(function(){
+        Route::get('/', 'UserController@list')
+             ->middleware('can:list,App\Models\User')
+             ->name('list-users');
+
         Route::post('/', 'UserController@create')
              ->middleware('can:create,App\Models\User')
              ->name('create-user');

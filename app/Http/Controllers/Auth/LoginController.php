@@ -75,6 +75,10 @@ class LoginController extends Controller
         $user->password_reset_token      = null;
         $user->password_reset_expires_at = null;
         
+        if( ! $user->first_login_at )
+            $user->first_login_at = now();
+        
+        
         $user->save();
 
         return response([

@@ -9,6 +9,11 @@ class UserPolicy
 {
     use HandlesAuthorization;
 
+    public function list(User $user)
+    {
+        return $user->role === User::ROLE_ADMIN;
+    }
+
     public function create(User $user)
     {
         return $user->role === User::ROLE_ADMIN;

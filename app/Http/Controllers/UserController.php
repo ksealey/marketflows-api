@@ -19,6 +19,31 @@ use Exception;
 class UserController extends Controller
 {
 
+    public function list(Request $request)
+    {
+        $fields = [
+            'users.id',
+            'users.first_name',
+            'users.last_name',
+            'users.email',
+            'users.role',
+            'users.created_at',
+            'users.updated_at'
+        ];
+
+        $user  = $request->user();
+        $query = User::where('users.account_id', $user->account_id)
+                      ->where('id', '!=', $user->id);
+        
+        return parent::results(
+            $request,
+            $query,
+            [],
+            $fields,
+            'users.created_at'
+        );
+    }
+
     public function create(Request $request)
     {
         $creator = $request->user();

@@ -37,6 +37,7 @@ class User extends Authenticatable
         'auth_token',
         'email_verified_at',
         'phone_verified_at',
+        'first_login_at',
         'last_login_at',
         'login_disabled_until',
         'login_attempts',
@@ -55,7 +56,9 @@ class User extends Authenticatable
     ];
 
     public $appends = [
-        'full_name'
+        'full_name',
+        'pretty_role',
+        'status'
     ];
     
     static public function roles()
@@ -89,6 +92,30 @@ class User extends Authenticatable
     public function getFullNameAttribute()
     {
         return  ucfirst(strtolower($this->first_name)) . ' ' . ucfirst(strtolower($this->last_name));
+    }
+
+    public function getPrettyRoleAttribute()
+    {
+        if( $this->role === self::ROLE_ADMIN )
+            return 'Administrator';
+        if( $this->role === self::ROLE_SYSTEM )
+            return 'System User';
+        if( $this->role === self::ROLE_REPORTING)
+            return 'Reporting User';
+        if( $this->role === self::ROLE_CLIENT)
+            return 'Client';
+        return $this->role;
+    }
+
+    public function getStatusAttribute()
+    {
+        if( $this->login_disabled_until )
+            return 'Disabled';
+
+        if( ! $this->first_login_at )
+            return 'Inactive';
+
+        return 'Active';
     }
 
     public function canDoAction($action)
