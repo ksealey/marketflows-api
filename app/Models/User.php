@@ -7,13 +7,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\EmailVerification;
 use App\Models\Company;
+use \App\Traits\PerformsExport;
 use Mail;
 use DateTime;
 use Cache;
+use DB;
 
 class User extends Authenticatable
 {
-    use SoftDeletes;
+    use SoftDeletes, PerformsExport;
 
     const ROLE_ADMIN     = 'ADMIN';
     const ROLE_SYSTEM    = 'SYSTEM';
@@ -56,11 +58,15 @@ class User extends Authenticatable
         'login_attempts',
         'deleted_at'
     ];
-
+ 
     public $appends = [
         'full_name',
         'pretty_role',
         'status'
+    ];
+
+    public $casts = [
+        'login_disabled' => 'boolean'
     ];
     
     static public function roles()
@@ -72,6 +78,30 @@ class User extends Authenticatable
             self::ROLE_CLIENT
         ];
     }
+
+    static public function exports() : array
+    {
+        return [
+            'id'                => 'Id',
+            'first_name'        => 'First Name',
+            'last_name'         => 'Last Name',
+            'email'             => 'Email',
+            'role'              => 'Role',
+            'created_at_local'  => 'Created'
+        ];
+    }
+
+    static public function exportFileName($user, array $input) : string
+    {
+        return 'Users';
+    }
+
+    static public function exportQuery($user, array $input)
+    {
+        return User::select('users.*', DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local"))
+                    ->where('account_id', $user->account_id);
+    }
+
     /**
      * Relationships
      * 

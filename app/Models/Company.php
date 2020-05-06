@@ -60,7 +60,7 @@ class Company extends Model implements Exportable
             'name'      => 'Name',
             'industry'  => 'Industry',
             'country'   => 'Country',
-            'created_at'=> 'Created'
+            'created_at_local'=> 'Created'
         ];
     }
 
@@ -71,15 +71,22 @@ class Company extends Model implements Exportable
 
     static public function exportQuery($user, array $input)
     {
-        return Company::select(['companies.*', 'phone_number_pools.id AS phone_number_pool_id'])
+        $query = Company::select([
+                            'companies.*', 
+                            'phone_number_pools.id AS phone_number_pool_id',
+                            DB::raw("DATE_FORMAT(CONVERT_TZ(companies.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local") 
+                        ])
                         ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id')
-                        ->where('companies.account_id', $user->account_id)
-                        ->whereIn('companies.id', function($query) use($user){
-                            $query->select('company_id')
-                                    ->from('user_companies')
-                                    ->where('user_id', $user->id);
-                        })
-                        ->whereNull('companies.deleted_at');
+                        ->where('companies.account_id', $user->account_id);
+
+        if( ! $user->canViewAllCompanies() )
+            $query->whereIn('companies.id', function($query) use($user){
+                $query->select('company_id')
+                        ->from('user_companies')
+                        ->where('user_id', $user->id);
+            });
+
+        return $query;
     }
 
     public function getLinkAttribute()

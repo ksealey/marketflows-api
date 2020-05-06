@@ -13,19 +13,19 @@ use DB;
 class PaymentMethodController extends Controller
 {
     
+    public $fields = [
+        'payment_methods.last_4',
+        'payment_methods.brand',
+        'payment_methods.created_at',
+        'payment_methods.created_at'
+    ];
+
     /**
      * List Payment Methods
      * 
      */
     public function list(Request $request)
     {
-        $fields = [
-            'payment_methods.last_4',
-            'payment_methods.brand',
-            'payment_methods.created_at',
-            'payment_methods.created_at'
-        ];
-
         $query = PaymentMethod::where('account_id', $request->user()->account_id);
 
         //  Pass along to parent for listing
@@ -33,7 +33,8 @@ class PaymentMethodController extends Controller
             $request,
             $query,
             [],
-            $fields
+            $this->fields,
+            'payment_methods.created_at'
         );
     }
 
@@ -65,8 +66,6 @@ class PaymentMethodController extends Controller
             $request->primary_method
         );
 
-        event( new PaymentMethodEvent($user, [$paymentMethod], 'create') );
-
         return response($paymentMethod, 201);
     }
 
@@ -80,6 +79,8 @@ class PaymentMethodController extends Controller
      */
     public function read(Request $request, PaymentMethod $paymentMethod)
     {
+        $paymentMethod->errors = $paymentMethod->errors;
+        
         return response($paymentMethod);
     }
 
@@ -91,7 +92,7 @@ class PaymentMethodController extends Controller
      * 
      * @return Response
      */
-    public function makeDefault(Request $request, PaymentMethod $paymentMethod)
+    public function makePrimary(Request $request, PaymentMethod $paymentMethod)
     {
         $user = $request->user();
     
@@ -130,5 +131,20 @@ class PaymentMethodController extends Controller
         return response([
             'message' => 'Deleted.'        
         ], 200);
+    }
+
+    /**
+     * Export results
+     * 
+     */
+    public function export(Request $request)
+    {
+        return parent::exportResults(
+            PaymentMethod::class,
+            $request,
+            [],
+            $this->fields,
+            'payment_methods.created_at'
+        );
     }
 }

@@ -17,7 +17,6 @@ class CreateUserCompaniesTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('user_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
-            $table->softDeletes();
             $table->foreign('user_id')->references('id')->on('users');
             $table->foreign('company_id')->references('id')->on('companies');
         });

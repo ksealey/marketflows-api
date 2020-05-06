@@ -26,9 +26,7 @@ trait PerformsExport
                     ->setTitle($exportName)
                     ->setSubject($exportName);
                     
-        $sheet = $spreadsheet->getActiveSheet();
-
-        
+        $sheet             = $spreadsheet->getActiveSheet();
         $headers           = array_values($exports);
         $col               = 'A';
         $headerToColumnMap = [];
@@ -80,41 +78,39 @@ trait PerformsExport
                     ->setCreator(env('APP_NAME'))
                     ->setLastModifiedBy('System')
                     ->setTitle($exportName)
-                    ->setSubject($exportName);
-                    
+                    ->setSubject($exportName);   
+
         $sheet = $spreadsheet->getActiveSheet();
 
-        //  Set headers
         $headers = array_values($exports);
-        
-        $row     = 1;
         $col     = 'A';
-        foreach( $headers as $header ){
-            $sheet->setCellValue($col . $row, $header);
-            $col++;
+        $headerToColumnMap = [];
+        foreach( $headers as $h ){
+            $headerToColumnMap[$h] = $col;
+            $sheet->setCellValue($col . '1', $h);
+            $col ++;
         }
-        $row++;
         $sheet->getStyle("A1:{$col}1")->getFont()->setBold(true); // Make header bold
 
-        $start   = 0;
-        $limit   = 2500;
+        $row   = 2;
+        $start = 0;
+        $limit = 2500;
         while( true ){
             $_query  = clone $query;
             $results = $_query->limit($limit)
-                            ->offset($start)
-                            ->get();
+                              ->offset($start)
+                              ->get();
 
             if( ! count($results) )
                 break;
             
             foreach( $results as $idx => $result ){
-                $col  = 'A';
                 $data = $result->toArray();
                 foreach($data as $prop => $value){
-                    if( isset($exports[$prop]) ){
-                        $sheet->setCellValue($col . $row, $value);
-                        $col++;
-                    } 
+                    $header = $exports[$prop] ?? null;
+                    if( $header ){
+                        $sheet->setCellValue($headerToColumnMap[$header] . $row, $value);
+                    }
                 }
                 $row++;
             }
@@ -124,7 +120,7 @@ trait PerformsExport
 
             $start += $limit;
         }
-
+        
         //  Resize columns to fit data
         $resizeCol = 'A';
         while( $resizeCol != $col ){

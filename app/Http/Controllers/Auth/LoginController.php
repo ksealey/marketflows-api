@@ -38,6 +38,12 @@ class LoginController extends Controller
         }
 
         //  Block disabled users
+        if( $user->login_disabled ){
+            return response([
+                'error' => 'Login disabled'
+            ], 403);
+        }
+
         if( $user->login_disabled_until && date('U', strtotime($user->login_disabled_until)) > date('U')){
             $now           = new DateTime();
             $disabledUntil = new DateTime($user->login_disabled_until);

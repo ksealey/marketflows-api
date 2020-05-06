@@ -30,6 +30,7 @@ class CreateUsersTable extends Migration
             $table->dateTime('phone_verified_at')->nullable();
             $table->dateTime('first_login_at')->nullable();
             $table->dateTime('last_login_at')->nullable();
+            $table->boolean('login_disabled')->default(0);
             $table->dateTime('login_disabled_until')->nullable();
             $table->integer('login_attempts')->unsigned()->default(0);
             $table->timestamps();

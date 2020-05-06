@@ -180,6 +180,10 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
             ->middleware('can:list,\App\Models\PaymentMethod')
             ->name('list-payment-methods'); 
 
+        Route::get('/export', 'PaymentMethodController@export')
+            ->middleware('can:list,\App\Models\PaymentMethod')
+            ->name('export-payment-methods'); 
+
         Route::post('/', 'PaymentMethodController@create')
              ->middleware('can:create,\App\Models\PaymentMethod')
              ->name('create-payment-method');
@@ -188,13 +192,32 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
              ->middleware('can:read,paymentMethod')
              ->name('read-payment-method');
 
-        Route::put('/{paymentMethod}/make-default', 'PaymentMethodController@makeDefault')
+        Route::put('/{paymentMethod}/make-primary', 'PaymentMethodController@makePrimary')
              ->middleware('can:update,paymentMethod')
              ->name('make-default-payment-method');
 
         Route::delete('/{paymentMethod}', 'PaymentMethodController@delete')
             ->middleware('can:delete,paymentMethod')
             ->name('delete-payment-method'); 
+    });
+
+    /*
+    |----------------------------------------
+    | Handle billing statements
+    |----------------------------------------
+    */
+    Route::prefix('billing-statements')->group(function(){
+        Route::get('/', 'BillingStatementController@list')
+            ->middleware('can:list,\App\Models\BillingStatement')
+            ->name('list-statements'); 
+
+        Route::get('/export', 'BillingStatementController@export')
+            ->middleware('can:list,\App\Models\BillingStatement')
+            ->name('export-statements'); 
+
+        Route::get('/{billingStatement}', 'BillingStatementController@read')
+             ->middleware('can:read,billingStatement')
+             ->name('read-statement');
     });
 
     /*
