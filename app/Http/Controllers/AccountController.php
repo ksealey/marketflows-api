@@ -51,19 +51,6 @@ class AccountController extends Controller
      */
     public function upgrade(Request $request)
     {
-        $validator = validator($request->input(), [
-            'account_type' => [
-                'required',
-                'in:' . Account::TYPE_ANALYTICS . ',' . Account::TYPE_ANALYTICS_PRO
-            ]
-        ]);
-
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
         //  If user is already on a pro account, they and can't update inline or downwards
         $account = $request->user()->account;
         if( $account->account_type === Account::TYPE_ANALYTICS_PRO ){
@@ -72,7 +59,7 @@ class AccountController extends Controller
             ], 400);
         }
 
-        $account->account_type            = $request->account_type;
+        $account->account_type            = $account->account_type == Account::TYPE_BASIC ? Account::TYPE_ANALYTICS :  Account::TYPE_ANALYTICS_PRO;
         $account->account_type_updated_at = now();
         $account->save();
 

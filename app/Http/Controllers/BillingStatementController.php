@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\PaymentMethod;
 use App\Models\BillingStatement;
 use DB;
 
@@ -35,6 +36,16 @@ class BillingStatementController extends Controller
     
     public function read(Request $request, BillingStatement $billingStatement)
     {
+        $billingStatement->payment_method  = $billingStatement->payment_method;
+        if( $billingStatement->paid_at && ! $billingStatement->payment_method ){
+            $billingStatement->payment_method_last_4  = PaymentMethod::withTrashed()->find($billingStatement->payment_method_id)->last_4;
+        }
+        $billingStatement->statement_items = $billingStatement->statement_items;
+
+        $total = $billingStatement->total;
+        $billingStatement->total           = $total;
+        $billingStatement->total_formatted = number_format($total, 2);
+
         return response($billingStatement);
     }
 

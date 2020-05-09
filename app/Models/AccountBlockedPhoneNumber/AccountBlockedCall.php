@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Models\BlockedPhoneNumber;
+namespace App\Models\AccountBlockedPhoneNumber;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\PerformsExport;
 
 
-class BlockedCall extends Model
+class AccountBlockedCall extends Model
 {
     use SoftDeletes, PerformsExport;
     
@@ -27,19 +27,19 @@ class BlockedCall extends Model
 
     static public function exportFileName($user, array $input) : string
     {
-        return 'Blocked Calls - ' . $input['blocked_phone_number_name'];
+        return 'Account Blocked Calls';
     }
 
     static public function exportQuery($user, array $input)
     {
-        return BlockedCall::select([
-                                'blocked_calls.*', 
+        return AccountBlockedCall::select([
+                                'account_blocked_calls.*', 
                                 'phone_numbers.number AS phone_number', 
                                 'phone_numbers.country_code AS phone_number_country_code', 
                                 'phone_numbers.name AS phone_number_name'
                             ])
-                            ->where('blocked_calls.blocked_phone_number_id', $input['blocked_phone_number_id'])
-                            ->leftJoin('phone_numbers', 'phone_numbers.id', 'blocked_calls.phone_number_id');
+                            ->where('account_blocked_calls.account_blocked_phone_number_id', $input['account_blocked_phone_number_id'])
+                            ->leftJoin('phone_numbers', 'phone_numbers.id', 'account_blocked_calls.phone_number_id');
     }
 
 
@@ -58,6 +58,6 @@ class BlockedCall extends Model
      */
     public function getKindAttribute()
     {
-        return 'BlockedCall';
+        return 'AccountBlockedCall';
     }
 }

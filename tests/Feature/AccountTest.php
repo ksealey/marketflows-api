@@ -66,9 +66,7 @@ class AccountTest extends TestCase
         $this->account->account_type = Account::TYPE_BASIC;
         $this->account->save();
 
-        $response = $this->json('PUT', route('upgrade-account'), [
-            'account_type' => Account::TYPE_ANALYTICS
-        ]);
+        $response = $this->json('PUT', route('upgrade-account'));
 
         $response->assertStatus(200);
         $response->assertJSON([
@@ -94,9 +92,7 @@ class AccountTest extends TestCase
         $this->account->account_type = Account::TYPE_ANALYTICS;
         $this->account->save();
 
-        $response = $this->json('PUT', route('upgrade-account'), [
-            'account_type' => Account::TYPE_ANALYTICS_PRO
-        ]);
+        $response = $this->json('PUT', route('upgrade-account'));
         $response->assertStatus(200);
         $response->assertJSON([
             'id' => $this->account->id,
@@ -121,13 +117,10 @@ class AccountTest extends TestCase
         $this->account->account_type = Account::TYPE_ANALYTICS_PRO;
         $this->account->save();
 
-        $response = $this->json('PUT', route('upgrade-account'), [
-            'account_type' => Account::TYPE_ANALYTICS
-        ]);
+        $response = $this->json('PUT', route('upgrade-account'));
         $response->assertStatus(400);
         $response->assertJSONStructure([
             'error'
-           
         ]);
         
         $account = Account::find($this->account->id);
@@ -135,29 +128,4 @@ class AccountTest extends TestCase
         $this->assertEquals($account->account_type, Account::TYPE_ANALYTICS_PRO);
         $this->assertNull($account->account_type_updated_at);
     }
-
-    /**
-     * Test downgrading account from analytics fails
-     * 
-     * @group accounts
-     */
-    public function testDowngradeFromAnalyticsFails()
-    {
-        $this->account->account_type = Account::TYPE_ANALYTICS;
-        $this->account->save();
-
-        $response = $this->json('PUT', route('upgrade-account'), [
-            'account_type' => Account::TYPE_BASIC
-        ]);
-        $response->assertStatus(400);
-        $response->assertJSONStructure([
-            'error'
-        ]);
-        
-        $account = Account::find($this->account->id);
-
-        $this->assertEquals($account->account_type, Account::TYPE_ANALYTICS);
-        $this->assertNull($account->account_type_updated_at);
-    }
-
 }

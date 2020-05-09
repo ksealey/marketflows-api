@@ -31,7 +31,7 @@ class Account extends Model
 
     const COST_TYPE_BASIC         = 45.00;
     const COST_TYPE_ANALYTICS     = 90.00;
-    const COST_TYPE_ANALYTICS_PRO = 90.00;
+    const COST_TYPE_ANALYTICS_PRO = 130.00;
     const COST_STORAGE_GB         = 0.25;
     const COST_NUMBER_LOCAL       = 3.00;
     const COST_NUMBER_TOLL_FREE   = 5.00;
@@ -55,7 +55,6 @@ class Account extends Model
 
     protected $hidden = [
         'account_type_updated_at',
-        'suspended_at',
         'suspension_code',
         'suspension_warning_at',
         'deleted_at'
@@ -249,6 +248,11 @@ class Account extends Model
         $localMinutesCost    = $localMinutes > self::TIER_MINUTES_LOCAL ? (($localMinutes - self::TIER_MINUTES_LOCAL) * self::COST_MINUTE_LOCAL) : 0.00;
         $tollFreeMinutesCost = $tollFreeMinutes > self::TIER_MINUTES_TOLL_FREE ? (($tollFreeMinutes - self::TIER_MINUTES_TOLL_FREE) * self::COST_MINUTE_TOLL_FREE) : 0.00;
 
+        $localNumbersCost    = round($localNumbersCost, 2);
+        $localMinutesCost    = round($localMinutesCost, 2);
+        $tollFreeNumbersCost = round($tollFreeNumbersCost, 2);
+        $tollFreeMinutesCost = round($tollFreeMinutesCost, 2);
+
         $this->currentUsage =  [
             'local' => [
                 'numbers' => [
@@ -263,7 +267,7 @@ class Account extends Model
             'toll_free' => [
                 'numbers' => [
                     'count' => count($tollFreeNumbers),
-                    'cost' => $tollFreeNumbersCost
+                    'cost'  => $tollFreeNumbersCost
                 ],
                 'minutes' => [
                     'count' => $tollFreeMinutes,
@@ -315,15 +319,15 @@ class Account extends Model
 
         $this->currentStorage = [
             'call_recordings' => [
-                'cost'    => $callRecordingStorageCost,
+                'cost'    => round($callRecordingStorageCost, 2),
                 'size_gb' => $callRecordingStorageSizeGB,
             ],
             'files' => [
-                'cost'    => $fileStorageCost,
+                'cost'    => round($fileStorageCost, 2),
                 'size_gb' => $fileStorageSizeGB
             ],
             'total' => [
-                'cost'    => $totalStorageCost,
+                'cost'    => round($totalStorageCost, 2),
                 'size_gb' => $totalStorageSizeGB
             ]
         ];

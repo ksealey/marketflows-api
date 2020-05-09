@@ -13,5 +13,14 @@ class BillingStatementItem extends Model
         'total'
     ];
 
+    public $appends = [
+        'total_formatted'
+    ];
+
     public $timestamps = false;
+
+    public function getTotalFormattedAttribute()
+    {
+        return number_format($this->total, 2);
+    }
 }

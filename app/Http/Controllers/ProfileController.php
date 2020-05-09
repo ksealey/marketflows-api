@@ -46,10 +46,11 @@ class ProfileController extends Controller
 
         if( $request->filled('last_name') )
             $me->last_name = $request->last_name;
-
+  
         if( $request->filled('email') && $request->email != $me->email ){
             $me->email             = $request->email;
             $me->email_verified_at = null;
+            Mail::to($me)->send(new UserEmailVerificationMail($me));
         }
 
         if( $request->has('phone') && $request->phone != $me->phone ){
@@ -59,11 +60,17 @@ class ProfileController extends Controller
 
         $me->save();
 
-        if($request->filled('email') )
-            Mail::to($me)->send(new UserEmailVerificationMail($me));
-
         return response($me);
     }
 
+    public function resendVerificationEmail(Request $request)
+    {
+        $me = $request->user();
+        
+        Mail::to($me)->send(new UserEmailVerificationMail($me));
 
+        return response([
+            'message' => 'sent'
+        ]);
+    }
 }

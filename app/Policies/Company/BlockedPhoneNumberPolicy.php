@@ -3,43 +3,45 @@
 namespace App\Policies\Company;
 
 use App\Models\User;
+use App\Models\Company;
+use App\Models\Company\BlockedPhoneNumber;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Models\BlockedPhoneNumber;
 
 class BlockedPhoneNumberPolicy
 {
-    use HandlesAuthorization, HandlesCompanyResources;
+    use HandlesAuthorization;
 
-    public function list(User $user)
+    
+    public function list(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id) 
-            && $user->canDoAction('blocked-phone-numbers.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company);
     }
     
-    public function create(User $user)
+    public function create(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id) 
-            && $user->canDoAction('blocked-phone-numbers.create');
+        return $user->canDoAction('create')
+            && $user->canViewCompany($company);
     }
 
-    public function read(User $user, BlockedPhoneNumber $blockedPhoneNumber)
+    public function read(User $user, BlockedPhoneNumber $blockedPhoneNumber, Company $company)
     {
-        return $this->resourceBelongsToCompany($blockedPhoneNumber->company_id)
-            && $this->userCanViewCompany($user, $campaign->company_id) 
-            && $user->canDoAction('blocked-phone-numbers.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company)
+            && $blockedPhoneNumber->company_id === $company->id;
     }
 
-    public function update(User $user, BlockedPhoneNumber $blockedPhoneNumber)
+    public function update(User $user, BlockedPhoneNumber $blockedPhoneNumber, Company $company)
     {
-        return $this->resourceBelongsToCompany($blockedPhoneNumber->company_id)
-            && $this->userCanViewCompany($user, $campaign->company_id) 
-            && $user->canDoAction('blocked-phone-numbers.update');
+        return $user->canDoAction('update')
+            && $user->canViewCompany($company)
+            && $blockedPhoneNumber->company_id === $company->id;
     }
 
-    public function delete(User $user,  BlockedPhoneNumber $blockedPhoneNumber)
+    public function delete(User $user, BlockedPhoneNumber $blockedPhoneNumber, Company $company)
     {
-        return $this->resourceBelongsToCompany($blockedPhoneNumber->company_id)
-            && $this->userCanViewCompany($user, $campaign->company_id) 
-            && $user->canDoAction('blocked-phone-numbers.delete');
+        return $user->canDoAction('delete')
+            && $user->canViewCompany($company)
+            && $blockedPhoneNumber->company_id === $company->id;
     }
 }

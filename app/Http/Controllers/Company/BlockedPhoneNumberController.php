@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
-use App\Models\BlockedPhoneNumber;
-use App\Models\BlockedPhoneNumber\BlockedCall;
+use App\Models\Company\BlockedPhoneNumber;
+use App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use App\Rules\BlockedPhoneNumbersRule;
 use Validator;
 use DB;
@@ -52,7 +52,7 @@ class BlockedPhoneNumberController extends Controller
         $user = $request->user();
 
         $validator = Validator::make($request->input(), [
-            'numbers'        => [
+            'numbers' => [
                 'bail', 
                 'required', 
                 'json', 
@@ -92,7 +92,6 @@ class BlockedPhoneNumberController extends Controller
             $number['number']       = PhoneNumber::number($wholeNumber);
             $number['account_id']   = $company->account_id;
             $number['company_id']   = $company->id;
-            $number['user_id']      = $user->id;
             $number['created_at']   = $createdAt;
             $number['created_by']   = $user->id;
 
@@ -107,8 +106,7 @@ class BlockedPhoneNumberController extends Controller
 
         BlockedPhoneNumber::insert($inserts);
 
-        $blockedNumbers = BlockedPhoneNumber::where('account_id', $user->account_id)
-                                            ->where('company_id', $company->id)
+        $blockedNumbers = BlockedPhoneNumber::where('company_id', $company->id)
                                             ->where('created_at', $createdAt)
                                             ->get();
 
@@ -144,6 +142,7 @@ class BlockedPhoneNumberController extends Controller
 
         if( $request->filled('name') && $request->name !== $blockedPhoneNumber->name ){
             $blockedPhoneNumber->name = $request->name;
+            $blockedPhoneNumber->updated_by = $request->user()->id;
             $blockedPhoneNumber->save();
         }
 
@@ -161,46 +160,7 @@ class BlockedPhoneNumberController extends Controller
         $blockedPhoneNumber->delete();
 
         return response([
-            'message' => 'Deleted.'
-        ]);
-    }
-
-    /**
-     * Bulk delete
-     * 
-     */
-    public function bulkDelete(Request $request, Company $company)
-    {
-        $user = $request->user();
-
-        $validator = validator($request->input(), [
-            'ids' => ['required','json']
-        ]);
-
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $blockedNumberIds = array_values(json_decode($request->ids, true) ?: []);
-        $blockedNumberIds = array_filter($blockedNumberIds, function($item){
-            return is_string($item) || is_numeric($item);
-        });
-        $blockedNumbers = BlockedPhoneNumber::whereIn('id', $blockedNumberIds)
-                                            ->where('company_id', $company->id)
-                                            ->get()
-                                            ->toArray();
-
-        $blockedNumberIds = array_column($blockedNumbers, 'id');
-        if( count($blockedNumberIds) ){
-            BlockedPhoneNumber::whereIn('id', $blockedNumberIds)->delete();
-            BlockedCall::whereIn('blocked_phone_number_id', $blockedNumberIds)->delete();
-        }
-
-        return response([
-            'message' => 'Deleted.',
-            'count'   => count($blockedNumberIds)
+            'message' => 'deleted'
         ]);
     }
 

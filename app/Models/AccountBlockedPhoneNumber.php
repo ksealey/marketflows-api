@@ -4,20 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\BlockedPhoneNumber\BlockedCall;
+use App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
 use App\Traits\PerformsExport;
 use DB;
 
-class BlockedPhoneNumber extends Model
+class AccountBlockedPhoneNumber extends Model
 {
     use SoftDeletes, PerformsExport;
-    
-    protected $table = 'blocked_phone_numbers';
 
     protected $fillable = [
         'account_id',
-        'company_id',
-        'user_id',
         'name',
         'number', 
         'country_code',
@@ -40,7 +36,6 @@ class BlockedPhoneNumber extends Model
     {
         return [
             'id'         => 'Id',
-            'company_id' => 'Company Id',
             'name'       => 'Name',
             'number'     => 'Number',
             'call_count' => 'Calls',
@@ -50,16 +45,16 @@ class BlockedPhoneNumber extends Model
 
     static public function exportFileName($user, array $input) : string
     {
-        return 'Blocked Numbers - ' . $input['company_name'];
+        return 'Account Blocked Numbers';
     }
 
     static public function exportQuery($user, array $input)
     {
-        return BlockedPhoneNumber::select([
-                                'blocked_phone_numbers.*',
-                                DB::raw('(SELECT count(*) FROM blocked_calls WHERE blocked_calls.blocked_phone_number_id = blocked_phone_numbers.id) AS call_count')
+        return AccountBlockedPhoneNumber::select([
+                                'account_blocked_phone_numbers.*',
+                                DB::raw('(SELECT count(*) FROM account_blocked_calls WHERE account_blocked_calls.account_blocked_phone_number_id = account_blocked_phone_numbers.id) AS call_count')
                           ])
-                          ->where('blocked_phone_numbers.company_id', $input['company_id']);
+                          ->where('account_blocked_phone_numbers.account_id', $input['account_id']);
     }
 
     /**
@@ -68,7 +63,7 @@ class BlockedPhoneNumber extends Model
      */
     public function getCallCountAttribute()
     {
-        return BlockedCall::where('blocked_phone_number_id', $this->id)->count();
+        return AccountBlockedCall::where('account_blocked_phone_number_id', $this->id)->count();
     }
 
     /**
@@ -77,8 +72,8 @@ class BlockedPhoneNumber extends Model
      */
     public function getLinkAttribute()
     {
-        return route('read-blocked-phone-number', [
-            'blockedPhoneNumberId' => $this->id
+        return route('read-account-blocked-phone-number', [
+            'accountBlockedPhoneNumberId' => $this->id
         ]);
     }
 
@@ -88,7 +83,7 @@ class BlockedPhoneNumber extends Model
      */
     public function getKindAttribute()
     {
-        return 'BlockedPhoneNumber';
+        return 'AccountBlockedPhoneNumber';
     }
 
 }

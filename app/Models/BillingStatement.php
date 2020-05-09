@@ -51,6 +51,11 @@ class BillingStatement extends Model
         return $this->hasMany('App\Models\BillingStatementItem');
     }
 
+    public function payment_method()
+    {
+        return $this->belongsTo('\App\Models\PaymentMethod');
+    }
+
     public function getTotalAttribute($total = null)
     {
         if( $total === null ){

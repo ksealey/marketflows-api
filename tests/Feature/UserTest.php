@@ -17,17 +17,43 @@ class UserTest extends TestCase
    use \Tests\CreatesAccount;
 
    /**
-    *   Test listing users 
+    *   Test listing users with self included
     *
     *   @group users
     */
-    public function testListingUsers()
+    public function testListingWithSelfUsers()
     {
         $users = factory(User::class, 10)->create([
             'account_id' => $this->account->id,
         ]);
 
         $response = $this->json('GET', route('list-users'));
+
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'result_count' => 11, // Add one 
+            'limit' => 250,
+            'page' => 1,
+            'total_pages' => 1,
+            'next_page' => null,
+            'results' => []
+        ]);
+    }
+
+    /**
+    *   Test listing users with self exluded
+    *
+    *   @group users
+    */
+    public function testListingUsersWithoutSelf()
+    {
+        $users = factory(User::class, 10)->create([
+            'account_id' => $this->account->id,
+        ]);
+
+        $response = $this->json('GET', route('list-users'), [
+            'exclude_self' => 1
+        ]);
 
         $response->assertStatus(200);
         $response->assertJSON([

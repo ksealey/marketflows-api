@@ -9,7 +9,7 @@ use App\Models\Account;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
-use App\Models\BlockedPhoneNumber;
+use App\Models\Company\BlockedPhoneNumber;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
 use App\Models\Events\Session;

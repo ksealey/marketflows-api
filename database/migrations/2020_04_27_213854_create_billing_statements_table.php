@@ -22,6 +22,8 @@ class CreateBillingStatementsTable extends Migration
             $table->dateTime('paid_at')->nullable();
             $table->string('charge_id', 64)->nullable();
             $table->timestamps();
+            $table->softDeletes(); 
+
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('payment_method_id')->references('id')->on('payment_methods');
         });

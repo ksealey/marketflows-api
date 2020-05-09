@@ -43,8 +43,16 @@ class BlockedPhoneNumbersRule implements Rule
             return false;
         }   
 
+
         foreach( $numbers as $idx => $number ){
-            $validator = Validator::make($number, [
+            $number = is_object($number) ? (array)$number : $number;
+            if( ! is_array($number) ){
+                $this->message = 'Blocked numbers must be number objects or arrays';
+
+                return false;
+            }
+
+            $validator = validator($number, [
                 'name'      => 'required',
                 'number'    => 'required|digits_between:10,13',
             ]);

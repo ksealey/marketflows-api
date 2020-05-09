@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\BlockedPhoneNumber;
+namespace App\Http\Controllers\Company\BlockedPhoneNumber;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
-use App\Models\BlockedPhoneNumber;
-use App\Models\BlockedPhoneNumber\BlockedCall;
+use App\Models\Company\BlockedPhoneNumber;
+use App\Models\Compay\BlockedPhoneNumber\BlockedCall;
 use DB;
 
 class BlockedCallController extends Controller

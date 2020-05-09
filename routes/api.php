@@ -46,7 +46,7 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
     | Handle account
     |--------------------------------
     */
-    Route::prefix('accounts')->group(function(){
+    Route::prefix('account')->group(function(){
         Route::get('/', 'AccountController@read')
              ->middleware('can:read,\App\Models\Account')
              ->name('read-account');
@@ -75,6 +75,9 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
 
         Route::put('/', 'ProfileController@updateMe')
              ->name('update-me');
+
+        Route::post('/resend-verification-email', 'ProfileController@resendVerificationEmail')
+            ->name('resend-verification-email');
 
         /*
         |----------------------------------------
@@ -224,28 +227,30 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
     |---------------------------------------
     | Handle account blocked phone numbers
     |---------------------------------------
-    */
+    
     Route::prefix('blocked-phone-numbers')->group(function(){
         Route::get('/', 'BlockedPhoneNumberController@list')
-            ->middleware('can:list,\App\Models\BlockedPhoneNumber')
-            ->name('list-blocked-phone-numbers'); 
+            ->middleware('can:list,\App\Models\AccountBlockedPhoneNumber')
+            ->name('list-account-blocked-phone-numbers'); 
 
         Route::post('/', 'BlockedPhoneNumberController@create')
-             ->middleware('can:create,\App\Models\BlockedPhoneNumber')
-             ->name('create-blocked-phone-number');
+             ->middleware('can:create,\App\Models\AccountBlockedPhoneNumber')
+             ->name('create-account-blocked-phone-number');
 
         Route::get('/{blockedPhoneNumber}', 'BlockedPhoneNumberController@read')
              ->middleware('can:read,blockedPhoneNumber')
-             ->name('read-blocked-phone-number');
+             ->name('read-account-blocked-phone-number');
 
         Route::put('/{blockedPhoneNumber}', 'BlockedPhoneNumberController@update')
              ->middleware('can:update,blockedPhoneNumber')
-             ->name('update-blocked-phone-number');
+             ->name('update-account-blocked-phone-number');
 
         Route::delete('/{blockedPhoneNumber}', 'BlockedPhoneNumberController@delete')
             ->middleware('can:delete,blockedPhoneNumber')
-            ->name('delete-blocked-phone-number'); 
+            ->name('delete-account-blocked-phone-number'); 
     });
+    */
+    
 
 
     /*
@@ -401,45 +406,44 @@ Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
             |---------------------------------------
             */
             Route::prefix('blocked-phone-numbers')->group(function(){
+                
                 Route::get('/', 'Company\BlockedPhoneNumberController@list')
-                    ->middleware('can:list,\App\Models\BlockedPhoneNumber')
+                    ->middleware('can:list,\App\Models\Company\BlockedPhoneNumber,company')
                     ->name('list-company-blocked-phone-numbers');
                     
                 Route::get('/export', 'Company\BlockedPhoneNumberController@export')
-                    ->middleware('can:list,\App\Models\BlockedPhoneNumber')
-                    ->name('list-company-blocked-phone-numbers');
+                    ->middleware('can:list,\App\Models\Company\BlockedPhoneNumber,company')
+                    ->name('export-company-blocked-phone-numbers');
 
                 Route::post('/', 'Company\BlockedPhoneNumberController@create')
-                    ->middleware('can:create,\App\Models\BlockedPhoneNumber')
+                    ->middleware('can:create,\App\Models\Company\BlockedPhoneNumber,company')
                     ->name('create-company-blocked-phone-number');
-
-                Route::prefix('{blockedPhoneNumber}')->group(function(){
-                    Route::put('/', 'Company\BlockedPhoneNumberController@update')
-                    ->middleware('can:update,blockedPhoneNumber')
+               
+                Route::put('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@update')
+                    ->middleware('can:update,blockedPhoneNumber,company')
                     ->name('update-company-blocked-phone-number');
 
-                    Route::get('/', 'Company\BlockedPhoneNumberController@read')
-                        ->middleware('can:read,blockedPhoneNumber')
-                        ->name('read-company-blocked-phone-number');
+                Route::get('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@read')
+                    ->middleware('can:read,blockedPhoneNumber,company')
+                    ->name('read-company-blocked-phone-number');
 
-                    Route::delete('/', 'Company\BlockedPhoneNumberController@delete')
-                        ->middleware('can:delete,blockedPhoneNumber')
-                        ->name('delete-company-blocked-phone-number');
+                Route::delete('/{blockedPhoneNumber}', 'Company\BlockedPhoneNumberController@delete')
+                    ->middleware('can:delete,blockedPhoneNumber,company')
+                    ->name('delete-company-blocked-phone-number');
 
-                    /*
-                    |---------------------------------------
-                    | Handle company blocked calls
-                    |---------------------------------------
-                    */   
-                    Route::prefix('blocked-calls')->group(function(){
-                        Route::get('/', 'BlockedPhoneNumber\BlockedCallController@list')
-                            ->middleware('can:list,\App\Models\BlockedPhoneNumber\BlockedCall')
-                            ->name('list-blocked-calls'); 
+                /*
+                |---------------------------------------
+                | Handle company blocked calls
+                |---------------------------------------
+                */   
+                Route::prefix('blocked-calls')->group(function(){
+                    Route::get('/', 'BlockedPhoneNumber\BlockedCallController@list')
+                        ->middleware('can:list,\App\Models\Company\BlockedPhoneNumber\BlockedCall')
+                        ->name('list-blocked-calls'); 
 
-                        Route::get('/export', 'BlockedPhoneNumber\BlockedCallController@export')
-                            ->middleware('can:list,\App\Models\BlockedPhoneNumber\BlockedCall')
-                            ->name('export-blocked-calls'); 
-                    });
+                    Route::get('/export', 'BlockedPhoneNumber\BlockedCallController@export')
+                        ->middleware('can:list,\App\Models\Company\BlockedPhoneNumber\BlockedCall')
+                        ->name('export-blocked-calls'); 
                 });
             });
 

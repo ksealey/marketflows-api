@@ -5,7 +5,7 @@
 use App\Model;
 use Faker\Generator as Faker;
 
-$factory->define(\App\Models\BlockedPhoneNumber::class, function (Faker $faker) {
+$factory->define(\App\Models\Company\BlockedPhoneNumber::class, function (Faker $faker) {
     return [
         'name'   => $faker->realText(20),
         'number' => substr($faker->e164PhoneNumber, -10)

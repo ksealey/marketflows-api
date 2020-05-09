@@ -7,6 +7,8 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Alert;
+use App\Mail\Auth\EmailVerification as EmailVerificationMail;
+use Mail;
 
 class MeTest extends TestCase
 {
@@ -37,10 +39,12 @@ class MeTest extends TestCase
     /**
      * Test can update self
      * 
-     * @group me
+     * @group me-
      */
     public function testCanUpdateSelf()
     {
+        Mail::fake();
+
         $user     = factory(User::class)->make();
         $response = $this->json('PUT', route('update-me'), $user->toArray());
         $response->assertStatus(200);
@@ -54,6 +58,8 @@ class MeTest extends TestCase
             'email'     => $user->email,
             'phone'     => $user->phone
         ]);
+
+        Mail::assertSent(EmailVerificationMail::class);
     }
 
     /**
@@ -136,7 +142,7 @@ class MeTest extends TestCase
         ]);
         $response->assertStatus(200);
         $response->assertJSON([
-            'results' => [],
+            'results'       => [],
             'result_count'  => 0,
         ]);
     }
@@ -177,5 +183,23 @@ class MeTest extends TestCase
             'next_page'     => null,
             'total_pages'   => 1
         ]);
+    }
+
+    /**
+     * Test resending a verification email
+     * 
+     * @group me
+     */
+    public function testResendVerificationEmail()
+    {
+        Mail::fake();
+
+        $response = $this->json('POST', route('resend-verification-email'));
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'message' => 'sent'
+        ]);
+
+        Mail::assertSent(EmailVerificationMail::class);
     }
 }

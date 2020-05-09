@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\BlockedPhoneNumber;
+use App\Models\Company\BlockedPhoneNumber;
 use App\Models\Company\PhoneNumber;
 use Validator;
 

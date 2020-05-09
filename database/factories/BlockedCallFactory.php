@@ -5,7 +5,7 @@
 use App\Model;
 use Faker\Generator as Faker;
 
-$factory->define(\App\Models\BlockedPhoneNumber\BlockedCall::class, function (Faker $faker) {
+$factory->define(\App\Models\Company\BlockedPhoneNumber\BlockedCall::class, function (Faker $faker) {
     return [
         'created_at' => now()
     ];

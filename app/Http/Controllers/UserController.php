@@ -32,6 +32,8 @@ class UserController extends Controller
     {
         $user  = $request->user();
         $query = User::where('users.account_id', $user->account_id);
+        if( $request->exclude_self )
+            $query->where('id', '!=', $user->id);
         
         return parent::results(
             $request,

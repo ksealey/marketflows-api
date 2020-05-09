@@ -14,8 +14,8 @@ use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
-use \App\Models\BlockedPhoneNumber;
-use \App\Models\BlockedPhoneNumber\BlockedCall;
+use \App\Models\Company\BlockedPhoneNumber;
+use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use Storage;
 
 trait CreatesAccount
