@@ -60,6 +60,7 @@ class Handler extends ExceptionHandler
         }
 
         if( $exception instanceof \Illuminate\Auth\Access\AuthorizationException ){
+            var_dump($exception->getTraceAsString()); exit;
             return response([
                 'error' => 'Unauthorized'
             ], 403);

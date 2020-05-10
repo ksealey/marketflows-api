@@ -18,18 +18,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //  Register twilio
-        $this->app->bind('Twilio\Rest\Client', function($app){
-            $config = config('services.twilio');
-
-            return new Twilio($config['sid'], $config['token']);
-        });
-
         //  Register AWS
         $this->app->bind('App\Helpers\PhoneNumberManager', function($app){
-            $config = config('services.twilio');
-
-            return new \App\Helpers\PhoneNumberManager(new Twilio($config['sid'], $config['token']));
+            return new \App\Helpers\PhoneNumberManager();
         });
 
         //  Register AWS

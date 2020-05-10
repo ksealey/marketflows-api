@@ -77,16 +77,15 @@ class PhoneNumberController extends Controller
             'name'                => 'bail|required|max:64',
             'category'            => 'bail|required|in:ONLINE,OFFLINE',
             'source'              => 'bail|required|max:64', 
-            'medium'              => 'bail|max:64',
-            'content'             => 'bail|max:64',
-            'campaign'            => 'bail|max:64',       
+            'medium'              => 'bail|nullable|max:64',
+            'content'             => 'bail|nullable|max:64',
+            'campaign'            => 'bail|nullable|max:64',       
             'phone_number_config_id' => [
                 'bail',
                 'required',
                 (new PhoneNumberConfigRule($company))
             ],
-            'type'          => 'bail|required|in:Toll-Free,Local',
-            'starts_with'   => 'bail|digits_between:1,10'
+            'type'          => 'bail|required|in:Toll-Free,Local'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -100,6 +99,9 @@ class PhoneNumberController extends Controller
         });
         $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
             return $input->sub_category == 'WEBSITE';
+        });
+        $validator->sometimes('starts_with', ['bail', 'required', 'digits_between:1,10'], function($input){
+            return $input->type === 'Local';
         });
 
         if( $validator->fails() )
@@ -117,7 +119,7 @@ class PhoneNumberController extends Controller
        
         //  See if we can find an available number in the number bank 
         //  that didn't previously belong to this account
-        $startsWith  = $request->starts_with;
+        $startsWith  = $request->type === 'Local' ? $request->starts_with : '';
         $bankedQuery = BankedPhoneNumber::where('status', 'Available')
                                         ->where('released_by_account_id', '!=', $account->id)
                                         ->where('country', $company->country)
@@ -145,13 +147,13 @@ class PhoneNumberController extends Controller
                 'voice'                     => $bankedNumber->voice,
                 'sms'                       => $bankedNumber->sms,
                 'mms'                       => $bankedNumber->mms,
-                'name'                      => $request->name ?: '+' . $bankedNumber->country_code . $bankedNumber->number,
+                'name'                      => $request->name,
                 'source'                    => $request->source,
-                'medium'                    => $request->medium,
-                'content'                   => $request->content,
-                'campaign'                  => $request->campaign,
+                'medium'                    => $request->medium ?: null,
+                'content'                   => $request->content ?: null,
+                'campaign'                  => $request->campaign ?: null,
                 'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null,
-                'purchased_at'              => $bankedNumber->purchased_at
+                'purchased_at'              => $bankedNumber->purchased_at,
                 'created_by'                => $user->id,
             ]);
         }else{

@@ -16,7 +16,6 @@ class BlockedPhoneNumberController extends Controller
     public function list(Request $request)
     {
         $user  = $request->user();
-
         $query = BlockedPhoneNumber::where('account_id', $user->account_id);
         
         if( $request->search )

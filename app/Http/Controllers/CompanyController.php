@@ -44,8 +44,12 @@ class CompanyController extends Controller
         ];
 
         $user  = $request->user();
-        $query = Company::where('companies.account_id', $user->account_id);
-        
+        $query = Company::select([
+            'companies.*',
+            'phone_number_pools.id AS phone_number_pool_id'
+        ])->where('companies.account_id', $user->account_id)
+         ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id');
+
         if( ! $user->canViewAllCompanies() ){
             $query->whereIn('companies.id', function($query) use($user){
                         $query->select('company_id')
@@ -119,7 +123,12 @@ class CompanyController extends Controller
      * @return Response
      */
     public function read(Request $request, Company $company)
-    {   
+    {  
+        $pool = PhoneNumberPool::where('company_id', $company->id)
+                               ->first();
+
+        $company->phone_number_pool_id = $pool ? $pool->id : null;
+
         return response($company);
     }
 
@@ -168,6 +177,11 @@ class CompanyController extends Controller
 
         $company->updated_by = $user->id;
         $company->save();
+
+        $pool = PhoneNumberPool::where('company_id', $company->id)
+                               ->first();
+
+        $company->phone_number_pool_id = $pool ? $pool->id : null;
         
         return response($company);
     }

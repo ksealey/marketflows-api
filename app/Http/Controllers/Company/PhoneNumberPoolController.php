@@ -162,13 +162,13 @@ class PhoneNumberPoolController extends Controller
         $phoneNumberPool = PhoneNumberPool::create([
             'account_id'                => $company->account_id,
             'company_id'                => $company->id,
-            'user_id'                   => $user->id,
+            'created_by'                => $user->id,
             'phone_number_config_id'    => $request->phone_number_config_id,
             'name'                      => $request->name,
             'swap_rules'                => json_decode($request->swap_rules),
             'override_campaigns'        => !!$request->override_campaigns,
             'starts_with'               => $startsWith ?: null,
-            'disabled_at'               => $request->disabled ? now() : null
+            'disabled_at'               => $request->disabled ? now() : null,
         ]);
         
         //
@@ -184,7 +184,7 @@ class PhoneNumberPoolController extends Controller
                 'external_id'               => $bankedNumber->external_id,
                 'account_id'                => $company->account_id,
                 'company_id'                => $company->id,
-                'user_id'                   => $user->id,
+                'created_by'                => $user->id,
                 'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
                 'category'                  => 'ONLINE',
                 'sub_category'              => 'WEBSITE',
@@ -203,7 +203,7 @@ class PhoneNumberPoolController extends Controller
                 'swap_rules'                => json_encode($phoneNumberPool->swap_rules),
                 'purchased_at'              => $bankedNumber->purchased_at,
                 'created_at'                => $now,
-                'updated_at'                => $now
+                'updated_at'                => $now,
             ];
         }
         
@@ -216,7 +216,7 @@ class PhoneNumberPoolController extends Controller
                 Log::error($e->getTraceAsString());
                 DB::rollBack();
                 return response([
-                    'error' => 'An error occurred while attempting to purchase numbers - Please try again later.'
+                    'error' => $e->getMessage()
                 ], 500);
             }
         }
@@ -240,8 +240,9 @@ class PhoneNumberPoolController extends Controller
                     'uuid'                      => Str::uuid(),
                     'phone_number_pool_id'      => $phoneNumberPool->id,
                     'external_id'               => $purchasedPhone->sid,
+                    'account_id'                => $company->account_id,
                     'company_id'                => $company->id,
-                    'user_id'                   => $user->id,
+                    'created_by'                => $user->id,
                     'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
                     'category'                  => 'ONLINE',
                     'sub_category'              => 'WEBSITE',
@@ -273,13 +274,11 @@ class PhoneNumberPoolController extends Controller
             Log::error($e->getTraceAsString());
             
             return response([
-                'error' => 'An error occurred while attempting to purchase numbers - Please try again later.'
+                'error' => $e->getMessage()
             ], 500);
         }
 
         DB::commit();
-
-        event(new PhoneNumberPoolEvent($user, [$phoneNumberPool], 'create'));
 
         return response($phoneNumberPool, 201);
     }
@@ -350,8 +349,6 @@ class PhoneNumberPoolController extends Controller
         
         $phoneNumberPool->save();
 
-        event(new PhoneNumberPoolEvent($request->user(), [$phoneNumberPool], 'update'));
-
         return response($phoneNumberPool);
     }
 
@@ -372,9 +369,6 @@ class PhoneNumberPoolController extends Controller
 
         $phoneNumberPool->delete();
         PhoneNumber::whereIn('id', array_column($phoneNumbers->toArray(),'id'))->delete();
-       
-        event( new PhoneNumberPoolEvent($user, [$phoneNumberPool], 'delete') );
-        event( new PhoneNumberEvent($company->account, $phoneNumbers, 'delete') );
 
         return response([
             'message' => 'Deleted.'
@@ -487,8 +481,9 @@ class PhoneNumberPoolController extends Controller
                 'uuid'                      => Str::uuid(),
                 'phone_number_pool_id'      => $phoneNumberPool->id,
                 'external_id'               => $bankedNumber->external_id,
+                'account_id'                => $company->account_id,
                 'company_id'                => $company->id,
-                'user_id'                   => $user->id,
+                'created_by'                => $user->id,
                 'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
                 'category'                  => 'ONLINE',
                 'sub_category'              => 'WEBSITE',
@@ -546,8 +541,9 @@ class PhoneNumberPoolController extends Controller
                     'uuid'                      => Str::uuid(),
                     'phone_number_pool_id'      => $phoneNumberPool->id,
                     'external_id'               => $purchasedPhone->sid,
+                    'account_id'                => $company->account_id,
                     'company_id'                => $company->id,
-                    'user_id'                   => $user->id,
+                    'created_by'                => $user->id,
                     'phone_number_config_id'    => $phoneNumberPool->phone_number_config_id,
                     'category'                  => 'ONLINE',
                     'sub_category'              => 'WEBSITE',

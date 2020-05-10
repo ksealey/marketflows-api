@@ -6,7 +6,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\Company;
+use App\Models\Company\PhoneNumberConfig;
+use App\Models\Company\PhoneNumber;
 use App\Models\Company\BlockedPhoneNumber;
+use App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use App\Jobs\ExportResultsJob;
 use Queue;
 use DateTimeZone;
@@ -325,6 +328,106 @@ class BlockedPhoneNumberTest extends TestCase
                 && $job->user->id === $this->user->id
                 && $job->input['start_date'] == $twoDaysAgo->format('Y-m-d')
                 && $job->input['end_date'] == $twoDaysAgo->format('Y-m-d');
+        });
+    }
+
+    /**
+     * Test fetching blocked calls for a blocked phone number
+     * 
+     * @group blocked-phone-numbers-
+     */
+    public function testFetchBlockedCalls()
+    {
+        $company = $this->createCompany();
+
+        $config = factory(PhoneNumberConfig::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $myNumber = factory(PhoneNumber::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id,
+            'phone_number_config_id' => $config->id
+        ]);
+
+        $blockedNumber = factory(BlockedPhoneNumber::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $blockedCalls = factory(BlockedCall::class, 5)->create([
+            'blocked_phone_number_id' => $blockedNumber->id,
+            'phone_number_id'         => $myNumber->id
+        ]);
+
+        $response = $this->json('GET', route('list-company-blocked-calls', [
+            'company'            => $company->id,
+            'blockedPhoneNumber' => $blockedNumber->id
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertJSON([
+            "result_count" => 5,
+            "limit"        => 250,
+            "page"         => 1,
+            "total_pages"  => 1,
+            "next_page"    => null,
+            'results'      => []
+        ]);
+    }
+
+    /**
+     * Test exporting blocked calls for a blocked phone number
+     * 
+     * @group blocked-phone-numbers
+     */
+    public function testExportBlockedCalls()
+    {
+        Queue::fake();
+
+        $company = $this->createCompany();
+
+        $config = factory(PhoneNumberConfig::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $myNumber = factory(PhoneNumber::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id,
+            'phone_number_config_id' => $config->id
+        ]);
+
+        $blockedNumber = factory(BlockedPhoneNumber::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $blockedCalls = factory(BlockedCall::class, 5)->create([
+            'blocked_phone_number_id' => $blockedNumber->id,
+            'phone_number_id'         => $myNumber->id
+        ]);
+
+        $response = $this->json('GET', route('export-company-blocked-calls', [
+            'company'            => $company->id,
+            'blockedPhoneNumber' => $blockedNumber->id
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'message'=> 'queued'
+        ]);
+
+        Queue::assertPushed(ExportResultsJob::class, function ($job){
+            return $job->model === BlockedCall::class 
+                && $job->user->id === $this->user->id;
         });
     }
 }

@@ -1,19 +1,19 @@
 <?php
 namespace App\Helpers;
 
+use Twilio\Rest\Client as Twilio;
 use Exception;
+use App;
 
 class PhoneNumberManager
 {
     protected $client;
 
-    public function __construct($client)
-    {
-        $this->client = $client; 
-    }   
-
     public function listAvailable($contains = '' , $limit = 20, $type, $country = 'US')
     {
+        $config = config('services.twilio');
+        $client = new Twilio($config['sid'], $config['token']); 
+
         $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
 
         $config   = [
@@ -24,8 +24,7 @@ class PhoneNumberManager
 
         $numbers = [];
         try{
-            $query = $this->client
-                          ->availablePhoneNumbers($country);
+            $query = $client->availablePhoneNumbers($country);
 
             $query = $type === 'Toll-Free' ? $query->tollFree : $query->local;
 
@@ -40,19 +39,27 @@ class PhoneNumberManager
 
     public function purchase(string $number)
     {
-        return $this->client
-                    ->incomingPhoneNumbers
-                    ->create([
-                        'phoneNumber'           => $number,
-                        'voiceUrl'              => route('incoming-call'),
-                        'voiceMethod'           => 'GET',
-                        'statusCallback'        => route('incoming-call-status-changed'),
-                        'statusCallbackMethod'  => 'GET',
-                        'smsUrl'                => route('incoming-sms'),
-                        'smsMethod'             => 'GET',
-                        'mmsUrl'                => route('incoming-mms'),
-                        'mmsMethod'             => 'GET'
-                    ]);
+        $config = config('services.twilio');
+
+        if( App::environment(['prod', 'production']) ){
+            $client = new Twilio($config['sid'], $config['token']); 
+        }else{
+            $client = new Twilio($config['test_sid'], $config['test_token']); 
+            $number = $config['magic_numbers']['available'];
+        }
+
+        return $client->incomingPhoneNumbers
+                      ->create([
+                            'phoneNumber'           => $number,
+                            'voiceUrl'              => route('incoming-call'),
+                            'voiceMethod'           => 'GET',
+                            'statusCallback'        => route('incoming-call-status-changed'),
+                            'statusCallbackMethod'  => 'GET',
+                            'smsUrl'                => route('incoming-sms'),
+                            'smsMethod'             => 'GET',
+                            'mmsUrl'                => route('incoming-mms'),
+                            'mmsMethod'             => 'GET'
+                      ]);
         
     }
 
@@ -62,8 +69,12 @@ class PhoneNumberManager
      */
     public function release($externalId)
     {
-        $this->client->incomingPhoneNumbers($externalId)
-                      ->delete();
+
+        if( App::environment(['prod', 'production']) ){
+            $this->client
+                 ->incomingPhoneNumbers($externalId)
+                 ->delete();
+        }
        
         return $this;
     }

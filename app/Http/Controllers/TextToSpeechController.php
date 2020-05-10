@@ -20,9 +20,9 @@ class TextToSpeechController extends Controller
     {
         $config    = config('services.twilio.languages');
         $languages = array_keys($config);
-        $voiceKey  = $request->language && in_array($request->language, $languages) ?  : 'en-US';
-        $voices    = array_keys($config[$voiceKey]['voices']); 
-        
+        $language  = $request->language && in_array($request->language, $languages) ? $request->language : 'en-US';
+        $voices    = array_keys($config[$language]['voices']); 
+
         $validator = validator($request->input(), [
             'text'      => 'bail|required',
             'language'  => 'bail|in:' . implode(',', $languages),
@@ -35,8 +35,7 @@ class TextToSpeechController extends Controller
             ], 400);
         }
 
-        $language = $request->language ?? 'en-US';
-        $voice    = $request->voice    ?? 'Joanna';
+        $voice = $request->voice    ?? 'Joanna';
         
         return response( 
             $this->tts->say($language, $voice, $request->text) 

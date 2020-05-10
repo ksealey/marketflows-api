@@ -109,8 +109,8 @@ class PhoneNumberPool extends Model
     public function getLinkAttribute()
     {
         return route('read-phone-number-pool', [
-            'companyId'         => $this->company_id,
-            'phoneNumberPoolId' => $this->id
+            'company'         => $this->company_id,
+            'phoneNumberPool' => $this->id
         ]);
     }
 

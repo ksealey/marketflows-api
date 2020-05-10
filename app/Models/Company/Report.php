@@ -175,8 +175,8 @@ class Report extends Model
     public function getLinkAttribute()
     {
         return route('read-report', [
-            'companyId' => $this->company_id,
-            'reportId'  => $this->id
+            'company' => $this->company_id,
+            'report'  => $this->id
         ]);
     }
 

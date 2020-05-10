@@ -302,6 +302,11 @@ class Account extends Model
                                                     END AS storage_size'
                                             )
                                         )
+                                        ->whereIn('call_id', function($query){
+                                            $query->select('id')
+                                                  ->from('calls')
+                                                  ->where('account_id', $this->id);
+                                        })
                                         ->first()
                                         ->storage_size;
         

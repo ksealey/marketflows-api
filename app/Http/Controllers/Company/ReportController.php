@@ -88,7 +88,7 @@ class ReportController extends Controller
         $reportData = [
             'timezone'                  => $request->timezone ?: $user->timezone,
             'company_id'                => $company->id,
-            'user_id'                   => $user->id,
+            'created_by'                   => $user->id,
             'name'                      => $request->name,
             'module'                    => $request->module,
             'metric'                    => $request->metric ?: null,
@@ -260,50 +260,6 @@ class ReportController extends Controller
             'reports.created_at'
         );
     }   
-
-    /**
-     * Bulk delete reports
-     * 
-     */
-    public function bulkDelete(Request $request, Company $company)
-    {
-        $user = $request->user();
-
-        $validator = validator($request->input(), [
-            'ids' => ['required','json']
-        ]);
-
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $reportIds = array_values(json_decode($request->ids, true) ?: []);
-        $reportIds = array_filter($reportIds, function($item){
-            return is_string($item) || is_numeric($item);
-        });
-
-        $reports = Report::whereIn('id', $reportIds)
-                            ->whereIn('company_id', function($query) use($user){
-                                    $query->select('company_id')
-                                        ->from('user_companies')
-                                        ->where('user_id', $user->id);
-                            })
-                            ->get()
-                            ->toArray();
-
-        $reportIds = array_column($reports, 'id');
-
-        if( count($reportIds) ){
-            ReportAutomation::whereIn('report_id', $reportIds)->delete();
-            Report::whereIn('id', $reportIds)->delete();
-        }
-        
-        return response([
-            'message' => 'Deleted.'
-        ]);
-    }
 
     /**
      * Delete a report

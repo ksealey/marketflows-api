@@ -6,42 +6,42 @@ use App\Models\User;
 use App\Models\Company;
 use App\Models\Company\PhoneNumberPool;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Policies\Traits\HandlesCompanyResources;
 
 class PhoneNumberPoolPolicy
 {
-    use HandlesAuthorization, HandlesCompanyResources;
+    use HandlesAuthorization;
 
-    public function list(User $user)
+    
+    public function list(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id)
-            && $user->canDoAction('phone-number-pools.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company);
     }
     
-    public function create(User $user)
+    public function create(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user, request()->company->id) 
-            && $user->canDoAction('phone-number-pools.create');
+        return $user->canDoAction('create')
+            && $user->canViewCompany($company);
     }
 
-    public function read(User $user, PhoneNumberPool $phoneNumberPool)
+    public function read(User $user, PhoneNumberPool $phoneNumberPool, Company $company)
     {
-        return $this->resourceBelongsToCompany($phoneNumberPool->company_id)
-            && $this->userCanViewCompany($user, $phoneNumberPool->company_id) 
-            && $user->canDoAction('phone-number-pools.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company)
+            && $phoneNumberPool->company_id === $company->id;
     }
 
-    public function update(User $user, PhoneNumberPool $phoneNumberPool)
+    public function update(User $user, PhoneNumberPool $phoneNumberPool, Company $company)
     {
-        return $this->resourceBelongsToCompany($phoneNumberPool->company_id)
-            && $this->userCanViewCompany($user, $phoneNumberPool->company_id) 
-            && $user->canDoAction('phone-number-pools.update');
+        return $user->canDoAction('update')
+            && $user->canViewCompany($company)
+            && $phoneNumberPool->company_id === $company->id;
     }
 
-    public function delete(User $user, PhoneNumberPool $phoneNumberPool)
+    public function delete(User $user, PhoneNumberPool $phoneNumberPool, Company $company)
     {
-        return $this->resourceBelongsToCompany($phoneNumberPool->company_id)
-            && $this->userCanViewCompany($user, $phoneNumberPool->company_id) 
-            && $user->canDoAction('phone-number-pools.delete');
+        return $user->canDoAction('delete')
+            && $user->canViewCompany($company)
+            && $phoneNumberPool->company_id === $company->id;
     }
 }

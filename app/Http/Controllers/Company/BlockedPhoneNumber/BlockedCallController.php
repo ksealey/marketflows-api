@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Company\BlockedPhoneNumber;
-use App\Models\Compay\BlockedPhoneNumber\BlockedCall;
+use App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use DB;
 
 class BlockedCallController extends Controller
