@@ -1,4 +1,4 @@
-FROM 212127452432.dkr.ecr.us-east-1.amazonaws.com/marketflows-api:production
+FROM 212127452432.dkr.ecr.us-east-1.amazonaws.com/marketflows-api:latest
 
 COPY . /var/www/app
 
