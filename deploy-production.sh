@@ -2,8 +2,9 @@
 export DEPLOY_CMD_1="sudo aws ecr get-login-password --region us-east-1 | sudo docker login  --username AWS  --password-stdin 212127452432.dkr.ecr.us-east-1.amazonaws.com"
 export DEPLOY_CMD_2="sudo docker pull 212127452432.dkr.ecr.us-east-1.amazonaws.com/marketflows-api:production"
 export DEPLOY_CMD_3="sudo docker stop mf_api_web && sudo docker rm -f mf_api_web && sudo docker run -d --name=mf_api_web -p 80:80 --restart=unless-stopped 212127452432.dkr.ecr.us-east-1.amazonaws.com/marketflows-api:production"
+export DEPLOY_CMD_4='sudo docker exec -it mf_api_web sh -c "cd /var/www/app && php artisan migrate"'
 
-# Collect SSH ket path
+# Collect SSH key path
 read -p 'Enter SSH Key Path: ' SSH_KEY_PATH
 
 # List all instances in ASG
@@ -11,5 +12,6 @@ EC2_IPS=$(aws ec2 describe-instances --filters "Name=tag:aws:autoscaling:groupNa
 for ip in $EC2_IPS
     do
         echo "Deploying to $ip";
-        ssh -i $SSH_KEY_PATH ubuntu@$ip "$DEPLOY_CMD_1 && $DEPLOY_CMD_2 && $DEPLOY_CMD_3"
+        ssh -i $SSH_KEY_PATH ubuntu@$ip "$DEPLOY_CMD_1 && $DEPLOY_CMD_2 && $DEPLOY_CMD_3 && $DEPLOY_CMD_4"
 done
+
