@@ -13,12 +13,13 @@ use Illuminate\Http\Request;
 |
 */
 
+
 /*
 |--------------------------------
 | Handle user auth
 |--------------------------------
 */
-Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
+Route::middleware(['rate_limit:30,1'])->prefix('auth')->group(function(){
     Route::post('/register', 'Auth\RegisterController@register')
          ->name('auth-register');
 
@@ -40,7 +41,7 @@ Route::middleware(['throttle:30,1'])->prefix('auth')->group(function(){
 | Handle authenticated user api calls
 |----------------------------------------
 */
-Route::middleware(['throttle:300,1', 'auth:api', 'api'])->group(function(){
+Route::middleware(['rate_limit:300,1', 'auth:api'])->group(function(){
     /*
     |--------------------------------
     | Handle account
@@ -610,7 +611,7 @@ Route::middleware('twilio.webhooks')->group(function(){
     | Handle web sessions
     |------------------------------------------
     */
-    Route::middleware('throttle:30,1')->prefix('web-sessions')->group(function(){
+    Route::middleware('rate_limit:30,1')->prefix('web-sessions')->group(function(){
         Route::post('/', 'WebSessionController@create');
         Route::any('/{sessionUUID}/end', 'WebSessionController@end');
     });

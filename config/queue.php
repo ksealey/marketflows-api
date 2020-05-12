@@ -53,7 +53,7 @@ return [
             'driver' => 'sqs',
             'key'    => env('AWS_ACCESS_KEY_ID'),
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'prefix' => env('SQS_PREFIX', '	https://sqs.us-east-1.amazonaws.com/212127452432'),
+            'prefix' => env('SQS_PREFIX', 'https://sqs.us-east-1.amazonaws.com/212127452432'),
             'queue'  => env('SQS_QUEUE', 'marketflows-queue'),
             'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
         ],

@@ -7,9 +7,7 @@
  - Run image deploy to copy code into container and push layer
     `sh deploy-production-image.sh`
 
-
 ### (Temporary) 
  - Run SSH Script to have servers pull new image
     `sh deploy-production.sh`
-
 

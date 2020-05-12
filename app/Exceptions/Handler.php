@@ -47,6 +47,10 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     { 
+        if( App::environment(['prod', 'production']) && app()->bound('sentry') && $this->shouldReport($exception)) {
+            app('sentry')->captureException($exception);
+        }
+        
         if( $exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ){
             return response([
                 'error' => 'Not found'
@@ -60,22 +64,11 @@ class Handler extends ExceptionHandler
         }
 
         if( $exception instanceof \Illuminate\Auth\Access\AuthorizationException ){
-            var_dump($exception->getTraceAsString()); exit;
             return response([
                 'error' => 'Unauthorized'
             ], 403);
         }
-        return parent::render($request, $exception);
-        /*if( $exception instanceof \Illuminate\Auth\AuthenticationException ){
-            return response([
-                'error' => 'Too many requests'
-            ], 429);
-        }*/
-        echo '<pre>' . $exception->getMessage() . '</pre>'; exit;
-        return response([
-            'error' => 'An unknown error has occurred'
-        ], 500);
-       
+        
         return parent::render($request, $exception);
     }
 }
