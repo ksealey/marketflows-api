@@ -63,6 +63,7 @@ trait CreatesAccount
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
+
         Storage::put($audioClip->path, 'foobar');
 
         //  Config
@@ -80,17 +81,17 @@ trait CreatesAccount
             'created_by' => $this->user->id, 
             'phone_number_config_id' => $config->id
         ]);
-        $phoneNumber->each(function($phoneNumber){
-            factory(Call::class, 2)->create([
-                'account_id' => $phoneNumber->account_id,
-                'company_id' => $phoneNumber->company_id,
-                'phone_number_id' =>$phoneNumber->id
-            ])->each(function($call){
-                factory(CallRecording::class, 2)->create([
-                    'call_id' => $call->id
-                ]);
-            });
+
+        factory(Call::class, 2)->create([
+            'account_id' => $phoneNumber->account_id,
+            'company_id' => $phoneNumber->company_id,
+            'phone_number_id' =>$phoneNumber->id
+        ])->each(function($call){
+            factory(CallRecording::class)->create([
+                'call_id' => $call->id
+            ]);
         });
+        
 
         //  A number pool
         $pool = factory(PhoneNumberPool::class)->create([
@@ -109,11 +110,11 @@ trait CreatesAccount
             'phone_number_pool_id' => $pool->id,
             'purchased_at'         => $past // Should be released
         ]);
-        $poolNumbers->each(function($phoneNumber){
-            factory(Call::class, 2)->create([
-                'account_id' => $phoneNumber->account_id,
-                'company_id' => $phoneNumber->company_id,
-                'phone_number_id' =>$phoneNumber->id
+        $poolNumbers->each(function($poolNumber){
+            factory(Call::class, mt_rand(1, 2))->create([
+                'account_id' => $poolNumber->account_id,
+                'company_id' => $poolNumber->company_id,
+                'phone_number_id' => $poolNumber->id
             ]);
         });
 
@@ -144,7 +145,7 @@ trait CreatesAccount
             'company' => $company,
             'audio_clip' => $audioClip,
             'phone_number_config' => $config,
-            'phone_number' => $phoneNumber,
+            'phone_number' => $phoneNumber->first(),
             'report' => $report,
             'phone_number_pool' => $pool,
             'phone_number_pool_numbers' => $poolNumbers
