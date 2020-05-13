@@ -41,7 +41,7 @@ Route::middleware(['rate_limit:30,1'])->prefix('auth')->group(function(){
 | Handle authenticated user api calls
 |----------------------------------------
 */
-Route::middleware(['rate_limit:300,1', 'bindings', 'auth:api'])->group(function(){
+Route::middleware(['auth:api', 'api'])->group(function(){
     /*
     |--------------------------------
     | Handle account

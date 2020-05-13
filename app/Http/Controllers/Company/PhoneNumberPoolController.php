@@ -112,7 +112,7 @@ class PhoneNumberPoolController extends Controller
         //  Make sure no pools exist for this company
         if( PhoneNumberPool::where('company_id', $company->id)->count() ){
             return response([
-                'error' => 'Only 1 online number pool allowed per company.'
+                'error' => 'Only 1 keyword tracking pool allowed per company.'
             ], 400);
         }
 
@@ -124,7 +124,7 @@ class PhoneNumberPoolController extends Controller
 
         if( ! $account->canPurchaseNumbers($poolSize) ){
             return response([
-                'error' => 'Unable to purchase numbers for this account - Verify a valid payment method has been added and try again.'
+                'error' => 'Unable to purchase ' . $poolSize . ' number(s) for this account - Verify a valid payment method has been added and try again.'
             ], 400);
         }
        
@@ -438,7 +438,7 @@ class PhoneNumberPoolController extends Controller
         $count      = intval($request->count);
         if( ! $account->canPurchaseNumbers($count) ){
             return response([
-                'error' => 'Unable to purchase numbers for this account - Verify a valid payment method has been added and try again.'
+                'error' => 'Unable to purchase ' . $count . ' number(s) for this account - Verify a valid payment method has been added and try again.'
             ], 400);
         }
         

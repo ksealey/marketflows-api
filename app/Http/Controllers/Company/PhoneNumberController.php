@@ -113,7 +113,7 @@ class PhoneNumberController extends Controller
         $account = $company->account; 
         if( ! $account->canPurchaseNumbers(1) ){
             return response([
-                'error' => 'Unable to purchase numbers for this account - Verify a valid payment method has been added and try again.'
+                'error' => 'Unable to purchase additional numbers for this account - Verify a valid payment method has been added and try again.'
             ], 400);
         }
        

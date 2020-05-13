@@ -38,8 +38,9 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            'throttle:60,1',
+            'rate_limit:300,1', 
             'bindings',
+            'suspended_accounts'
         ],
     ];
 
@@ -54,6 +55,7 @@ class Kernel extends HttpKernel
         'auth' => \App\Http\Middleware\Authenticate::class,
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
         'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        'suspended_accounts' =>  \App\Http\Middleware\SuspendedAccounts::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
         'can' => \Illuminate\Auth\Middleware\Authorize::class,
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,

@@ -51,14 +51,7 @@ class WidgetController extends Controller
         $labels   = array_column($results, 'source');
         $datasets = [
             [ 
-                'data' => array_column($results, 'call_count'),
-                'backgroundColor' =>  [
-                    '#9086D6',
-                    '#D3DEE5',
-                    '#7DA9E4',
-                    '#80ADBD',
-                    '#F08080'
-                ]
+                'data' => array_column($results, 'call_count')
             ]
         ];
 
@@ -246,13 +239,6 @@ class WidgetController extends Controller
                     $usage['toll_free']['numbers']['cost'], 
                     $usage['toll_free']['minutes']['cost'], 
                     $storage['total']['cost'],
-                ],
-                'backgroundColor' =>  [
-                    '#9086D6',
-                    '#D3DEE5',
-                    '#7DA9E4',
-                    '#80ADBD',
-                    '#F08080'
                 ]
             ]
         ];

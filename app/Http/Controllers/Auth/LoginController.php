@@ -44,6 +44,13 @@ class LoginController extends Controller
             ], 403);
         }
 
+        //  Block suspended accounts
+        if( $user->account->suspended_at ){
+            return response([
+                'error' => 'Account suspended'
+            ], 403);
+        }
+
         if( $user->login_disabled_until && date('U', strtotime($user->login_disabled_until)) > date('U')){
             $now           = new DateTime();
             $disabledUntil = new DateTime($user->login_disabled_until);

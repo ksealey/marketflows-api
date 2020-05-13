@@ -7,6 +7,9 @@ trait AppliesConditions
     {
         $query->where(function($query) use($conditions){
             foreach( $conditions as $condition ){
+                if( is_array($condition) )
+                    $condition = (object)$condition;
+
                 $hasValue = false;
                 if( !empty($condition->inputs) ){
                     foreach($condition->inputs as $input){

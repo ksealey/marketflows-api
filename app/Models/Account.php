@@ -41,6 +41,8 @@ class Account extends Model
     const SUSPENSION_CODE_NO_PAYMENT_METHOD                 = 1;
     const SUSPENSION_CODE_TOO_MANY_FAILED_BILLING_ATTEMPTS  = 2;
 
+    const MAX_DEMO_NUMBER_COUNT = 5;
+
     protected $fillable = [
         'name',
         'account_type',
@@ -173,6 +175,16 @@ class Account extends Model
 
     public function canPurchaseNumbers($count)
     {
+        //  If the user has a valid payment method, they can buy as much as they want
+        if( ! $this->hasValidPaymentMethod() ){
+            //  Only allow up to 5 phone numbers, including deleted numbers
+            $currentNumberCount = PhoneNumber::withTrashed()
+                                            ->where('account_id', $this->id)
+                                            ->count();
+            if( ($count + $currentNumberCount) > self::MAX_DEMO_NUMBER_COUNT )
+                return false;
+        }
+        
         return true;
     }
 
