@@ -595,15 +595,10 @@ Route::middleware('twilio.webhooks')->group(function(){
     | Handle incoming sms
     |--------------------------------
     */
-    Route::get('incoming-sms', 'IncomingSMSController@handleSms')
+    Route::post('incoming-sms', 'IncomingSMSController@handleSms')
             ->name('incoming-sms');
 
-    /*
-    |--------------------------------
-    | Handle incoming mms
-    |--------------------------------
-    */
-    Route::get('incoming-mms', 'IncomingMMSController@handleMms')
+    Route::post('incoming-sms', 'IncomingSMSController@handleMms')
             ->name('incoming-mms');
 
     /*
@@ -616,5 +611,3 @@ Route::middleware('twilio.webhooks')->group(function(){
         Route::any('/{sessionUUID}/end', 'WebSessionController@end');
     });
 });
-
-

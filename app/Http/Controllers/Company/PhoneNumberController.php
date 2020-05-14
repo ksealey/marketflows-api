@@ -196,7 +196,7 @@ class PhoneNumberController extends Controller
                 'voice'                     => $purchasedPhone->capabilities['voice'],
                 'sms'                       => $purchasedPhone->capabilities['sms'],
                 'mms'                       => $purchasedPhone->capabilities['mms'],
-                'name'                      => $request->name ?: $purchasedPhone->phoneNumber,
+                'name'                      => $request->name,
                 'source'                    => $request->source,
                 'medium'                    => $request->medium,
                 'content'                   => $request->content,

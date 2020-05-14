@@ -52,13 +52,13 @@ class PhoneNumberManager
                       ->create([
                             'phoneNumber'           => $number,
                             'voiceUrl'              => route('incoming-call'),
-                            'voiceMethod'           => 'GET',
+                            'voiceMethod'           => 'POST',
                             'statusCallback'        => route('incoming-call-status-changed'),
-                            'statusCallbackMethod'  => 'GET',
+                            'statusCallbackMethod'  => 'POST',
                             'smsUrl'                => route('incoming-sms'),
-                            'smsMethod'             => 'GET',
+                            'smsMethod'             => 'POST',
                             'mmsUrl'                => route('incoming-mms'),
-                            'mmsMethod'             => 'GET'
+                            'mmsMethod'             => 'POST'
                       ]);
         
     }
