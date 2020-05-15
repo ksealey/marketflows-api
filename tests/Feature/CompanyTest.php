@@ -289,7 +289,7 @@ class CompanyTest extends TestCase
     /**
      * Test exporting companies with date ranges
      * 
-     * @group companies-
+     * @group companies
      */
     public function testExportCompaniesWithDateRanges()
     {

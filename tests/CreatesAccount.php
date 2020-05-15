@@ -5,6 +5,7 @@ namespace Tests;
 use \App\Models\Account;
 use \App\Models\Billing;
 use \App\Models\User;
+use App\Models\PaymentMethod;
 use App\Models\Company;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Report;
@@ -27,7 +28,7 @@ trait CreatesAccount
     public function setUp() : void
     {
         parent::setUp();
-
+        
         $this->account = factory(Account::class)->create();
 
         $this->billing = factory(Billing::class)->create([
@@ -39,11 +40,43 @@ trait CreatesAccount
         ]);
     }
 
+    public function createAccount()
+    {
+        return factory(Account::class)->create();
+    }
+
     public function createCompany($with = [])
     {
         return factory(Company::class)->create(array_merge([
             'account_id' => $this->user->account_id,
             'created_by' => $this->user->id
+        ], $with));
+    }
+
+    public function createPaymentMethod()
+    {
+        return factory(PaymentMethod::class)->create([
+            'account_id' => $this->user->account_id,
+            'created_by' => $this->user->id
+        ]);
+    }
+
+    public function createConfig($company, $with = [])
+    {
+        return factory(PhoneNumberConfig::class)->create(array_merge([
+            'created_by' => $this->user->id,
+            'account_id' => $company->account_id,
+            'company_id' => $company->id
+        ], $with));
+    }
+
+    public function createPhoneNumber($company, $config, $with = [])
+    {
+        return factory(PhoneNumber::class)->create(array_merge([
+            'created_by' => $this->user->id,
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id
         ], $with));
     }
 

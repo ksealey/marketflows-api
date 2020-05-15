@@ -4,16 +4,21 @@ namespace App\Helpers;
 use Twilio\Rest\Client as Twilio;
 use Exception;
 use App;
+use App\Models\BankedPhoneNumber;
+use App\Models\Company\PhoneNumber;
+
 
 class PhoneNumberManager
 {
     protected $client;
 
+    public function __construct(Twilio $client)
+    {
+        $this->client = $client;
+    }
+
     public function listAvailable($contains = '' , $limit = 20, $type, $country = 'US')
     {
-        $config = config('services.twilio');
-        $client = new Twilio($config['sid'], $config['token']); 
-
         $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
 
         $config   = [
@@ -24,7 +29,7 @@ class PhoneNumberManager
 
         $numbers = [];
         try{
-            $query = $client->availablePhoneNumbers($country);
+            $query = $this->client->availablePhoneNumbers($country);
 
             $query = $type === 'Toll-Free' ? $query->tollFree : $query->local;
 
@@ -39,16 +44,7 @@ class PhoneNumberManager
 
     public function purchase(string $number)
     {
-        $config = config('services.twilio');
-
-        if( App::environment(['prod', 'production']) ){
-            $client = new Twilio($config['sid'], $config['token']); 
-        }else{
-            $client = new Twilio($config['test_sid'], $config['test_token']); 
-            $number = $config['magic_numbers']['available'];
-        }
-
-        return $client->incomingPhoneNumbers
+        return $this->client->incomingPhoneNumbers
                       ->create([
                             'phoneNumber'           => $number,
                             'voiceUrl'              => route('incoming-call'),
@@ -67,15 +63,42 @@ class PhoneNumberManager
      * Release a phone number
      * 
      */
-    public function release($externalId)
+    public function releaseNumber(PhoneNumber $phoneNumber)
     {
-
-        if( App::environment(['prod', 'production']) ){
-            $this->client
-                 ->incomingPhoneNumbers($externalId)
-                 ->delete();
-        }
+        $this->client
+             ->incomingPhoneNumbers($phoneNumber->external_id)
+             ->delete();
        
         return $this;
+    }
+
+    /**
+     * Bank a phone number
+     * 
+     */
+    public function bankNumber(PhoneNumber $phoneNumber, $availableNow = false)
+    {
+        //  Make sure it's released 2 days before it will be renewed
+        $purchaseDate  = new Carbon($this->purchased_at);
+        $renewDate     = new Carbon($today->format('Y-m-' . $purchaseDate->format('d')));
+        
+        $releaseBy = $phoneNumber->renewalDate()
+                                 ->subDays(2);
+
+        return BankedPhoneNumber::create([
+            'released_by_account_id' => $phoneNumber->account_id,
+            'external_id'            => $phoneNumber->external_id,
+            'country'                => $phoneNumber->country,
+            'country_code'           => $phoneNumber->country_code,
+            'number'                 => $phoneNumber->number,
+            'voice'                  => $phoneNumber->voice,
+            'sms'                    => $phoneNumber->sms,
+            'mms'                    => $phoneNumber->mms,
+            'type'                   => $phoneNumber->type,
+            'calls'                  => 0,
+            'status'                 => $availableNow ? 'Available' : 'Banked',
+            'purchased_at'           => $phoneNumber->purchased_at,
+            'release_by'             => $releaseBy
+        ]);
     }
 }

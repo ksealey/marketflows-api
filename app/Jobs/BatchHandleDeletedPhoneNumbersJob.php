@@ -36,6 +36,14 @@ class BatchHandleDeletedPhoneNumbersJob implements ShouldQueue
                     ->where('company_id', $this->companyId)
                     ->get()
                     ->each(function($phoneNumber){
+                        if( $phoneNumber->willRenewInDays(7) ){
+                            $this->numberManager
+                                 ->releaseNumber($phoneNumber);
+                        }else{
+                            $this->numberManager
+                                 ->bankNumber($phoneNumber);
+                        }
+
                         $banked = $phoneNumber->bankOrRelease();
                         if( ! $banked )
                             usleep(250); // Only allow 4 api requests per second

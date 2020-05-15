@@ -4,7 +4,7 @@
 
 use App\Model;
 use Faker\Generator as Faker;
-use App\Models\Account;
+use \App\Models\Account;
 
 $factory->define(Account::class, function (Faker $faker) {
     $accountTypes = Account::types();

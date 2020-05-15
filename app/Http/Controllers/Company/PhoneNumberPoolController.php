@@ -13,7 +13,7 @@ use App\Rules\SwapRulesRule;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
-use \App\Models\Company\BankedPhoneNumber;
+use \App\Models\BankedPhoneNumber;
 use \App\Events\Company\PhoneNumberEvent;
 use \App\Events\Company\PhoneNumberPoolEvent;
 use App\Helpers\PhoneNumberManager;

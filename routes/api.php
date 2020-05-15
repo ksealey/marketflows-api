@@ -381,8 +381,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                 Route::delete('/{phoneNumber}', 'Company\PhoneNumberController@delete')
                     ->middleware('can:delete,phoneNumber,company')
                     ->name('delete-phone-number');
-
-                 
             }); 
 
             /*

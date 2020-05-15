@@ -10,7 +10,7 @@ use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
 use App\Models\Transaction;
 use App\Models\Company\PhoneNumber;
-use App\Models\Company\BankedPhoneNumber;
+use App\Models\BankedPhoneNumber;
 use App\Models\Company\Call;
 use App\Rules\SwapRulesRule;
 use App\Rules\Company\BulkPhoneNumberRule;
@@ -251,11 +251,6 @@ class PhoneNumberController extends Controller
 
         $validator = validator($request->input(), $rules);
 
-        //  Require a category when the subcategory is set
-        $validator->sometimes('category', ['bail', 'required', 'in:ONLINE,OFFLINE'], function($input){
-            return $input->filled('sub_category');
-        });
-
         //  Make sure the sub_category is valid for the category
         $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
             return $input->category === 'ONLINE';
@@ -307,7 +302,18 @@ class PhoneNumberController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        $phoneNumber->bankOrRelease();
+        //  Release the number if it will be renewed with 5 days 
+        //  or it gets more than 10 calls per day over the last 3 days
+        $callsOverThreeDays = $phoneNumber->callsForPreviousDays(3);
+
+        if( $phoneNumber->willRenewInDays(5) || $callsOverThreeDays >= 30 ){
+            $this->numberManager
+                 ->releaseNumber($phoneNumber);
+        }else{
+            $this->numberManager
+                 ->bankNumber($phoneNumber, $callsOverThreeDays <= 9 ? true : false); // Make avaiable now if it gets less than or equal to 3 calls per day
+        }
+        
         $phoneNumber->delete();
 
         return response([
@@ -315,81 +321,6 @@ class PhoneNumberController extends Controller
         ]);
     }
     
-    /**
-     * Attach a phone number to a phone number pool
-     * 
-     */
-    public function attach(Request $request, Company $company, PhoneNumber $phoneNumber)
-    {
-        $rules = [
-            'phone_number_pool_id' => [
-                'bail',
-                'required',
-                new PhoneNumberPoolRule($company)
-            ]
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() )
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-
-        $phoneNumber->phone_number_pool_id = $request->phone_number_pool_id;
-        $phoneNumber->save();
-
-        return response($phoneNumber);
-    }
-
-    /**
-     * Detach a phone number from a phone number pool
-     * 
-     */
-    public function detach(Request $request, Company $company, PhoneNumber $phoneNumber)
-    {
-        $rules = [
-            'category'            => 'bail|required|in:ONLINE,OFFLINE',
-            'source'              => 'bail|required|max:255',        
-            'phone_number_config' => [
-                'bail',
-                'required',
-                (new PhoneNumberConfigRule($company))
-            ]
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-
-        //  Make sure the sub_category is valid for the category
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
-            return $input->category === 'ONLINE';
-        });
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,BILLOARD,OTHER'], function($input){
-            return $input->category === 'OFFLINE';
-        });
-
-        //  Make sure the swap rules are there and valid when it's for a website
-        $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
-            return $input->sub_category == 'WEBSITE';
-        });
-
-        if( $validator->fails() )
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-    
-        $phoneNumber->phone_number_pool_id      = null;
-        $phoneNumber->phone_number_config_id    = $request->phone_number_config_id;
-        $phoneNumber->category                  = $request->category;
-        $phoneNumber->sub_category              = $request->sub_category;
-        $phoneNumber->name                      = $request->name;
-        $phoneNumber->source                    = $request->source;
-        $phoneNumber->swap_rules                = $request->sub_category == 'WEBSITE' ? json_decode($request->swap_rules) : null;
-        
-        $phoneNumber->save();
-
-        return response($phoneNumber);
-    }
-
     /**
      * Check that phone numbers are available for the provided area codes
      * 
@@ -418,20 +349,18 @@ class PhoneNumberController extends Controller
         if( $request->starts_with )
             $bankedQuery->where('number', 'like', $request->starts_with . '%');
 
-        $bankedNumbers = $bankedQuery->orderBy('release_by', 'ASC')
-                                   ->limit($request->count)
-                                   ->get();
-        $bankedCount   = count($bankedNumbers);
-
-        if( $bankedCount == $request->count ){
+        $bankedNumberCount = $bankedQuery->orderBy('release_by', 'ASC')
+                                         ->count();
+                                         
+        if( $bankedNumberCount >= $request->count ){
             return response([
                 'available' => true,
-                'count'     => $bankedCount,
+                'count'     => $request->count,
                 'type'      => $request->type
             ]);
         }
 
-        $neededCount = $request->count - $bankedCount;
+        $neededCount = $request->count - $bankedNumberCount;
         $numbers     = [];
         try{
             $numbers = $this->numberManager->listAvailable(
@@ -443,7 +372,7 @@ class PhoneNumberController extends Controller
         }catch(\Exception $e){}
         
         //  No numbers found
-        $totalFound = count($numbers) + $bankedCount;
+        $totalFound = count($numbers) + $bankedNumberCount;
         if( $totalFound === 0 ){
             return response([
                 'available' => false,
@@ -482,7 +411,7 @@ class PhoneNumberController extends Controller
         ]);
         
         return parent::exportResults(
-            PhoneNumberPool::class,
+            PhoneNumber::class,
             $request,
             [],
             self::$fields,

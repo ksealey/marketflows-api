@@ -28,6 +28,22 @@ class PhoneNumber extends Model implements Exportable
 
     const TYPE_LOCAL     = 'Local';
     const TYPE_TOLL_FREE = 'Toll-Free';
+
+    const ONLINE_SUB_CATEGORIES = [
+        'WEBSITE',
+        'SOCIAL_MEDIA',
+        'EMAIL'
+    ];
+
+    const OFFLINE_SUB_CATEGORIES = [
+        'TV',
+        'RADIO',
+        'NEWSPAPER',
+        'DIRECT_MAIL',
+        'FLYER',
+        'BILLBOARD',
+        'OTHER'
+    ];
     
     private $numberManager;
 
@@ -77,6 +93,11 @@ class PhoneNumber extends Model implements Exportable
         'swap_rules' => 'array'
     ];
 
+    protected $dates = [
+        'purchased_at',
+        'disabled_at'
+    ];
+
     static public function exports() : array
     {
         return [
@@ -113,7 +134,7 @@ class PhoneNumber extends Model implements Exportable
                           ])
                           ->leftJoin('calls', 'calls.phone_number_id', 'phone_numbers.id')
                           ->whereNull('phone_numbers.phone_number_pool_id')
-                          ->whereIn('phone_numbers.company_id', $input['company_id']);
+                          ->where('phone_numbers.company_id', $input['company_id']);
     }
 
     /**
@@ -186,61 +207,42 @@ class PhoneNumber extends Model implements Exportable
                 . '-'
                 . substr($this->number, 6, 4);
     }
-    
+
     /**
-     * Release a phone number
+     * Determine the new date for this phone number
      * 
      */
-    public function bankOrRelease()
+    public function renewalDate()
     {
-        //  Move numbers to bank, release if needed
-        $today            = today();
-        $sevenDaysAgo     = today()->subDays(7);
-        $fiveDaysFromNow  = today()->addDays(5);
-        $callThreshold    = 21; // 3 calls per day for 7 days
- 
-        //  Determine renewal date
+        $today         = today();
         $purchaseDate  = new Carbon($this->purchased_at);
         $renewDate     = new Carbon($today->format('Y-m-' . $purchaseDate->format('d')));
         if( $today->format('Y-m-d') >= $renewDate->format('Y-m-d') ) // If renew date has passed for month, move to next month
             $renewDate->addMonths('1');
-
-        //  Determine call count for last 7 days
-        $calls = Call::where('phone_number_id', $this->id)
-                    ->where('created_at', '>=', $sevenDaysAgo)
-                    ->get();
-        
-        $daysUntilRenew = $today->diffInDays($renewDate);
-       
-        if( $daysUntilRenew <= 5 ){
-            $this->release();
-
-            return false;
-        }
-
-        BankedPhoneNumber::create([
-            'external_id'            => $this->external_id,
-            'country'                => $this->country,
-            'country_code'           => $this->country_code,
-            'number'                 => $this->number,
-            'voice'                  => $this->voice,
-            'sms'                    => $this->sms,
-            'mms'                    => $this->mms,
-            'type'                   => $this->type,
-            'calls'                  => count($calls),
-            'purchased_at'           => $this->purchased_at,
-            'release_by'             => $renewDate->subDays(2),
-            'released_by_account_id' => $this->account_id,
-            'status'                 => count($calls) > $callThreshold ? 'Banked' : 'Available',
-        ]);
-
-        return true;
+            
+        return $renewDate;
     }
 
-    public function release()
+    /**
+     * Given a number of days, determine if a number will be renewed by then
+     * 
+     * @param int $days
+     * 
+     * @return bool
+     */
+    public function willRenewInDays(int $days)
     {
-        return App::make(PhoneNumberManager::class)
-                  ->release($this->external_id);
+        return today()->diff($this->renewalDate())->days <= $days;
+    }
+
+    public function callsForPreviousDays(int $days)
+    {
+        $since = today()->subDays($days);
+
+        return Call::where('phone_number_id', $this->id)
+                    ->where('direction', 'Inbound')
+                    ->where('created_at', '>=', $since)
+                    ->count();
     }
 
     /**

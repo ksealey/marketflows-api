@@ -7,11 +7,12 @@ use Faker\Generator as Faker;
 
 $factory->define(\App\Models\PaymentMethod::class, function (Faker $faker) {
     return [
-        'external_id' => $faker->ein,
-        'last_4'    => mt_rand(1111, 9999),
-        'exp_month' => date('m'),
-        'exp_year'  => date('Y', strtotime('now +2 years')),
-        'type'      => 'credit',
-        'brand'     => 'visa'
+        'external_id'    => str_random(32),
+        'last_4'         => mt_rand(1111, 9999),
+        'expiration'     => now()->addYears(2)->format('Y-m-d'),
+        'brand'          => 'visa',
+        'type'           => 'credit',
+        'primary_method' => 1,
+        'last_used_at'   => now()->subDays(10),
     ];
 });
