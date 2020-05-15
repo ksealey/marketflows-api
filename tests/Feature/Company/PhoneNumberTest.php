@@ -451,7 +451,7 @@ class PhoneNumberTest extends TestCase
         $otherAccount = $this->createAccount();
         $company      = $this->createCompany();
         $type         = mt_rand(0,1) ? PhoneNumber::TYPE_LOCAL : PhoneNumber::TYPE_TOLL_FREE;
-        $count        = mt_rand(1, 10);
+        $count        = mt_rand(6, 10);
 
         $this->mock(PhoneNumberManager::class, function ($mock) use($count, $type, $company){
             $returnNumbers = factory('Tests\Models\TwilioPhoneNumber', $count - 5)->make();
@@ -473,7 +473,7 @@ class PhoneNumberTest extends TestCase
         $response->assertStatus(400);
         $response->assertJSON([
             'available' => false,
-            'count'     => $count -5 ,
+            'count'     => $count - 5,
             'type'      => $type
         ]);
     }
@@ -1035,6 +1035,145 @@ class PhoneNumberTest extends TestCase
                 'id' => $response['id']
             ]);
         }
+    }
+
+    /**
+     * Test creating a phone number from a banked number
+     * 
+     * @group phone-numbers
+     */
+    public function testCreateLocalPhoneNumberFromBank()
+    {
+        $otherAccont   = $this->createAccount(); 
+        $company       = $this->createCompany();
+        $config        = $this->createConfig($company);
+
+        $bankedNumber = factory(BankedPhoneNumber::class)->create([
+            'released_by_account_id' => $otherAccont->id,
+            'number'                 => '813' . mt_rand(1111111,9999999),
+            'status'                 => 'Available',
+            'type'                   => PhoneNumber::TYPE_LOCAL
+        ]);
+    
+        $numberData = factory(PhoneNumber::class)->make([
+            'type' => PhoneNumber::TYPE_LOCAL
+        ]);
+
+        $response = $this->json('POST', route('create-phone-number', [
+            'company' => $company->id
+        ]), [
+            'name'        => $numberData->name,
+            'category'    => $numberData->category,
+            'sub_category'=> $numberData->sub_category,
+            'type'        => $numberData->type,
+            'starts_with' => '813',
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'campaign'    => $numberData->campaign,
+            'phone_number_config_id' => $config->id,
+            'swap_rules'  => json_encode($numberData->swap_rules)
+        ]);
+        $response->assertStatus(201);
+
+        $response->assertJSON([
+            'account_id'  => $company->account_id,
+            'company_id'  => $company->id,
+            'name'        => $numberData->name,
+            'category'    => $numberData->category,
+            'sub_category'=> $numberData->sub_category,
+            'type'        => $numberData->type,
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'country_code' => $bankedNumber->country_code,
+            'number'       => $bankedNumber->number,
+            'campaign'     => $numberData->campaign,
+            'phone_number_config_id' => $config->id,
+            'country'      => $company->country,
+            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? $numberData->swap_rules : null,
+            'call_count'   => 0,
+            'link'         => route('read-phone-number', [
+                'company' => $company->id,
+                'phoneNumber' => $response['id']
+            ]),
+            'kind'             => 'PhoneNumber',
+        ]);
+
+        $this->assertDatabaseMissing('banked_phone_numbers', [
+            'id'         => $bankedNumber->id,
+            'deleted_at' => null
+        ]);
+    }
+
+    /**
+     * Test creating a toll-free phone number from a banked number
+     * 
+     * @group phone-numbers
+     */
+    public function testCreateTollFreePhoneNumberFromBank()
+    {
+        $otherAccont   = $this->createAccount(); 
+        $company       = $this->createCompany();
+        $config        = $this->createConfig($company);
+
+        $bankedNumber = factory(BankedPhoneNumber::class)->create([
+            'released_by_account_id' => $otherAccont->id,
+            'number'                 => '813' . mt_rand(1111111,9999999),
+            'status'                 => 'Available',
+            'type'                   => PhoneNumber::TYPE_TOLL_FREE
+        ]);
+    
+        $numberData = factory(PhoneNumber::class)->make([
+            'type' => PhoneNumber::TYPE_TOLL_FREE
+        ]);
+
+        $response = $this->json('POST', route('create-phone-number', [
+            'company' => $company->id
+        ]), [
+            'name'        => $numberData->name,
+            'category'    => $numberData->category,
+            'sub_category'=> $numberData->sub_category,
+            'type'        => $numberData->type,
+            'starts_with' => '813',
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'campaign'    => $numberData->campaign,
+            'phone_number_config_id' => $config->id,
+            'swap_rules'  => json_encode($numberData->swap_rules)
+        ]);
+
+        $response->assertStatus(201);
+
+        $response->assertJSON([
+            'account_id'  => $company->account_id,
+            'company_id'  => $company->id,
+            'name'        => $numberData->name,
+            'category'    => $numberData->category,
+            'sub_category'=> $numberData->sub_category,
+            'type'        => $numberData->type,
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'country_code' => $bankedNumber->country_code,
+            'number'       => $bankedNumber->number,
+            'campaign'     => $numberData->campaign,
+            'phone_number_config_id' => $config->id,
+            'country'      => $company->country,
+            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? $numberData->swap_rules : null,
+            'call_count'   => 0,
+            'link'         => route('read-phone-number', [
+                'company' => $company->id,
+                'phoneNumber' => $response['id']
+            ]),
+            'kind'             => 'PhoneNumber',
+        ]);
+
+        $this->assertDatabaseMissing('banked_phone_numbers', [
+            'id'         => $bankedNumber->id,
+            'deleted_at' => null
+        ]);
     }
 
     /*

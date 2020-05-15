@@ -127,7 +127,7 @@ class PhoneNumberController extends Controller
         
         if( $startsWith )
              $bankedQuery->where('number', 'like', $startsWith . '%');
-
+             
         $bankedNumber = $bankedQuery->orderBy('release_by', 'ASC')
                                     ->first();
 
@@ -156,6 +156,8 @@ class PhoneNumberController extends Controller
                 'purchased_at'              => $bankedNumber->purchased_at,
                 'created_by'                => $user->id,
             ]);
+
+            $bankedNumber->delete();
         }else{
              //  Look for a phone number that matches the start_with
             $foundNumbers = $this->numberManager->listAvailable(

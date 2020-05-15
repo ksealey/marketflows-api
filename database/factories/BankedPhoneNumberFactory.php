@@ -10,7 +10,7 @@ $factory->define(\App\Models\BankedPhoneNumber::class, function (Faker $faker) {
     return [
         'external_id'  => str_random(30),
         'country'      => 'US',
-        'country_code' => 1,
+        'country_code' => '1',
         'number'       => substr($faker->e164PhoneNumber, -10),
         'voice'        => 1,
         'sms'          => 1,
