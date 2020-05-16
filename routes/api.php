@@ -586,6 +586,9 @@ Route::middleware('twilio.webhooks')->group(function(){
 
         Route::get('/whisper', 'IncomingCallController@handleCallWhisper')
                 ->name('incoming-call-whisper');
+
+        Route::get('/collect', 'IncomingCallController@handleCollect')
+                ->name('incoming-call-collect');
     });
 
     /*

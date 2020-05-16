@@ -6,16 +6,22 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\Account;
+use App\Models\AccountBlockedPhoneNumber;
+use App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
+use App\Models\BankedPhoneNumber;
+use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use App\Models\Company\BlockedPhoneNumber;
+use App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
 use App\Models\Events\Session;
 use App\Models\Events\SessionEvent;
 use Twilio\TwiML\VoiceResponse;
 use Twilio\Rest\Client as Twilio;
+use \App\Helpers\PhoneNumberManager;
 use Validator;
 use Storage;
 use Exception;
@@ -23,11 +29,11 @@ use DB;
 
 class IncomingCallController extends Controller
 {
-    protected $twilio;
+    protected $numberManager;
 
-    public function __construct(Twilio $twilio)
+    public function __construct(PhoneNumberManager $numberManager)
     {
-        $this->twilio = $twilio;
+        $this->numberManager = $numberManager;
     }
 
     /**
@@ -41,18 +47,18 @@ class IncomingCallController extends Controller
             'CallStatus'    => 'required|max:64',
             'Direction'     => 'required|max:64',
             'To'            => 'required|max:16',
-            'ToCity'        => 'max:255',
-            'ToState'       => 'max:255',
+            'ToCity'        => 'max:128',
+            'ToState'       => 'max:128',
             'ToZip'         => 'max:16',
-            'ToCountry'     => 'max:255',
+            'ToCountry'     => 'max:128',
             'From'          => 'required|max:16',
-            'FromCity'      => 'max:255',
-            'FromState'     => 'max:255',
+            'FromCity'      => 'max:128',
+            'FromState'     => 'max:128',
             'FromZip'       => 'max:16',
             'FromCountry'   => 'max:255'
         ];
 
-        $validator = Validator::make($request->input(), $rules);
+        $validator = validator($request->input(), $rules);
         if( $validator->fails() )
             return response([
                 'error' => $validator->errors()->first()
@@ -68,118 +74,147 @@ class IncomingCallController extends Controller
         if( $dialedCountryCode )
             $query->where('country_code', $dialedCountryCode);
         
+        //  If we don't recorgnize this call
         $phoneNumber = $query->first();
         if( ! $phoneNumber ){
-            //  Who are you?!?!
-            $response->hangup();
+            $query = BankedPhoneNumber::where('number', $dialedNumber); 
+            if( $dialedCountryCode )
+                $query->where('country_code', $dialedCountryCode);
+            
+            $bankedNumber = $query->first();
+            if( $bankedNumber ){
+                $bankedNumber->calls++;
+                $bankedNumber->save();
+            }
+
+            $response->reject();
 
             return Response::xmlResponse($response);
         }
 
-        $config     = null;
-        $pool       = null;
-        $session    = null;
+        //  
+        //  Reject call if number is disabled
+        //
+        if( $phoneNumber->disabled_at ){
+            $response->reject();
 
+            return Response::xmlResponse($response);
+        }
+
+        //
+        //  Log and Reject call if blocked
+        //
+
+        $callerCountryCode = PhoneNumber::countryCode($request->From);
+        $callerNumber      = PhoneNumber::number($request->From);
+
+        //  Company level
+        $query = BlockedPhoneNumber::where('company_id', $phoneNumber->company_id)
+                                    ->where('number', $callerNumber);
+        
+        if( $callerCountryCode )
+            $query->where('country_code', $callerCountryCode);
+        
+        $blockedPhoneNumber = $query->first();
+
+        if( $blockedPhoneNumber ){
+            BlockedCall::create([
+               'blocked_phone_number_id' => $blockedPhoneNumber->id,
+               'phone_number_id'         => $phoneNumber->id,
+               'created_at'              => now()
+            ]);
+
+            $response->reject();
+
+            return Response::xmlResponse($response);
+        }
+
+        //  Account level
+        $query = AccountBlockedPhoneNumber::where('account_id', $phoneNumber->account_id)
+                                           ->where('number', $callerNumber);
+        if( $callerCountryCode )
+            $query->where('country_code', $callerCountryCode);
+
+        $accountBlockedPhoneNumber = $query->first();
+        if( $accountBlockedPhoneNumber ){
+            AccountBlockedCall::create([
+               'account_blocked_phone_number_id' => $accountBlockedPhoneNumber->id,
+               'phone_number_id'                 => $phoneNumber->id,
+               'created_at'                      => now()
+            ]);
+
+            $response->reject();
+
+            return Response::xmlResponse($response);
+        }
+
+
+        //
+        //  Determine how to route this call and capture sourcing data
+        //  
+        $session = null;
         if( $phoneNumber->phone_number_pool_id ){
-            $pool = PhoneNumberPool::find($phoneNumber->phone_number_pool_id);
-            
-            $config = $pool->phone_number_config;
+            $pool    = $phoneNumber->phone_number_pool;
+            $config  = $pool->phone_number_config;
+            $session = $pool->getSessionData($phoneNumber);
 
-            //
-            //  Fetch from reporting
-            //
-            
-            //  Get the session events associated with this number, ordering by events
-            //$sessionEvents = SessionEvent::
-
+            $source     = $session ? $session->source   : '';
+            $medium     = $session ? $session->medium   : null;
+            $content    = $session ? $session->content  : null;
+            $campaign   = $session ? $session->campaign : null;
         }else{
             $config     = $phoneNumber->phone_number_config;
 
             $source     = $phoneNumber->source;
-            $medium     = $phoneNumber->medium;
-            $content    = $phoneNumber->content;
-            $campaign   = $phoneNumber->campaign;
+            $medium     = $phoneNumber->medium ?: null;
+            $content    = $phoneNumber->content ?: null;
+            $campaign   = $phoneNumber->campaign ?: null;
         }
 
-        $company = $phoneNumber->company;
-
         //
-        //  Handle blocked calls
-        //
-        $bnQuery = BlockedPhoneNumber::where('account_id', $company->account_id)
-                                     ->where('number', $dialedNumber);
-
-        if( $dialedCountryCode )
-            $bnQuery->where('country_code', $dialedCountryCode);
-
-        $bnQuery->orderBy('created_at', 'desc');
-
-        $blockedNumbers = $bnQuery->get();
-        foreach( $blockedNumbers as $blockedNumber ){
-            //  If it's on the whole account, or the number they called is attached to a company that blocked it
-            if( ! $blockedNumber->company_id || $blockedNumber->company_id == $phoneNumber->company_id ){
-                $blockedNumber->calls++;
-
-                $blockedNumber->save();
-
-                $response->hangup();
-
-                return Response::xmlResponse($response);
-            }
-        }
-        
-        //  Default name
-        $callerFirstName = ucfirst(strtolower($request->FromCity  ?: ''));
-        $callerLastName  = $request->FromState ?: '';
-
-        //  Perform Lookups
-        try{
-            $caller = $this->twilio
-                            ->lookups
-                            ->v1
-                            ->phoneNumbers($request->from)
-                            ->fetch([
-                                'type' => ['caller-name']
-                            ]);
-            $callerFirstName = $caller->firstName ?: $callerFirstName;
-            $callerLastName  = $caller->lastName  ?: $callerLastName;
-        }catch(Exception $_){}
-
         //  Log call
+        //
+        $callerName = $request->CallerName ?: null;
+        if( ! $callerName ){
+            $callerName  = strtolower($request->FromCity  ?: '');
+            if( $request->FromState )
+                $callerName .= ($callerName ? ', ' : '') . $request->FromState;
+        }
+        $callerName = ucfirst(trim($callerName));
+    
         $call = Call::create([
-            'account_id'                => $company->account_id,
-            'company_id'                => $company->id,
+            'account_id'                => $phoneNumber->account_id,
+            'company_id'                => $phoneNumber->company_id,
             'phone_number_id'           => $phoneNumber->id,
             'type'                      => $phoneNumber->type,
             'category'                  => $phoneNumber->category,
             'sub_category'              => $phoneNumber->sub_category,
-
-            'phone_number_pool_id'      => $pool ? $pool->id : null,
+            'phone_number_pool_id'      => $phoneNumber->phone_number_pool_id ?: null,
             'session_id'                => $session ? $session->id : null,
-
-            'recording_enabled'         => $config->recording_enabled,
-            'forwarded_to'              => $config->forwardToPhoneNumber(),
-            
             'external_id'               => $request->CallSid,
-            'direction'                 => ucfirst($request->Direction),
-            'status'                    => 'In Progress',
-            
-            'caller_name'               => substr(ucfirst($callerFirstName), 0, 64),
+            'direction'                 => substr(ucfirst($request->Direction), 0, 16),
+            'status'                    => substr(ucfirst($request->CallStatus), 0, 64),
+            'caller_name'               => substr($callerName, 0, 64),
             'caller_country_code'       => PhoneNumber::countryCode($request->From) ?: null,
             'caller_number'             => PhoneNumber::number($request->From),
             'caller_city'               => $request->FromCity ? substr($request->FromCity, 0, 64) : null,
             'caller_state'              => $request->FromState ? substr($request->FromState, 0, 64) : null,
             'caller_zip'                => $request->FromZip ? substr($request->FromZip, 0, 64) : null,
             'caller_country'            => $request->FromCountry ? substr($request->FromCountry, 0, 64) : null,
-            
             'source'                    => $source,
             'medium'                    => $medium,
             'content'                   => $content,
             'campaign'                  => $campaign,
+            'recording_enabled'         => $config->recording_enabled,
+            'forwarded_to'              => $config->forwardToPhoneNumber(),
             'created_at'                => now()->format('Y-m-d H:i:s.u'),
             'updated_at'                => now()->format('Y-m-d H:i:s.u')
         ]);
 
+        //
+        //  Handle recording, greeting, keypad entry, forwarding, and whisper message
+        //
+        $company    = $phoneNumber->company;
         $dialConfig = ['answerOnBridge' => 'true'];
 
         //  Handle recording
@@ -203,6 +238,29 @@ class IncomingCallController extends Controller
             ]);
         }
 
+        //  Handle keypad entry, sending response now
+        if( $config->keypress_enabled){
+            $gather = $response->gather(['numDigits' => 1]);
+            if( $config->keypress_audio_clip_id ){
+                $audioClip = AudioClip::find($config->keypress_audio_clip_id);
+                if( $audioClip )
+                    $response->play($audioClip->url);
+            }else{
+                $gather->say($config->keypressMessage($call), [
+                    'language' => $company->tts_language,
+                    'voice'    => 'Polly.' . $company->tts_voice
+                ]);
+            }
+
+            $response->redirect(route('incoming-call-collect', [
+                'call_id'                => $call->id,
+                'phone_number_config_id' => $config->id,
+                'attempts'               => 1
+            ]));
+
+            return Response::xmlResponse($response);
+        }
+
         //  Handle whisper message
         $numberConfig = [];
         if( $config->whisper_message ){
@@ -213,15 +271,11 @@ class IncomingCallController extends Controller
             ]);
 
             $numberConfig['method'] = 'GET';
-        } 
+        }
 
         $dialCommand = $response->dial(null, $dialConfig);
 
         $dialCommand->number($config->forwardToPhoneNumber(), $numberConfig);
-
-        //  Let the rest of the system know it happened
-        //
-        //
 
         return Response::xmlResponse($response);
     }
@@ -321,5 +375,64 @@ class IncomingCallController extends Controller
             $request->RecordingDuration,
             $call
         );
+    }
+
+    public function handleCollect(Request $request)
+    {
+        $attempts = intval($request->attempts);
+        $digit    = intval($request->Digits);
+        $config   = PhoneNumberConfig::find($request->phone_number_config_id); 
+        $call     = Call::find($request->call_id);
+        $company  = $call->company;
+
+        $response = new VoiceResponse();
+
+        //  No keypad entry OR wrong key
+        if( (! $digit && $digit !== 0) || $digit != $config->keyress_key ){
+            if( $attempts + 1 > $config->keypress_attempts ){
+                //  Reject the call for too many attempts
+                $response->reject();
+                return Response::xmlResponse($response);
+            }
+
+            //  Allow another attempt
+            $gather = $response->gather(['numDigits' => 1]);
+            if( $config->keypress_audio_clip_id ){
+                $audioClip = AudioClip::find($config->keypress_audio_clip_id);
+                if( $audioClip )
+                    $response->play($audioClip->url);
+            }else{
+                $gather->say($config->keypressMessage($call), [
+                    'language' => $company->tts_language,
+                    'voice'    => 'Polly.' . $company->tts_voice
+                ]);
+            }
+
+            $response->redirect(route('incoming-call-collect', [
+                'phone_number_config_id' => $request->phone_number_config_id,
+                'call_id'                => $request->call_id,
+                'attempts'               => $attempts + 1
+            ]));
+
+            return Response::xmlResponse($response);
+        }
+
+        //  Valid input
+        $numberConfig = [];
+        if( $config->whisper_message ){
+            $numberConfig['url'] = route('incoming-call-whisper', [
+                'whisper_message'  => $config->whisperMessage($call),
+                'whisper_language' => $company->tts_language,
+                'whisper_voice'    => $company->tts_voice
+            ]);
+
+            $numberConfig['method'] = 'GET';
+        }
+
+        $dialCommand = $response->dial(null, $dialConfig);
+
+        $dialCommand->number($config->forwardToPhoneNumber(), $numberConfig);
+
+        return Response::xmlResponse($response);
     }
 }

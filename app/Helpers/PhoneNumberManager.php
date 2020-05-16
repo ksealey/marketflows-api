@@ -54,7 +54,8 @@ class PhoneNumberManager
                             'smsUrl'                => route('incoming-sms'),
                             'smsMethod'             => 'POST',
                             'mmsUrl'                => route('incoming-mms'),
-                            'mmsMethod'             => 'POST'
+                            'mmsMethod'             => 'POST',
+                            'voiceCallerIdLookup'   => true
                       ]);
         
     }
@@ -78,6 +79,10 @@ class PhoneNumberManager
      */
     public function bankNumber(PhoneNumber $phoneNumber, $availableNow = false)
     {
+        //  Wipe voice and sms url so we won't be charged for calls
+        $this->client
+             ->incomingPhoneNumbers($phoneNumber->external_id);
+
         //  Make sure it's released 2 days before it will be renewed
         $purchaseDate  = new Carbon($this->purchased_at);
         $renewDate     = new Carbon($today->format('Y-m-' . $purchaseDate->format('d')));

@@ -39,7 +39,7 @@ class RouteServiceProvider extends ServiceProvider
 
         $this->mapWebRoutes();
 
-        $this->mapExposedRoutes();
+        $this->mapOnlineRoutes();
     }
 
     /**
@@ -77,10 +77,10 @@ class RouteServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    protected function mapExposedRoutes()
+    protected function mapOnlineRoutes()
     {
-        Route::prefix('exposed')
+        Route::prefix('online')
              ->namespace($this->namespace)
-             ->group(base_path('routes/exposed.php'));
+             ->group(base_path('routes/online.php'));
     }
 }

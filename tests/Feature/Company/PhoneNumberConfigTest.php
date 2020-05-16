@@ -25,32 +25,59 @@ class PhoneNumberConfigTest extends TestCase
     public function testCreatePhoneNumberConfig()
     {
             $company    = $this->createCompany();
-            $configData = factory(PhoneNumberConfig::class)->make();
-            $postData   = [
-                  'name'                  => $configData->name,
-                  'forward_to_number'     => $configData->forward_to_number,
-                  'recording_enabled'     => 1,
+            $configData = factory(PhoneNumberConfig::class)->make([
+                  'recording_enabled'     => 1, 
                   'keypress_enabled'      => 1,
                   'keypress_key'          => 0,
                   'keypress_attempts'     => 1,
-                  'keypress_timeout'      => 5
-            ];
+                  'keypress_timeout'      => 5,
+                  'keypress_message'      => 'Hello World'
+            ]);
 
             $response = $this->json('POST', route('create-phone-number-config', [
                   'company' => $company->id
-            ]), $postData);
-
+            ]), [
+                  "name"                  => $configData->name,
+                  "forward_to_number"     => $configData->forward_to_number,
+                  "greeting_audio_clip_id"=> $configData->greeting_audio_clip_id,
+                  "greeting_message"      => $configData->greeting_message,
+                  "whisper_message"       => $configData->whisper_message,
+                  "recording_enabled"     => $configData->recording_enabled,
+                  "keypress_enabled"      => $configData->keypress_enabled,
+                  "keypress_key"          => $configData->keypress_key,
+                  "keypress_attempts"     => $configData->keypress_attempts,
+                  "keypress_timeout"      => $configData->keypress_timeout,
+                  "keypress_audio_clip_id"=> $configData->keypress_audio_clip_id,
+                  "keypress_message"      => $configData->keypress_message,
+            ]);
+            
             $response->assertStatus(201);
-            $response->assertJSON($postData);
+            $response->assertJSON([
+                  "id"                    => $response['id'],
+                  "account_id"            => $company->account_id,
+                  "company_id"            => $company->id,
+                  "name"                  => $configData->name,
+                  "forward_to_number"     => $configData->forward_to_number,
+                  "greeting_audio_clip_id"=> $configData->greeting_audio_clip_id,
+                  "greeting_message"      => $configData->greeting_message,
+                  "whisper_message"       => $configData->whisper_message,
+                  "recording_enabled"     => $configData->recording_enabled,
+                  "keypress_enabled"      => $configData->keypress_enabled,
+                  "keypress_key"          => $configData->keypress_key,
+                  "keypress_attempts"     => $configData->keypress_attempts,
+                  "keypress_timeout"      => $configData->keypress_timeout,
+                  "keypress_audio_clip_id"=> $configData->keypress_audio_clip_id,
+                  "keypress_message"      => $configData->keypress_message,
+                  "created_by"            => $this->user->id,
+                  "link"                  => route('read-phone-number-config', [
+                                                'company'           => $company->id,
+                                                'phoneNumberConfig' => $response['id']
+                                          ]),
+                  "kind"                  => "PhoneNumberConfig"
+            ]);
 
             $this->assertDatabaseHas('phone_number_configs', [
-                  'id'                    => $response['id'],
-                  'forward_to_number'     => $configData->forward_to_number,
-                  'recording_enabled'     => 1,
-                  'keypress_enabled'      => 1,
-                  'keypress_key'          => 0,
-                  'keypress_attempts'     => 1,
-                  'keypress_timeout'      => 5
+                  'id' => $response['id'],
             ]);
     }
 
@@ -74,9 +101,27 @@ class PhoneNumberConfigTest extends TestCase
             ]));
 
             $response->assertJSON([
-                  'id' => $config->id,
-                  'name' => $config->name,
-                  'company_id' => $company->id,
+                  "id"                    => $config->id,
+                  "account_id"            => $company->account_id,
+                  "company_id"            => $company->id,
+                  "name"                  => $config->name,
+                  "forward_to_number"     => $config->forward_to_number,
+                  "greeting_audio_clip_id"=> $config->greeting_audio_clip_id,
+                  "greeting_message"      => $config->greeting_message,
+                  "whisper_message"       => $config->whisper_message,
+                  "recording_enabled"     => $config->recording_enabled,
+                  "keypress_enabled"      => $config->keypress_enabled,
+                  "keypress_key"          => $config->keypress_key,
+                  "keypress_attempts"     => $config->keypress_attempts,
+                  "keypress_timeout"      => $config->keypress_timeout,
+                  "keypress_audio_clip_id"=> $config->keypress_audio_clip_id,
+                  "keypress_message"      => $config->keypress_message,
+                  "created_by"            => $this->user->id,
+                  "link"                  => route('read-phone-number-config', [
+                                                'company'           => $company->id,
+                                                'phoneNumberConfig' => $config->id
+                                          ]),
+                  "kind"                  => "PhoneNumberConfig"
             ]);
     }
 
@@ -129,47 +174,55 @@ class PhoneNumberConfigTest extends TestCase
                   'account_id' => $company->account_id,
                   'company_id' => $company->id,
                   'created_by' => $this->user->id,
-                  'recording_enabled'     => 1,
+                  'recording_enabled'     => 1, 
                   'keypress_enabled'      => 1,
                   'keypress_key'          => 0,
                   'keypress_attempts'     => 1,
-                  'keypress_timeout'      => 5
+                  'keypress_timeout'      => 5,
+                  'keypress_message'      => 'Hello World'
             ]);
 
-            $configData = factory(PhoneNumberConfig::class)->make();
+            $configData = factory(PhoneNumberConfig::class)->make([
+                  'recording_enabled'     => 0, 
+                  'keypress_enabled'      => 0,
+                  'keypress_key'          => 5,
+                  'keypress_attempts'     => 5,
+                  'keypress_timeout'      => 10,
+                  'keypress_message'      => 'Goodbye World'
+            ]);
 
             $response = $this->json('PUT', route('update-phone-number-config', [
                   'company'           => $company->id,
                   'phoneNumberConfig' => $config->id
             ]), [
-                  'name'                 => $configData->name,
+                  'name'                  => $configData->name,
                   'forward_to_number'     => $configData->forward_to_number,
-                  'recording_enabled'     => 0,
-                  'keypress_enabled'      => 0,
-                  'keypress_key'          => '',
-                  'keypress_attempts'     => '',
-                  'keypress_timeout'      => ''
+                  'recording_enabled'     => $configData->recording_enabled,
+                  'keypress_enabled'      => $configData->keypress_enabled,
+                  'keypress_key'          => $configData->keypress_key,
+                  'keypress_attempts'     => $configData->keypress_attempts,
+                  'keypress_timeout'      => $configData->keypress_timeout,
             ]);
 
 
             $response->assertJSON( [
-                  'name'              => $configData->name,
-                  'forward_to_number' => $configData->forward_to_number,
-                  'recording_enabled' => false,
-                  'keypress_enabled'  => false,
-                  'keypress_key'      => null,
-                  'keypress_attempts' => null,
-                  'keypress_timeout'  => null
+                  'name'                  => $configData->name,
+                  'forward_to_number'     => $configData->forward_to_number,
+                  'recording_enabled'     => $configData->recording_enabled,
+                  'keypress_enabled'      => $configData->keypress_enabled,
+                  'keypress_key'          => $configData->keypress_key,
+                  'keypress_attempts'     => $configData->keypress_attempts,
+                  'keypress_timeout'      => $configData->keypress_timeout,
             ]);
 
             $this->assertDatabaseHas('phone_number_configs', [
-                  'name'              => $configData->name,
-                  'forward_to_number' => $configData->forward_to_number,
-                  'recording_enabled' => false,
-                  'keypress_enabled'  => false,
-                  'keypress_key'      => null,
-                  'keypress_attempts' => null,
-                  'keypress_timeout'  => null
+                  'name'                  => $configData->name,
+                  'forward_to_number'     => $configData->forward_to_number,
+                  'recording_enabled'     => $configData->recording_enabled,
+                  'keypress_enabled'      => $configData->keypress_enabled,
+                  'keypress_key'          => $configData->keypress_key,
+                  'keypress_attempts'     => $configData->keypress_attempts,
+                  'keypress_timeout'      => $configData->keypress_timeout,
             ]);
     }
 

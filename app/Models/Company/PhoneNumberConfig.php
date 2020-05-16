@@ -22,6 +22,7 @@ class PhoneNumberConfig extends Model
         'deleted_by',
         'name',
         'forward_to_number',
+        'greeting_enabled',
         'greeting_audio_clip_id',
         'greeting_message',
         'whisper_message',
@@ -114,20 +115,28 @@ class PhoneNumberConfig extends Model
     public function greetingMessage(Call $call)
     {
         if( ! $this->greeting_message )
-            return null;
+            return '';
 
-        return $this->message($this->greeting_message, $call);
+        return $this->variableMessage($this->greeting_message, $call);
+    }
+
+    public function keypressMessage(Call $call)
+    {
+        if( ! $this->keypress_message )
+            return '';
+
+        return $this->variableMessage($this->keypress_message, $call);
     }
 
     public function whisperMessage(Call $call)
     {
         if( ! $this->whisper_message )
-        return null;
+            return '';
         
-        return $this->message($this->whisper_message, $call);
+        return $this->variableMessage($this->whisper_message, $call);
     }
 
-    public function message(string $message, Call $call)
+    public function variableMessage(string $message, Call $call)
     {
         $variables = [
             '${source}'             => $call->source,
@@ -135,14 +144,13 @@ class PhoneNumberConfig extends Model
             '${content}'            => $call->content,
             '${campaign}'           => $call->campaign,
             '${caller_name}'        => $call->caller_name,
-            '${caller_country_code}'=> $call->from_country_code,
-            '${caller_number}'      => $call->from_number,
-            '${caller_city}'        => $call->from_city,
-            '${caller_state}'       => $call->from_state,
-            '${caller_zip}'         => $call->from_zip,
-            '${caller_country}'     => $call->from_country,
-            '${caller_network}'     => $call->from_network,
-            '${dialed_number}'      => $call->to_number
+            '${caller_country_code}'=> $call->caller_country_code,
+            '${caller_number}'      => $call->caller_number,
+            '${caller_city}'        => $call->caller_city,
+            '${caller_state}'       => $call->caller_state,
+            '${caller_zip}'         => $call->caller_zip,
+            '${caller_country}'     => $call->caller_country,
+            '${dialed_number}'      => $call->forwarded_to
         ];
 
         return str_replace(array_keys($variables), array_values($variables), strtolower($message));

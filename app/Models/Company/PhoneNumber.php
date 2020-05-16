@@ -151,6 +151,11 @@ class PhoneNumber extends Model implements Exportable
         return $this->belongsTo('\App\Models\Company\PhoneNumberConfig');
     }
 
+    public function phone_number_pool()
+    {
+        return $this->belongsTo('\App\Models\Company\PhoneNumberPool');
+    }
+
     public function calls()
     {
         return $this->hasMany('\App\Models\Company\Call');

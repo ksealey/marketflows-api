@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
         //  Register Twilio
         $this->app->bind('Twilio', function($app){
             $config = config('services.twilio');
-
+            
             if( App::environment(['prod', 'production']) ){
                 $client = new Twilio($config['sid'], $config['token']);
             }else{

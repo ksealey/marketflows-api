@@ -61,6 +61,15 @@ trait CreatesAccount
         ]);
     }
 
+    public function createAudioClip($company, $with = [])
+    {
+        return factory(AudioClip::class)->create(array_merge([
+            'created_by' => $this->user->id,
+            'account_id' => $company->account_id,
+            'company_id' => $company->id
+        ], $with));
+    }
+
     public function createConfig($company, $with = [])
     {
         return factory(PhoneNumberConfig::class)->create(array_merge([
@@ -78,6 +87,26 @@ trait CreatesAccount
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id
         ], $with));
+    }
+
+    public function createPhoneNumberPool($company, $config, $with = [])
+    {
+        $pool =  factory(PhoneNumberPool::class)->create(array_merge([
+            'created_by' => $this->user->id,
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id
+        ], $with));
+
+        factory(PhoneNumber::class, 5)->create([
+            'created_by' => $this->user->id,
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'phone_number_pool_id'   => $pool->id
+        ]);
+
+        return $pool;
     }
 
     public function createCompanies()
@@ -191,6 +220,11 @@ trait CreatesAccount
             'Authorization' => 'Bearer ' . $this->user->auth_token
         ], $headers);
 
+        return parent::json($method, $route, $body, $headers);
+    }
+
+    public function noAuthjson($method, $route, $body = [], $headers = [])
+    {
         return parent::json($method, $route, $body, $headers);
     }
 }

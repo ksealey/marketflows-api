@@ -15,6 +15,11 @@ class BlockedCall extends Model
 
     protected $dateFormat = 'Y-m-d H:i:s.u';
 
+    protected $fillable = [
+        'blocked_phone_number_id',
+        'phone_number_id',
+        'created_at'
+    ];
 
     static public function exports() : array
     {

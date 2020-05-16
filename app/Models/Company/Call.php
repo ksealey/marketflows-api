@@ -60,6 +60,11 @@ class Call extends Model
 
     protected $dateFormat = 'Y-m-d H:i:s.u';  
 
+    public function company()
+    {
+        return $this->belongsTo('\App\Models\Company');
+    }
+    
     public function getLinkAttribute()
     {
         return route('read-call', [

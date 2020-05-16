@@ -46,7 +46,6 @@ class CreateCallsTable extends Migration
             $table->string('forwarded_to', 24);
 
             $table->integer('duration')->unsigned()->nullable();
-            $table->decimal('cost', 8, 4)->nullable();
             
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();
