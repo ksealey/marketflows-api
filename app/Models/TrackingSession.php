@@ -1,17 +1,18 @@
 <?php
 
-namespace App\Models\Events;
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Session extends EventModel
+class TrackingSession extends Model
 {
     protected $fillable = [
         'id',
+        'uuid',
         'persisted_id',
         'company_id',
+        'phone_number_pool_id',
         'phone_number_id',
-        'first_session',
         'ip',
         'host',
         'device_width',
@@ -24,8 +25,22 @@ class Session extends EventModel
         'token',
         'created_at',
         'updated_at',
+        'last_heartbeat_at',
         'ended_at'
     ];
 
-    protected $dateFormat = 'Y-m-d H:i:s.u';  
+    protected $dateFormat = 'Y-m-d H:i:s.u'; 
+    
+    protected $hidden  = [
+        'persisted_id',
+        'token',
+        'last_heartbeat_at'
+    ];
+
+    protected $dates = [
+        'created_at',
+        'updated_at',
+        'ended_at',
+        'last_heartbeat_at'
+    ];
 }

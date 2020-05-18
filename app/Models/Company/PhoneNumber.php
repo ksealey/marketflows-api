@@ -214,8 +214,7 @@ class PhoneNumber extends Model implements Exportable
                 . '-'
                 . substr($this->number, 6, 4);
     }
-
-
+    
     public function getSwapRulesAttribute($rules)
     {
         return json_decode($rules);

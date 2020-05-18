@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateSessionsTable extends Migration
+class CreateTrackingSessionsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,12 +13,13 @@ class CreateSessionsTable extends Migration
      */
     public function up()
     {
-        Schema::create('sessions', function (Blueprint $table) {
-            $table->uuid('id')->primary();  
+        Schema::create('tracking_sessions', function (Blueprint $table) {
+            $table->bigIncrements('id'); 
+            $table->uuid('uuid')->index();
             $table->uuid('persisted_id')->index(); 
             $table->bigInteger('company_id')->unsigned();
+            $table->bigInteger('phone_number_pool_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned()->nullable();
-            $table->boolean('first_session');
             $table->string('host', 128);
             $table->string('ip', 32);
             $table->integer('device_width')->unsigned();
@@ -31,8 +32,11 @@ class CreateSessionsTable extends Migration
             $table->string('token', 40);
             $table->dateTime('created_at', 6);
             $table->dateTime('updated_at', 6);
+            $table->dateTime('last_heartbeat_at', 6);
             $table->dateTime('ended_at')->nullable();
+
             $table->foreign('company_id')->references('id')->on('companies');
+            $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
         });
     }
@@ -44,6 +48,6 @@ class CreateSessionsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('sessions');
+        Schema::dropIfExists('tracking_sessions');
     }
 }

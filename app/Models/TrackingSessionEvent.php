@@ -1,16 +1,18 @@
 <?php
 
-namespace App\Models\Events;
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class SessionEvent extends EventModel
+class TrackingSessionEvent extends Model
 {
     public $timestamps = false; 
 
+    const SESSION_START = 'SessionStart';
+    const CLICK_TO_CALL = 'ClickToCall';
+
     protected $fillable = [
-        'id',
-        'session_id',
+        'tracking_session_id',
         'event_type',
         'content',
         'created_at'

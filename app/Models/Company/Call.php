@@ -18,7 +18,7 @@ class Call extends Model
         'sub_category',
         
         'phone_number_pool_id',
-        'session_id',
+        'tracking_session_id',
 
         'external_id',
         'direction',

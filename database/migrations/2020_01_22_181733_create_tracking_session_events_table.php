@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateSessionEventsTable extends Migration
+class CreateTrackingSessionEventsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,13 +13,13 @@ class CreateSessionEventsTable extends Migration
      */
     public function up()
     {
-        Schema::create('session_events', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('session_id');
+        Schema::create('tracking_session_events', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->bigInteger('tracking_session_id')->unsigned();
             $table->string('event_type', 32);
-            $table->string('content', 512)->nullable();
+            $table->string('content', 1024)->nullable();
             $table->dateTime('created_at', 6);
-            $table->foreign('session_id')->references('id')->on('sessions');
+            $table->foreign('tracking_session_id')->references('id')->on('tracking_sessions');
         });
     }
 
@@ -30,6 +30,6 @@ class CreateSessionEventsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('session_events');
+        Schema::dropIfExists('tracking_session_events');
     }
 }

@@ -9,6 +9,7 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Traits\CanSwapNumbers;
 use \App\Traits\PerformsExport;
+use App\Models\TrackingSession;
 use Exception;
 use DateTime;
 use DateTimeZone;
@@ -42,10 +43,6 @@ class PhoneNumberPool extends Model
     protected $appends = [
         'link',
         'kind'
-    ];
-
-    protected $casts = [
-        'swap_rules' => 'array'
     ];
 
     protected $dateFormat = 'Y-m-d H:i:s.u'; 
@@ -119,6 +116,11 @@ class PhoneNumberPool extends Model
         return 'PhoneNumberPool';
     }
 
+    public function getSwapRulesAttribute($rules)
+    {
+        return json_decode($rules);
+    }
+
     /**
      * Determine if the phone number pool is in use
      * 
@@ -135,9 +137,9 @@ class PhoneNumberPool extends Model
      * Get and assign the next phone number in line
      * 
      */
-    public function assignNextNumber($preferredPhoneId = null)
+    public function assignNumber($persistedId = null)
     {
-        $phoneNumber = $this->nextNumber($preferredPhoneId);
+        $phoneNumber = $this->nextNumber($persistedId);
         if( ! $phoneNumber )
             return null;
 
@@ -153,14 +155,23 @@ class PhoneNumberPool extends Model
      * Get the next number in line
      * 
      */
-    public function nextNumber($preferredPhoneId = null)
+    public function nextNumber($persistedId = null)
     {
         $phoneNumber = null;
         
-        if( $preferredPhoneId )
-            $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)
-                                    ->where('id', $preferredPhoneId)
-                                    ->first();
+        if( $persistedId ){
+            //  
+            //  Look for sessions from this user and use the same number if less than 30 days ago
+            //
+            $thirtyDaysAgo = now()->subDays(30);
+            $lastSession   = TrackingSession::where('created_at', '>=', $thirtyDaysAgo)
+                                            ->where('phone_number_pool_id', $this->id)
+                                            ->where('persisted_id', $persistedId)
+                                            ->orderBy('created_at', 'desc')
+                                            ->first();
+            if( $lastSession )
+                $phoneNumber = PhoneNumber::find($lastSession->phone_number_id);
+        }
 
         if( ! $phoneNumber )
             $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)

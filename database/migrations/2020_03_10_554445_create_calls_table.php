@@ -23,7 +23,7 @@ class CreateCallsTable extends Migration
             $table->string('sub_category', 32)->nullable();
 
             $table->bigInteger('phone_number_pool_id')->unsigned()->nullable();
-            $table->uuid('session_id')->nullable();
+            $table->bigInteger('tracking_session_id')->unsigned()->nullable();
 
             $table->string('external_id', 64)->unique();
             $table->string('direction', 16);
@@ -58,7 +58,7 @@ class CreateCallsTable extends Migration
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
             $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
-            $table->foreign('session_id')->references('id')->on('sessions');
+            $table->foreign('tracking_session_id')->references('id')->on('tracking_sessions');
             $table->foreign('updated_by')->references('id')->on('users');
             $table->foreign('deleted_by')->references('id')->on('users');
             $table->index(['created_at', 'updated_at']);
