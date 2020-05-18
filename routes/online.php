@@ -10,6 +10,6 @@ use Illuminate\Http\Request;
 |
 */
 
-Route::middelware(['rate_limit:30,1'])
+Route::middleware(['rate_limit:30,1'])
      ->post('init', 'OnlineController@init')
      ->name('online-init');

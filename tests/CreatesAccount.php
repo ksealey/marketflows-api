@@ -85,7 +85,8 @@ trait CreatesAccount
             'created_by' => $this->user->id,
             'account_id' => $company->account_id,
             'company_id' => $company->id,
-            'phone_number_config_id' => $config->id
+            'phone_number_config_id' => $config->id,
+            'swap_rules' => $this->makeSwapRules()
         ], $with));
     }
 
@@ -212,6 +213,27 @@ trait CreatesAccount
             'phone_number_pool' => $pool,
             'phone_number_pool_numbers' => $poolNumbers
         ];
+    }
+
+    public function makeSwapRules($with = [])
+    {
+        return json_encode(array_merge([
+                'targets' => [
+                    '18003098829'
+                ],
+                'device_types'  => ['ALL'],
+                'browser_types' => ['ALL'],
+                'inclusion_rules' => [
+                    [
+                        'rules' => [
+                            [
+                                'type' => 'ALL'
+                            ]
+                        ]
+                    ]
+                ],
+                'exclusion_rules' => []
+            ],  $with));
     }
 
     public function json($method, $route, $body = [], $headers = [])

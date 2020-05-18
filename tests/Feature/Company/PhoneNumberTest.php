@@ -38,10 +38,10 @@ class PhoneNumberTest extends TestCase
         $config      = $this->createConfig($company);
         
         factory(PhoneNumber::class, 10)->create([
-            'account_id' => $this->account->id,
-            'company_id' => $company->id,
+            'account_id'             => $this->account->id,
+            'company_id'             => $company->id,
             'phone_number_config_id' => $config->id,
-            'created_by' => $this->user->id
+            'created_by'             => $this->user->id
         ]);
 
         $response = $this->json('GET', route('list-phone-numbers', [
@@ -97,7 +97,8 @@ class PhoneNumberTest extends TestCase
             'account_id' => $this->account->id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
-            'created_by' => $this->user->id
+            'created_by' => $this->user->id,
+            'swap_rules' => $this->makeSwapRules()
         ]);
 
         $firstNumber = $phoneNumbers->first();
@@ -585,7 +586,7 @@ class PhoneNumberTest extends TestCase
             'country'      => $company->country,
             'country_code' => PhoneNumber::countryCode($twilioNumber->phoneNumber),
             'number'       => PhoneNumber::number($twilioNumber->phoneNumber),
-            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? $numberData->swap_rules : null,
+            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? json_decode(json_encode($numberData->swap_rules), true)  : null,
             'call_count'   => 0,
             'link'         => route('read-phone-number', [
                 'company' => $company->id,
@@ -659,9 +660,7 @@ class PhoneNumberTest extends TestCase
             'campaign'        => $numberData->campaign,
             'phone_number_config_id' => $config->id,
             'country'      => $company->country,
-            //'country_code' => PhoneNumber::countryCode($twilioNumber->phoneNumber),
-            //'number'       => PhoneNumber::number($twilioNumber->phoneNumber),
-            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? $numberData->swap_rules : null,
+            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ?  json_decode(json_encode($numberData->swap_rules), true)  : null,
             'call_count'   => 0,
             'link'         => route('read-phone-number', [
                 'company' => $company->id,
@@ -922,7 +921,7 @@ class PhoneNumberTest extends TestCase
         ]);
 
         $response->assertStatus(201);
-        $response->assertJSON([
+        $response->assertJsonFragment([
             'account_id'  => $company->account_id,
             'company_id'  => $company->id,
             'name'        => $numberData->name,
@@ -937,7 +936,7 @@ class PhoneNumberTest extends TestCase
             'country'      => $company->country,
             'country_code' => PhoneNumber::countryCode($twilioNumber->phoneNumber),
             'number'       => PhoneNumber::number($twilioNumber->phoneNumber),
-            'swap_rules'   => $numberData->swap_rules,
+            'swap_rules'   => json_decode(json_encode($numberData->swap_rules), true),
             'call_count'   => 0,
             'link'         => route('read-phone-number', [
                 'company' => $company->id,
@@ -1091,7 +1090,7 @@ class PhoneNumberTest extends TestCase
             'campaign'     => $numberData->campaign,
             'phone_number_config_id' => $config->id,
             'country'      => $company->country,
-            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? $numberData->swap_rules : null,
+            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? json_decode(json_encode($numberData->swap_rules), true) : null,
             'call_count'   => 0,
             'link'         => route('read-phone-number', [
                 'company' => $company->id,
@@ -1109,7 +1108,7 @@ class PhoneNumberTest extends TestCase
     /**
      * Test creating a toll-free phone number from a banked number
      * 
-     * @group phone-numbers
+     * @group phone-numbers-
      */
     public function testCreateTollFreePhoneNumberFromBank()
     {
@@ -1145,7 +1144,7 @@ class PhoneNumberTest extends TestCase
         ]);
 
         $response->assertStatus(201);
-
+        
         $response->assertJSON([
             'account_id'  => $company->account_id,
             'company_id'  => $company->id,
@@ -1161,7 +1160,7 @@ class PhoneNumberTest extends TestCase
             'campaign'     => $numberData->campaign,
             'phone_number_config_id' => $config->id,
             'country'      => $company->country,
-            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? $numberData->swap_rules : null,
+            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? json_decode(json_encode($numberData->swap_rules), true) : null,
             'call_count'   => 0,
             'link'         => route('read-phone-number', [
                 'company' => $company->id,
@@ -1196,7 +1195,7 @@ class PhoneNumberTest extends TestCase
         $phoneNumber = $this->createPhoneNumber($company, $config, [
             'disabled_at' => null
         ]); 
-        $expectedData = $phoneNumber->toArray();
+        $expectedData = json_decode(json_encode($phoneNumber->toArray()), true);
         unset($expectedData['disabled_at']); // Disabled time may differ by seconds from now
         
         //  Disable
@@ -1262,7 +1261,7 @@ class PhoneNumberTest extends TestCase
             'medium'                 => $updatedNumberData->medium,  
             'content'                => $updatedNumberData->content,  
             'campaign'               => $updatedNumberData->campaign,        
-            'swap_rules'             => $updatedNumberData->sub_category == 'WEBSITE' ? $updatedNumberData->swap_rules : null,
+            'swap_rules'             => $updatedNumberData->sub_category == 'WEBSITE' ? json_decode(json_encode($updatedNumberData->swap_rules), true) : null,
         ]);
 
         $this->assertDatabaseHas('phone_numbers', [

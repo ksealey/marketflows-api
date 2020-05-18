@@ -89,13 +89,15 @@ class PhoneNumber extends Model implements Exportable
         'formatted_number'
     ];
 
-    protected $casts = [
-        'swap_rules' => 'array'
-    ];
-
     protected $dates = [
         'purchased_at',
         'disabled_at'
+    ];
+    
+    protected $casts = [
+        'voice' => 'boolean',
+        'sms'   => 'boolean',
+        'mms'   => 'boolean',
     ];
 
     static public function exports() : array
@@ -211,6 +213,12 @@ class PhoneNumber extends Model implements Exportable
                 . substr($this->number, 3, 3)
                 . '-'
                 . substr($this->number, 6, 4);
+    }
+
+
+    public function getSwapRulesAttribute($rules)
+    {
+        return json_decode($rules);
     }
 
     /**

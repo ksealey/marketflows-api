@@ -6,7 +6,20 @@ use Illuminate\Contracts\Validation\Rule;
 
 class SwapRulesRule implements Rule
 {
+    use \App\Traits\CanSwapNumbers;
+
     protected $message = '';
+
+    protected $operators = [
+        'EMPTY',
+        'NOT_EMPTY',
+        'EQUALS',
+        'NOT_EQUALS',
+        'IN',
+        'NOT_IN',
+        'LIKE',
+        'NOT_LIKE'
+    ];
 
     /**
      * Create a new rule instance.
@@ -49,8 +62,8 @@ class SwapRulesRule implements Rule
                 return false;
             }
 
-            $targetData = preg_replace('/[^0-9\#]+/', '', $target);
-            if( strlen($targetData) < 7 || strlen($targetData) > 13 ){
+            $targetData = preg_replace('/[^0-9]+/', '', $target);
+            if( strlen($targetData) < 10 || strlen($targetData) > 13 ){
                 $this->message = 'Swap rule target invalid';
 
                 return false;
@@ -126,7 +139,7 @@ class SwapRulesRule implements Rule
                 return false;
             }
 
-            if( ! in_array($deviceType, ['ALL', 'DESKTOP', 'TABLET', 'MOBILE']) ){
+            if( $deviceType != 'ALL' && ! in_array($deviceType, $this->deviceTypes) ){
                 $this->message = 'Swap rule device type invalid - Index ' . $idx;
                 
                 return false;
@@ -153,7 +166,7 @@ class SwapRulesRule implements Rule
                 return false;
             }
 
-            if( ! in_array($browserType, ['ALL', 'CHROME', 'FIREFOX', 'INTERNET_EXPLORER', 'EDGE', 'SAFARI', 'OPERA', 'OTHER']) ){
+            if( $browserType != 'ALL' && ! in_array($browserType, $this->browserTypes) ){
                 $this->message = 'Swap rule browser type invalid - Index: ' . $idx;
                 
                 return false;
@@ -183,8 +196,8 @@ class SwapRulesRule implements Rule
                 return true;
         } 
 
-        //  Validate for types that do not need values
-        if( in_array($rule->type, ['DIRECT', 'ORGANIC']) )
+        //  Validate for types that do not need inputs
+        if( in_array($rule->type, ['DIRECT', 'ORGANIC', 'PAID', 'SEARCH', 'REFERRAL']) )
             return true;
 
         //
@@ -202,18 +215,21 @@ class SwapRulesRule implements Rule
         if( in_array($rule->operator, ['EMPTY', 'NOT_EMPTY']) ) // Validate operators that do not need values
             return true;
 
-        if( ! in_array($rule->operator, ['EQUALS', 'NOT_EQUALS', 'CONTAINS', 'NOT_CONTAINS', 'MATCHES', 'NOT_MATCHES'] ) )
+        if( ! in_array($rule->operator, $this->operators) )
             return false;
 
-        //  Check matchinput values
-        if( empty($rule->match_input) || ! is_object($rule->match_input) )
+        //  Check input values
+        if( empty($rule->inputs) || ! is_array($rule->inputs) )
             return false;
 
-        if( empty($rule->match_input->value) || ! is_string($rule->match_input->value) )
-            return false;
+        foreach( $rule->inputs as $input ){
+            if( ! is_string($input) || ! $input )
+                return false;
+        }
 
-        //  parameters should also have a key
-        if( $rule->type == 'LANDING_PARAM' && (empty($rule->match_input->key) || ! is_string($rule->match_input->key) ))
+
+        //  parameters should also have a field
+        if( $rule->type == 'LANDING_PARAM' && (empty($rule->field) || ! is_string($rule->field) ))
             return false;
         
         return true;

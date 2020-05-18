@@ -8,77 +8,23 @@ use Faker\Generator as Faker;
 $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $faker) {
     return [
         'name'                      => $faker->company,
-        'swap_rules'                => [
+        'swap_rules'                => json_encode([
             'targets' => [
-                '813557####',
                 '18003098829'
             ],
+            'device_types'  => ['ALL'],
+            'browser_types' => ['ALL'],
             'inclusion_rules' => [
-                /*[
-                    'rules' => [
-                        [
-                            'type'     => 'ALL'
-                        ]
-                    ]
-                ],*/
-
                 [
                     'rules' => [
                         [
-                            'type'     => 'LANDING_PARAM',
-                            'operator' => 'CONTAINS',
-                            'match_input' => [
-                                'key'   => 'utm_source',
-                                'value' => 'Google'
-                            ]
+                            'type' => 'ALL'
                         ]
                     ]
                 ]
             ],
-            'exclusion_rules' => [
-                [
-                    'rules' => [
-                        [
-                            'type'=> 'LANDING_PARAM',
-                            'operator' => 'CONTAINS',
-                            'match_input' => [
-                                'key'     => 'utm_source',
-                                'value'   => 'test'
-                            ]
-                        ],
-                        [
-                            'type'=> 'LANDING_PARAM',
-                            'operator' => 'CONTAINS',
-                            'match_input' => [
-                                'key'     => 'utm_source',
-                                'value'   => 'testing'
-                            ]
-                        ]
-                    ]
-                ],
-                [
-                    'rules' => [
-                        [
-                            'type'=> 'LANDING_PATH',
-                            'operator' => 'CONTAINS',
-                            'match_input' => [
-                                'key'     => '',
-                                'value'   => '/test'
-                            ]
-                        ],
-                        [
-                            'type'=> 'LANDING_PATH',
-                            'operator' => 'CONTAINS',
-                            'match_input' => [
-                                'key'     => '',
-                                'value'   => '/lp/old'
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-
-        ],
+            'exclusion_rules' => []
+        ]),
         'override_campaigns' => true
     ];
 });

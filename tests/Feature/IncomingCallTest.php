@@ -556,11 +556,11 @@ class IncomingCallTest extends TestCase
          ]);
     }
 
-    /**
+    /*
      * Test an incoming call from a phone number pool fetched session data
      * 
      * @group incoming-calls-
-     */
+     
     public function testPhoneNumberPoolCallFetchesSessionData()
     {
         $company     = $this->createCompany();
@@ -574,13 +574,5 @@ class IncomingCallTest extends TestCase
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
             'To' => $phoneNumber->e164Format()
         ]);
-
-        
-        
-
-
-
-
-
-    }
+    }*/
 }

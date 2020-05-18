@@ -152,7 +152,7 @@ class PhoneNumberController extends Controller
                 'medium'                    => $request->medium ?: null,
                 'content'                   => $request->content ?: null,
                 'campaign'                  => $request->campaign ?: null,
-                'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null,
+                'swap_rules'                => ($request->sub_category == 'WEBSITE') ? $request->swap_rules : null,
                 'purchased_at'              => $bankedNumber->purchased_at,
                 'created_by'                => $user->id,
             ]);
@@ -203,7 +203,7 @@ class PhoneNumberController extends Controller
                 'medium'                    => $request->medium,
                 'content'                   => $request->content,
                 'campaign'                  => $request->campaign,
-                'swap_rules'                => ($request->sub_category == 'WEBSITE') ? json_decode($request->swap_rules) : null,
+                'swap_rules'                => ($request->sub_category == 'WEBSITE') ? $request->swap_rules : null,
                 'purchased_at'              => now(),
                 'created_by'                => $user->id
             ]);
@@ -290,8 +290,9 @@ class PhoneNumberController extends Controller
         if( $request->has('campaign') )
             $phoneNumber->campaign = $request->campaign ?: null;
 
-        if( $request->filled('swap_rules') )
-            $phoneNumber->swap_rules = $request->sub_category == 'WEBSITE' ? json_decode($request->swap_rules) : null;
+        if( $request->filled('swap_rules') ){
+            $phoneNumber->swap_rules = $request->sub_category == 'WEBSITE' ? $request->swap_rules : null;
+        }
         
         $phoneNumber->save();
 

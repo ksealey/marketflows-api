@@ -17,42 +17,7 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
     }
     
     $subCategory = $subCategories[mt_rand(0, count($subCategories) - 1)];
-    $swapRules  = [
-        'targets' => [
-            '18003098829'
-        ],
-        'device_types'  => ['ALL'],
-        'browser_types' => ['ALL'],
-        'inclusion_rules' => [
-            [
-                'rules' => [
-                    [
-                        'type'     => 'LANDING_PARAM',
-                        'operator' => 'CONTAINS',
-                        'match_input' => [
-                            'key'   => 'utm_source',
-                            'value' => 'Google'
-                        ]
-                    ]
-                ]
-            ]
-        ],
-        'exclusion_rules' => [
-            [
-                'rules' => [
-                    [
-                        'type'=> 'LANDING_PARAM',
-                        'operator' => 'CONTAINS',
-                        'match_input' => [
-                            'key'     => 'utm_source',
-                            'value'   => 'test'
-                        ]
-                    ]
-                ]
-            ]
-        ]
-    ];
-
+    
     $type = mt_rand(0, 1) ? PhoneNumber::TYPE_LOCAL : PhoneNumber::TYPE_TOLL_FREE;
 
     return [
@@ -63,7 +28,7 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
         'type'                      => $type,
         'name'                      => $faker->realText(20),
         'country'                   => 'US',
-        'country_code'              => 1, 
+        'country_code'              => '1', 
         'number'                    => substr($faker->e164PhoneNumber, -10),
         'voice'                     => true,
         'sms'                       => true,
@@ -72,8 +37,24 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
         'content'                   => $faker->realText(10),
         'campaign'                  => $faker->realText(10),
         'source'                    => $faker->realText(10),
-        'swap_rules'                => $swapRules,
         'last_assigned_at'          => null,
-        'purchased_at'              => now()
+        'purchased_at'              => now(),
+        'swap_rules'                => json_encode([
+            'targets' => [
+                '18003098829'
+            ],
+            'device_types'  => ['ALL'],
+            'browser_types' => ['ALL'],
+            'inclusion_rules' => [
+                [
+                    'rules' => [
+                        [
+                            'type' => 'ALL'
+                        ]
+                    ]
+                ]
+            ],
+            'exclusion_rules' => []
+        ])
     ];
 });
