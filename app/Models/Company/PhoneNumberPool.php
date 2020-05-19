@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\Call;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Traits\CanSwapNumbers;
 use \App\Traits\PerformsExport;
 use App\Models\TrackingSession;
+use App\Models\TrackingSessionEvent;
+
 use Exception;
 use DateTime;
 use DateTimeZone;
@@ -137,9 +140,9 @@ class PhoneNumberPool extends Model
      * Get and assign the next phone number in line
      * 
      */
-    public function assignNumber($persistedId = null)
+    public function assignNumber($trackingEntity = null)
     {
-        $phoneNumber = $this->nextNumber($persistedId);
+        $phoneNumber = $this->nextNumber($trackingEntity);
         if( ! $phoneNumber )
             return null;
 
@@ -155,18 +158,16 @@ class PhoneNumberPool extends Model
      * Get the next number in line
      * 
      */
-    public function nextNumber($persistedId = null)
+    public function nextNumber($trackingEntity = null)
     {
         $phoneNumber = null;
         
-        if( $persistedId ){
+        if( $trackingEntity ){
             //  
-            //  Look for sessions from this user and use the same number if less than 30 days ago
+            //  Look for sessions from this user and use the same number if possible
             //
-            $thirtyDaysAgo = now()->subDays(30);
-            $lastSession   = TrackingSession::where('created_at', '>=', $thirtyDaysAgo)
-                                            ->where('phone_number_pool_id', $this->id)
-                                            ->where('persisted_id', $persistedId)
+            $lastSession   = TrackingSession::where('phone_number_pool_id', $this->id)
+                                            ->where('tracking_entity_id', $trackingEntity->id)
                                             ->orderBy('created_at', 'desc')
                                             ->first();
             if( $lastSession )
@@ -180,5 +181,85 @@ class PhoneNumberPool extends Model
                                     ->first();
 
         return $phoneNumber;
+    }
+
+    /**
+     * Get the most likely session for a phonenumber
+     * 
+     */
+    public function getSessionData(string $from, PhoneNumber $toPhone)
+    {
+        $session    = null;
+
+        //
+        //  Get the last call from this person linked to a session
+        //
+        $callerCountryCode = PhoneNumber::countryCode($from);
+        $callerNumber      = PhoneNumber::number($from);
+        
+        $query = Call::where('company_id', $this->company_id)
+                      ->where('caller_number', $callerNumber)
+                      ->whereNotNull('tracking_entity_id')
+                      ->orderBy('created_at', 'DESC');
+
+        if( $callerCountryCode )
+            $query->where('caller_country_code', $callerCountryCode);
+
+        $lastSessionedCall = $query->first();
+        /*if( $lastSessionedCall ){
+            //  Look for the last session attached to the entity attached to this call
+            $trackingEntity      = $lastSessionedCall->tracking_entity;
+            $lastTrackingSession = 
+
+            $mostRecentSession = TrackingSession::where('tracking_entity_id', $lastSession->tracking_entity_id)
+                                                       ->orderBy('created_at', 'DESC')
+                                                       ->first();
+            //  Same old session
+            if( $mostRecentSession->id === $lastSession->id ){
+
+            }
+        }*/ 
+
+        //
+        //  First see if anyone with an active session clicked this number within the last 15 seconds
+        //
+        $lastClickEvent = TrackingSessionEvent::where('created_at', '>=', now()->subSeconds(15))
+                                            ->whereIn('tracking_session_id', function($query) use($toPhone){
+                                                //
+                                                //  Get the ids of active sessions attached to this phone number
+                                                //
+                                                $query->select('id')
+                                                        ->from('tracking_sessions')
+                                                        ->where('phone_number_id', $toPhone->id)
+                                                        ->whereNull('ended_at');
+                                            })
+                                            ->where('event_type', TrackingSessionEvent::CLICK_TO_CALL)
+                                            ->orderBy('created_at', 'desc')
+                                            ->first();
+
+        if( $lastClickEvent )
+           return $lastClickEvent->tracking_session;
+
+        //
+        //  There we no recent click events
+        //  look for the last page view or session(Treated almost the same as page view) with an active session
+        //
+        $lastPageViewEvent = TrackingSessionEvent::whereIn('tracking_session_id', function($query) use($toPhone){
+                                                    //
+                                                    //  Get the ids of active sessions attached to this phone number
+                                                    //
+                                                    $query->select('id')
+                                                            ->from('tracking_sessions')
+                                                            ->where('phone_number_id', $toPhone->id)
+                                                            ->whereNull('ended_at');
+                                                })
+                                                ->whereIn('event_type', [TrackingSessionEvent::PAGE_VIEW, TrackingSessionEvent::SESSION_START])
+                                                ->orderBy('created_at', 'desc')
+                                                ->first();
+
+        if( $lastPageViewEvent )
+            return $lastPageViewEvent->tracking_session;
+
+        return null;
     }
 }

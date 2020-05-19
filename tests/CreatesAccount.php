@@ -17,6 +17,8 @@ use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
+use \App\Models\TrackingEntity;
+use \App\Models\TrackingSession;
 use Storage;
 
 trait CreatesAccount
@@ -108,6 +110,26 @@ trait CreatesAccount
         ]);
 
         return $pool;
+    }
+
+    public function createTrackingEntity($company)
+    {
+        return factory(TrackingEntity::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id
+        ]);
+    }
+
+    public function createTrackingSession($company, $phoneNumber, $pool, $with = [])
+    {
+        $entity = $this->createTrackingEntity($company);
+
+        return factory(TrackingSession::class)->create(array_merge([
+            'company_id'           => $company->id,
+            'phone_number_id'      => $phoneNumber->id,
+            'phone_number_pool_id' => $pool->id,
+            'tracking_entity_id'   => $entity->id
+        ], $with));
     }
 
     public function createCompanies()

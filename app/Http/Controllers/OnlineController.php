@@ -8,6 +8,7 @@ use DeviceDetector\DeviceDetector;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
+use App\Models\TrackingEntity;
 use App\Models\TrackingSession;
 use App\Models\TrackingSessionEvent;
 
@@ -23,7 +24,7 @@ class OnlineController extends Controller
     {
         $rules = [
             'company_id'            => 'bail|required|numeric',
-            'persisted_id'          => 'uuid',
+            'tracking_entity_uuid'  => 'uuid',
             'http_referrer'         => 'bail|url',
             'entry_url'             => 'bail|required|url',
             'device_width'          => 'bail|required|numeric',
@@ -72,20 +73,52 @@ class OnlineController extends Controller
         //  If the user has an online pool that passes rules, it will take precedence
         //
         $ipAddress      = $request->header('X-Forwarded-For') ?: $request->ip();
-        $persistedId    = $request->persisted_id ?: Str::uuid();
         $assignedNumber = null;
 
-        $pool = PhoneNumberPool::where('company_id', $request->company_id)->first();
+        $pool   = PhoneNumberPool::where('company_id', $request->company_id)->first();
+        $entity = null;
         if( $pool && ! $pool->disabled_at && $pool->swapRulesPass($deviceBrowser, $deviceType, $request->http_referrer, $request->entry_url) ){
-            //  Get next available number in pool
-            $assignedNumber = $pool->assignNumber($request->persisted_id);
+            if( $request->tracking_entity_uuid ){
+                $entity = TrackingEntity::where('uuid', $request->tracking_entity_uuid)
+                                        ->where('company_id', $company->id)
+                                        ->first();
+            }
+            //
+            //  Get next available number in pool, re-using the same number if possible
+            //
+            $assignedNumber = $pool->assignNumber($entity);
 
+            //
+            //  If we can get assigned a number
+            //
             if( $assignedNumber ){
+                //
+                //  Create a new entity if not exists
+                //
+                if( ! $entity ){
+                    $entity = TrackingEntity::create([
+                        'account_id' => $company->account_id,
+                        'company_id' => $company->id,
+                        'uuid'       => Str::uuid()
+                    ]);
+                }
+                
+                //
+                //  Parse entry params and normalize keys
+                //
+                parse_str(parse_url($request->entry_url, PHP_URL_QUERY), $_params);
+                $params = [];
+                foreach( $_params as $paramKey => $paramValue ){
+                    $params[strtolower($paramKey)] = $_params[$paramKey];
+                }
+
+                //
                 //  Create session
-                $now = new DateTime();
+                //
+                $now     = new DateTime();
                 $session = TrackingSession::create([
                     'uuid'                  => Str::uuid(),
-                    'persisted_id'          => $persistedId,
+                    'tracking_entity_id'    => $entity->id,
                     'company_id'            => $company->id,
                     'phone_number_pool_id'  => $pool->id,
                     'phone_number_id'       => $assignedNumber->id,
@@ -98,6 +131,10 @@ class OnlineController extends Controller
                     'device_os'             => substr($deviceOS, 0, 64),
                     'browser_type'          => substr($deviceBrowser, 0, 64),
                     'browser_version'       => substr($deviceBrowserVersion, 0, 64),
+                    'source'                => substr($params['utm_source']   ?? $params['source']   ?? '', 0, 64) ?: null,
+                    'medium'                => substr($params['utm_medium']   ?? $params['medium']   ?? '', 0, 64) ?: null,
+                    'content'               => substr($params['utm_content']  ?? $params['content']  ?? '', 0, 64) ?: null,
+                    'campaign'              => substr($params['utm_campaign'] ?? $params['campaign'] ?? '', 0, 64) ?: null,
                     'token'                 => str_random(40),
                     'created_at'            => $now->format('Y-m-d H:i:s.u'),
                     'updated_at'            => $now->format('Y-m-d H:i:s.u'),
@@ -116,9 +153,9 @@ class OnlineController extends Controller
                 return response([
                     'action' => 'session',
                     'data'   => [
-                        'number'       => $assignedNumber->exposedData(),
-                        'swap_rules'   => $pool->swap_rules,
-                        'persisted_id' => $persistedId,
+                        'tracking_entity_uuid' => $entity->uuid,
+                        'number'               => $assignedNumber->exposedData(),
+                        'swap_rules'           => $pool->swap_rules,
                         'session'      => [
                             'uuid'  => $session->uuid,
                             'token' => $session->token,
@@ -152,8 +189,7 @@ class OnlineController extends Controller
                     'action' => 'swap',
                     'data'   => [
                         'number'       => $assignedNumber->exposedData(),
-                        'swap_rules'   => $assignedNumber->swap_rules,
-                        'persisted_id' => $persistedId,
+                        'swap_rules'   => $assignedNumber->swap_rules
                     ],
                 ]);
             }
@@ -188,9 +224,8 @@ class OnlineController extends Controller
         }
 
         $session = TrackingSession::where('uuid', $request->session_uuid)
-                                    ->where('token', $request->token)
-                                    ->whereNull('ended_at')
-                                    ->first();
+                                  ->where('token', $request->token)
+                                  ->first();
         if( ! $session ){
             return response([
                 'error' => 'Session not found'
@@ -205,7 +240,9 @@ class OnlineController extends Controller
             'created_at'          => $now->format('Y-m-d H:i:s.u')
         ]);
 
+        $session->ended_at          = null; //  Open back up session if ended
         $session->last_heartbeat_at = $now->format('Y-m-d H:i:s.u');
+
         $session->save();
 
         return response([
@@ -233,7 +270,6 @@ class OnlineController extends Controller
 
         $session = TrackingSession::where('uuid', $request->session_uuid)
                                     ->where('token', $request->token)
-                                    ->whereNull('ended_at')
                                     ->first();
         if( ! $session ){
             return response([
@@ -243,6 +279,7 @@ class OnlineController extends Controller
         }
 
         $session->last_heartbeat_at = (new DateTime())->format('Y-m-d H:i:s.u');
+        $session->ended_at = null; //  Open back up session if ended
         $session->save();
 
         return response([

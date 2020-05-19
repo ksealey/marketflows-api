@@ -4,6 +4,7 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use \App\Models\TrackingEntity;
 
 class Call extends Model
 {
@@ -18,7 +19,7 @@ class Call extends Model
         'sub_category',
         
         'phone_number_pool_id',
-        'tracking_session_id',
+        'tracking_entity_id',
 
         'external_id',
         'direction',
@@ -43,6 +44,7 @@ class Call extends Model
         'forwarded_to',
 
         'duration',
+        'first_call',
 
         'cost',
         'created_at',
@@ -58,11 +60,21 @@ class Call extends Model
         'kind',
     ];
 
+    protected $casts = [
+        'first_call' => 'boolean'
+    ];
+
     protected $dateFormat = 'Y-m-d H:i:s.u';  
 
     public function company()
     {
         return $this->belongsTo('\App\Models\Company');
+    }
+
+    public function tracking_entity()
+    {
+        return TrackingEntity::find($this->tracking_entity_id);
+        return $this->hasOne('\App\Models\TrackingEntity');
     }
     
     public function getLinkAttribute()

@@ -5,10 +5,10 @@
 use App\Model;
 use Faker\Generator as Faker;
 
-$factory->define(App\Models\Events\SessionEvent::class, function (Faker $faker) {
+$factory->define(App\Models\TrackingSessionEvent::class, function (Faker $faker) {
     return [
         'event_type' => 'PageView',
         'content'    => $faker->url,
-        'created_at' => now()
+        'created_at' => (new DateTime())->format('Y-m-d H:i:s.u')
     ];
 });

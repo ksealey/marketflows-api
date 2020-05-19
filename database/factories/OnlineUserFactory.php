@@ -8,7 +8,7 @@ use Tests\Models\OnlineUser;
 $factory->define(OnlineUser::class, function (Faker $faker) {
     $paidReferrer = trim($faker->url, '/') . '?utm_medium=CpC';
     return [
-        'persisted_id'   => $faker->uuid,
+        'tracking_entity_uuid'   => $faker->uuid,
         'http_referrer'  => $faker->url,
         'paid_url'       => $paidReferrer,
         'entry_url'      => $faker->url,

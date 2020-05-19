@@ -10,6 +10,7 @@ class TrackingSessionEvent extends Model
 
     const SESSION_START = 'SessionStart';
     const CLICK_TO_CALL = 'ClickToCall';
+    const PAGE_VIEW     = 'PageView';
 
     protected $fillable = [
         'tracking_session_id',
@@ -17,4 +18,15 @@ class TrackingSessionEvent extends Model
         'content',
         'created_at'
     ];
+
+    protected $dates = [
+        'created_at'
+    ];
+
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
+    public function tracking_session()
+    {
+        return $this->belongsTo('\App\Models\TrackingSession');
+    }
 }

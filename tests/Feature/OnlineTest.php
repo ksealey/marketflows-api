@@ -10,6 +10,7 @@ use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
+use \App\Models\TrackingEntity;
 use \App\Models\TrackingSession;
 use \App\Models\TrackingSessionEvent;
 use \Tests\Models\OnlineUser;
@@ -93,12 +94,6 @@ class OnlineTest extends TestCase
                     'uuid' => $phoneNumber->uuid,
                 ],
                 'swap_rules' => json_decode(json_encode($phoneNumber->swap_rules), true)
-            ]
-        ]);
-
-        $response->assertJSONStructure([
-            'data' => [
-                'persisted_id'
             ]
         ]);
     }
@@ -461,6 +456,14 @@ class OnlineTest extends TestCase
                         'rules' => [
                             [
                                 'type' => 'PAID', 
+                            ],
+                            [
+                                'field' => 'utm_source',
+                                'type'  => 'LANDING_PARAM',
+                                'operator' => 'EQUALS',
+                                'inputs' => [
+                                    'Google'
+                                ]
                             ]
                         ]
                     ]
@@ -624,7 +627,7 @@ class OnlineTest extends TestCase
         $response = $this->json('POST', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
-            'entry_url'      => $onlineUser->paid_url,
+            'entry_url'      => $onlineUser->paid_url . '&utm_source=google',
             'device_width'   => $onlineUser->device_width,
             'device_height'  => $onlineUser->device_height,
         ]);
@@ -898,14 +901,27 @@ class OnlineTest extends TestCase
         $pool        = $this->createPhoneNumberPool($company, $config);
 
         $onlineUser = factory(OnlineUser::class)->make();
+
+        $source   = str_random(64);
+        $medium   = str_random(64);
+        $content  = str_random(64);
+        $campaign = str_random(64);
+
+        $entryURL = $onlineUser->entry_url . '?utm_source=' 
+                                        . urlencode($source) 
+                                        . '&utm_medium=' 
+                                        . urlencode($medium) 
+                                        . '&utm_content=' 
+                                        . urlencode($content) 
+                                        . '&utm_campaign=' 
+                                        . urlencode($campaign);
         $response = $this->json('POST', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
-            'entry_url'      => $onlineUser->entry_url,
+            'entry_url'      => $entryURL,
             'device_width'   => $onlineUser->device_width,
             'device_height'  => $onlineUser->device_height,
         ]);
-
         $response->assertStatus(200);
         $response->assertJSONStructure([
             'action',
@@ -916,7 +932,7 @@ class OnlineTest extends TestCase
                 'session' => [
                     'uuid'
                 ],
-                'persisted_id'
+                'tracking_entity_uuid'
             ]
         ]);
 
@@ -931,16 +947,20 @@ class OnlineTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('tracking_sessions', [
-            'uuid'            => $response['data']['session']['uuid'],
-            'persisted_id'    => $response['data']['persisted_id'],
-            'company_id'      => $company->id,
-            'phone_number_id' => $number->id,
+            'uuid'               => $response['data']['session']['uuid'],
+            'tracking_entity_id' => TrackingEntity::where('uuid', $response['data']['tracking_entity_uuid'])->first()->id,
+            'company_id'        => $company->id,
+            'phone_number_id'   => $number->id,
+            'source'            => $source,
+            'medium'            => $medium,
+            'content'           => $content,
+            'campaign'          => $campaign
         ]);
 
         $this->assertDatabaseHas('tracking_session_events', [
             'tracking_session_id' => TrackingSession::where('uuid', $response['data']['session']['uuid'])->first()->id,
             'event_type'          => TrackingSessionEvent::SESSION_START,
-            'content'             => $onlineUser->entry_url
+            'content'             => $entryURL
         ]);
     }
 
@@ -963,10 +983,25 @@ class OnlineTest extends TestCase
             $number = $pool->phone_numbers[$numIdx];
             
             $onlineUser = factory(OnlineUser::class)->make();
+
+            $source   = str_random(64);
+            $medium   = str_random(64);
+            $content  = str_random(64);
+            $campaign = str_random(64);
+    
+            $entryURL = $onlineUser->entry_url . '?utm_source=' 
+                                            . urlencode($source) 
+                                            . '&utm_medium=' 
+                                            . urlencode($medium) 
+                                            . '&utm_content=' 
+                                            . urlencode($content) 
+                                            . '&utm_campaign=' 
+                                            . urlencode($campaign);
+
             $response = $this->json('POST', route('online-init'), [
                 'http_referrer'  => $onlineUser->http_referrer,
                 'company_id'     => $company->id,
-                'entry_url'      => $onlineUser->entry_url,
+                'entry_url'      => $entryURL,
                 'device_width'   => $onlineUser->device_width,
                 'device_height'  => $onlineUser->device_height,
             ]);
@@ -984,7 +1019,7 @@ class OnlineTest extends TestCase
 
             $this->assertDatabaseHas('tracking_sessions', [
                 'uuid'              => $response['data']['session']['uuid'],
-                'persisted_id'    => $response['data']['persisted_id'],
+                'tracking_entity_id' =>  TrackingEntity::where('uuid', $response['data']['tracking_entity_uuid'])->first()->id,
                 'company_id'      => $company->id,
                 'phone_number_id' => $number->id,
             ]);
@@ -992,7 +1027,7 @@ class OnlineTest extends TestCase
             $this->assertDatabaseHas('tracking_session_events', [
                 'tracking_session_id' => TrackingSession::where('uuid', $response['data']['session']['uuid'])->first()->id,
                 'event_type'          => TrackingSessionEvent::SESSION_START,
-                'content'             => $onlineUser->entry_url
+                'content'             => $entryURL
             ]);
 
             $numIdx++;
@@ -1000,7 +1035,7 @@ class OnlineTest extends TestCase
     }
 
     /**
-     * Test that numbers can be reused when a persisted is is provided
+     * Test that numbers can be reused when a tracking entity id is provided
      * 
      * @group online
      */
@@ -1031,10 +1066,10 @@ class OnlineTest extends TestCase
             ],
             
         ]);
-        $persistedId = $response['data']['persisted_id'];
 
+        $trackingEntityUUID = $response['data']['tracking_entity_uuid'];
 
-        //  Make second request using persisted_id
+        //  Make second request using tracking_entity_uuid
         $onlineUser = factory(OnlineUser::class)->make();
         $response = $this->json('POST', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
@@ -1042,7 +1077,7 @@ class OnlineTest extends TestCase
             'entry_url'      => $onlineUser->entry_url,
             'device_width'   => $onlineUser->device_width,
             'device_height'  => $onlineUser->device_height,
-            'persisted_id'   => $persistedId,
+            'tracking_entity_uuid'   => $trackingEntityUUID,
         ]);
         $response->assertStatus(200);
         $response->assertJSON([
@@ -1054,7 +1089,7 @@ class OnlineTest extends TestCase
                 'session' => [
                     
                 ],
-                'persisted_id' => $persistedId
+                'tracking_entity_uuid' => $trackingEntityUUID
             ]
         ]);
 
@@ -1066,7 +1101,7 @@ class OnlineTest extends TestCase
             'entry_url'      => $onlineUser->entry_url,
             'device_width'   => $onlineUser->device_width,
             'device_height'  => $onlineUser->device_height,
-            'persisted_id'   => $persistedId,
+            'tracking_entity_uuid'   => $trackingEntityUUID,
         ]);
         $response->assertStatus(200);
         $response->assertJSON([
@@ -1078,7 +1113,7 @@ class OnlineTest extends TestCase
                 'session' => [
                     
                 ],
-                'persisted_id' => $persistedId
+                'tracking_entity_uuid' => $trackingEntityUUID
             ]
         ]);
     }
@@ -1117,9 +1152,8 @@ class OnlineTest extends TestCase
             
         ]);
 
-        $persistedId = $response['data']['persisted_id'];
-        $sessionId   = $response['data']['session']['uuid'];
-        $token       = $response['data']['session']['token'];
+        $sessionId          = $response['data']['session']['uuid'];
+        $token              = $response['data']['session']['token'];
 
         //  Log Page View
         $content = str_random(1024);
@@ -1178,7 +1212,6 @@ class OnlineTest extends TestCase
             
         ]);
 
-        $persistedId = $response['data']['persisted_id'];
         $sessionId   = $response['data']['session']['uuid'];
         $token       = $response['data']['session']['token'];
 
@@ -1205,66 +1238,38 @@ class OnlineTest extends TestCase
     }
 
      /**
-     * Test logging event for expired session fails
+     * Test logging event for expired session opens session back up
      * 
      * @group online
      */
-    public function testLoggingInvalidSessionEventFailsWhenSessionExpired()
+    public function testLoggingEventForExpiredSessionReopensSession()
     {
         $company     = $this->createCompany();
         $config      = $this->createConfig($company);
         $pool        = $this->createPhoneNumberPool($company, $config);
         $number      = $pool->phone_numbers->first();
 
-        //  Init
-        $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
-            'http_referrer'  => $onlineUser->http_referrer,
-            'company_id'     => $company->id,
-            'entry_url'      => $onlineUser->entry_url,
-            'device_width'   => $onlineUser->device_width,
-            'device_height'  => $onlineUser->device_height,
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'action' => 'session',
-            'data'=> [
-                'number' => [
-                    'uuid' => $number->uuid
-                ],
-                'session' => []
-            ],
-            
-        ]);
-
-        $persistedId = $response['data']['persisted_id'];
-        $sessionId   = $response['data']['session']['uuid'];
-        $token       = $response['data']['session']['token'];
-
-        TrackingSession::where('uuid', $sessionId)->update([
+        //  Create a tracking session for this number 
+        $session = $this->createTrackingSession($company, $number, $pool, [
             'ended_at' => now()
         ]);
+        $this->assertNotNull($session->ended_at);
 
         //  Log Page View
         $content = str_random(1024);
         $response = $this->json('POST', route('online-event'), [
-            'session_uuid' => $sessionId,
-            'token'        => $token,
+            'session_uuid' => $session->uuid,
+            'token'        => $session->token,
             'event_type'   => 'PageView',
             'content'      => $content
         ]);
 
-        $response->assertStatus(404);
-        $response->assertJSONStructure([
-            'error'
-        ]);
-
-        $this->assertDatabaseMissing('tracking_session_events', [
-            'tracking_session_id' => TrackingSession::where('uuid', $sessionId)->first()->id,
-            'event_type' => 'PageView',
-            'content'    => $content
-        ]);
+        $response->assertStatus(201);
+        
+        $updateSession = TrackingSession::find($session->id);
+            
+        $this->assertTrue($updateSession->created_at->format('Y-m-d H:i:s.u') != $updateSession->last_heartbeat_at->format('Y-m-d H:i:s.u'));
+        $this->assertNull($updateSession->ended_at);
     }
 
     /**
@@ -1299,7 +1304,6 @@ class OnlineTest extends TestCase
                 'session' => []
             ], 
         ]);
-        $persistedId = $response['data']['persisted_id'];
         $sessionId   = $response['data']['session']['uuid'];
         $token       = $response['data']['session']['token'];
 
@@ -1323,59 +1327,33 @@ class OnlineTest extends TestCase
     }
 
     /**
-     * Test updating expired session heartbeat fails
+     * Test heartbeat opens session back up
      * 
-     * @group online--
+     * @group online
      */
-    public function testHeartbeatWithExpiredSessionFails()
+    public function testHeartbeatReopensSession()
     {
         $company     = $this->createCompany();
         $config      = $this->createConfig($company);
         $pool        = $this->createPhoneNumberPool($company, $config);
         $number      = $pool->phone_numbers->first();
 
-        //  Init
-        $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
-            'http_referrer'  => $onlineUser->http_referrer,
-            'company_id'     => $company->id,
-            'entry_url'      => $onlineUser->entry_url,
-            'device_width'   => $onlineUser->device_width,
-            'device_height'  => $onlineUser->device_height,
+        //  Create a tracking session for this number 
+        $session = $this->createTrackingSession($company, $number, $pool, [
+            'ended_at' => now()
+        ]);
+        $this->assertNotNull($session->ended_at);
+
+        $response = $this->json('POST', route('online-heartbeat'), [
+            'session_uuid' => $session->uuid,
+            'token'        => $session->token,
         ]);
 
         $response->assertStatus(200);
-        $response->assertJSON([
-            'action' => 'session',
-            'data'=> [
-                'number' => [
-                    'uuid' => $number->uuid
-                ],
-                'session' => []
-            ], 
-        ]);
-        $persistedId = $response['data']['persisted_id'];
-        $sessionId   = $response['data']['session']['uuid'];
-        $token       = $response['data']['session']['token'];
-
-        //  Make sure times match at first
-        $session = TrackingSession::where('uuid', $sessionId)->update([
-            'ended_at' => now()
-        ]);
-
-        $response = $this->json('POST', route('online-heartbeat'), [
-            'session_uuid' => $sessionId,
-            'token'        => $token,
-        ]);
-
-        $response->assertStatus(404);
-        $response->assertJSONStructure([
-            'error'
-        ]);
-
-        //  Make sure the times no longer match  
-        $session = TrackingSession::where('uuid', $sessionId)->first();
-        $this->assertTrue($session->created_at == $session->last_heartbeat_at);
+        
+        $updateSession = TrackingSession::find($session->id);
+            
+        $this->assertTrue($updateSession->created_at->format('Y-m-d H:i:s.u') != $updateSession->last_heartbeat_at->format('Y-m-d H:i:s.u'));
+        $this->assertNull($updateSession->ended_at);
     }
-   
 }

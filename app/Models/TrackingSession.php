@@ -9,7 +9,7 @@ class TrackingSession extends Model
     protected $fillable = [
         'id',
         'uuid',
-        'persisted_id',
+        'tracking_entity_id',
         'company_id',
         'phone_number_pool_id',
         'phone_number_id',
@@ -22,6 +22,10 @@ class TrackingSession extends Model
         'device_os',
         'browser_type',
         'browser_version',
+        'source',
+        'medium',
+        'content',
+        'campaign',
         'token',
         'created_at',
         'updated_at',
@@ -32,7 +36,7 @@ class TrackingSession extends Model
     protected $dateFormat = 'Y-m-d H:i:s.u'; 
     
     protected $hidden  = [
-        'persisted_id',
+        'tracking_entity_id',
         'token',
         'last_heartbeat_at'
     ];

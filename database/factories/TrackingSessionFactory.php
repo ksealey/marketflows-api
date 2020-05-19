@@ -6,10 +6,9 @@ use App\Model;
 use Faker\Generator as Faker;
 use Illuminate\Support\Str;
 
-$factory->define(App\Models\Events\Session::class, function (Faker $faker) {
+$factory->define(App\Models\TrackingSession::class, function (Faker $faker) {
     return [
-        'persisted_id'      => $faker->uuid,
-        'first_session'     => true,
+        'uuid'              => $faker->uuid,
         'ip'                => $faker->ipv4,
         'device_width'      => mt_rand(10, 400),
         'device_height'     => mt_rand(500, 1000),
@@ -18,6 +17,12 @@ $factory->define(App\Models\Events\Session::class, function (Faker $faker) {
         'device_os'         => 'iOS',
         'browser_type'      => 'Safari',
         'browser_version'   => '11.10',
+        'host'              => $faker->domainName,
+        'source'            => $faker->realText(10),
+        'medium'            => $faker->realText(10),
+        'content'           => $faker->realText(10),
+        'campaign'          => $faker->realText(10),
         'token'             => str_random(40),    
+        'last_heartbeat_at' => now()
     ];
 });

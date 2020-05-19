@@ -10,6 +10,8 @@ use \App\Models\BankedPhoneNumber;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\Call;
+use \App\Models\TrackingSession;
+use \App\Models\TrackingSessionEvent;
 
 class IncomingCallTest extends TestCase
 {
@@ -77,7 +79,7 @@ class IncomingCallTest extends TestCase
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
             'phone_number_pool_id'  => null,
-            'session_id'            => null,
+            'tracking_entity_id'    => null,
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
@@ -134,7 +136,7 @@ class IncomingCallTest extends TestCase
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
             'phone_number_pool_id'  => null,
-            'session_id'            => null,
+            'tracking_entity_id'    => null,
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
@@ -195,7 +197,7 @@ class IncomingCallTest extends TestCase
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
             'phone_number_pool_id'  => null,
-            'session_id'            => null,
+            'tracking_entity_id'    => null,
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
@@ -255,7 +257,7 @@ class IncomingCallTest extends TestCase
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
             'phone_number_pool_id'  => null,
-            'session_id'            => null,
+            'tracking_entity_id'    => null,
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
@@ -328,7 +330,7 @@ class IncomingCallTest extends TestCase
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
             'phone_number_pool_id'  => null,
-            'session_id'            => null,
+            'tracking_entity_id'    => null,
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
@@ -556,23 +558,228 @@ class IncomingCallTest extends TestCase
          ]);
     }
 
-    /*
-     * Test an incoming call from a phone number pool fetched session data
+    /**
+     * Test an incoming call from a phone number pool links session data
      * 
-     * @group incoming-calls-
-     
-    public function testPhoneNumberPoolCallFetchesSessionData()
+     * @group incoming-calls
+     */
+    public function testPhoneNumberPoolCallLinksSessionData()
     {
+        //  Setup
         $company     = $this->createCompany();
-        $audioClip   = $this->createAudioClip($company);
         $config      = $this->createConfig($company);
         $pool        = $this->createPhoneNumberPool($company, $config);
         $phoneNumber = $this->createPhoneNumber($company, $config, [
             'phone_number_pool_id' => $pool->id
         ]);
 
+        //  Create a tracking session for this number 
+        $session = $this->createTrackingSession($company, $phoneNumber, $pool);
+
+        factory(TrackingSessionEvent::class)->create([
+            'tracking_session_id' => $session->id,
+            'event_type'          => TrackingSessionEvent::SESSION_START
+        ]);
+
+        factory(TrackingSessionEvent::class)->create([
+            'tracking_session_id' => $session->id,
+            'event_type'          => TrackingSessionEvent::PAGE_VIEW
+        ]);
+
+        factory(TrackingSessionEvent::class)->create([
+            'tracking_session_id' => $session->id,
+            'event_type'          => TrackingSessionEvent::CLICK_TO_CALL
+        ]);
+
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
             'To' => $phoneNumber->e164Format()
         ]);
-    }*/
+
+        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
+        $response->assertStatus(200);
+
+        // Make sure the call was logged and linked to the tracking entity
+        $this->assertDatabaseHas('calls', [
+            'account_id'            => $this->account->id,
+            'company_id'            => $company->id,
+            'phone_number_id'       => $phoneNumber->id,
+            'type'                  => $phoneNumber->type,
+            'category'              => $phoneNumber->category,
+            'sub_category'          => $phoneNumber->sub_category,
+            'phone_number_pool_id'  => $pool->id,
+            'tracking_entity_id'    => $session->tracking_entity_id,
+            'external_id'           => $incomingCall->CallSid,
+            'direction'             => ucfirst($incomingCall->Direction),
+            'status'                => ucfirst($incomingCall->CallStatus),
+            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
+            'caller_number'         => PhoneNumber::number($incomingCall->From),
+            'caller_city'           => $incomingCall->FromCity,
+            'caller_state'          => $incomingCall->FromState,
+            'caller_zip'            => $incomingCall->FromZip,
+            'caller_country'        => $incomingCall->FromCountry,
+            'source'                => $session->source,
+            'medium'                => $session->medium,
+            'content'               => $session->content,
+            'campaign'              => $session->campaign,
+            'recording_enabled'     => $config->recording_enabled,
+            'forwarded_to'          => $config->forwardToPhoneNumber(),
+            'duration'              => null,
+        ]);
+    }
+
+    /**
+     * Test last click event takes precedence
+     * 
+     * @group incoming-calls
+     */
+    public function testPhoneNumberPoolCallClickEventTakesPrecedence()
+    {
+        //  Setup
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = $this->createPhoneNumberPool($company, $config);
+        $phoneNumber = $this->createPhoneNumber($company, $config, [
+            'phone_number_pool_id' => $pool->id
+        ]);
+
+        //  Create noise
+        for($i=0; $i< 5; $i++){
+            $_session = $this->createTrackingSession($company, $phoneNumber, $pool);
+            factory(TrackingSessionEvent::class)->create([
+                'tracking_session_id' => $_session->id,
+                'event_type' => TrackingSessionEvent::SESSION_START
+            ]);
+        }
+
+        //  Create a tracking session for this number 
+        $session = $this->createTrackingSession($company, $phoneNumber, $pool);
+        $event   = factory(TrackingSessionEvent::class)->create([
+            'tracking_session_id' => $session->id,
+            'event_type'          => TrackingSessionEvent::CLICK_TO_CALL
+        ]);
+
+        //  Create more noise
+        for($i=0; $i< 5; $i++){
+            $_session = $this->createTrackingSession($company, $phoneNumber, $pool);
+            factory(TrackingSessionEvent::class)->create([
+                'tracking_session_id' => $_session->id,
+                'event_type'          => TrackingSessionEvent::PAGE_VIEW
+            ]);
+        }
+
+        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
+            'To' => $phoneNumber->e164Format()
+        ]);
+
+        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
+        $response->assertStatus(200);
+        
+        // Make sure the call was logged and linked to the tracking entity
+        $this->assertDatabaseHas('calls', [
+            'account_id'            => $this->account->id,
+            'company_id'            => $company->id,
+            'phone_number_id'       => $phoneNumber->id,
+            'type'                  => $phoneNumber->type,
+            'category'              => $phoneNumber->category,
+            'sub_category'          => $phoneNumber->sub_category,
+            'phone_number_pool_id'  => $pool->id,
+            'tracking_entity_id'    => $session->tracking_entity_id,
+            'external_id'           => $incomingCall->CallSid,
+            'direction'             => ucfirst($incomingCall->Direction),
+            'status'                => ucfirst($incomingCall->CallStatus),
+            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
+            'caller_number'         => PhoneNumber::number($incomingCall->From),
+            'caller_city'           => $incomingCall->FromCity,
+            'caller_state'          => $incomingCall->FromState,
+            'caller_zip'            => $incomingCall->FromZip,
+            'caller_country'        => $incomingCall->FromCountry,
+            'source'                => $session->source,
+            'medium'                => $session->medium,
+            'content'               => $session->content,
+            'campaign'              => $session->campaign,
+            'recording_enabled'     => $config->recording_enabled,
+            'forwarded_to'          => $config->forwardToPhoneNumber(),
+            'duration'              => null,
+        ]);
+        
+    }
+
+
+    /**
+     * Test page view is used if no recent click events
+     * 
+     * @group incoming-calls
+     */
+    public function testPhoneNumberPoolCallPageViewEventUsedIfNoRecentClickEvents()
+    {
+        //  Setup
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = $this->createPhoneNumberPool($company, $config);
+        $phoneNumber = $this->createPhoneNumber($company, $config, [
+            'phone_number_pool_id' => $pool->id
+        ]);
+
+        //  Create noise
+        for($i=0; $i< 5; $i++){
+            $_session = $this->createTrackingSession($company, $phoneNumber, $pool);
+            factory(TrackingSessionEvent::class)->create([
+                'tracking_session_id' => $_session->id,
+                'event_type' => TrackingSessionEvent::CLICK_TO_CALL,
+                'created_at' => now()->subSeconds(20)
+            ]);
+        }
+
+        //  Create a tracking session for this number 
+        $session = $this->createTrackingSession($company, $phoneNumber, $pool);
+        $event   = factory(TrackingSessionEvent::class)->create([
+            'tracking_session_id' => $session->id,
+            'event_type'          => TrackingSessionEvent::PAGE_VIEW
+        ]);
+
+        //  Create more noise
+        for($i=0; $i< 5; $i++){
+            $_session = $this->createTrackingSession($company, $phoneNumber, $pool);
+            factory(TrackingSessionEvent::class)->create([
+                'tracking_session_id' => $_session->id,
+                'event_type' => TrackingSessionEvent::CLICK_TO_CALL,
+                'created_at' => now()->subSeconds(20)
+            ]);
+        }
+
+        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
+            'To' => $phoneNumber->e164Format()
+        ]);
+       
+        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
+        $response->assertStatus(200);
+        
+        // Make sure the call was logged and linked to the tracking entity
+        $this->assertDatabaseHas('calls', [
+            'account_id'            => $this->account->id,
+            'company_id'            => $company->id,
+            'phone_number_id'       => $phoneNumber->id,
+            'type'                  => $phoneNumber->type,
+            'category'              => $phoneNumber->category,
+            'sub_category'          => $phoneNumber->sub_category,
+            'phone_number_pool_id'  => $pool->id,
+            'tracking_entity_id'    => $session->tracking_entity_id,
+            'external_id'           => $incomingCall->CallSid,
+            'direction'             => ucfirst($incomingCall->Direction),
+            'status'                => ucfirst($incomingCall->CallStatus),
+            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
+            'caller_number'         => PhoneNumber::number($incomingCall->From),
+            'caller_city'           => $incomingCall->FromCity,
+            'caller_state'          => $incomingCall->FromState,
+            'caller_zip'            => $incomingCall->FromZip,
+            'caller_country'        => $incomingCall->FromCountry,
+            'source'                => $session->source,
+            'medium'                => $session->medium,
+            'content'               => $session->content,
+            'campaign'              => $session->campaign,
+            'recording_enabled'     => $config->recording_enabled,
+            'forwarded_to'          => $config->forwardToPhoneNumber(),
+            'duration'              => null,
+        ]);
+    }
 }

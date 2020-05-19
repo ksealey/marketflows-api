@@ -104,7 +104,6 @@ class IncomingCallController extends Controller
         //
         //  Log and Reject call if blocked
         //
-
         $callerCountryCode = PhoneNumber::countryCode($request->From);
         $callerNumber      = PhoneNumber::number($request->From);
 
@@ -129,7 +128,9 @@ class IncomingCallController extends Controller
             return Response::xmlResponse($response);
         }
 
-        //  Account level
+        //
+        //  Account level number block
+        //
         $query = AccountBlockedPhoneNumber::where('account_id', $phoneNumber->account_id)
                                            ->where('number', $callerNumber);
         if( $callerCountryCode )
@@ -148,27 +149,49 @@ class IncomingCallController extends Controller
             return Response::xmlResponse($response);
         }
 
+        //
+        //  Look for last call from this number
+        //
+        $query = Call::where('caller_number', $callerNumber)
+                     ->where('company_id', $phoneNumber->company_id)
+                     ->orderBy('created_at', 'DESC');
+
+        if( $callerCountryCode )
+            $query->where('caller_country_code', $callerCountryCode);
+
+        $lastCall = $query->first();
 
         //
         //  Determine how to route this call and capture sourcing data
         //  
-        $session = null;
-        if( $phoneNumber->phone_number_pool_id ){
-            $pool    = $phoneNumber->phone_number_pool;
-            $config  = $pool->phone_number_config;
-            $session = $pool->getSessionData($phoneNumber);
+        $trackingEntityId  = null;
 
-            $source     = $session ? $session->source   : '';
-            $medium     = $session ? $session->medium   : null;
-            $content    = $session ? $session->content  : null;
-            $campaign   = $session ? $session->campaign : null;
+        $source   = '';
+        $medium   = '';
+        $campaign = '';
+        $content  = '';
+
+        if( $phoneNumber->phone_number_pool_id ){
+            $pool        = $phoneNumber->phone_number_pool;
+            $config      = $pool->phone_number_config;
+            $session     = $pool->getSessionData($request->From, $phoneNumber);
+
+            if( $session ){
+                $trackingEntityId = $session->tracking_entity_id;
+
+                $source     = $session->source   ?: null;
+                $medium     = $session->medium   ?: null;
+                $campaign   = $session->campaign ?: null;
+                $content    = $session->content  ?: null;
+            }
+            
         }else{
-            $config     = $phoneNumber->phone_number_config;
+            $config = $phoneNumber->phone_number_config;
 
             $source     = $phoneNumber->source;
             $medium     = $phoneNumber->medium ?: null;
-            $content    = $phoneNumber->content ?: null;
             $campaign   = $phoneNumber->campaign ?: null;
+            $content    = $phoneNumber->content ?: null;
         }
 
         //
@@ -190,7 +213,8 @@ class IncomingCallController extends Controller
             'category'                  => $phoneNumber->category,
             'sub_category'              => $phoneNumber->sub_category,
             'phone_number_pool_id'      => $phoneNumber->phone_number_pool_id ?: null,
-            'session_id'                => $session ? $session->id : null,
+            'first_call'                => $lastCall ? 0 : 1,
+            'tracking_entity_id'        => $trackingEntityId,
             'external_id'               => $request->CallSid,
             'direction'                 => substr(ucfirst($request->Direction), 0, 16),
             'status'                    => substr(ucfirst($request->CallStatus), 0, 64),
