@@ -18,10 +18,11 @@ $factory->define(App\Models\TrackingSession::class, function (Faker $faker) {
         'browser_type'      => 'Safari',
         'browser_version'   => '11.10',
         'host'              => $faker->domainName,
-        'source'            => $faker->realText(10),
-        'medium'            => $faker->realText(10),
-        'content'           => $faker->realText(10),
-        'campaign'          => $faker->realText(10),
+        'source'            => $faker->realText(40),
+        'medium'            => $faker->realText(40),
+        'content'           => $faker->realText(40),
+        'campaign'          => $faker->realText(40),
+        'keyword'           => $faker->realText(40),
         'token'             => str_random(40),    
         'last_heartbeat_at' => now()
     ];

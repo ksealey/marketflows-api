@@ -130,7 +130,6 @@ class OnlineTest extends TestCase
             'User-Agent' => $onlineUser->user_agent
         ]);
 
-        $response->assertStatus(200);
         $response->assertJSON([
             'action' => 'none',
             'data'   => null
@@ -906,6 +905,7 @@ class OnlineTest extends TestCase
         $medium   = str_random(64);
         $content  = str_random(64);
         $campaign = str_random(64);
+        $keyword  = str_random(64);
 
         $entryURL = $onlineUser->entry_url . '?utm_source=' 
                                         . urlencode($source) 
@@ -914,7 +914,10 @@ class OnlineTest extends TestCase
                                         . '&utm_content=' 
                                         . urlencode($content) 
                                         . '&utm_campaign=' 
-                                        . urlencode($campaign);
+                                        . urlencode($campaign)
+                                        . '&keyword='
+                                        . urlencode($keyword);
+
         $response = $this->json('POST', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
@@ -954,12 +957,18 @@ class OnlineTest extends TestCase
             'source'            => $source,
             'medium'            => $medium,
             'content'           => $content,
-            'campaign'          => $campaign
+            'campaign'          => $campaign,
+            'keyword'           => $keyword
         ]);
 
         $this->assertDatabaseHas('tracking_session_events', [
             'tracking_session_id' => TrackingSession::where('uuid', $response['data']['session']['uuid'])->first()->id,
             'event_type'          => TrackingSessionEvent::SESSION_START,
+        ]);
+
+        $this->assertDatabaseHas('tracking_session_events', [
+            'tracking_session_id' => TrackingSession::where('uuid', $response['data']['session']['uuid'])->first()->id,
+            'event_type'          => TrackingSessionEvent::PAGE_VIEW,
             'content'             => $entryURL
         ]);
     }
@@ -988,6 +997,7 @@ class OnlineTest extends TestCase
             $medium   = str_random(64);
             $content  = str_random(64);
             $campaign = str_random(64);
+            $keyword  = str_random(64);
     
             $entryURL = $onlineUser->entry_url . '?utm_source=' 
                                             . urlencode($source) 
@@ -996,7 +1006,9 @@ class OnlineTest extends TestCase
                                             . '&utm_content=' 
                                             . urlencode($content) 
                                             . '&utm_campaign=' 
-                                            . urlencode($campaign);
+                                            . urlencode($campaign)
+                                            . '&keyword='
+                                            . urlencode($keyword);
 
             $response = $this->json('POST', route('online-init'), [
                 'http_referrer'  => $onlineUser->http_referrer,
@@ -1004,6 +1016,9 @@ class OnlineTest extends TestCase
                 'entry_url'      => $entryURL,
                 'device_width'   => $onlineUser->device_width,
                 'device_height'  => $onlineUser->device_height,
+            ], [
+                'User-Agent'      => $onlineUser->user_agent, // Add new agent and ip so it gets a new fingerprint
+                'X-Forwarded-For' => $onlineUser->ip
             ]);
 
             $response->assertStatus(200);
@@ -1019,14 +1034,24 @@ class OnlineTest extends TestCase
 
             $this->assertDatabaseHas('tracking_sessions', [
                 'uuid'              => $response['data']['session']['uuid'],
-                'tracking_entity_id' =>  TrackingEntity::where('uuid', $response['data']['tracking_entity_uuid'])->first()->id,
-                'company_id'      => $company->id,
-                'phone_number_id' => $number->id,
+                'tracking_entity_id'=>  TrackingEntity::where('uuid', $response['data']['tracking_entity_uuid'])->first()->id,
+                'company_id'        => $company->id,
+                'phone_number_id'   => $number->id,
+                'source'            => $source,
+                'medium'            => $medium,
+                'content'           => $content,
+                'campaign'          => $campaign,
+                'keyword'           => $keyword
             ]);
 
             $this->assertDatabaseHas('tracking_session_events', [
                 'tracking_session_id' => TrackingSession::where('uuid', $response['data']['session']['uuid'])->first()->id,
                 'event_type'          => TrackingSessionEvent::SESSION_START,
+            ]);
+
+            $this->assertDatabaseHas('tracking_session_events', [
+                'tracking_session_id' => TrackingSession::where('uuid', $response['data']['session']['uuid'])->first()->id,
+                'event_type'          => TrackingSessionEvent::PAGE_VIEW,
                 'content'             => $entryURL
             ]);
 
@@ -1039,7 +1064,7 @@ class OnlineTest extends TestCase
      * 
      * @group online
      */
-    public function testPoolNumberCanBeReusedWithin30Days()
+    public function testPoolNumberIsReusedWhenTrackingIdProvided()
     {
         $company     = $this->createCompany();
         $config      = $this->createConfig($company);
@@ -1116,6 +1141,296 @@ class OnlineTest extends TestCase
                 'tracking_entity_uuid' => $trackingEntityUUID
             ]
         ]);
+
+        $entities  = TrackingEntity::where('uuid', $trackingEntityUUID)->get();
+        $this->assertTrue( count($entities) === 1 );
+
+        $entity = $entities->first();
+        $this->assertTrue(TrackingSession::where('tracking_entity_id', $entity->id)->count() === 3);
+    }
+
+    /**
+     * Test that numbers can be reused when a fingerprint is provided
+     * 
+     * @group online
+     */
+    public function testPoolNumberIsReusedWhenFingerprintProvided()
+    {
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = $this->createPhoneNumberPool($company, $config);
+        $number      = $pool->phone_numbers->first();
+
+        //  Make initial request
+        $onlineUser = factory(OnlineUser::class)->make();
+        
+        $response = $this->json('POST', route('online-init'), [
+            'http_referrer'  => $onlineUser->http_referrer,
+            'company_id'     => $company->id,
+            'entry_url'      => $onlineUser->entry_url,
+            'device_width'   => $onlineUser->device_width,
+            'device_height'  => $onlineUser->device_height,
+            'fingerprint'    => $onlineUser->fingerprint
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $number->uuid
+                ],
+                'session' => []
+            ],
+            
+        ]);
+
+        $trackingEntityUUID = $response['data']['tracking_entity_uuid'];
+
+        //  Make request using the fingerprint from the first request, leaving the tracking identity out
+        $onlineUser = factory(OnlineUser::class)->make([
+            'fingerprint' => $onlineUser->fingerprint
+        ]);
+        $response   = $this->json('POST', route('online-init'), [
+            'http_referrer'          => $onlineUser->http_referrer,
+            'company_id'             => $company->id,
+            'entry_url'              => $onlineUser->entry_url,
+            'device_width'           => $onlineUser->device_width,
+            'device_height'          => $onlineUser->device_height,
+            'fingerprint'            => $onlineUser->fingerprint
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $number->uuid
+                ],
+                'session' => [
+                    
+                ],
+                'tracking_entity_uuid' => $trackingEntityUUID
+            ]
+        ]);
+
+        //  Then make a third
+        $onlineUser = factory(OnlineUser::class)->make([
+            'fingerprint' => $onlineUser->fingerprint
+        ]);
+        $response = $this->json('POST', route('online-init'), [
+            'http_referrer'  => $onlineUser->http_referrer,
+            'company_id'     => $company->id,
+            'entry_url'      => $onlineUser->entry_url,
+            'device_width'   => $onlineUser->device_width,
+            'device_height'  => $onlineUser->device_height,
+            'fingerprint'    => $onlineUser->fingerprint
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $number->uuid
+                ],
+                'session' => [
+                    
+                ],
+                'tracking_entity_uuid' => $trackingEntityUUID
+            ]
+        ]);
+
+        $entities  = TrackingEntity::where('uuid', $trackingEntityUUID)->get();
+        $this->assertTrue( count($entities) === 1 );
+
+        $entity = $entities->first();
+        $this->assertTrue(TrackingSession::where('tracking_entity_id', $entity->id)->count() === 3);
+    }
+
+    /**
+     * Test that numbers can be reused when a fingerprint could not be calculated and user agent is used
+     * 
+     * @group online
+     */
+    public function testPoolNumberIsReusedWhenFingerprintNotCalculated()
+    {
+        
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = $this->createPhoneNumberPool($company, $config);
+        $number      = $pool->phone_numbers->first();
+
+        //  Make initial request
+        $onlineUser = factory(OnlineUser::class)->make();
+        $response = $this->json('POST', route('online-init'), [
+            'http_referrer'  => $onlineUser->http_referrer,
+            'company_id'     => $company->id,
+            'entry_url'      => $onlineUser->entry_url,
+            'device_width'   => $onlineUser->device_width,
+            'device_height'  => $onlineUser->device_height,
+        ], [
+            'User-Agent' => $onlineUser->user_agent
+        ]);
+        
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $number->uuid
+                ],
+                'session' => []
+            ],
+            
+        ]);
+
+        $trackingEntityUUID = $response['data']['tracking_entity_uuid'];
+
+        //  Make second request using the user agent an only identifying info
+        $onlineUser = factory(OnlineUser::class)->make([
+            'user_agent' => $onlineUser->user_agent
+        ]);
+        $response = $this->json('POST', route('online-init'), [
+            'http_referrer'  => $onlineUser->http_referrer,
+            'company_id'     => $company->id,
+            'entry_url'      => $onlineUser->entry_url,
+            'device_width'   => $onlineUser->device_width,
+            'device_height'  => $onlineUser->device_height,
+        ], [
+            'User-Agent' => $onlineUser->user_agent
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $number->uuid
+                ],
+                'session' => [
+                    
+                ],
+                'tracking_entity_uuid' => $trackingEntityUUID
+            ]
+        ]);
+
+        //  Then make a third
+        $onlineUser = factory(OnlineUser::class)->make([
+            'user_agent' => $onlineUser->user_agent
+        ]);
+        $response = $this->json('POST', route('online-init'), [
+            'http_referrer'  => $onlineUser->http_referrer,
+            'company_id'     => $company->id,
+            'entry_url'      => $onlineUser->entry_url,
+            'device_width'   => $onlineUser->device_width,
+            'device_height'  => $onlineUser->device_height,
+        ], [
+            'User-Agent' => $onlineUser->user_agent
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $number->uuid
+                ],
+                'session' => [
+                    
+                ],
+                'tracking_entity_uuid' => $trackingEntityUUID
+            ]
+        ]);
+
+        $entities  = TrackingEntity::where('uuid', $trackingEntityUUID)->get();
+        $this->assertTrue( count($entities) === 1 );
+
+        $entity = $entities->first();
+        $this->assertTrue(TrackingSession::where('tracking_entity_id', $entity->id)->count() === 3);
+    }
+
+    /**
+     * Test that a new number will be issued even is the tracking id is provided when the number is no longer available
+     * 
+     * @group online
+     */
+    public function testPoolNumberChangedWhenOriginalTrackingNumberNoLongerAvailable()
+    {
+        
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = $this->createPhoneNumberPool($company, $config);
+        $number      = $pool->phone_numbers->first();
+
+        //  Make initial request
+        $onlineUser = factory(OnlineUser::class)->make();
+        $response = $this->json('POST', route('online-init'), [
+            'http_referrer'  => $onlineUser->http_referrer,
+            'company_id'     => $company->id,
+            'entry_url'      => $onlineUser->entry_url,
+            'device_width'   => $onlineUser->device_width,
+            'device_height'  => $onlineUser->device_height,
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $number->uuid
+                ],
+                'session' => []
+            ],
+            
+        ]);
+
+        $trackingEntityUUID = $response['data']['tracking_entity_uuid'];
+
+        //  Make second request using tracking_entity_uuid
+        $onlineUser = factory(OnlineUser::class)->make();
+        $response = $this->json('POST', route('online-init'), [
+            'http_referrer'  => $onlineUser->http_referrer,
+            'company_id'     => $company->id,
+            'entry_url'      => $onlineUser->entry_url,
+            'device_width'   => $onlineUser->device_width,
+            'device_height'  => $onlineUser->device_height,
+            'tracking_entity_uuid'   => $trackingEntityUUID,
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $number->uuid
+                ],
+                'session' => [
+                    
+                ],
+                'tracking_entity_uuid' => $trackingEntityUUID
+            ]
+        ]);
+
+        //  Remove the number
+        $number->delete();
+
+        //  Then make a third
+        $onlineUser = factory(OnlineUser::class)->make();
+        $response = $this->json('POST', route('online-init'), [
+            'http_referrer'  => $onlineUser->http_referrer,
+            'company_id'     => $company->id,
+            'entry_url'      => $onlineUser->entry_url,
+            'device_width'   => $onlineUser->device_width,
+            'device_height'  => $onlineUser->device_height,
+            'tracking_entity_uuid'   => $trackingEntityUUID,
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'action' => 'session',
+            'data'=> [
+                'number' => [
+                    'uuid' => $pool->phone_numbers[1]->uuid
+                ],
+                'session' => [
+                    
+                ],
+                'tracking_entity_uuid' => $trackingEntityUUID
+            ]
+        ]);
     }
 
      /**
@@ -1176,7 +1491,6 @@ class OnlineTest extends TestCase
         ]);
 
     }
-
 
     /**
      * Test logging invalid event type fails

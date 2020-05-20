@@ -170,12 +170,16 @@ class PhoneNumberPool extends Model
                                             ->where('tracking_entity_id', $trackingEntity->id)
                                             ->orderBy('created_at', 'desc')
                                             ->first();
-            if( $lastSession )
-                $phoneNumber = PhoneNumber::find($lastSession->phone_number_id);
+            if( $lastSession ){
+                $phoneNumber = PhoneNumber::where('id', $lastSession->phone_number_id)
+                                          ->whereNull('disabled_at')
+                                          ->first();
+            }
         }
 
         if( ! $phoneNumber )
             $phoneNumber = PhoneNumber::where('phone_number_pool_id', $this->id)
+                                    ->whereNull('disabled_at')
                                     ->orderBy('last_assigned_at', 'ASC')
                                     ->orderBy('id', 'ASC')
                                     ->first();
@@ -187,79 +191,203 @@ class PhoneNumberPool extends Model
      * Get the most likely session for a phonenumber
      * 
      */
-    public function getSessionData(string $from, PhoneNumber $toPhone)
+    public function getSessionData(string $callerPhone, PhoneNumber $dialedPhoneNumber, $state = null, $city = null)
     {
-        $session    = null;
+        $now = new DateTime();
 
         //
-        //  Get the last call from this person linked to a session
+        //  Get the last call to dialed number
         //
-        $callerCountryCode = PhoneNumber::countryCode($from);
-        $callerNumber      = PhoneNumber::number($from);
-        
-        $query = Call::where('company_id', $this->company_id)
-                      ->where('caller_number', $callerNumber)
-                      ->whereNotNull('tracking_entity_id')
-                      ->orderBy('created_at', 'DESC');
+        $callerCountryCode = PhoneNumber::countryCode($callerPhone);
+        $callerNumber      = PhoneNumber::number($callerPhone);
+
+        $query = Call::where('caller_number', $callerNumber)
+                     ->where('phone_number_id', $dialedPhoneNumber->id)
+                     ->orderBy('created_at', 'DESC');
 
         if( $callerCountryCode )
             $query->where('caller_country_code', $callerCountryCode);
 
-        $lastSessionedCall = $query->first();
-        /*if( $lastSessionedCall ){
-            //  Look for the last session attached to the entity attached to this call
-            $trackingEntity      = $lastSessionedCall->tracking_entity;
-            $lastTrackingSession = 
+        $lastCallToDialedNumber = $query->first();
 
-            $mostRecentSession = TrackingSession::where('tracking_entity_id', $lastSession->tracking_entity_id)
-                                                       ->orderBy('created_at', 'DESC')
-                                                       ->first();
-            //  Same old session
-            if( $mostRecentSession->id === $lastSession->id ){
+        //
+        //  If the caller has called this number before, use existing call to find session
+        //
+        if( $lastCallToDialedNumber ){
+            //
+            //  If no session was linked the first time, treat it as new
+            //
+            if( ! $lastCallToDialedNumber->tracking_session_id )
+                return $this->getSessionByEvents($dialedPhoneNumber);
+            
+            //
+            //  See if there's any unclaimed session for this user. If not, it's a redial or from another device
+            //
+            $previousSession = $lastCallToDialedNumber->tracking_session;
+            $lastSession     = TrackingSession::where('tracking_entity_id', $previousSession->tracking_entity_id)
+                                                ->where('company_id', $this->company_id)
+                                                ->orderBy('created_at', 'desc')
+                                                ->first();
+                                    
+            if( ! $lastSession->claimed ){
+                //  
+                //  Claim all sessions related to this caller
+                //
+                TrackingSession::where('tracking_entity_id', $lastSession->tracking_entity_id)
+                               ->where('company_id', $this->company_id)
+                               ->update(['claimed' => 1]);
 
+                //  Log inbound call event
+                TrackingSessionEvent::create([
+                    'tracking_session_id' => $lastSession->id,
+                    'event_type'          => TrackingSessionEvent::INBOUND_CALL,
+                    'created_at'          => $now->format('Y-m-d H:i:s.u'),
+                    'content'             => $dialedPhoneNumber->e164Format()
+                ]);
+
+                return $lastSession;
             }
-        }*/ 
+            
+            //
+            //  There are no unclaimed sessions. This is a re-dial or the user is on a new device or browser and got the same number
+            //
 
+            //
+            //  See if there is another active session with the same ip address as the last session
+            //  This would mean they're on the same network but with a different device
+            //
+            $possibleSession = TrackingSession::where('phone_number_id', $dialedPhoneNumber->id)
+                                              ->whereNull('ended_at')
+                                              ->where('claimed', 0)
+                                              ->where('tracking_entity_id', '!=', $lastSession->id)
+                                              ->where('ip', $lastSession->ip)
+                                              ->orderBy('created_at', 'DESC')
+                                              ->first();
+            
+            if( $possibleSession ){
+                $possibleSession->claimed = 1;
+                $possibleSession->save();
+
+                $this->createInboundCallEvent($possibleSession, $dialedPhoneNumber);
+
+                return $possibleSession;
+            }
+
+            //
+            //  If there's an active session for this number that's unclaimed, with recent events
+            //  the caller may be on a new device or browser, or we could not fingerprint them properly, so treat it as new
+            //
+            $activeSessionsWithRecentEventsCount = TrackingSession::where('phone_number_id', $dialedPhoneNumber->id)
+                                                                    ->whereNull('ended_at')
+                                                                    ->where('claimed', 0)
+                                                                    ->whereIn('id', function($query){
+                                                                        $query->select('tracking_session_id')
+                                                                            ->from('tracking_session_events')
+                                                                            ->where('tracking_session_id', 'tracking_sessions.id')
+                                                                            ->where(function($query){
+                                                                                    $query->where('event_type', TrackingSessionEvent::CLICK_TO_CALL)
+                                                                                        ->where('created_at', '>=', now()->subSeconds(15));
+                                                                            })
+                                                                            ->orWhere(function($query){
+                                                                                $query->where('event_type', TrackingSessionEvent::PAGE_VIEW)
+                                                                                    ->where('created_at', '>=', now()->subSeconds(60));
+                                                                            });
+                                                                    })
+                                                                    ->count();
+            if( $activeSessionsWithRecentEventsCount ){
+                //  
+                //  Caller may be from a new device, so treat it as a new set
+                //
+                return $this->getSessionByEvents($dialedPhoneNumber);
+            }else{
+                //
+                //  There are active sessions but none belong to this caller for known device, return last session
+                //
+                //  Log inbound call event
+                $this->createInboundCallEvent($lastSession, $dialedPhoneNumber);
+
+                return $lastSession;
+            }
+
+        }
+
+        //
+        //  First time callers will get session based on recent events
+        //
+        return $this->getSessionByEvents($dialedPhoneNumber);
+    }
+
+    public function getSessionByEvents(PhoneNumber $dialedPhoneNumber)
+    {
+        $now = new DateTime();
+        
         //
         //  First see if anyone with an active session clicked this number within the last 15 seconds
         //
         $lastClickEvent = TrackingSessionEvent::where('created_at', '>=', now()->subSeconds(15))
-                                            ->whereIn('tracking_session_id', function($query) use($toPhone){
+                                            ->whereIn('tracking_session_id', function($query) use($dialedPhoneNumber){
                                                 //
                                                 //  Get the ids of active sessions attached to this phone number
                                                 //
                                                 $query->select('id')
                                                         ->from('tracking_sessions')
-                                                        ->where('phone_number_id', $toPhone->id)
-                                                        ->whereNull('ended_at');
+                                                        ->where('phone_number_id', $dialedPhoneNumber->id)
+                                                        ->whereNull('ended_at')
+                                                        ->where('claimed', 0);
                                             })
                                             ->where('event_type', TrackingSessionEvent::CLICK_TO_CALL)
                                             ->orderBy('created_at', 'desc')
                                             ->first();
 
-        if( $lastClickEvent )
-           return $lastClickEvent->tracking_session;
+        if( $lastClickEvent ){
+            $session          = $lastClickEvent->tracking_session;
+            $session->claimed = 1;
+            $session->save();
 
+            $this->createInboundCallEvent($session, $dialedPhoneNumber);
+            
+            return $session;
+        }
+       
         //
         //  There we no recent click events
-        //  look for the last page view or session(Treated almost the same as page view) with an active session
+        //  look for the last page view with an active session
         //
-        $lastPageViewEvent = TrackingSessionEvent::whereIn('tracking_session_id', function($query) use($toPhone){
+        $lastPageViewEvent = TrackingSessionEvent::whereIn('tracking_session_id', function($query) use($dialedPhoneNumber){
                                                     //
                                                     //  Get the ids of active sessions attached to this phone number
                                                     //
                                                     $query->select('id')
                                                             ->from('tracking_sessions')
-                                                            ->where('phone_number_id', $toPhone->id)
-                                                            ->whereNull('ended_at');
+                                                            ->where('phone_number_id', $dialedPhoneNumber->id)
+                                                            ->whereNull('ended_at')
+                                                            ->where('claimed', 0);
                                                 })
-                                                ->whereIn('event_type', [TrackingSessionEvent::PAGE_VIEW, TrackingSessionEvent::SESSION_START])
+                                                ->where('event_type', TrackingSessionEvent::PAGE_VIEW)
                                                 ->orderBy('created_at', 'desc')
                                                 ->first();
+        if( $lastPageViewEvent ){
+            $session          = $lastPageViewEvent->tracking_session;
+            $session->claimed = 1;
+            $session->save();
 
-        if( $lastPageViewEvent )
-            return $lastPageViewEvent->tracking_session;
+            $this->createInboundCallEvent($session, $dialedPhoneNumber);
+            
+            return $session;
+        }
 
         return null;
+    }
+
+    public function createInboundCallEvent(TrackingSession $session, PhoneNumber $phoneNumber)
+    {
+        $now = new DateTime();
+
+        return TrackingSessionEvent::create([
+            'tracking_session_id' => $session->id,
+            'event_type'          => TrackingSessionEvent::INBOUND_CALL,
+            'created_at'          => $now->format('Y-m-d H:i:s.u'),
+            'content'             => $phoneNumber->e164Format()
+        ]);
     }
 }

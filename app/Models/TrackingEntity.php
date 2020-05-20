@@ -12,7 +12,8 @@ class TrackingEntity extends Model
         'id',
         'uuid',
         'account_id',
-        'company_id'
+        'company_id',
+        'fingerprint'
     ];
 
     protected $dateFormat = 'Y-m-d H:i:s.u'; 

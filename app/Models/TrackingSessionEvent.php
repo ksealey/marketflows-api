@@ -11,6 +11,7 @@ class TrackingSessionEvent extends Model
     const SESSION_START = 'SessionStart';
     const CLICK_TO_CALL = 'ClickToCall';
     const PAGE_VIEW     = 'PageView';
+    const INBOUND_CALL  = 'InboundCall';
 
     protected $fillable = [
         'tracking_session_id',

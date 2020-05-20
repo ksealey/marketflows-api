@@ -73,16 +73,27 @@ class OnlineController extends Controller
         //  If the user has an online pool that passes rules, it will take precedence
         //
         $ipAddress      = $request->header('X-Forwarded-For') ?: $request->ip();
+        $fingerprint    = hash('sha256', $company->id . ($request->fingerprint ?: ($ipAddress . $deviceType . $deviceBrand . $deviceOS . $deviceBrowser)));
         $assignedNumber = null;
 
         $pool   = PhoneNumberPool::where('company_id', $request->company_id)->first();
         $entity = null;
+        
         if( $pool && ! $pool->disabled_at && $pool->swapRulesPass($deviceBrowser, $deviceType, $request->http_referrer, $request->entry_url) ){
+            //  Look for entity bu uuid
             if( $request->tracking_entity_uuid ){
                 $entity = TrackingEntity::where('uuid', $request->tracking_entity_uuid)
                                         ->where('company_id', $company->id)
                                         ->first();
             }
+
+            //  Look for entity by fingerprint
+            if( ! $entity ){
+                $entity = TrackingEntity::where('fingerprint', $fingerprint)
+                                        ->where('company_id', $company->id)
+                                        ->first();
+            }
+
             //
             //  Get next available number in pool, re-using the same number if possible
             //
@@ -99,7 +110,8 @@ class OnlineController extends Controller
                     $entity = TrackingEntity::create([
                         'account_id' => $company->account_id,
                         'company_id' => $company->id,
-                        'uuid'       => Str::uuid()
+                        'uuid'       => Str::uuid(),
+                        'fingerprint'=> $fingerprint
                     ]);
                 }
                 
@@ -131,10 +143,11 @@ class OnlineController extends Controller
                     'device_os'             => substr($deviceOS, 0, 64),
                     'browser_type'          => substr($deviceBrowser, 0, 64),
                     'browser_version'       => substr($deviceBrowserVersion, 0, 64),
-                    'source'                => substr($params['utm_source']   ?? $params['source']   ?? '', 0, 64) ?: null,
-                    'medium'                => substr($params['utm_medium']   ?? $params['medium']   ?? '', 0, 64) ?: null,
-                    'content'               => substr($params['utm_content']  ?? $params['content']  ?? '', 0, 64) ?: null,
-                    'campaign'              => substr($params['utm_campaign'] ?? $params['campaign'] ?? '', 0, 64) ?: null,
+                    'source'                => substr($params['utm_source']   ?? $params['source']   ?? '', 0, 128) ?: null,
+                    'medium'                => substr($params['utm_medium']   ?? $params['medium']   ?? '', 0, 128) ?: null,
+                    'content'               => substr($params['utm_content']  ?? $params['content']  ?? '', 0, 128) ?: null,
+                    'campaign'              => substr($params['utm_campaign'] ?? $params['campaign'] ?? '', 0, 128) ?: null,
+                    'keyword'               => substr($params['keyword']      ?? $params['keyword']  ?? '', 0, 128) ?: null,
                     'token'                 => str_random(40),
                     'created_at'            => $now->format('Y-m-d H:i:s.u'),
                     'updated_at'            => $now->format('Y-m-d H:i:s.u'),
@@ -145,6 +158,13 @@ class OnlineController extends Controller
                 TrackingSessionEvent::create([
                     'tracking_session_id' => $session->id,
                     'event_type'          => TrackingSessionEvent::SESSION_START,
+                    'created_at'          => $now->format('Y-m-d H:i:s.u')
+                ]);
+
+                //  Log page view event
+                TrackingSessionEvent::create([
+                    'tracking_session_id' => $session->id,
+                    'event_type'          => TrackingSessionEvent::PAGE_VIEW,
                     'content'             => substr($request->entry_url, 0, 1024),
                     'created_at'          => $now->format('Y-m-d H:i:s.u')
                 ]);

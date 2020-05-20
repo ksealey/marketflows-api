@@ -623,11 +623,12 @@ class PhoneNumberPoolController extends Controller
                     ->whereIn('id', $numberIds)
                     ->update([
                         'phone_number_pool_id' => $phoneNumberPool->id,
-                        'assignments'          => 0
+                        'assignments'          => 0,
+                        'disabled_at'          => null
                     ]);
 
         return response([
-            'message' => 'Attached.',
+            'message' => 'attached',
             'count'   => count($numberIds)
         ]);
     } 
@@ -671,7 +672,7 @@ class PhoneNumberPoolController extends Controller
                     ]);
 
         return response([
-            'message' => 'Attached.',
+            'message' => 'detached',
             'count'   => count($numberIds)
         ]);
     }

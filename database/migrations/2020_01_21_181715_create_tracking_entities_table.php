@@ -18,6 +18,7 @@ class CreateTrackingEntitiesTable extends Migration
             $table->uuid('uuid')->index();
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
+            $table->string('fingerprint', 64);
             $table->timestamps();
 
             $table->foreign('account_id')->references('id')->on('accounts');

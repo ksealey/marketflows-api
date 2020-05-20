@@ -19,7 +19,7 @@ class Call extends Model
         'sub_category',
         
         'phone_number_pool_id',
-        'tracking_entity_id',
+        'tracking_session_id',
 
         'external_id',
         'direction',
@@ -39,6 +39,7 @@ class Call extends Model
         'medium',
         'content',
         'campaign',
+        'keyword',
 
         'recording_enabled',
         'forwarded_to',
@@ -71,10 +72,9 @@ class Call extends Model
         return $this->belongsTo('\App\Models\Company');
     }
 
-    public function tracking_entity()
+    public function tracking_session()
     {
-        return TrackingEntity::find($this->tracking_entity_id);
-        return $this->hasOne('\App\Models\TrackingEntity');
+        return $this->belongsTo('\App\Models\TrackingSession');
     }
     
     public function getLinkAttribute()

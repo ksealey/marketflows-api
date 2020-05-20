@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 
 $factory->define(App\Models\TrackingEntity::class, function (Faker $faker) {
     return [
-        'uuid' => $faker->uuid
+        'uuid'        => $faker->uuid,
+        'fingerprint' => sha1($faker->ipv4 . str_random(10))
     ];
 });

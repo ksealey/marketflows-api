@@ -21,7 +21,7 @@ class CreateTrackingSessionsTable extends Migration
             $table->bigInteger('phone_number_pool_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned()->nullable();
             $table->string('host', 128);
-            $table->string('ip', 32);
+            $table->string('ip', 64);
             $table->integer('device_width')->unsigned();
             $table->integer('device_height')->unsigned();
             $table->string('device_type', 64)->nullable();
@@ -29,11 +29,13 @@ class CreateTrackingSessionsTable extends Migration
             $table->string('device_os', 64)->nullable();
             $table->string('browser_type', 64)->nullable();
             $table->string('browser_version', 64)->nullable();
-            $table->string('source', 64)->nullable();
-            $table->string('medium', 64)->nullable();
-            $table->string('campaign', 64)->nullable();
-            $table->string('content', 64)->nullable();
+            $table->string('source', 128)->nullable();
+            $table->string('medium', 128)->nullable();
+            $table->string('content', 128)->nullable();
+            $table->string('campaign', 128)->nullable();
+            $table->string('keyword', 128)->nullable();
             $table->string('token', 40);
+            $table->boolean('claimed')->default(0);
             $table->dateTime('created_at', 6);
             $table->dateTime('updated_at', 6);
             $table->dateTime('last_heartbeat_at', 6);

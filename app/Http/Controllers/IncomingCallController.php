@@ -164,12 +164,13 @@ class IncomingCallController extends Controller
         //
         //  Determine how to route this call and capture sourcing data
         //  
-        $trackingEntityId  = null;
+        $trackingSessionId  = null;
 
-        $source   = '';
-        $medium   = '';
-        $campaign = '';
-        $content  = '';
+        $keyword  = null;
+        $source   = null;
+        $medium   = null;
+        $campaign = null;
+        $content  = null;
 
         if( $phoneNumber->phone_number_pool_id ){
             $pool        = $phoneNumber->phone_number_pool;
@@ -177,12 +178,13 @@ class IncomingCallController extends Controller
             $session     = $pool->getSessionData($request->From, $phoneNumber);
 
             if( $session ){
-                $trackingEntityId = $session->tracking_entity_id;
+                $trackingSessionId = $session->id;
 
                 $source     = $session->source   ?: null;
                 $medium     = $session->medium   ?: null;
                 $campaign   = $session->campaign ?: null;
                 $content    = $session->content  ?: null;
+                $keyword    = $session->keyword  ?: null;
             }
             
         }else{
@@ -214,7 +216,7 @@ class IncomingCallController extends Controller
             'sub_category'              => $phoneNumber->sub_category,
             'phone_number_pool_id'      => $phoneNumber->phone_number_pool_id ?: null,
             'first_call'                => $lastCall ? 0 : 1,
-            'tracking_entity_id'        => $trackingEntityId,
+            'tracking_session_id'       => $trackingSessionId,
             'external_id'               => $request->CallSid,
             'direction'                 => substr(ucfirst($request->Direction), 0, 16),
             'status'                    => substr(ucfirst($request->CallStatus), 0, 64),
@@ -229,6 +231,7 @@ class IncomingCallController extends Controller
             'medium'                    => $medium,
             'content'                   => $content,
             'campaign'                  => $campaign,
+            'keyword'                   => $keyword,
             'recording_enabled'         => $config->recording_enabled,
             'forwarded_to'              => $config->forwardToPhoneNumber(),
             'created_at'                => now()->format('Y-m-d H:i:s.u'),

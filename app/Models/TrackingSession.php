@@ -26,7 +26,9 @@ class TrackingSession extends Model
         'medium',
         'content',
         'campaign',
+        'keyword',
         'token',
+        'claimed',
         'created_at',
         'updated_at',
         'last_heartbeat_at',
@@ -47,4 +49,9 @@ class TrackingSession extends Model
         'ended_at',
         'last_heartbeat_at'
     ];
+
+    public function tracking_entity()
+    {
+        return $this->belongsTo('\App\Models\TrackingEntity');
+    }
 }

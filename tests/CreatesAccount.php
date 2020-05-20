@@ -19,6 +19,7 @@ use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use \App\Models\TrackingEntity;
 use \App\Models\TrackingSession;
+use \App\Models\TrackingSessionEvent;
 use Storage;
 
 trait CreatesAccount
@@ -112,24 +113,37 @@ trait CreatesAccount
         return $pool;
     }
 
-    public function createTrackingEntity($company)
+    public function createTrackingEntity($company, $entityWith = [])
     {
-        return factory(TrackingEntity::class)->create([
+        return factory(TrackingEntity::class)->create(array_merge([
             'account_id' => $company->account_id,
             'company_id' => $company->id
-        ]);
+        ], $entityWith));
     }
 
-    public function createTrackingSession($company, $phoneNumber, $pool, $with = [])
+    public function createTrackingSession($company, $phoneNumber, $pool, $with = [], $entityWith = [], $eventWith = [])
     {
-        $entity = $this->createTrackingEntity($company);
+        $entity = $this->createTrackingEntity($company, $entityWith);
 
-        return factory(TrackingSession::class)->create(array_merge([
+        $session =  factory(TrackingSession::class)->create(array_merge([
             'company_id'           => $company->id,
             'phone_number_id'      => $phoneNumber->id,
             'phone_number_pool_id' => $pool->id,
             'tracking_entity_id'   => $entity->id
         ], $with));
+
+        //  Add initial events
+        factory(TrackingSessionEvent::class)->create(array_merge([
+            'tracking_session_id' => $session->id,
+            'event_type'          => TrackingSessionEvent::SESSION_START,
+        ], $eventWith));
+
+        factory(TrackingSessionEvent::class)->create(array_merge([
+            'tracking_session_id' => $session->id,
+            'event_type'          => TrackingSessionEvent::PAGE_VIEW,
+        ], $eventWith));
+
+        return $session;
     }
 
     public function createCompanies()
