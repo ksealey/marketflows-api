@@ -78,7 +78,7 @@ class OnlineController extends Controller
 
         $pool   = PhoneNumberPool::where('company_id', $request->company_id)->first();
         $entity = null;
-        
+
         if( $pool && ! $pool->disabled_at && $pool->swapRulesPass($deviceBrowser, $deviceType, $request->http_referrer, $request->entry_url) ){
             //  Look for entity bu uuid
             if( $request->tracking_entity_uuid ){
@@ -212,7 +212,7 @@ class OnlineController extends Controller
                     'data'   => [
                         'number'       => $assignedNumber->exposedData(),
                         'swap_rules'           => [
-                            'targets' => $pool->swap_rules->targets
+                            'targets' => $assignedNumber->swap_rules->targets
                         ],
                     ],
                 ]);

@@ -7,7 +7,6 @@ services:
     container_name: mf_app_web
     ports: 
       - "80:80"
-      - "8080:8080"
       - "9515:9515"
     networks:
       - mf_net

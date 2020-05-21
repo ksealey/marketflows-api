@@ -93,7 +93,9 @@ class OnlineTest extends TestCase
                 'number' => [
                     'uuid' => $phoneNumber->uuid,
                 ],
-                'swap_rules' => json_decode(json_encode($phoneNumber->swap_rules), true)
+                'swap_rules' => [
+                    'targets' => $phoneNumber->swap_rules->targets 
+                ]
             ]
         ]);
     }
@@ -157,7 +159,9 @@ class OnlineTest extends TestCase
                 'number' => [
                     'uuid' => $phoneNumber->uuid,
                 ],
-                'swap_rules' => json_decode(json_encode($phoneNumber->swap_rules), true)
+                'swap_rules' => [
+                    'targets' => $phoneNumber->swap_rules->targets 
+                ]
             ]
         ]);
     }
@@ -222,7 +226,9 @@ class OnlineTest extends TestCase
                 'number' => [
                     'uuid' => $phoneNumber->uuid,
                 ],
-                'swap_rules' => json_decode(json_encode($phoneNumber->swap_rules), true)
+                'swap_rules' => [
+                    'targets' => $phoneNumber->swap_rules->targets
+                ]
             ]
         ]);
     }
@@ -378,7 +384,9 @@ class OnlineTest extends TestCase
                 'number' => [
                     'uuid' => $phoneNumber->uuid,
                 ],
-                'swap_rules' => json_decode(json_encode($phoneNumber->swap_rules), true)
+                'swap_rules' => [
+                    'targets' => $phoneNumber->swap_rules->targets
+                ]
             ]
         ]);
     }
@@ -591,6 +599,9 @@ class OnlineTest extends TestCase
             'data'   => [
                 'number' => [
                     'uuid' => $directPhone->uuid
+                ],
+                'swap_rules' => [
+                    'targets' => $directPhone->swap_rules->targets
                 ]
             ]
         ]);
@@ -614,6 +625,9 @@ class OnlineTest extends TestCase
             'data'   => [
                 'number' => [
                     'uuid' => $organicPhone->uuid
+                ],
+                'swap_rules' => [
+                    'targets' => $organicPhone->swap_rules->targets
                 ]
             ]
         ]);
@@ -637,6 +651,9 @@ class OnlineTest extends TestCase
             'data'   => [
                 'number' => [
                     'uuid' => $paidPhone->uuid
+                ],
+                'swap_rules' => [
+                    'targets' => $paidPhone->swap_rules->targets
                 ]
             ]
         ]);
@@ -660,6 +677,9 @@ class OnlineTest extends TestCase
             'data'   => [
                 'number' => [
                     'uuid' => $paidSearchPhone->uuid
+                ],
+                'swap_rules' => [
+                    'targets' => $paidSearchPhone->swap_rules->targets
                 ]
             ]
         ]);
@@ -683,6 +703,9 @@ class OnlineTest extends TestCase
             'data'   => [
                 'number' => [
                     'uuid' => $referralPhone->uuid
+                ],
+                'swap_rules' => [
+                    'targets' => $referralPhone->swap_rules->targets
                 ]
             ]
         ]);
@@ -707,6 +730,9 @@ class OnlineTest extends TestCase
             'data'   => [
                 'number' => [
                     'uuid' => $referrerPhone->uuid
+                ],
+                'swap_rules' => [
+                    'targets' => $referrerPhone->swap_rules->targets
                 ]
             ]
         ]);
@@ -730,6 +756,9 @@ class OnlineTest extends TestCase
             'data'   => [
                 'number' => [
                     'uuid' => $landingPathPhone->uuid
+                ],
+                'swap_rules' => [
+                    'targets' => $landingPathPhone->swap_rules->targets
                 ]
             ]
         ]);
@@ -753,6 +782,9 @@ class OnlineTest extends TestCase
             'data'   => [
                 'number' => [
                     'uuid' => $landingParamPhone->uuid
+                ],
+                'swap_rules' => [
+                    'targets' => $landingParamPhone->swap_rules->targets
                 ]
             ]
         ]);
