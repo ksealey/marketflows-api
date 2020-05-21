@@ -24,8 +24,8 @@ class OnlineController extends Controller
     {
         $rules = [
             'company_id'            => 'bail|required|numeric',
-            'tracking_entity_uuid'  => 'uuid',
-            'http_referrer'         => 'bail|url',
+            'tracking_entity_uuid'  => 'nullable|uuid',
+            'http_referrer'         => 'bail|nullable|url',
             'entry_url'             => 'bail|required|url',
             'device_width'          => 'bail|required|numeric',
             'device_height'         => 'bail|required|numeric',
@@ -175,7 +175,9 @@ class OnlineController extends Controller
                     'data'   => [
                         'tracking_entity_uuid' => $entity->uuid,
                         'number'               => $assignedNumber->exposedData(),
-                        'swap_rules'           => $pool->swap_rules,
+                        'swap_rules'           => [
+                            'targets' => $pool->swap_rules->targets
+                        ],
                         'session'      => [
                             'uuid'  => $session->uuid,
                             'token' => $session->token,
@@ -209,7 +211,9 @@ class OnlineController extends Controller
                     'action' => 'swap',
                     'data'   => [
                         'number'       => $assignedNumber->exposedData(),
-                        'swap_rules'   => $assignedNumber->swap_rules
+                        'swap_rules'           => [
+                            'targets' => $pool->swap_rules->targets
+                        ],
                     ],
                 ]);
             }

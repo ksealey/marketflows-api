@@ -15,7 +15,7 @@ Route::middleware(['rate_limit:30,1'])
      ->name('online-init');
 
 Route::middleware(['rate_limit:60,1'])
-     ->post('event', 'OnlineController@event')
+     ->post('events', 'OnlineController@event')
      ->name('online-event');
 
 Route::middleware(['rate_limit:30,1'])

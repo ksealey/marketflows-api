@@ -125,7 +125,7 @@ trait CreatesAccount
     {
         $entity = $this->createTrackingEntity($company, $entityWith);
 
-        $session =  factory(TrackingSession::class)->create(array_merge([
+        $session = factory(TrackingSession::class)->create(array_merge([
             'company_id'           => $company->id,
             'phone_number_id'      => $phoneNumber->id,
             'phone_number_pool_id' => $pool->id,

@@ -79,7 +79,7 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function mapOnlineRoutes()
     {
-        Route::prefix('online')
+        Route::prefix('v1/online')
              ->namespace($this->namespace)
              ->group(base_path('routes/online.php'));
     }

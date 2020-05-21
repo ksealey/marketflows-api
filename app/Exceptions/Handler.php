@@ -51,7 +51,7 @@ class Handler extends ExceptionHandler
             app('sentry')->captureException($exception);
         }
         
-        if( $exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ){
+        if( $exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException || $exception instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException){
             return response([
                 'error' => 'Not found'
             ], 404);
@@ -68,7 +68,9 @@ class Handler extends ExceptionHandler
                 'error' => 'Unauthorized'
             ], 403);
         }
-        
-        return parent::render($request, $exception);
+
+        return response([
+            'error' => 'An unknown error has occured'
+        ], 500);
     }
 }
