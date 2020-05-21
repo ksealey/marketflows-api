@@ -29,5 +29,18 @@
         <server name="MAIL_DRIVER" value="array"/>
         <server name="QUEUE_CONNECTION" value="sync"/>
         <server name="SESSION_DRIVER" value="array"/>
+        <server name="LOG_CHANNEL" value="stdout"/>
+        <server name="BROADCAST_DRIVER" value="log"/>
+        <server name="S3_URL" value="foobar"/>
+        <server name="CDN_URL" value="foobar"/>
+        <server name="AWS_BUCKET" value="foobar"/>
+        <server name="AWS_ACCESS_KEY_ID" value="foobar"/>
+        <server name="AWS_SECRET_ACCESS_KEY" value="foobar"/>
+        <server name="STRIPE_PK" value="foobar"/>
+        <server name="STRIPE_SK" value="foobar"/>
+        <server name="TWILIO_SID" value="foobar"/>
+        <server name="TWILIO_TOKEN" value="foobar"/>
+        <server name="TWILIO_TEST_SID" value="foobar"/>
+        <server name="TWILIO_TEST_TOKEN" value="foobar"/>
     </php>
 </phpunit>
