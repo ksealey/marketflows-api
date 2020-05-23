@@ -1,5 +1,6 @@
 .env
-.env.example
+.env.testing
+.env.staging
 .dockerignore
 .editorconfig
 .gitattributes

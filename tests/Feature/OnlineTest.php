@@ -76,7 +76,7 @@ class OnlineTest extends TestCase
 
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'http_referrer'  => $onlineUser->http_referrer,
             'entry_url'      => $onlineUser->entry_url,
@@ -122,7 +122,7 @@ class OnlineTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_5 rv:3.0; sl-SI) AppleWebKit/534.18.6 (KHTML, like Gecko) Version/4.0.4 Safari/534.18.6'
         ]);
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'http_referrer'  => $onlineUser->http_referrer,
             'entry_url'      => $onlineUser->entry_url,
@@ -142,7 +142,7 @@ class OnlineTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (Macintosh; PPC Mac OS X 10_6_2) AppleWebKit/5352 (KHTML, like Gecko) Chrome/36.0.870.0 Mobile Safari/5352'
         ]);
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'http_referrer'  => $onlineUser->http_referrer,
             'entry_url'      => $onlineUser->entry_url,
@@ -188,7 +188,7 @@ class OnlineTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_5 rv:3.0; sl-SI) AppleWebKit/534.18.6 (KHTML, like Gecko) Version/4.0.4 Safari/534.18.6'
         ]);
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'http_referrer'  => $onlineUser->http_referrer,
             'entry_url'      => $onlineUser->entry_url,
@@ -209,7 +209,7 @@ class OnlineTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (iPad; CPU OS 7_2_2 like Mac OS X; sl-SI) AppleWebKit/534.13.1 (KHTML, like Gecko) Version/4.0.5 Mobile/8B117 Safari/6534.13.1'
         ]);
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'http_referrer'  => $onlineUser->http_referrer,
             'entry_url'      => $onlineUser->entry_url,
@@ -301,7 +301,7 @@ class OnlineTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_5 rv:3.0; sl-SI) AppleWebKit/534.18.6 (KHTML, like Gecko) Version/4.0.4 Safari/534.18.6'
         ]);
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
             'device_width'   => $onlineUser->device_width,
@@ -324,7 +324,7 @@ class OnlineTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (Macintosh; PPC Mac OS X 10_6_2) AppleWebKit/5352 (KHTML, like Gecko) Chrome/36.0.870.0 Mobile Safari/5352'
         ]);
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
             'device_width'   => $onlineUser->device_width,
@@ -347,7 +347,7 @@ class OnlineTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (iPad; CPU OS 7_2_2 like Mac OS X; sl-SI) AppleWebKit/534.13.1 (KHTML, like Gecko) Version/4.0.5 Mobile/8B117 Safari/6534.13.1'
         ]);
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'http_referrer'  => $onlineUser->http_referrer,
             'entry_url'      => $onlineUser->entry_url,
@@ -368,7 +368,7 @@ class OnlineTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (iPad; CPU OS 7_2_2 like Mac OS X; sl-SI) AppleWebKit/534.13.1 (KHTML, like Gecko) Version/4.0.5 Mobile/8B117 Safari/6534.13.1'
         ]);
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
             'device_width'   => $onlineUser->device_width,
@@ -586,7 +586,7 @@ class OnlineTest extends TestCase
         //
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
             'device_width'   => $onlineUser->device_width,
@@ -611,7 +611,7 @@ class OnlineTest extends TestCase
         //
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => 'https://www.google.com/',
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -637,7 +637,7 @@ class OnlineTest extends TestCase
         //
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->paid_url . '&utm_source=google',
@@ -663,7 +663,7 @@ class OnlineTest extends TestCase
         //
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => 'https://search.yahoo.com/',
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->paid_url,
@@ -689,7 +689,7 @@ class OnlineTest extends TestCase
         //
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -716,7 +716,7 @@ class OnlineTest extends TestCase
         //
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => 'http://postboxes.com/forward',
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -742,7 +742,7 @@ class OnlineTest extends TestCase
         //
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => 'https://my.site/landing-page-1',
@@ -768,7 +768,7 @@ class OnlineTest extends TestCase
         //
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => 'https://my.site/home?utm_medium=email',
@@ -802,7 +802,7 @@ class OnlineTest extends TestCase
 
         $onlineUser = factory(OnlineUser::class)->make();
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -832,7 +832,7 @@ class OnlineTest extends TestCase
 
 
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -847,7 +847,7 @@ class OnlineTest extends TestCase
 
         //  Remove numbers and make sure it returns nothing
         PhoneNumber::where('phone_number_pool_id', $pool->id)->delete();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -890,7 +890,7 @@ class OnlineTest extends TestCase
         ]);
 
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -905,7 +905,7 @@ class OnlineTest extends TestCase
 
         //  Remove numbers and make sure it returns nothing
         PhoneNumber::where('phone_number_pool_id', $pool->id)->delete();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -950,7 +950,7 @@ class OnlineTest extends TestCase
                                         . '&keyword='
                                         . urlencode($keyword);
 
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $entryURL,
@@ -1042,7 +1042,7 @@ class OnlineTest extends TestCase
                                             . '&keyword='
                                             . urlencode($keyword);
 
-            $response = $this->json('POST', route('online-init'), [
+            $response = $this->json('GET', route('online-init'), [
                 'http_referrer'  => $onlineUser->http_referrer,
                 'company_id'     => $company->id,
                 'entry_url'      => $entryURL,
@@ -1105,7 +1105,7 @@ class OnlineTest extends TestCase
 
         //  Make initial request
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1128,7 +1128,7 @@ class OnlineTest extends TestCase
 
         //  Make second request using tracking_entity_uuid
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1152,7 +1152,7 @@ class OnlineTest extends TestCase
 
         //  Then make a third
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1196,7 +1196,7 @@ class OnlineTest extends TestCase
         //  Make initial request
         $onlineUser = factory(OnlineUser::class)->make();
         
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1222,7 +1222,7 @@ class OnlineTest extends TestCase
         $onlineUser = factory(OnlineUser::class)->make([
             'fingerprint' => $onlineUser->fingerprint
         ]);
-        $response   = $this->json('POST', route('online-init'), [
+        $response   = $this->json('GET', route('online-init'), [
             'http_referrer'          => $onlineUser->http_referrer,
             'company_id'             => $company->id,
             'entry_url'              => $onlineUser->entry_url,
@@ -1248,7 +1248,7 @@ class OnlineTest extends TestCase
         $onlineUser = factory(OnlineUser::class)->make([
             'fingerprint' => $onlineUser->fingerprint
         ]);
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1292,7 +1292,7 @@ class OnlineTest extends TestCase
 
         //  Make initial request
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1320,7 +1320,7 @@ class OnlineTest extends TestCase
         $onlineUser = factory(OnlineUser::class)->make([
             'user_agent' => $onlineUser->user_agent
         ]);
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1347,7 +1347,7 @@ class OnlineTest extends TestCase
         $onlineUser = factory(OnlineUser::class)->make([
             'user_agent' => $onlineUser->user_agent
         ]);
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1392,7 +1392,7 @@ class OnlineTest extends TestCase
 
         //  Make initial request
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1415,7 +1415,7 @@ class OnlineTest extends TestCase
 
         //  Make second request using tracking_entity_uuid
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1442,7 +1442,7 @@ class OnlineTest extends TestCase
 
         //  Then make a third
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1479,7 +1479,7 @@ class OnlineTest extends TestCase
 
         //  Init
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1504,7 +1504,7 @@ class OnlineTest extends TestCase
 
         //  Log Page View
         $content = str_random(1024);
-        $response = $this->json('POST', route('online-event'), [
+        $response = $this->json('GET', route('online-event'), [
             'session_uuid' => $sessionId,
             'token'        => $token,
             'event_type'   => 'ClickToCall',
@@ -1538,7 +1538,7 @@ class OnlineTest extends TestCase
 
         //  Init
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1563,7 +1563,7 @@ class OnlineTest extends TestCase
 
         //  Log Page View
         $content = str_random(1024);
-        $response = $this->json('POST', route('online-event'), [
+        $response = $this->json('GET', route('online-event'), [
             'session_uuid' => $sessionId,
             'token'        => $token,
             'event_type'   => 'FooBar',
@@ -1603,7 +1603,7 @@ class OnlineTest extends TestCase
 
         //  Log Page View
         $content = str_random(1024);
-        $response = $this->json('POST', route('online-event'), [
+        $response = $this->json('GET', route('online-event'), [
             'session_uuid' => $session->uuid,
             'token'        => $session->token,
             'event_type'   => 'PageView',
@@ -1632,7 +1632,7 @@ class OnlineTest extends TestCase
 
         //  Init
         $onlineUser = factory(OnlineUser::class)->make();
-        $response = $this->json('POST', route('online-init'), [
+        $response = $this->json('GET', route('online-init'), [
             'http_referrer'  => $onlineUser->http_referrer,
             'company_id'     => $company->id,
             'entry_url'      => $onlineUser->entry_url,
@@ -1657,7 +1657,7 @@ class OnlineTest extends TestCase
         $session = TrackingSession::where('uuid', $sessionId)->first();
         $this->assertTrue($session->created_at->format('Y-m-d H:i:s.u') == $session->last_heartbeat_at->format('Y-m-d H:i:s.u') );
 
-        $response = $this->json('POST', route('online-heartbeat'), [
+        $response = $this->json('GET', route('online-heartbeat'), [
             'session_uuid' => $sessionId,
             'token'        => $token,
         ]);
@@ -1690,7 +1690,7 @@ class OnlineTest extends TestCase
         ]);
         $this->assertNotNull($session->ended_at);
 
-        $response = $this->json('POST', route('online-heartbeat'), [
+        $response = $this->json('GET', route('online-heartbeat'), [
             'session_uuid' => $session->uuid,
             'token'        => $session->token,
         ]);

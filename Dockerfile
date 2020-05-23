@@ -1,14 +1,28 @@
-FROM 212127452432.dkr.ecr.us-east-1.amazonaws.com/marketflows-api:latest
+FROM marketflows/ubuntu18-php7:latest
 
+# Copy app files
 COPY . /var/www/app
 COPY .env.prod /var/www/app/.env
+COPY laravel-cron /etc/cron.d/laravel-cron
+COPY laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf 
 
+# Install dependencies
 WORKDIR /var/www/app
-RUN apt-get update -y && \
-    apt-get upgrade -y && \
-    apt-get install -y curl && \
-    composer install && \
+RUN composer install && \
     chown -R www-data:www-data /var/www/app && \
-    chmod -R ug+wr /var/www/app
+    chmod -R ug+wrx /var/www/app
 
-CMD ["/usr/sbin/apachectl", "-D", "FOREGROUND"]
+# Setup cron
+RUN chmod 0644 /etc/cron.d/laravel-cron && \
+    crontab /etc/cron.d/laravel-cron
+
+# Install and setup supervisor to manage queue workers
+RUN apt-get update && \
+    apt-get install -y supervisor&& \
+    service supervisor start && \
+    supervisorctl reread && \
+    supervisorctl update && \
+    supervisorctl start laravel-worker:* && \
+    service supervisor stop
+
+CMD service supervisor start && apachectl -D FOREGROUND

@@ -2,7 +2,7 @@ version: "2"
 
 services:
   mf_app_web:
-    image: 212127452432.dkr.ecr.us-east-1.amazonaws.com/marketflows-api:latest
+    image: marketflows/ubuntu18-php7:latest
     restart: always
     container_name: mf_app_web
     ports: 

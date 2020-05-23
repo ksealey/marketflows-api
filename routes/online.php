@@ -11,13 +11,13 @@ use Illuminate\Http\Request;
 */
 
 Route::middleware(['rate_limit:30,1'])
-     ->post('init', 'OnlineController@init')
+     ->get('init', 'OnlineController@init')
      ->name('online-init');
 
 Route::middleware(['rate_limit:60,1'])
-     ->post('events', 'OnlineController@event')
+     ->get('events', 'OnlineController@event')
      ->name('online-event');
 
 Route::middleware(['rate_limit:30,1'])
-     ->post('heartbeat', 'OnlineController@heartbeat')
+     ->get('heartbeat', 'OnlineController@heartbeat')
      ->name('online-heartbeat');

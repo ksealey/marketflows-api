@@ -7,7 +7,7 @@ pipeline {
 
     agent { 
         docker { 
-            image 'ksealey1990/ubuntu-18-laravel:latest'
+            image 'marketflows/ubuntu18-php7:latest'
         } 
     }
     

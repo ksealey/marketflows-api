@@ -1,18 +1,28 @@
 #!/usr/bin/bash
-export APP_PATH=/var/www/app
-export REPO_URL=212127452432.dkr.ecr.us-east-1.amazonaws.com/marketflows-api
+export PROD_REPO_URL=212127452432.dkr.ecr.us-east-1.amazonaws.com
 
 # Pull and checkout code from master
-git checkout production && git pull]
+git checkout production && git pull
 
 # Get the latest image
-docker pull 212127452432.dkr.ecr.us-east-1.amazonaws.com/marketflows-api:latest
+docker pull marketflows/ubuntu18-php7:latest
 
-# Build image with code from latest image
-docker build ./ -t $REPO_URL:production --no-cache
+# Build production version of the image with baked-in code
+if docker build -t marketflows-api:production . --no-cache; then
+    # Log into production docker 
+    aws ecr get-login-password --region us-east-1 | docker login  --username AWS  --password-stdin $PROD_REPO_URL
+    
+    # Create an copy of the current prod image to use as rollback
+    docker pull $PROD_REPO_URL/marketflows-api:production
+    docker tag $PROD_REPO_URL/marketflows-api:production $PROD_REPO_URL/marketflows-api:production-rollback
+    docker push $PROD_REPO_URL/marketflows-api:production-rollback
 
-# Push image with production tag
-# Log into docker 
-aws ecr get-login-password --region us-east-1 | docker login  --username AWS  --password-stdin 212127452432.dkr.ecr.us-east-1.amazonaws.com
+    # Tag the new image
+    docker tag marketflows-api:production $PROD_REPO_URL/marketflows-api:production
 
-docker push $REPO_URL:production
+    # Push new image with production tag
+    docker push $PROD_REPO_URL/marketflows-api:production
+fi
+
+
+

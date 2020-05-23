@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use \App\Models\TrackingSession;
 
 class Kernel extends ConsoleKernel
 {
@@ -49,9 +50,21 @@ class Kernel extends ConsoleKernel
                   ->everyFifteenMinutes()
                   ->onOneServer();
 
+        //  End sessions that haven't had a hearbeat for over a minute
+        $schedule->call(function(){
+            $aMinuteAgo = now()->subMinutes(1);
+            $now        = new \DateTime;
+
+            TrackingSession::where('last_heartbeat_at', '<', $aMinuteAgo)
+                           ->update([ 'ended_at' => $now->format('Y-m-d H:i:s.u') ]);
+        })->everyMinute()
+          ->onOneServer();
+
         $schedule->command('clear:password-resets')
                  ->hourly()
                  ->onOneServer();
+
+
 
                  
     }
