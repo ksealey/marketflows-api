@@ -69,8 +69,13 @@ class Handler extends ExceptionHandler
             ], 403);
         }
 
-        return response([
-            'error' => 'An unknown error has occured'
-        ], 500);
+        if(  App::environment('prod', 'production') ){
+            return response([
+                'error' => 'An unknown error has occured.'
+            ], 500);
+        }
+
+        //var_dump($exception->getTraceAsString()); exit;
+        parent::render($request, $exception);
     }
 }

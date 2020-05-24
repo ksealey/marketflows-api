@@ -139,6 +139,25 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
     /*
      |------------------------------
+     |  Handle API Credentials
+     |------------------------------
+     */
+    Route::prefix('api-credentials')->group(function(){
+        Route::post('/', 'APICredentialController@create')
+              ->middleware('can:create,\App\Models\APICredential')
+              ->name('create-api-credential');
+
+        Route::get('/', 'APICredentialController@list')
+              ->middleware('can:list,\App\Models\APICredential')
+              ->name('list-api-credentials');
+
+        Route::delete('/{apiCredential}', 'APICredentialController@delete')
+              ->middleware('can:delete,apiCredential')
+              ->name('delete-api-credential');
+    });
+
+    /*
+     |------------------------------
      |  Handle widgets
      |------------------------------
      */
