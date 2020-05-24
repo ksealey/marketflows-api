@@ -21,7 +21,8 @@ class PhoneNumberPolicy
     public function create(User $user, Company $company)
     {
         return $user->canDoAction('create')
-            && $user->canViewCompany($company);
+            && $user->canViewCompany($company)
+            && $user->email_verified_at;
     }
 
     public function read(User $user, PhoneNumber $phoneNumber, Company $company)
@@ -35,7 +36,8 @@ class PhoneNumberPolicy
     {
         return $user->canDoAction('update')
             && $user->canViewCompany($company)
-            && $phoneNumber->company_id === $company->id;
+            && $phoneNumber->company_id === $company->id
+            && $user->email_verified_at;;
     }
 
     public function delete(User $user, PhoneNumber $phoneNumber, Company $company)

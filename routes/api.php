@@ -386,7 +386,7 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                     ->name('list-phone-numbers');
 
                 Route::post('/', 'Company\PhoneNumberController@create')
-                    ->middleware('can:create,company')
+                    ->middleware('can:create,\App\Models\Company\PhoneNumber,company')
                     ->name('create-phone-number');
 
                 Route::get('/{phoneNumber}', 'Company\PhoneNumberController@read')

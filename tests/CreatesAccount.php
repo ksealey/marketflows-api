@@ -39,7 +39,8 @@ trait CreatesAccount
         ]);
 
         $this->user = factory(User::class)->create([
-            'account_id' => $this->account->id
+            'account_id' => $this->account->id,
+            'email_verified_at' => now()
         ]);
     }
 
