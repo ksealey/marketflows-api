@@ -9,7 +9,6 @@ use App\Models\Alert;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
-use App\Mail\Errors\PrimaryPaymentMethodFailed;
 use Mail;
 use Exception;
 use DB;

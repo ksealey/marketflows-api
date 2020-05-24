@@ -71,8 +71,7 @@ class UserController extends Controller
 
         try{
             //  Create this user
-            $resetToken = str_random(128);
-
+            $tempPassword = str_random(10);
             $user = User::create([
                 'account_id'                => $creator->account_id,
                 'role'                      => $request->role,
@@ -80,9 +79,7 @@ class UserController extends Controller
                 'first_name'                => $request->first_name,
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
-                'password_hash'             => bcrypt($resetToken),
-                'password_reset_token'      => $resetToken,
-                'password_reset_expires_at' => now()->addDays(90),
+                'password_hash'             => bcrypt($tempPassword),
                 'auth_token'                => str_random(255)
             ]);
 
@@ -105,7 +102,7 @@ class UserController extends Controller
             }
 
             //  Send out email to user
-            Mail::to($user)->send(new AddUserEmail($creator, $user));
+            Mail::to($user)->send(new AddUserEmail($creator, $user, $tempPassword));
         }catch(Exception $e){
             DB::rollBack();
 

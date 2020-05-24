@@ -2,6 +2,7 @@
 
 return [
 
+    'frontend_app_url' => env('FRONTEND_APP_URL', 'https://app.marketflows.io'),
     /*
     |--------------------------------------------------------------------------
     | Application Name
