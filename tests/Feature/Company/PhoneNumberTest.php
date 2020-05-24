@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use Twilio\Rest\Client as Twilio;
+use \App\Models\Account;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
@@ -594,6 +595,121 @@ class PhoneNumberTest extends TestCase
         $this->assertDatabaseMissing('phone_numbers', [
             'company_id' => $company->id,
             'name'       => $newName
+        ]);
+    }
+
+    /**
+     * Test user cannot create too many numbers before payment method added
+     *
+     * @group phone-numbers
+     */
+    public function testUserCannotCreateTooManyNumbersWithoutValidPaymentMethod()
+    {
+        $company    = $this->createCompany();
+        $config     = $this->createConfig($company);
+        $areaCode   = '813';
+
+        $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
+        $this->mock(PhoneNumberManager::class, function ($mock) use($company, $twilioNumber, $areaCode){
+            $mock->shouldReceive('listAvailable')
+                 ->times(Account::MAX_DEMO_NUMBER_COUNT)
+                 ->with($areaCode, 1, PhoneNumber::TYPE_LOCAL, $company->country)
+                 ->andReturn(
+                    [$twilioNumber]
+                );
+
+            $mock->shouldReceive('purchase')
+                ->times(Account::MAX_DEMO_NUMBER_COUNT)
+                ->with($twilioNumber->phoneNumber)
+                ->andReturn(
+                   $twilioNumber
+               );
+        });
+
+        //
+        //  Make sure under the limit passes
+        //
+        for( $i = 0; $i < Account::MAX_DEMO_NUMBER_COUNT ; $i++ ){
+            $numberData = factory(PhoneNumber::class)->make();
+
+            $response = $this->json('POST', route('create-phone-number', [
+                'company' => $company->id
+            ]), [
+                'name'        => $numberData->name,
+                'category'    => $numberData->category,
+                'sub_category'=> $numberData->sub_category,
+                'type'        => PhoneNumber::TYPE_LOCAL,
+                'starts_with' => $areaCode,
+                'source'      => $numberData->source,
+                'medium'      => $numberData->medium,
+                'content'     => $numberData->content,
+                'campaign'    => $numberData->campaign,
+                'phone_number_config_id' => $config->id,
+                'swap_rules'  => json_encode($numberData->swap_rules)
+            ]);
+    
+            $response->assertStatus(201);
+            $response->assertJSON([
+                'account_id'  => $company->account_id,
+                'company_id'  => $company->id,
+                'name'        => $numberData->name,
+                'category'    => $numberData->category,
+                'sub_category'=> $numberData->sub_category,
+                'type'        => PhoneNumber::TYPE_LOCAL,
+                'source'      => $numberData->source,
+                'medium'      => $numberData->medium,
+                'content'     => $numberData->content,
+                'campaign'     => $numberData->campaign,
+                'phone_number_config_id' => $config->id,
+                'country'      => $company->country,
+                'country_code' => PhoneNumber::countryCode($twilioNumber->phoneNumber),
+                'number'       => PhoneNumber::number($twilioNumber->phoneNumber),
+                'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? json_decode(json_encode($numberData->swap_rules), true)  : null,
+                'call_count'   => 0,
+                'link'         => route('read-phone-number', [
+                    'company' => $company->id,
+                    'phoneNumber' => $response['id']
+                ]),
+                'kind'             => 'PhoneNumber',
+            ]);
+    
+            $this->assertDatabaseHas('phone_numbers', [
+                'company_id' => $company->id,
+                'account_id' => $company->account_id,
+                'id' => $response['id']
+            ]);
+        }
+
+        //
+        //  Make sure over the limit fails
+        //
+        $numberData = factory(PhoneNumber::class)->make();
+
+        $response = $this->json('POST', route('create-phone-number', [
+            'company' => $company->id
+        ]), [
+            'name'        => $numberData->name,
+            'category'    => $numberData->category,
+            'sub_category'=> $numberData->sub_category,
+            'type'        => PhoneNumber::TYPE_LOCAL,
+            'starts_with' => $areaCode,
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'campaign'    => $numberData->campaign,
+            'phone_number_config_id' => $config->id,
+            'swap_rules'  => json_encode($numberData->swap_rules)
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJSONStructure([
+            'error'
+        ]);
+
+        $this->assertDatabaseMissing('phone_numbers', [
+            'company_id' => $company->id,
+            'account_id' => $company->account_id,
+            'name'       => $numberData->name
         ]);
     }
 

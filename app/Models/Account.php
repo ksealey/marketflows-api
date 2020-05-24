@@ -40,7 +40,7 @@ class Account extends Model
     const SUSPENSION_CODE_NO_PAYMENT_METHOD                 = 1;
     const SUSPENSION_CODE_TOO_MANY_FAILED_BILLING_ATTEMPTS  = 2;
 
-    const MAX_DEMO_NUMBER_COUNT = 5;
+    const MAX_DEMO_NUMBER_COUNT = 2;
 
     protected $fillable = [
         'name',

@@ -73,6 +73,14 @@ class PhoneNumberController extends Controller
      */
     public function create(Request $request, Company $company)
     {
+        $user    = $request->user(); 
+        $account = $company->account; 
+        if( ! $account->canPurchaseNumbers(1) ){
+            return response([
+                'error' => 'Unable to purchase additional numbers for this account - Verify a valid payment method has been added and try again.'
+            ], 403);
+        }
+        
         $rules = [
             'name'                => 'bail|required|max:64',
             'category'            => 'bail|required|in:ONLINE,OFFLINE',
@@ -108,14 +116,6 @@ class PhoneNumberController extends Controller
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
-
-        $user    = $request->user(); 
-        $account = $company->account; 
-        if( ! $account->canPurchaseNumbers(1) ){
-            return response([
-                'error' => 'Unable to purchase additional numbers for this account - Verify a valid payment method has been added and try again.'
-            ], 400);
-        }
        
         //  See if we can find an available number in the number bank 
         //  that didn't previously belong to this account

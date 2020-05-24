@@ -37,7 +37,7 @@ class PhoneNumberPoolPolicy
         return $user->canDoAction('update')
             && $user->canViewCompany($company)
             && $phoneNumberPool->company_id === $company->id
-            && $user->email_verified_at;;
+            && $user->email_verified_at;
     }
 
     public function delete(User $user, PhoneNumberPool $phoneNumberPool, Company $company)

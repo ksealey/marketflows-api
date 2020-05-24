@@ -82,6 +82,21 @@ class PhoneNumberPoolController extends Controller
      */
     public function create(Request $request, Company $company)
     {
+        //
+        //  Block excessive number purchases
+        //
+        $user       = $request->user(); 
+        $account    = $company->account; 
+        $poolSize   = intval($request->size);
+        $startsWith = $request->starts_with;
+        $type       = $request->type;
+
+        if( ! $account->canPurchaseNumbers($poolSize) ){
+            return response([
+                'error' => 'Unable to purchase ' . $poolSize . ' number(s) for this account - Verify a valid payment method has been added and try again.'
+            ], 403);
+        }
+
         $rules = [
             'name'                   => 'bail|required|max:64',
             'size'                   => 'bail|required|numeric|min:5|max:50',  
@@ -113,18 +128,6 @@ class PhoneNumberPoolController extends Controller
         if( PhoneNumberPool::where('company_id', $company->id)->count() ){
             return response([
                 'error' => 'Only 1 keyword tracking pool allowed per company.'
-            ], 400);
-        }
-
-        $user       = $request->user(); 
-        $account    = $company->account; 
-        $poolSize   = intval($request->size);
-        $startsWith = $request->starts_with;
-        $type       = $request->type;
-
-        if( ! $account->canPurchaseNumbers($poolSize) ){
-            return response([
-                'error' => 'Unable to purchase ' . $poolSize . ' number(s) for this account - Verify a valid payment method has been added and try again.'
             ], 400);
         }
        
@@ -418,6 +421,18 @@ class PhoneNumberPoolController extends Controller
      */
     public function addNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
+        //  Block excessive number purchases
+        $user       = $request->user(); 
+        $account    = $company->account; 
+        $startsWith = $request->starts_with;
+        $type       = $request->type;
+        $count      = intval($request->count);
+        if( ! $account->canPurchaseNumbers($count) ){
+            return response([
+                'error' => 'Unable to purchase ' . $count . ' number(s) for this account - Verify a valid payment method has been added and try again.'
+            ], 403);
+        }
+        
         $rules = [
             'count'       => 'bail|required|numeric|min:1|max:30',
             'type'        => 'bail|required|in:Local,Toll-Free',
@@ -430,18 +445,7 @@ class PhoneNumberPoolController extends Controller
             ], 400);
         }
 
-        //  Do not allow users to purchase a number if
-        $user       = $request->user(); 
-        $account    = $company->account; 
-        $startsWith = $request->starts_with;
-        $type       = $request->type;
-        $count      = intval($request->count);
-        if( ! $account->canPurchaseNumbers($count) ){
-            return response([
-                'error' => 'Unable to purchase ' . $count . ' number(s) for this account - Verify a valid payment method has been added and try again.'
-            ], 400);
-        }
-        
+       
         $bankedNumbers = BankedPhoneNumber::availableNumbers(
             $user->account_id, 
             $company->country, 
