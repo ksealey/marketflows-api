@@ -317,7 +317,9 @@ class PhoneNumberController extends Controller
                  ->bankNumber($phoneNumber, $callsOverThreeDays <= 9 ? true : false); // Make avaiable now if it gets less than or equal to 3 calls per day
         }
         
-        $phoneNumber->delete();
+        $phoneNumber->deleted_by = $request->user()->id;
+        $phoneNumber->deleted_at = now();
+        $phoneNumber->save();
 
         return response([
             'message' => 'deleted'

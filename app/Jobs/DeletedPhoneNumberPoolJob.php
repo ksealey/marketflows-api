@@ -17,15 +17,17 @@ class DeletedPhoneNumberPoolJob implements ShouldQueue
 
     public $phoneNumberPool;
     public $numberManager;
+    public $user;
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct($phoneNumberPool)
+    public function __construct($phoneNumberPool, $user)
     {
         $this->phoneNumberPool = $phoneNumberPool;
+        $this->user = $user;
     }
 
     /**
@@ -50,7 +52,9 @@ class DeletedPhoneNumberPoolJob implements ShouldQueue
                     ->bankNumber($phoneNumber, $callsOverThreeDays <= 9 ? true : false); // Make avaiable now if it gets less than or equal to 3 calls per day
             }
             
-            $phoneNumber->delete();
+            $phoneNumber->deleted_by = $this->user->id;
+            $phoneNumber->deleted_at = now();
+            $phoneNumber->save();
         }
     }
 }

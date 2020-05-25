@@ -232,6 +232,7 @@ trait CreatesAccount
 
         //  Report
         $report = factory(Report::class)->create([
+            'account_id' => $this->account->id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);

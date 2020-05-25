@@ -15,8 +15,8 @@ $factory->define(\App\Models\Company\Report::class, function (Faker $faker) {
         'date_type'     => 'CUSTOM',
         'start_date'    => now()->subDays(10),
         'end_date'      => now()->subDays(1),
-        'comparisons'   => [],
-        'conditions'    => [],
+        'comparisons'   => null,
+        'conditions'    => null,
        'is_system_report' => 0
     ];
 });

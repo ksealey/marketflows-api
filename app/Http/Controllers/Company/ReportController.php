@@ -87,8 +87,9 @@ class ReportController extends Controller
         //  If this is a comparison, do not allow offsets of more then 90 days(Clutters charts)
         $reportData = [
             'timezone'                  => $request->timezone ?: $user->timezone,
+            'account_id'                => $company->account_id,
             'company_id'                => $company->id,
-            'created_by'                   => $user->id,
+            'created_by'                => $user->id,
             'name'                      => $request->name,
             'module'                    => $request->module,
             'metric'                    => $request->metric ?: null,
@@ -96,8 +97,8 @@ class ReportController extends Controller
             'date_type'                 => $request->date_type,
             'start_date'                => $request->date_type === 'CUSTOM' ? $request->start_date : null,
             'end_date'                  => $request->date_type === 'CUSTOM' ? $request->end_date : null,
-            'comparisons'               => $request->comparisons ? json_decode($request->comparisons) : [],
-            'conditions'                => $request->conditions  ? json_decode($request->conditions)  : []
+            'comparisons'               => $request->comparisons ?: null,
+            'conditions'                => $request->conditions  ?: null
         ];
 
         $report = new Report();
@@ -202,10 +203,10 @@ class ReportController extends Controller
             $report->end_date = $request->end_date;
 
         if( $request->has('comparisons') )
-            $report->comparisons = json_decode($request->comparisons) ?: [];
+            $report->comparisons = $request->comparisons ?: null;
 
         if( $request->has('conditions') )
-            $report->conditions = json_decode($request->conditions) ?: [];
+            $report->conditions = $request->conditions ?: null;
         
         if( $report->dateOffset() > 90 ){
             return response([
@@ -276,9 +277,13 @@ class ReportController extends Controller
         ReportAutomation::where('report_id', $report->id)->delete();
 
         //  Remove report
-        $report->delete();
+        $report->deleted_by = $request->user()->id;
+        $report->deleted_at = now();
+        $report->save();
 
-        return response([ 'message' => 'deleted' ]);
+        return response([ 
+            'message' => 'Deleted' 
+        ]);
     }
 
     /**

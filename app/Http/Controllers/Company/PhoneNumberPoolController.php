@@ -362,9 +362,13 @@ class PhoneNumberPoolController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        DeletedPhoneNumberPoolJob::dispatch($phoneNumberPool);
+        $user = $request->user();
+
+        DeletedPhoneNumberPoolJob::dispatch($phoneNumberPool, $user);
         
-        $phoneNumberPool->delete();
+        $phoneNumberPool->deleted_by = $user->id;
+        $phoneNumberPool->deleted_at = now();
+        $phoneNumberPool->save();
 
         return response([
             'message' => 'Deleted'

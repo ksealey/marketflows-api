@@ -1090,6 +1090,15 @@ class PhoneNumberPoolTest extends TestCase
             'company'     => $company->id,
             'phoneNumberPool' => $pool->id
         ]));
+
+        $this->assertDatabaseMissing('phone_number_pools', [
+            'id' => $pool->id,
+            'deleted_at' => null
+        ]);
+        $this->assertDatabaseHAs('phone_number_pools', [
+            'id' => $pool->id,
+            'deleted_by' => $this->user->id
+        ]);
     }
 
     /**
