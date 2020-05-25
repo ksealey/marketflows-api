@@ -50,6 +50,12 @@ class Kernel extends ConsoleKernel
                   ->everyFifteenMinutes()
                   ->onOneServer();
 
+    
+        // Release soon to be renewed banked phone numbers
+        $schedule->command('banked-phone-numbers:release-to-be-renewed')
+                ->everyFifteenMinutes()
+                ->onOneServer();
+
         //  End sessions that haven't had a hearbeat for over a minute
         $schedule->call(function(){
             $aMinuteAgo = now()->subMinutes(1);
@@ -59,6 +65,7 @@ class Kernel extends ConsoleKernel
                            ->update([ 'ended_at' => $now->format('Y-m-d H:i:s.u') ]);
         })->everyMinute()
           ->onOneServer();
+          
 
         $schedule->command('clear:password-resets')
                  ->hourly()

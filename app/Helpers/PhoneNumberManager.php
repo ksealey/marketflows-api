@@ -62,7 +62,7 @@ class PhoneNumberManager
      * Release a phone number
      * 
      */
-    public function releaseNumber(PhoneNumber $phoneNumber)
+    public function releaseNumber($phoneNumber)
     {
         $this->client
              ->incomingPhoneNumbers($phoneNumber->external_id)
