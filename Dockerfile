@@ -25,4 +25,4 @@ RUN apt-get update && \
     supervisorctl start laravel-worker:* && \
     service supervisor stop
 
-CMD service supervisor start && apachectl -D FOREGROUND
+CMD service supervisor start && php artisan serve-ws && apachectl -D FOREGROUND
