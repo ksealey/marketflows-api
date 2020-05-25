@@ -32,7 +32,6 @@ class PhoneNumberPool extends Model
         'updated_by',
         'deleted_by',
         'phone_number_config_id',
-        'override_campaigns',
         'name',
         'swap_rules',
         'disabled_at'
@@ -47,8 +46,6 @@ class PhoneNumberPool extends Model
         'link',
         'kind'
     ];
-
-    protected $dateFormat = 'Y-m-d H:i:s.u'; 
 
     static public function exports() : array
     {

@@ -24,7 +24,6 @@ $factory->define(\App\Models\Company\PhoneNumberPool::class, function (Faker $fa
                 ]
             ],
             'exclusion_rules' => []
-        ]),
-        'override_campaigns' => true
+        ])
     ];
 });

@@ -34,11 +34,9 @@ class PhoneNumberManager
             $query = $type === 'Toll-Free' ? $query->tollFree : $query->local;
 
             $numbers = $query->read($config, $limit);
-        }catch(Exception $e){ 
+        }catch(Exception $e){}
 
-        }
-
-        return $numbers;
+        return $numbers ?: [];
     }
 
 

@@ -567,7 +567,7 @@ class PhoneNumberTest extends TestCase
    /**
      * Test user cannot update phone number when email not verified 
      *
-     * @group phone-numbers
+     * @group phone-numbers--
      */
     public function testUserCannotUpdatePhoneNumberWhenEmailNotVerified()
     {
@@ -580,13 +580,12 @@ class PhoneNumberTest extends TestCase
         $areaCode   = '813'; 
         $newName    = str_random(10);
 
-        $response = $this->json('POST', route('create-phone-number', [
+        $response = $this->json('PUT', route('update-phone-number', [
             'company'     => $company->id,
             'phoneNumber' => $phoneNumber->id
         ]), [
             'name'        => $newName
         ]);
-
         $response->assertStatus(403);
         $response->assertJSON([
             'error' => 'Unauthorized'

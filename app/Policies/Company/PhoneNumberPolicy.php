@@ -29,7 +29,8 @@ class PhoneNumberPolicy
     {
         return $user->canDoAction('read')
             && $user->canViewCompany($company)
-            && $phoneNumber->company_id === $company->id;
+            && $phoneNumber->company_id === $company->id
+            && $phoneNumber->phone_number_pool_id == null;
     }
 
     public function update(User $user, PhoneNumber $phoneNumber, Company $company)
@@ -37,13 +38,15 @@ class PhoneNumberPolicy
         return $user->canDoAction('update')
             && $user->canViewCompany($company)
             && $phoneNumber->company_id === $company->id
-            && $user->email_verified_at;;
+            && $user->email_verified_at
+            && $phoneNumber->phone_number_pool_id == null;
     }
 
     public function delete(User $user, PhoneNumber $phoneNumber, Company $company)
     {
         return $user->canDoAction('delete')
             && $user->canViewCompany($company)
-            && $phoneNumber->company_id === $company->id;
+            && $phoneNumber->company_id === $company->id
+            && $phoneNumber->phone_number_pool_id == null;
     }
 }

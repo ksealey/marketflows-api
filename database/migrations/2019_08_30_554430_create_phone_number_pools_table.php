@@ -18,7 +18,6 @@ class CreatePhoneNumberPoolsTable extends Migration
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_config_id')->unsigned();
-            $table->boolean('override_campaigns');
             $table->string('name', 64)->nullable();
             $table->json('swap_rules')->nullable();
             $table->dateTime('disabled_at', 6)->nullable();

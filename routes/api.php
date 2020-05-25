@@ -430,11 +430,7 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
                 Route::get('/{phoneNumberPool}/numbers', 'Company\PhoneNumberPoolController@numbers')
                     ->middleware('can:read,phoneNumberPool,company')
-                    ->name('get-phone-number-pool-numbers');
-
-                Route::delete('/{phoneNumberPool}/numbers', 'Company\PhoneNumberPoolController@deleteNumbers')
-                    ->middleware('can:update,phoneNumberPool,company')
-                    ->name('delete-phone-number-pool-numbers');
+                    ->name('list-phone-number-pool-numbers');
 
                 Route::get('/{phoneNumberPool}/numbers/export', 'Company\PhoneNumberPoolController@exportNumbers')
                     ->middleware('can:read,phoneNumberPool,company')
@@ -502,12 +498,8 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                             ->name('export-company-blocked-calls'); 
                     });
                 });
-               
-
-                
             });
 
-            
 
             /*
             |--------------------------------

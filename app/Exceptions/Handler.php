@@ -75,7 +75,7 @@ class Handler extends ExceptionHandler
             ], 500);
         }
 
-        //var_dump($exception->getTraceAsString()); exit;
+        var_dump($exception->getTraceAsString()); exit;
         parent::render($request, $exception);
     }
 }

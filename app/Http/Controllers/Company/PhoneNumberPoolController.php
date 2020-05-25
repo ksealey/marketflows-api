@@ -16,6 +16,7 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\BankedPhoneNumber;
 use \App\Events\Company\PhoneNumberEvent;
 use \App\Events\Company\PhoneNumberPoolEvent;
+use \App\Jobs\DeletedPhoneNumberPoolJob;
 use App\Helpers\PhoneNumberManager;
 use Validator;
 use Exception;
@@ -111,7 +112,6 @@ class PhoneNumberPoolController extends Controller
                 'json', 
                 new SwapRulesRule()
             ],    
-            'override_campaigns'    => 'bail|boolean',
             'type'                  => 'bail|required|in:Local,Toll-Free',
             'starts_with'           => 'bail|nullable|digits_between:1,10',
             'disabled'              => 'bail|nullable|boolean'
@@ -151,7 +151,8 @@ class PhoneNumberPoolController extends Controller
                                         $type, 
                                         $company->country
                                      );
-            $totalNumbersFound += count($availableNumbers);
+
+            $totalNumbersFound += count($availableNumbers ?: []);
         }
            
         if( $totalNumbersFound < $poolSize ){
@@ -168,8 +169,7 @@ class PhoneNumberPoolController extends Controller
             'created_by'                => $user->id,
             'phone_number_config_id'    => $request->phone_number_config_id,
             'name'                      => $request->name,
-            'swap_rules'                => json_decode($request->swap_rules),
-            'override_campaigns'        => !!$request->override_campaigns,
+            'swap_rules'                => $request->swap_rules,
             'starts_with'               => $startsWith ?: null,
             'disabled_at'               => $request->disabled ? now() : null,
         ]);
@@ -317,7 +317,6 @@ class PhoneNumberPoolController extends Controller
                 'bail',
                 (new PhoneNumberConfigRule($company))
             ],
-            'override_campaigns'    => 'bail|boolean',
             'swap_rules' => [
                 'bail', 
                 'json', 
@@ -338,9 +337,6 @@ class PhoneNumberPoolController extends Controller
 
         if( $request->filled('phone_number_config_id') )
             $phoneNumberPool->phone_number_config_id = $request->phone_number_config_id;
-        
-        if( $request->filled('override_campaigns') )
-            $phoneNumberPool->override_campaigns = $request->override_campaigns ? true : false;
 
         if( $request->filled('swap_rules') ){
             $swapRules = json_decode($request->swap_rules);
@@ -349,7 +345,7 @@ class PhoneNumberPoolController extends Controller
 
         if( $request->filled('disabled') )
             $phoneNumberPool->disabled_at = $request->disabled ? ($phoneNumberPool->disabled_at ?: now()) : null;
-        
+           
         $phoneNumberPool->save();
 
         return response($phoneNumberPool);
@@ -366,15 +362,12 @@ class PhoneNumberPoolController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
     {
-        //  Remove Pool
-        $user         = $request->user();
-        $phoneNumbers = $phoneNumberPool->phone_numbers; 
-
+        DeletedPhoneNumberPoolJob::dispatch($phoneNumberPool);
+        
         $phoneNumberPool->delete();
-        PhoneNumber::whereIn('id', array_column($phoneNumbers->toArray(),'id'))->delete();
 
         return response([
-            'message' => 'Deleted.'
+            'message' => 'Deleted'
         ]);
     }
 
@@ -463,7 +456,7 @@ class PhoneNumberPoolController extends Controller
                 $count, 
                 $type, 
                 $company->country
-            );
+            ) ?: [];
             $totalNumbersFound += count($availableNumbers);
         }
            
@@ -587,7 +580,7 @@ class PhoneNumberPoolController extends Controller
         DB::commit();
 
         return response([
-            'message' => 'Added.',
+            'message' => 'Added',
             'count'   => count($inserts)
         ], 201);
     }
@@ -628,11 +621,12 @@ class PhoneNumberPoolController extends Controller
                     ->update([
                         'phone_number_pool_id' => $phoneNumberPool->id,
                         'assignments'          => 0,
-                        'disabled_at'          => null
+                        'disabled_at'          => null,
+                        'last_assigned_at'     => null
                     ]);
 
         return response([
-            'message' => 'attached',
+            'message' => 'Attached',
             'count'   => count($numberIds)
         ]);
     } 
@@ -672,59 +666,15 @@ class PhoneNumberPoolController extends Controller
                     ->whereIn('id', $numberIds)
                     ->update([
                         'phone_number_pool_id' => null,
-                        'assignments'          => 0
+                        'assignments'          => 0,
+                        'category'             => 'ONLINE',
+                        'sub_category'         => 'WEBSITE',
+                        'swap_rules'           => is_string($phoneNumberPool->swap_rules) ? $phoneNumberPool->swap_rules : json_encode($phoneNumberPool->swap_rules) 
                     ]);
 
         return response([
-            'message' => 'detached',
+            'message' => 'Detached',
             'count'   => count($numberIds)
-        ]);
-    }
-
-   /**
-    * Delete phone numbers from pool
-    * 
-    * @param Request $company
-    * @param Company $company
-    * @param PhoneNumberPool $phoneNumberPool
-    * 
-    * @return Response
-    */
-    public function deleteNumbers(Request $request, Company $company, PhoneNumberPool $phoneNumberPool)
-    {
-        $validator = validator($request->input(), [
-            'ids' => 'required|json'
-        ]);
-
-        if( $validator->fails() )
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-
-        $numberIds = json_decode($request->ids);
-        if( ! is_array($numberIds) ){
-            return response([
-                'error' => 'Numbers must be a json array of phone number ids'
-            ], 400);
-        }
-
-        $numberIds = array_filter($numberIds, function($numId){
-            return is_int($numId);
-        });
-    
-        $phoneNumbers = PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
-                                    ->whereIn('id', $numberIds)
-                                    ->get();
-
-        PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
-                    ->whereIn('id', $numberIds)
-                    ->delete();
-
-        event(new PhoneNumberEvent($company->account, $phoneNumbers, 'delete'));
-
-        return response([ 
-            'message' => 'Deleted.',
-            'count'   => count($phoneNumbers)
         ]);
     }
 
