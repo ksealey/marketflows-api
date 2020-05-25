@@ -3,6 +3,47 @@
 return [
 
     'frontend_app_url' => env('FRONTEND_APP_URL', 'https://app.marketflows.io'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Spoof Email Domains
+    |--------------------------------------------------------------------------
+    |
+    | Maintained list of known spoof email address to reject
+    |
+    */
+    'spoof_email_domains' => [
+        'sharklasers.com',
+        'guerrillamail.info',
+        'grr.la',
+        'guerrillamail.biz',
+        'guerrillamail.com',
+        'guerrillamail.de',
+        'guerrillamail.net',
+        'guerrillamail.org',
+        'pokemail.net',
+        'guerrillamailblock.com',
+        'provlst.com',
+        'prowerl.com',
+        'whowlft.com',
+        'ximtyl.com',
+        'spam4.me',
+        'gvnuclear.com',
+        'andyes.net',
+        'inscriptio.in',
+        'inbox-me.top',
+        'safemail.icu',
+        'privacy-mail.top',
+        'myinbox.icu',
+        'cloud-mail.top',
+        'montokop.pw',
+        'enayu.com',
+        'smart-mail.top',
+        'opten.email', 'optimaweb.me',
+        'wootap.me', 'gurumail.xyz', 'mailsy.top', 'senduvu.com',
+        'tiosparhar.gq', 'cranpiwy.ml', 'sellfb.xyz', '3754445.com', 'fifa55credit.top', 'bibliapopular.org', 'servdorda.cf', 'arizonaapr.com', 'kindvenge.ml', 'alanci.ml', 'wadigum.ml', 'dinozorcocuk.net', 'drcynthiah.com', '8xgve.com', 'kershostter.ga',
+        'wemel.site', 'memeil.top', 'memsg.site'
+    ],
     /*
     |--------------------------------------------------------------------------
     | Application Name

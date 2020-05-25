@@ -50,6 +50,18 @@ class RegisterController extends Controller
             ], 400);
         }
 
+        //
+        //  Make sure it's not a spoof email
+        //
+        $spoofDomains = config('app.spoof_email_domains');
+        $emailDomain  = explode('@', $request->email);
+        $emailDomain  = end($emailDomain);
+        if( in_array($emailDomain, $spoofDomains) ){
+            return response([
+                'error' => 'Invalid email domain'
+            ], 400);
+        }
+
         DB::beginTransaction();
 
         try{

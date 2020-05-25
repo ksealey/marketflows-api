@@ -59,6 +59,32 @@ class AuthTest extends TestCase
         Mail::assertQueued(EmailVerificationEmail::class);
     }
 
+     /**
+     * Test creating an account with a spoof email domain fails
+     * 
+     * @group auth
+     */
+    public function testRegisterFailsWithSpoofEmailDomain()
+    {
+        Mail::fake();
+
+        $account = factory(Account::class)->make();
+        $user    = factory(User::class)->make([
+            'account_name' => $account->name,
+            'account_type' => $account->account_type,
+            'password'     => 'Password1!',
+            'email'        => str_random(10) . '@' . config('app.spoof_email_domains')[0]
+        ]);
+
+        $response = $this->json('POST', route('auth-register'), $user->toArray());
+        $response->assertStatus(400);
+        $response->assertJSONStructure([
+            'error'
+        ]);
+        
+        Mail::assertNotQueued(EmailVerificationEmail::class);
+    }
+
     /**
      * Test creating a duplicate account faile
      * 
