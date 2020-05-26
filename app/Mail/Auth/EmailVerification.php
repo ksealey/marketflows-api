@@ -30,6 +30,9 @@ class EmailVerification extends Mailable
     {
         $this->user = $user;
 
+        EmailVerificationRecord::where('user_id', $this->user->id)
+                                ->delete();
+
         $this->verification = EmailVerificationRecord::create([
             'user_id'       => $this->user->id,  
             'key'           => str_random(40),

@@ -11,6 +11,7 @@ use App\Models\UserSettings;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use \App\Rules\CountryRule;
+use \Carbon\Carbon;
 use Validator;
 use DB;
 use Exception;
@@ -122,5 +123,56 @@ class RegisterController extends Controller
             'account'       => $account,
             'first_login'   => true
         ], 201);
+    }
+
+    /**
+     * Verify email address
+     * 
+     */
+    public function verifyEmail(Request $request)
+    {
+        $rules = [
+            'user_id' => 'required',
+            'key'     => 'required'
+        ];
+
+        $validator = validator($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $verification = EmailVerification::where('user_id', $request->user_id)
+                                         ->where('key', $request->key)
+                                         ->first();
+        if( ! $verification ){
+            return response([
+                'error' => 'Invalid request'
+            ], 400);
+        }
+
+        $verification->delete();
+
+        $expiresAt = new Carbon($verification->expires_at);
+        if( $expiresAt->format('U') <= now()->format('U') ){
+            return response([
+                'error' => 'Verification expired'
+            ], 400);
+        }
+
+        $user = User::find($verification->user_id);
+        if( ! $user ){
+            return response([
+                'error' => 'User no longer exists'
+            ], 400);
+        }
+
+        $user->email_verified_at = now();
+        $user->save();
+
+        return response([
+            'message' => 'Verified'
+        ]);
     }
 }

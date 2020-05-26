@@ -44,9 +44,10 @@ class APICredentialController extends Controller
     {
         $fields = [
             'api_credentials.created_at',
-            'api_credentials.last_used_at',
-            'api_credentials.name'
+            'api_credentials.name',
+            'api_credentials.key',
         ];
+        
         $user  = $request->user();
         $query = APICredential::where('user_id', $user->id);
         

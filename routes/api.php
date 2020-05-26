@@ -34,6 +34,9 @@ Route::middleware(['rate_limit:30,1'])->prefix('auth')->group(function(){
          
     Route::post('/reset-password', 'Auth\LoginController@resetPassword')
          ->name('auth-handle-reset-password');  
+
+    Route::post('/verify-email', 'Auth\RegisterController@verifyEmail')
+         ->name('verify-email');
 });
 
 /*

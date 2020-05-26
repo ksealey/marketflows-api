@@ -5,6 +5,7 @@ COPY . /var/www/app
 COPY .env.prod /var/www/app/.env
 COPY laravel-cron /etc/cron.d/laravel-cron
 COPY laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf 
+COPY laravel-websockets.conf /etc/supervisor/conf.d/laravel-websockets.conf 
 
 # Install dependencies
 WORKDIR /var/www/app
@@ -23,6 +24,7 @@ RUN apt-get update && \
     supervisorctl reread && \
     supervisorctl update && \
     supervisorctl start laravel-worker:* && \
+    supervisorctl start laravel-websockets:* && \
     service supervisor stop
 
-CMD service supervisor start && php artisan serve-ws && apachectl -D FOREGROUND
+CMD service supervisor start && apachectl -D FOREGROUND
