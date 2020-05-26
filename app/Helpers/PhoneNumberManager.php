@@ -6,11 +6,11 @@ use Exception;
 use App;
 use App\Models\BankedPhoneNumber;
 use App\Models\Company\PhoneNumber;
-
+use \Carbon\Carbon;
 
 class PhoneNumberManager
 {
-    protected $client;
+    public $client;
 
     public function __construct(Twilio $client)
     {
@@ -26,15 +26,19 @@ class PhoneNumberManager
             'voiceEnabled' => true,
             'smsEnabled'   => true,
         ]; 
-
+       
         $numbers = [];
-        try{
-            $query = $this->client->availablePhoneNumbers($country);
+        if( App::environment(['local', 'dev', 'development', 'staging']) ){
+            return array_map(function(){
+                $phoneNumber = new \stdClass();
+                $phoneNumber->phoneNumber = config('services.twilio.magic_numbers.available');
+                return $phoneNumber;
+            }, [1,2,3,4,5,6,7,8,9,10]);
+        }
 
-            $query = $type === 'Toll-Free' ? $query->tollFree : $query->local;
-
-            $numbers = $query->read($config, $limit);
-        }catch(Exception $e){}
+        $query   = $this->client->availablePhoneNumbers($country);
+        $query   = $type === 'Toll-Free' ? $query->tollFree : $query->local;
+        $numbers = $query->read($config, $limit);
 
         return $numbers ?: [];
     }
@@ -49,10 +53,10 @@ class PhoneNumberManager
                             'voiceMethod'           => 'POST',
                             'statusCallback'        => route('incoming-call-status-changed'),
                             'statusCallbackMethod'  => 'POST',
-                            'smsUrl'                => route('incoming-sms'),
-                            'smsMethod'             => 'POST',
-                            'mmsUrl'                => route('incoming-mms'),
-                            'mmsMethod'             => 'POST',
+                            //'smsUrl'                => route('incoming-sms'),
+                           // 'smsMethod'             => 'POST',
+                            //'mmsUrl'                => route('incoming-mms'),
+                           // 'mmsMethod'             => 'POST',
                             'voiceCallerIdLookup'   => true
                       ]);
         
@@ -64,6 +68,9 @@ class PhoneNumberManager
      */
     public function releaseNumber($phoneNumber)
     {
+        if( App::environment(['local', 'dev', 'development', 'staging']) )
+            return $this;
+
         $this->client
              ->incomingPhoneNumbers($phoneNumber->external_id)
              ->delete();
@@ -77,14 +84,7 @@ class PhoneNumberManager
      */
     public function bankNumber(PhoneNumber $phoneNumber, $availableNow = false)
     {
-        //  Wipe voice and sms url so we won't be charged for calls
-        $this->client
-             ->incomingPhoneNumbers($phoneNumber->external_id);
-
         //  Make sure it's released 2 days before it will be renewed
-        $purchaseDate  = new Carbon($this->purchased_at);
-        $renewDate     = new Carbon($today->format('Y-m-' . $purchaseDate->format('d')));
-        
         $releaseBy = $phoneNumber->renewalDate()
                                  ->subDays(2);
 

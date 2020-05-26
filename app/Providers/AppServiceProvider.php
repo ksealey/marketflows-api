@@ -56,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function provides()
     {
-        return [Twilio::class];
+        
     }
 
     /**

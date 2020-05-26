@@ -1012,24 +1012,32 @@ class PhoneNumberPoolTest extends TestCase
         $company = $this->createCompany();
         $config  = $this->createConfig($company);
         $pool    = $this->createPhoneNumberPool($company, $config); 
-        $poolData = factory(PhoneNumberPool::class)->make();
 
-        $expectedData = json_decode(json_encode($pool->toArray()), true);
-        unset($expectedData['disabled_at']); // Disabled time may differ by seconds from now
-        unset($expectedData['updated_at']);
-        
+        $poolData  = factory(PhoneNumberPool::class)->make();
+        $newConfig = $this->createConfig($company);
+
         //  Disable
         $response = $this->json('PUT', route('update-phone-number-pool', [
             'company'         => $company->id,
             'phoneNumberPool' => $pool->id
         ]), [
-            'name' => $poolData->name
+            'name' => $poolData->name,
+            'swap_rules' => json_encode($poolData->swap_rules),
+            'phone_number_config_id' => $newConfig->id,
         ]);
         $response->assertStatus(200);
         $response->assertJSON([
             'account_id' => $this->account->id,
             'company_id' => $company->id,
-            'name' => $poolData->name,
+            'name'       => $poolData->name,
+            'swap_rules' => json_decode(json_encode($poolData->swap_rules), true),
+            'phone_number_config_id' => $newConfig->id,
+        ]);
+
+        $this->assertDatabaseHas('phone_number_pools', [
+            'id'                     => $pool->id,
+            'name'                   => $poolData->name,
+            'phone_number_config_id' => $newConfig->id,
         ]);
     }
 

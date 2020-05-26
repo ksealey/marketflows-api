@@ -159,7 +159,8 @@ class PhoneNumberController extends Controller
 
             $bankedNumber->delete();
         }else{
-             //  Look for a phone number that matches the start_with
+            //  Look for a phone number that matches the start_with
+            
             $foundNumbers = $this->numberManager->listAvailable(
                 $startsWith, 
                 1, 
@@ -177,7 +178,7 @@ class PhoneNumberController extends Controller
                                        ->purchase($foundNumbers[0]->phoneNumber);
             }catch(Exception $e){
                 Log::error($e->getTraceAsString());
-                
+
                 return response([
                     'error' => 'Unable to purchase number - Please try again later.'
                 ], 400);
@@ -316,7 +317,7 @@ class PhoneNumberController extends Controller
             $this->numberManager
                  ->bankNumber($phoneNumber, $callsOverThreeDays <= 9 ? true : false); // Make avaiable now if it gets less than or equal to 3 calls per day
         }
-        
+    
         $phoneNumber->deleted_by = $request->user()->id;
         $phoneNumber->deleted_at = now();
         $phoneNumber->save();

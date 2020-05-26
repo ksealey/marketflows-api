@@ -203,7 +203,7 @@ class PhoneNumberPoolController extends Controller
                 'medium'                    => null,
                 'content'                   => null,
                 'campaign'                  => null,
-                'swap_rules'                => json_encode($phoneNumberPool->swap_rules),
+                'swap_rules'                => null,
                 'purchased_at'              => $bankedNumber->purchased_at,
                 'created_at'                => $now,
                 'updated_at'                => $now,
@@ -261,7 +261,7 @@ class PhoneNumberPoolController extends Controller
                     'medium'                    => null,
                     'content'                   => null,
                     'campaign'                  => null,
-                    'swap_rules'                => $request->swap_rules,
+                    'swap_rules'                => null,
                     'purchased_at'              => $now,
                     'created_at'                => $now,
                     'updated_at'                => $now
@@ -338,10 +338,8 @@ class PhoneNumberPoolController extends Controller
         if( $request->filled('phone_number_config_id') )
             $phoneNumberPool->phone_number_config_id = $request->phone_number_config_id;
 
-        if( $request->filled('swap_rules') ){
-            $swapRules = json_decode($request->swap_rules);
-            $phoneNumberPool->swap_rules = $swapRules;
-        }
+        if( $request->filled('swap_rules') )
+            $phoneNumberPool->swap_rules = $request->swap_rules;
 
         if( $request->filled('disabled') )
             $phoneNumberPool->disabled_at = $request->disabled ? ($phoneNumberPool->disabled_at ?: now()) : null;

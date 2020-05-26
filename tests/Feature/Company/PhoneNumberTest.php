@@ -5,7 +5,8 @@ namespace Tests\Feature\Company;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
-use Twilio\Rest\Client as Twilio;
+use Mockery;
+use \Twilio\Rest\Client as Twilio;
 use \App\Models\Account;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\PhoneNumber;
@@ -567,7 +568,7 @@ class PhoneNumberTest extends TestCase
    /**
      * Test user cannot update phone number when email not verified 
      *
-     * @group phone-numbers--
+     * @group phone-numbers
      */
     public function testUserCannotUpdatePhoneNumberWhenEmailNotVerified()
     {
@@ -1644,6 +1645,71 @@ class PhoneNumberTest extends TestCase
         $this->assertDatabaseMissing('phone_numbers', [
             'id'         => $phoneNumber->id,
             'deleted_at' => null
+        ]);
+    }
+
+    /**
+     * Test twilio client function numbers
+     * 
+     * @group phone-numbers--
+     */
+    public function testTwilioListsNumbersWithPurchase()
+    {
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+
+        $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
+
+        $mock = $this->partialMock(PhoneNumberManager::class);
+        $mock->client = $this->partialMock(Twilio::class, function($mock) use($twilioNumber){
+            $query = $this->mock('stdClass');
+            $query->local = $this->mock('stdClass', function($m) use($twilioNumber){
+                $m->shouldReceive('read')->once()->andReturn([$twilioNumber]);
+            });
+
+            $mock->shouldReceive('availablePhoneNumbers')
+                ->once()
+                ->with('US')
+                ->andReturn($query);
+
+            $mock->incomingPhoneNumbers = $this->mock('stdClass', function($mock) use($twilioNumber){
+                    $mock->shouldReceive('create')
+                        ->once()
+                        ->andReturn($twilioNumber);
+            });
+                
+        });
+
+
+        $numberData = factory(PhoneNumber::class)->make();
+        $areaCode   = '813'; 
+
+        $response = $this->json('POST', route('create-phone-number', [
+            'company' => $company->id
+        ]), [
+            'name'        => $numberData->name,
+            'category'    => $numberData->category,
+            'sub_category'=> $numberData->sub_category,
+            'type'        => PhoneNumber::TYPE_LOCAL,
+            'starts_with' => $areaCode,
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'campaign'    => $numberData->campaign,
+            'phone_number_config_id' => $config->id,
+            'swap_rules'  => json_encode($numberData->swap_rules)
+        ]);
+
+        $response->assertStatus(201);
+        $response->assertJSON([
+            'name'        => $numberData->name,
+            'country_code'=> PhoneNumber::countryCode($twilioNumber->phoneNumber),
+            'number'      => PhoneNumber::number($twilioNumber->phoneNumber),
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'campaign'    => $numberData->campaign,
+            'kind' => 'PhoneNumber'
         ]);
     }
 }

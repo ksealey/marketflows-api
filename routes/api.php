@@ -603,6 +603,7 @@ Route::middleware('twilio.webhooks')->group(function(){
 
         Route::get('/collect', 'IncomingCallController@handleCollect')
                 ->name('incoming-call-collect');
+
     });
 
     /*
