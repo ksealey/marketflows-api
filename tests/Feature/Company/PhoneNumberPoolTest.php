@@ -180,7 +180,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            "result_count" => 5,
+            "result_count" => 10,
             "limit"        => 250,
             "page"         => 1,
             "total_pages"  => 1,
@@ -498,7 +498,7 @@ class PhoneNumberPoolTest extends TestCase
             'name' => $poolData->name,
             'type' => PhoneNumber::TYPE_LOCAL,
             'starts_with' => $areaCode,
-            'size' => 5
+            'size'        => 5
         ]);
 
         $response->assertStatus(403);
@@ -932,26 +932,65 @@ class PhoneNumberPoolTest extends TestCase
         $config       = $this->createConfig($company);
         $pool         = $this->createPhoneNumberPool($company, $config);
         $phoneNumber  = $pool->phone_numbers->first();
+
         $response = $this->json('POST', route('detach-phone-number-pool-numbers', [
             'company' => $company->id,
             'phoneNumberPool' => $pool->id,
         ]), [
             'ids' => json_encode([$phoneNumber->id])
         ]);
-
         $response->assertStatus(200);
         $response->assertJSON([
             'message' => 'Detached',
-            'count'   => 1,
+            'count'   => 1
         ]);
 
         $this->assertDatabaseHas('phone_numbers', [
             'id'                    => $phoneNumber->id,
             'phone_number_pool_id'  => null,
             'assignments'           => 0,
-            'disabled_at'           => null,
             'last_assigned_at'      => null
         ]);
+    }
+
+    /**
+     * Test detaching too many numbers from pool fails
+     * 
+     * @group phone-number-pools
+     */
+    public function testDetachingTooManyNumbersFromPoolFails()
+    {
+        $this->createPaymentMethod();
+
+        $company = $this->createCompany();
+        $config  = $this->createConfig($company);
+        $pool    = $this->createPhoneNumberPool($company, $config);
+
+        $ids = [];
+        foreach( $pool->phone_numbers as $i => $pn ){
+            $ids[] = $pn->id;
+
+            if( $i >= 5 ) break;
+        }
+
+        $response = $this->json('POST', route('detach-phone-number-pool-numbers', [
+            'company' => $company->id,
+            'phoneNumberPool' => $pool->id,
+        ]), [
+            'ids' => json_encode($ids)
+        ]);
+        $response->assertStatus(400);
+        $response->assertJSONStructure([
+            'error'
+        ]);
+
+        foreach( $pool->phone_numbers as $i => $pn ){
+            $this->assertDatabaseHas('phone_numbers', [
+                'id'                    => $pn->id,
+                'phone_number_pool_id'  => $pool->id
+            ]);
+        }
+       
     }
 
     /*
@@ -1084,13 +1123,13 @@ class PhoneNumberPoolTest extends TestCase
         $pool    = $this->createPhoneNumberPool($company, $config); 
 
         $pool->phone_numbers->each(function($phoneNumber){
-            $phoneNumber->purchased_at = now()->subMonths(1)->addDays(5); // Renews in 4 days
+            $phoneNumber->purchased_at = now()->subMonths(1)->addDays(4); // Renews in 4 days
             $phoneNumber->save();
         });
 
         $this->mock(PhoneNumberManager::class, function ($mock){
             $mock->shouldReceive('releaseNumber')
-                 ->times(5)
+                 ->times(10)
                  ->with(PhoneNumber::class);
         });
 
@@ -1131,7 +1170,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $this->mock(PhoneNumberManager::class, function ($mock){
             $mock->shouldReceive('releaseNumber')
-                 ->times(5)
+                 ->times(10)
                  ->with(PhoneNumber::class);
         });
 
@@ -1178,7 +1217,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $this->mock(PhoneNumberManager::class, function ($mock){
             $mock->shouldReceive('bankNumber')
-                 ->times(5)
+                 ->times(10)
                  ->with(PhoneNumber::class, false);
         });
 
@@ -1237,7 +1276,7 @@ class PhoneNumberPoolTest extends TestCase
 
         $this->mock(PhoneNumberManager::class, function ($mock){
             $mock->shouldReceive('bankNumber')
-                 ->times(5)
+                 ->times(10)
                  ->with(PhoneNumber::class, true);
         });
 

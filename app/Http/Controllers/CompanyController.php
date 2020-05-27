@@ -48,7 +48,10 @@ class CompanyController extends Controller
             'companies.*',
             'phone_number_pools.id AS phone_number_pool_id'
         ])->where('companies.account_id', $user->account_id)
-         ->leftJoin('phone_number_pools', 'phone_number_pools.company_id', 'companies.id');
+         ->leftJoin('phone_number_pools',function($query){
+            $query->on('phone_number_pools.company_id', '=', 'companies.id')
+                  ->whereNull('phone_number_pools.deleted_at');
+         });
 
         if( ! $user->canViewAllCompanies() ){
             $query->whereIn('companies.id', function($query) use($user){

@@ -39,7 +39,6 @@ class User extends Authenticatable
         'auth_token',
         'email_verified_at',
         'phone_verified_at',
-        'first_login_at',
         'last_login_at',
         'login_disabled_until',
         'login_attempts',
@@ -141,10 +140,10 @@ class User extends Authenticatable
 
     public function getStatusAttribute()
     {
-        if( $this->login_disabled_until )
+        if( $this->login_disabled_until || $this->login_disabled_until )
             return 'Disabled';
 
-        if( ! $this->first_login_at )
+        if( ! $this->last_login_at )
             return 'Inactive';
 
         return 'Active';

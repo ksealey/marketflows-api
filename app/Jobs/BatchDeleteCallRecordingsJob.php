@@ -36,7 +36,7 @@ class BatchDeleteCallRecordingsJob implements ShouldQueue
                     ->whereIn('call_id', function($q){
                         $q->select('id')
                           ->from('calls')
-                          ->where('company_id', $this->company->id); 
+                          ->where('company_id', $this->companyId); 
                     })
                     ->get()
                     ->each(function($callRecording){

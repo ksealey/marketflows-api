@@ -93,7 +93,7 @@ class RegisterController extends Controller
                 'email'                     => $request->email,
                 'password_hash'             => bcrypt($request->password),
                 'auth_token'                => str_random(255),
-                'first_login_at'            => now()
+                'last_login_at'             => now()
             ]);
 
             UserSettings::create([
@@ -116,6 +116,7 @@ class RegisterController extends Controller
 
         $account->payment_methods = [];
         $account->past_due_amount = number_format(0.00, 2);
+        $account->in_demo         = true;
         
         return response([
             'auth_token'    => $user->auth_token,

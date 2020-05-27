@@ -103,7 +103,7 @@ trait CreatesAccount
             'phone_number_config_id' => $config->id
         ], $with));
 
-        factory(PhoneNumber::class, 5)->create([
+        factory(PhoneNumber::class, 10)->create([
             'created_by' => $this->user->id,
             'account_id' => $company->account_id,
             'company_id' => $company->id,

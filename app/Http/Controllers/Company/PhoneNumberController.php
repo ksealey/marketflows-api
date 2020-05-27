@@ -56,6 +56,7 @@ class PhoneNumberController extends Controller
                     ->whereNull('phone_numbers.phone_number_pool_id')
                     ->whereNull('phone_numbers.deleted_at')
                     ->where('phone_numbers.company_id', $company->id);
+        
 
         //  Pass along to parent for listing
         return parent::results(
@@ -310,7 +311,7 @@ class PhoneNumberController extends Controller
         //  or it gets more than 10 calls per day over the last 3 days
         $callsOverThreeDays = $phoneNumber->callsForPreviousDays(3);
 
-        if( $phoneNumber->willRenewInDays(5) || $callsOverThreeDays >= 30 ){
+        if( $phoneNumber->willRenewBeforeDays(5) || $callsOverThreeDays >= 30 ){
             $this->numberManager
                  ->releaseNumber($phoneNumber);
         }else{

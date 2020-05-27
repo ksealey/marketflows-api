@@ -242,7 +242,7 @@ class PhoneNumber extends Model implements Exportable
      * 
      * @return bool
      */
-    public function willRenewInDays(int $days)
+    public function willRenewBeforeDays(int $days)
     {
         return today()->diff($this->renewalDate())->days <= $days;
     }

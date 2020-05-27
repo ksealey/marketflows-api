@@ -28,7 +28,6 @@ class CreateUsersTable extends Migration
             $table->string('auth_token', 255);
             $table->dateTime('email_verified_at')->nullable();
             $table->dateTime('phone_verified_at')->nullable();
-            $table->dateTime('first_login_at')->nullable();
             $table->dateTime('last_login_at')->nullable();
             $table->boolean('login_disabled')->default(0);
             $table->dateTime('login_disabled_until')->nullable();

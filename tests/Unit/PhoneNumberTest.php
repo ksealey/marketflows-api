@@ -15,7 +15,7 @@ class PhoneNumberTest extends TestCase
      * 
      * @group phone-numbers-unit
      */
-    public function testWillRenewInDays()
+    public function testwillRenewBeforeDays()
     {
         $company = $this->createCompany();
         $config  = $this->createConfig($company);
@@ -23,16 +23,16 @@ class PhoneNumberTest extends TestCase
             'purchased_at' => now()->subMonths(1)->addDays(5)
         ]);
 
-        $this->assertTrue($phoneNumber->willRenewInDays(8));
-        $this->assertTrue($phoneNumber->willRenewInDays(7));
-        $this->assertTrue($phoneNumber->willRenewInDays(6));
-        $this->assertTrue($phoneNumber->willRenewInDays(5));
-        $this->assertFalse($phoneNumber->willRenewInDays(4));
-        $this->assertFalse($phoneNumber->willRenewInDays(3));
-        $this->assertFalse($phoneNumber->willRenewInDays(2));
-        $this->assertFalse($phoneNumber->willRenewInDays(1));
-        $this->assertFalse($phoneNumber->willRenewInDays(0));
-        $this->assertFalse($phoneNumber->willRenewInDays(-1));
+        $this->assertTrue($phoneNumber->willRenewBeforeDays(8));
+        $this->assertTrue($phoneNumber->willRenewBeforeDays(7));
+        $this->assertTrue($phoneNumber->willRenewBeforeDays(6));
+        $this->assertFalse($phoneNumber->willRenewBeforeDays(5));
+        $this->assertFalse($phoneNumber->willRenewBeforeDays(4));
+        $this->assertFalse($phoneNumber->willRenewBeforeDays(3));
+        $this->assertFalse($phoneNumber->willRenewBeforeDays(2));
+        $this->assertFalse($phoneNumber->willRenewBeforeDays(1));
+        $this->assertFalse($phoneNumber->willRenewBeforeDays(0));
+        $this->assertFalse($phoneNumber->willRenewBeforeDays(-1));
     }
 
     /**

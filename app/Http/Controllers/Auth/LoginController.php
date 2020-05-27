@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\PaymentMethod;
 use App\Mail\Auth\PasswordReset as PasswordResetEmail;
 use Validator;
 use DateTime;
@@ -81,25 +82,26 @@ class LoginController extends Controller
             }
         }
 
+        $firstLogin                      = ! $user->last_login_at ? true : false;
         $user->login_attempts            = 0;
         $user->login_disabled_until      = null;
         $user->last_login_at             = now();
         $user->auth_token                = str_random(255);
         $user->password_reset_token      = null;
         $user->password_reset_expires_at = null;
-        
-        if( ! $user->first_login_at )
-            $user->first_login_at = now();
-        
-        
         $user->save();
+
+        $account          = $user->account;
+        $account->in_demo = PaymentMethod::withTrashed()
+                                         ->where('account_id', $account->id)
+                                         ->count() ? false : true;
 
         return response([
             'message'       => 'created',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
-            'account'       => $user->account,
-            'first_login'   => false
+            'account'       => $account,
+            'first_login'   => $firstLogin
         ], 200);
     }
 

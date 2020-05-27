@@ -623,6 +623,8 @@ class PhoneNumberPoolController extends Controller
                     ->update([
                         'phone_number_pool_id' => $phoneNumberPool->id,
                         'assignments'          => 0,
+                        'category'             => 'ONLINE',
+                        'sub_category'         => 'WEBSITE',
                         'disabled_at'          => null,
                         'last_assigned_at'     => null
                     ]);
@@ -663,6 +665,15 @@ class PhoneNumberPoolController extends Controller
         $numberIds = array_filter($numberIds, function($numId){
             return is_int($numId);
         });
+
+        $resultCount = PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
+                                  ->whereNotIn('id', $numberIds)
+                                  ->count();
+        if( $resultCount < 5 ){
+            return response([
+                'error' => 'Keyword tracking pools must contain at least 5 numbers'
+            ], 400);
+        }
     
         PhoneNumber::where('phone_number_pool_id', $phoneNumberPool->id)
                     ->whereIn('id', $numberIds)
@@ -671,6 +682,7 @@ class PhoneNumberPoolController extends Controller
                         'assignments'          => 0,
                         'category'             => 'ONLINE',
                         'sub_category'         => 'WEBSITE',
+                        'disabled_at'          => now(),
                         'swap_rules'           => is_string($phoneNumberPool->swap_rules) ? $phoneNumberPool->swap_rules : json_encode($phoneNumberPool->swap_rules) 
                     ]);
 

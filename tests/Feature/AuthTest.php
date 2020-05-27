@@ -137,7 +137,8 @@ class AuthTest extends TestCase
     {
         $account = factory(Account::class)->create();
         $user    = factory(User::class)->create([
-            'account_id' => $account->id,
+            'account_id'    => $account->id,
+            'last_login_at' => now()
         ]);
 
         $response = $this->json('POST', route('auth-login'), [

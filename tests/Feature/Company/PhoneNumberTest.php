@@ -1512,7 +1512,7 @@ class PhoneNumberTest extends TestCase
         $company     = $this->createCompany();
         $config      = $this->createConfig($company);
         $phoneNumber = $this->createPhoneNumber($company, $config, [
-            'purchased_at' => now()->subMonths(1)->addDays(5) // Renews in 4 days
+            'purchased_at' => now()->subMonths(1)->addDays(4) // Renews in 4 days
         ]); 
 
         $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){

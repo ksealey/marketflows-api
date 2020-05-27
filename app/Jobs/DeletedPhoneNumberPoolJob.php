@@ -44,7 +44,7 @@ class DeletedPhoneNumberPoolJob implements ShouldQueue
             //  or it gets more than 10 calls per day over the last 3 days
             $callsOverThreeDays = $phoneNumber->callsForPreviousDays(3);
 
-            if( $phoneNumber->willRenewInDays(5) || $callsOverThreeDays >= 30 ){
+            if( $phoneNumber->willRenewBeforeDays(5) || $callsOverThreeDays >= 30 ){
                 $this->numberManager
                      ->releaseNumber($phoneNumber);
             }else{
