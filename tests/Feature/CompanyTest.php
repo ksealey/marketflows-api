@@ -17,7 +17,7 @@ use \App\Models\Company\Report;
 use \App\Models\Company\ReportAutomation;
 use \App\Helpers\PhoneNumberManager;
 use \App\Jobs\BatchDeleteAudioJob;
-use \App\Jobs\BatchHandleDeletedPhoneNumbersJob;
+use \App\Jobs\BatchDeletePhoneNumbersJob;
 use \App\Jobs\BatchDeleteCallRecordingsJob;
 use \App\Jobs\ExportResultsJob;
 use Storage;
@@ -381,6 +381,7 @@ class CompanyTest extends TestCase
     public function testDeleteCompany()
     {
         Queue::fake();
+        Storage::fake();
 
         $data           = $this->createCompanies();
         $company        = $data['company'];
@@ -412,17 +413,6 @@ class CompanyTest extends TestCase
             'id' => $company->id,
             'deleted_at' => null
         ]);
-
-        //  Audio clips
-        $this->assertDatabaseHas('audio_clips', [
-            'company_id' => $company->id,
-            'deleted_by' => $this->user->id
-        ]);
-        $this->assertDatabaseMissing('audio_clips', [
-            'company_id' => $company->id,
-            'deleted_at' => null
-        ]);
-
 
         //  Phone number configs
         $this->assertDatabaseHas('phone_number_configs', [
@@ -464,15 +454,7 @@ class CompanyTest extends TestCase
             'deleted_at' => null
         ]);
 
-        //  Call recordings
-        $callRecordingCount = CallRecording::whereIn('call_id', function($q) use($company){
-            $q->select('id')
-              ->from('calls')
-              ->where('company_id', $company->id);
-        })->count(); 
-        $this->assertEquals($callRecordingCount, 0);
-
-        //  Blocked phone numbers
+        //  Blocked phone numbers (Company)
         $this->assertDatabaseHas('blocked_phone_numbers', [
             'company_id' => $company->id,
             'deleted_by' => $this->user->id
@@ -482,7 +464,17 @@ class CompanyTest extends TestCase
             'deleted_at' => null
         ]);
 
-        //  Blocked Calls
+         //  Blocked phone numbers (Account)
+         $this->assertDatabaseHas('blocked_phone_numbers', [
+            'company_id' => $company->id,
+            'deleted_by' => $this->user->id
+        ]);
+        $this->assertDatabaseMissing('blocked_phone_numbers', [
+            'company_id' => $company->id,
+            'deleted_at' => null
+        ]);
+
+        //  Blocked Calls (Company)
         $this->assertDatabaseMissing('blocked_calls', [
             'phone_number_id' => $phoneNumber->id,
             'deleted_at'      => null
@@ -504,14 +496,95 @@ class CompanyTest extends TestCase
         ]);
 
         //  Make sure the batch jobs to delete remote resources were dispatched
-        Queue::assertPushed(BatchDeleteAudioJob::class, 1, function ($job) use ($company) {
-            return $company->id === $job->companyId;
+        Queue::assertPushed(BatchDeleteAudioJob::class, function ($job) use ($company) {
+            return $job->company->id === $company->id && $job->user->id === $this->user->id;
         });
-        Queue::assertPushed(BatchHandleDeletedPhoneNumbersJob::class, 1, function ($job) use ($company) {
-            return $company->id === $job->companyId;
+        Queue::assertPushed(BatchDeletePhoneNumbersJob::class, function ($job) use ($company) {
+            return $job->company->id === $company->id && $job->user->id === $this->user->id;
         });
-        Queue::assertPushed(BatchDeleteCallRecordingsJob::class, 1, function ($job) use ($company) {
-            return $company->id === $job->companyId;
+        Queue::assertPushed(BatchDeleteCallRecordingsJob::class, function ($job) use ($company) {
+            return $job->company->id === $company->id && $job->user->id === $this->user->id;
         });
+    }
+
+    /**
+     * Test that the back jobs for companies work as eexpected
+     * 
+     * @group companies--
+     */
+    public function testDeleteCompaniesBatchJobsWork()
+    {
+        $data           = $this->createCompanies();
+        $company        = $data['company'];
+        $audioClip      = $data['audio_clip'];
+        $phoneNumber    = $data['phone_number'];
+        $pool           = $data['phone_number_pool'];
+        $report         = $data['report'];
+
+        //
+        //  Make sure the files are there originally
+        //
+        Storage::assertExists($audioClip->path);
+        CallRecording::whereIn('call_id', function($q) use($company){
+            $q->select('id')
+              ->from('calls')
+              ->where('company_id', $company->id); 
+        })
+        ->get()
+        ->each(function($callRecording){
+            Storage::assertExists($callRecording->path);
+        });
+
+        //
+        //  Make sure the numbers are releases
+        //
+        $poolNumberCount = count($pool->phone_numbers); // Pool numbers should be released due to date
+        $this->mock(PhoneNumberManager::class, function($mock) use($poolNumberCount){
+            $mock->shouldReceive('releaseNumber')
+                 ->times($poolNumberCount)
+                 ->andReturn($mock);
+
+            $mock->shouldReceive('bankNumber')
+                 ->once()
+                 ->andReturn($mock);
+        });
+
+        //    
+        //  Perform delete
+        //
+        $response = $this->json('DELETE', route('delete-company', [
+            'company' => $company->id
+        ]));
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'message' => 'deleted'
+        ]);
+
+        //
+        //  Make sure audio clip files are deleted
+        //
+        AudioClip::withTrashed()
+                 ->where('company_id', $company->id)
+                 ->get()
+                 ->each(function($audioClip){
+                    Storage::assertMissing($audioClip->path);
+                });
+
+        //
+        //  Make sure the call recording files are deleted
+        //
+        CallRecording::withTrashed()
+                     ->whereIn('call_id', function($q) use($company){
+                        $q->select('id')
+                            ->from('calls')
+                            ->where('company_id', $company->id); 
+                    })
+                    ->get()
+                    ->each(function($callRecording){
+                        Storage::assertMissing($callRecording->path);
+                    });
+
+
+        
     }
 }

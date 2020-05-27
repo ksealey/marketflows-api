@@ -6,6 +6,8 @@ use \App\Models\Account;
 use \App\Models\Billing;
 use \App\Models\User;
 use App\Models\PaymentMethod;
+use \App\Models\AccountBlockedPhoneNumber;
+use \App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
 use App\Models\Company;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Report;
@@ -187,8 +189,15 @@ trait CreatesAccount
             'company_id' => $phoneNumber->company_id,
             'phone_number_id' =>$phoneNumber->id
         ])->each(function($call){
+            $path = '/to-recording/' . str_random(10) . '.mp3';
+            Storage::put($path, 'foobar');
             factory(CallRecording::class)->create([
-                'call_id' => $call->id
+                'call_id' => $call->id,
+                'path'     => $path
+            ]);
+            factory(CallRecording::class)->create([
+                'call_id' => $call->id,
+                'path'    => $path
             ]);
         });
         
@@ -215,10 +224,17 @@ trait CreatesAccount
                 'account_id' => $poolNumber->account_id,
                 'company_id' => $poolNumber->company_id,
                 'phone_number_id' => $poolNumber->id
-            ]);
+            ])->each(function($call){
+                $path = '/to-recording/' . str_random(10) . '.mp3';
+                Storage::put($path, 'foobar');
+                factory(CallRecording::class)->create([
+                    'call_id' => $call->id,
+                    'path'     => $path
+                ]);
+            });
         });
 
-        //  Blocked Numbers
+        //  Blocked Numbers (Company)
         factory(BlockedPhoneNumber::class, 2)->create([
             'account_id' => $this->account->id,
             'company_id' => $company->id,
@@ -227,6 +243,17 @@ trait CreatesAccount
             factory(BlockedCall::class, 2)->create([
                 'blocked_phone_number_id' => $blockedNumber->id,
                 'phone_number_id'         => $phoneNumber->id,
+            ]);
+        });
+
+         //  Blocked Numbers (Account)
+         factory(AccountBlockedPhoneNumber::class, 2)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id
+        ])->each(function($accountBlockedNumber) use($phoneNumber){
+            factory(AccountBlockedCall::class, 2)->create([
+                'account_blocked_phone_number_id' => $accountBlockedNumber->id,
+                'phone_number_id'                 => $phoneNumber->id,
             ]);
         });
 

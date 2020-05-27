@@ -9,14 +9,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Company\PhoneNumber;
 use App\Helpers\PhoneNumberManager;
+use App\Models\User;
+use App\Models\Company;
 use App;
 
-class BatchHandleDeletedPhoneNumbersJob implements ShouldQueue
+class BatchDeletePhoneNumbersJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $companyId;
-
+    public $user;
+    public $company;
     public $numberManager;
 
     /**
@@ -24,11 +26,10 @@ class BatchHandleDeletedPhoneNumbersJob implements ShouldQueue
      *
      * @return void
      */
-    public function __construct($companyId)
+    public function __construct(User $user, Company $company)
     {
-        $this->companyId = $companyId;
-
-        $this->numberManager = App::make(PhoneNumberManager::class);
+        $this->user    = $user;
+        $this->company = $company;
     }
 
     /**
@@ -38,20 +39,32 @@ class BatchHandleDeletedPhoneNumbersJob implements ShouldQueue
      */
     public function handle()
     {
-        PhoneNumber::withTrashed()
-                    ->where('company_id', $this->companyId)
+        $this->numberManager = App::make(PhoneNumberManager::class);
+        
+        //
+        //  Release or bank remote number
+        //
+        PhoneNumber::where('company_id', $this->company->id)
                     ->get()
                     ->each(function($phoneNumber){
                         if( $phoneNumber->willRenewBeforeDays(5) ){
                             $this->numberManager
                                  ->releaseNumber($phoneNumber);
 
-                            usleep(250); // Only allow 4 api requests per second
+                            usleep(250); // Limit to 4 requests per second
                         }else{
+                            
                             $this->numberManager
                                  ->bankNumber($phoneNumber);
                         }
-                           
-                    });  
+                    }); 
+        //
+        //  Delete from database
+        //
+        PhoneNumber::where('company_id', $this->company->id)
+                    ->update([
+                        'deleted_by' => $this->user->id,
+                        'deleted_at' => now()
+                    ]);
     }
 }
