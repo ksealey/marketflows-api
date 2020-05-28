@@ -126,10 +126,12 @@ class PaymentMethodController extends Controller
             ], 400);
         }
 
-        $paymentMethod->delete();
+        $paymentMethod->deleted_at = now();
+        $paymentMethod->deleted_by = $user->id;
+        $paymentMethod->save();
 
         return response([
-            'message' => 'Deleted.'        
+            'message' => 'Deleted'        
         ], 200);
     }
 

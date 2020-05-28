@@ -47,15 +47,14 @@ class BatchDeletePhoneNumbersJob implements ShouldQueue
         PhoneNumber::where('company_id', $this->company->id)
                     ->get()
                     ->each(function($phoneNumber){
-                        if( $phoneNumber->willRenewBeforeDays(5) ){
+                        $callsOverThreeDays = $phoneNumber->callsForPreviousDays(3);
+                        if( $phoneNumber->willRenewBeforeDays(5) || $callsOverThreeDays >= 30 ){
                             $this->numberManager
                                  ->releaseNumber($phoneNumber);
-
                             usleep(250); // Limit to 4 requests per second
                         }else{
-                            
                             $this->numberManager
-                                 ->bankNumber($phoneNumber);
+                                 ->bankNumber($phoneNumber, $callsOverThreeDays <= 9 ? true : false); // Make avaiable now if it gets less than or equal to 3 calls per day
                         }
                     }); 
         //

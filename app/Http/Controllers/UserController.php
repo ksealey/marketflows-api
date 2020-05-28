@@ -202,13 +202,16 @@ class UserController extends Controller
 
     public function delete(Request $request, User $user)
     {
-        if( $user->id === $request->user()->id ){
+        $me = $request->user();
+        if( $user->id === $me->id ){
             return response([
                 'error' => 'You cannot delete your own account!'
             ], 400);
         }
         
-        $user->delete();
+        $user->deleted_at = now();
+        $user->deleted_by = $me->id;
+        $user->save();
 
         return response([
             'message' => 'deleted'
