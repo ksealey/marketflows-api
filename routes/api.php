@@ -547,6 +547,38 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                     ->name('export-report');
             }); 
 
+             /*
+            --------------------------------
+            | Handle contacts
+            |--------------------------------
+            */
+            Route::prefix('contacts')->group(function(){
+                Route::get('/', 'Company\ContactController@list')
+                     ->middleware('can:list,\App\Models\Company\Contact,company')
+                     ->name('list-contacts');
+
+                Route::get('/export', 'Company\ContactController@export')
+                     ->middleware('can:list,\App\Models\Company\Contact,company')
+                     ->name('export-contacts');
+
+                Route::post('/', 'Company\ContactController@create')
+                     ->middleware('can:create,\App\Models\Company\Contact,company')
+                     ->name('create-contact');
+
+                Route::get('/{contact}', 'Company\ContactController@read')
+                     ->middleware('can:update,contact,company')
+                     ->name('read-contact');
+
+                Route::put('/{contact}', 'Company\ContactController@update')
+                     ->middleware('can:update,contact,company')
+                     ->name('update-contact');
+
+                Route::delete('/{contact}', 'Company\ContactController@delete')
+                     ->middleware('can:update,contact,company')
+                     ->name('delete-contact');
+            });
+
+
             /*
             |--------------------------------
             | Handle calls
@@ -616,14 +648,4 @@ Route::middleware('twilio.webhooks')->group(function(){
 
     Route::post('incoming-sms', 'IncomingSMSController@handleMms')
             ->name('incoming-mms');
-
-    /*
-    |-----------------------------------------
-    | Handle web sessions
-    |------------------------------------------
-    */
-    Route::middleware('rate_limit:30,1')->prefix('web-sessions')->group(function(){
-        Route::post('/', 'WebSessionController@create');
-        Route::any('/{sessionUUID}/end', 'WebSessionController@end');
-    });
 });
