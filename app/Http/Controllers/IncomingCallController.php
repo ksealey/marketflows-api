@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\AccountBlockedPhoneNumber;
 use App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
 use App\Models\BankedPhoneNumber;
+use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\PhoneNumberPool;
@@ -74,7 +75,7 @@ class IncomingCallController extends Controller
         if( $dialedCountryCode )
             $query->where('country_code', $dialedCountryCode);
         
-        //  If we don't recorgnize this call
+        //  If we don't recognize this call
         $phoneNumber = $query->first();
         if( ! $phoneNumber ){
             $query = BankedPhoneNumber::where('number', $dialedNumber); 
@@ -150,16 +151,37 @@ class IncomingCallController extends Controller
         }
 
         //
-        //  Look for last call from this number
+        //  Look for contact and create if not exists
         //
-        $query = Call::where('caller_number', $callerNumber)
-                     ->where('company_id', $phoneNumber->company_id)
-                     ->orderBy('created_at', 'DESC');
-
-        if( $callerCountryCode )
-            $query->where('caller_country_code', $callerCountryCode);
-
-        $lastCall = $query->first();
+        $cleanFullPhone = $callerCountryCode . $callerNumber;
+        $contact = Contact::where('company_id', $phoneNumber->company_id)
+                          ->where('phone', $cleanFullPhone)
+                          ->first();
+        if( ! $contact ){
+            $firstCall  = true;
+            $callerName = $request->CallerName ?: null;
+            if( ! $callerName ){
+                $callerName  = trim(strtolower($request->FromCity  ?: '') . ' ' . ($request->FromState ?: ''));
+            }
+            
+            $callerName       = str_replace(',', ' ', ($callerName ? $callerName : 'Unknown Caller'));
+            $callerNamePieces = explode(' ', $callerName);
+    
+            $contact = Contact::create([
+                'account_id'    => $phoneNumber->account_id,
+                'company_id'    => $phoneNumber->company_id,
+                'first_name'    => $callerNamePieces[0],
+                'last_name'     => !empty($callerNamePieces[1]) ? $callerNamePieces[1] : '',
+                'email'         => null,
+                'phone'         => $cleanFullPhone,
+                'city'          => $request->FromCity ? substr($request->FromCity, 0, 64) : null,
+                'state'         => $request->FromState ? substr($request->FromState, 0, 64) : null,
+                'zip'           => $request->FromZip ? substr($request->FromZip, 0, 64) : null,
+                'country'       => $request->FromCountry ? substr($request->FromCountry, 0, 64) : null
+            ]);
+        }else{
+            $firstCall = false;
+        }
 
         //
         //  Determine how to route this call and capture sourcing data
@@ -199,34 +221,20 @@ class IncomingCallController extends Controller
         //
         //  Log call
         //
-        $callerName = $request->CallerName ?: null;
-        if( ! $callerName ){
-            $callerName  = strtolower($request->FromCity  ?: '');
-            if( $request->FromState )
-                $callerName .= ($callerName ? ', ' : '') . $request->FromState;
-        }
-        $callerName = ucfirst(trim($callerName));
-    
         $call = Call::create([
             'account_id'                => $phoneNumber->account_id,
             'company_id'                => $phoneNumber->company_id,
             'phone_number_id'           => $phoneNumber->id,
+            'contact_id'                => $contact->id,
             'type'                      => $phoneNumber->type,
             'category'                  => $phoneNumber->category,
             'sub_category'              => $phoneNumber->sub_category,
             'phone_number_pool_id'      => $phoneNumber->phone_number_pool_id ?: null,
-            'first_call'                => $lastCall ? 0 : 1,
+            'first_call'                => $firstCall,
             'tracking_session_id'       => $trackingSessionId,
             'external_id'               => $request->CallSid,
             'direction'                 => substr(ucfirst($request->Direction), 0, 16),
             'status'                    => substr(ucfirst($request->CallStatus), 0, 64),
-            'caller_name'               => substr($callerName, 0, 64),
-            'caller_country_code'       => PhoneNumber::countryCode($request->From) ?: null,
-            'caller_number'             => PhoneNumber::number($request->From),
-            'caller_city'               => $request->FromCity ? substr($request->FromCity, 0, 64) : null,
-            'caller_state'              => $request->FromState ? substr($request->FromState, 0, 64) : null,
-            'caller_zip'                => $request->FromZip ? substr($request->FromZip, 0, 64) : null,
-            'caller_country'            => $request->FromCountry ? substr($request->FromCountry, 0, 64) : null,
             'source'                    => $source,
             'medium'                    => $medium,
             'content'                   => $content,

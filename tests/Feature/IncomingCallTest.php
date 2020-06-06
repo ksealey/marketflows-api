@@ -19,7 +19,7 @@ class IncomingCallTest extends TestCase
     /**
      * Test handling an incoming call with no options
      * 
-     * @group incoming-calls
+     * @group incoming-calls--
      */
     public function testValidIncomingCallWithNoOptions()
     {
@@ -41,6 +41,32 @@ class IncomingCallTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml');
         
         $response->assertStatus(200);
+
+        $this->assertDatabaseHas('contacts', [
+            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+        ]);
+
+        $this->assertDatabaseHas('calls', [
+            'account_id'            => $this->account->id,
+            'company_id'            => $company->id,
+            'phone_number_id'       => $phoneNumber->id,
+            'type'                  => $phoneNumber->type,
+            'category'              => $phoneNumber->category,
+            'sub_category'          => $phoneNumber->sub_category,
+            'phone_number_pool_id'  => null,
+            'tracking_session_id'   => null,
+            'external_id'           => $incomingCall->CallSid,
+            'direction'             => ucfirst($incomingCall->Direction),
+            'status'                => ucfirst($incomingCall->CallStatus),
+            'source'                => $phoneNumber->source,
+            'medium'                => $phoneNumber->medium,
+            'content'               => $phoneNumber->content,
+            'campaign'              => $phoneNumber->campaign,
+            'recording_enabled'     => $config->recording_enabled,
+            'forwarded_to'          => $config->forwardToPhoneNumber(),
+            'duration'              => null,
+        ]);
+
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
         
     }
@@ -48,7 +74,7 @@ class IncomingCallTest extends TestCase
     /**
      * Test handling an incoming call with recording enabled
      * 
-     * @group incoming-calls
+     * @group incoming-calls--
      */
     public function testValidIncomingCallWithRecordingEnabled()
     {
@@ -71,6 +97,10 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
 
+        $this->assertDatabaseHas('contacts', [
+            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+        ]);
+
         $this->assertDatabaseHas('calls', [
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
@@ -83,12 +113,6 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
-            'caller_city'           => $incomingCall->FromCity,
-            'caller_state'          => $incomingCall->FromState,
-            'caller_zip'            => $incomingCall->FromZip,
-            'caller_country'        => $incomingCall->FromCountry,
             'source'                => $phoneNumber->source,
             'medium'                => $phoneNumber->medium,
             'content'               => $phoneNumber->content,
@@ -104,7 +128,7 @@ class IncomingCallTest extends TestCase
     /**
      * Test handling an incoming call with recording and greeting enabled with Message
      * 
-     * @group incoming-calls
+     * @group incoming-calls--
      */
     public function testValidIncomingCallWithRecordingAndGreetingEnabledMessage()
     {
@@ -128,6 +152,10 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
         
+        $this->assertDatabaseHas('contacts', [
+            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+        ]);
+
         $this->assertDatabaseHas('calls', [
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
@@ -136,16 +164,10 @@ class IncomingCallTest extends TestCase
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
             'phone_number_pool_id'  => null,
-            'tracking_session_id'    => null,
+            'tracking_session_id'   => null,
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
-            'caller_city'           => $incomingCall->FromCity,
-            'caller_state'          => $incomingCall->FromState,
-            'caller_zip'            => $incomingCall->FromZip,
-            'caller_country'        => $incomingCall->FromCountry,
             'source'                => $phoneNumber->source,
             'medium'                => $phoneNumber->medium,
             'content'               => $phoneNumber->content,
@@ -164,7 +186,7 @@ class IncomingCallTest extends TestCase
     /**
      * Test handling an incoming call with recording and greeting enabled using an audio clip
      * 
-     * @group incoming-calls
+     * @group incoming-calls--
      */
     public function testValidIncomingCallWithRecordingAndGreetingEnabledAudioClip()
     {
@@ -189,6 +211,10 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
         
+        $this->assertDatabaseHas('contacts', [
+            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+        ]);
+
         $this->assertDatabaseHas('calls', [
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
@@ -201,12 +227,6 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
-            'caller_city'           => $incomingCall->FromCity,
-            'caller_state'          => $incomingCall->FromState,
-            'caller_zip'            => $incomingCall->FromZip,
-            'caller_country'        => $incomingCall->FromCountry,
             'source'                => $phoneNumber->source,
             'medium'                => $phoneNumber->medium,
             'content'               => $phoneNumber->content,
@@ -225,7 +245,7 @@ class IncomingCallTest extends TestCase
     /**
      * Test handling an incoming call with recording, greeting and keypress
      * 
-     * @group incoming-calls
+     * @group incoming-calls--
      */
     public function testValidIncomingCallWithRecordingAndGreetingAndKeypressEnabled()
     {
@@ -249,6 +269,10 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
         
+        $this->assertDatabaseHas('contacts', [
+            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+        ]);
+
         $this->assertDatabaseHas('calls', [
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
@@ -261,12 +285,6 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
-            'caller_city'           => $incomingCall->FromCity,
-            'caller_state'          => $incomingCall->FromState,
-            'caller_zip'            => $incomingCall->FromZip,
-            'caller_country'        => $incomingCall->FromCountry,
             'source'                => $phoneNumber->source,
             'medium'                => $phoneNumber->medium,
             'content'               => $phoneNumber->content,
@@ -299,7 +317,7 @@ class IncomingCallTest extends TestCase
     /**
      * Test handling an incoming call with recording, greeting and whisper
      * 
-     * @group incoming-calls
+     * @group incoming-calls--
      */
     public function testValidIncomingCallWithRecordingAndGreetingAndWhisperEnabled()
     {
@@ -322,6 +340,10 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
         
+        $this->assertDatabaseHas('contacts', [
+            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+        ]);
+
         $this->assertDatabaseHas('calls', [
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
@@ -330,16 +352,10 @@ class IncomingCallTest extends TestCase
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
             'phone_number_pool_id'  => null,
-            'tracking_session_id'    => null,
+            'tracking_session_id'   => null,
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
-            'caller_city'           => $incomingCall->FromCity,
-            'caller_state'          => $incomingCall->FromState,
-            'caller_zip'            => $incomingCall->FromZip,
-            'caller_country'        => $incomingCall->FromCountry,
             'source'                => $phoneNumber->source,
             'medium'                => $phoneNumber->medium,
             'content'               => $phoneNumber->content,
@@ -369,7 +385,7 @@ class IncomingCallTest extends TestCase
     /**
      * Test that when a number is deleted, the call is rejected
      * 
-     * @group incoming-calls
+     * @group incoming-calls--
      */
     public function testDeletedNumberIsRejected()
     {
@@ -601,12 +617,6 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
-            'caller_city'           => $incomingCall->FromCity,
-            'caller_state'          => $incomingCall->FromState,
-            'caller_zip'            => $incomingCall->FromZip,
-            'caller_country'        => $incomingCall->FromCountry,
             'source'                => $session->source,
             'medium'                => $session->medium,
             'content'               => $session->content,
@@ -684,12 +694,6 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
-            'caller_city'           => $incomingCall->FromCity,
-            'caller_state'          => $incomingCall->FromState,
-            'caller_zip'            => $incomingCall->FromZip,
-            'caller_country'        => $incomingCall->FromCountry,
             'source'                => $session->source,
             'medium'                => $session->medium,
             'content'               => $session->content,
@@ -772,12 +776,6 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
-            'caller_city'           => $incomingCall->FromCity,
-            'caller_state'          => $incomingCall->FromState,
-            'caller_zip'            => $incomingCall->FromZip,
-            'caller_country'        => $incomingCall->FromCountry,
             'source'                => $session->source,
             'medium'                => $session->medium,
             'content'               => $session->content,
@@ -804,14 +802,17 @@ class IncomingCallTest extends TestCase
     {
         //  Setup
         $company     = $this->createCompany();
+        $contact     = $this->createContact($company);
         $config      = $this->createConfig($company);
         $pool        = $this->createPhoneNumberPool($company, $config);
         $phoneNumber = $this->createPhoneNumber($company, $config, [
             'phone_number_pool_id' => $pool->id
         ]);
+        
 
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
+            'To' => $phoneNumber->e164Format(),
+            'From' => $contact->phone
         ]);
 
         // Create original session from day before and tie it to a call
@@ -829,13 +830,12 @@ class IncomingCallTest extends TestCase
 
         //  Create event from day before but after first event
         $firstCall = factory(Call::class)->create([
+            'contact_id'            => $contact->id,
             'account_id'            => $company->account_id,
             'company_id'            => $company->id,
             'phone_number_id'       => $phoneNumber->id,
             'phone_number_pool_id'  => $pool->id,
             'tracking_session_id'   => $firstCallSession->id,
-            'caller_country_code'   => PhoneNumber::countryCode($incomingCall->From),
-            'caller_number'         => PhoneNumber::number($incomingCall->From),
             'created_at'            => now()->subDays(1)->subMinutes(4)
         ]);
 

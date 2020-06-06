@@ -14,8 +14,6 @@ class ContactController extends Controller
         'contacts.last_name',
         'contacts.email',
         'contacts.phone',
-        'contacts.alt_email',
-        'contacts.alt_phone',
         'contacts.city',
         'contacts.state',
         'contacts.zip',
@@ -54,8 +52,6 @@ class ContactController extends Controller
             'last_name'  => 'bail|max:32',
             'email'      => 'bail|required_without:phone|email|max:128',
             'phone'      => 'bail|required_without:email|digits_between:10,13',
-            'alt_email'  => 'bail|email|max:128',
-            'alt_phone'  => 'bail|digits_between:10,13',
             'city'       => 'bail|max:64',
             'state'      => 'bail|max:64',
             'zip'        => 'bail|max:16',
@@ -73,39 +69,20 @@ class ContactController extends Controller
         //  Make sure no contact exists with this phone
         //
         $query = Contact::where('company_id', $company->id);
-        if( $request->email ){
-            $query->where(function($query) use($request){
-                $query->where('email', $request->email)
-                      ->orWhere('alt_email', $request->email);
-
-                if( $request->alt_email )
-                    $query->orWhere('email', $request->alt_email)
-                          ->orWhere('alt_email', $request->alt_email);
-            });
-        }
-
-        if( $request->phone ){
-            $query->orWhere(function($query) use($request){
-                $query->where('phone', $request->phone)
-                      ->orWhere('alt_phone', $request->phone);
-
-                if( $request->alt_phone )
-                    $query->orWhere('phone', $request->alt_phone)
-                          ->orWhere('alt_phone', $request->alt_phone);
-            });
+        if( $request->email && ! $request->phone ){
+            $query->where('email', $request->email);
+        }elseif( ! $request->email && $request->phone ){
+            $query->where('phone', $request->phone);
+        }elseif( $request->email && $request->phone ){
+            $query->where('email', $request->email)
+                    ->orWhere('phone', $request->phone);
         }
 
         $contact = $query->first();
         if( $contact ){
-            $matchField = $contact->email === $request->email || $contact->alt_email === $request->email ? 'email' : '';
+            $matchField = $contact->email === $request->email ? 'email' : '';
             if( ! $matchField ){
-                $matchField = $contact->email === $request->alt_email || $contact->alt_email === $request->alt_email ? 'alt_email' : '';
-            }
-            if( ! $matchField ){
-                $matchField = $contact->phone === $request->phone || $contact->alt_phone === $request->phone ? 'phone' : '';
-            }
-            if( ! $matchField ){
-                $matchField = $contact->phone === $request->alt_phone || $contact->alt_phone === $request->alt_phone ? 'alt_phone' : '';
+                $matchField = $contact->phone === $request->phone ? 'phone' : '';
             }
 
             return response([
@@ -120,8 +97,6 @@ class ContactController extends Controller
             'last_name'  => $request->last_name,
             'email'      => $request->email,
             'phone'      => $request->phone,
-            'alt_email'  => $request->alt_email,
-            'alt_phone'  => $request->alt_phone,
             'city'       => $request->city,
             'state'      => $request->state,
             'zip'        => $request->zip,
@@ -153,8 +128,6 @@ class ContactController extends Controller
             'last_name'  => 'bail|max:32',
             'email'      => 'bail|required_without:phone|email|max:128',
             'phone'      => 'bail|required_without:email|digits_between:10,13',
-            'alt_email'  => 'bail|email|max:128',
-            'alt_phone'  => 'bail|digits_between:10,13',
             'city'       => 'bail|max:64',
             'state'      => 'bail|max:64',
             'zip'        => 'bail|max:16',
@@ -172,41 +145,22 @@ class ContactController extends Controller
         //  Make sure no contact exists with this phone
         //
         $query = Contact::where('company_id', $company->id);
-        if( $request->email ){
-            $query->where(function($query) use($request){
-                $query->where('email', $request->email)
-                      ->orWhere('alt_email', $request->email);
-
-                if( $request->alt_email )
-                    $query->orWhere('email', $request->alt_email)
-                          ->orWhere('alt_email', $request->alt_email);
-            });
+        if( $request->email && ! $request->phone ){
+            $query->where('email', $request->email);
+        }elseif( ! $request->email && $request->phone ){
+            $query->where('phone', $request->phone);
+        }elseif( $request->email && $request->phone ){
+            $query->where('email', $request->email)
+                    ->orWhere('phone', $request->phone);
         }
-
-        if( $request->phone ){
-            $query->orWhere(function($query) use($request){
-                $query->where('phone', $request->phone)
-                      ->orWhere('alt_phone', $request->phone);
-
-                if( $request->alt_phone )
-                    $query->orWhere('phone', $request->alt_phone)
-                          ->orWhere('alt_phone', $request->alt_phone);
-            });
-        }
-
+        
         $otherContact = $query->where('id', '!=', $contact->id)
                               ->first();
 
         if( $otherContact ){
-            $matchField = $otherContact->email === $request->email || $otherContact->alt_email === $request->email ? 'email' : '';
+            $matchField = $otherContact->email === $request->email ? 'email' : '';
             if( ! $matchField ){
-                $matchField = $otherContact->email === $request->alt_email || $otherContact->alt_email === $request->alt_email ? 'alt_email' : '';
-            }
-            if( ! $matchField ){
-                $matchField = $otherContact->phone === $request->phone || $otherContact->alt_phone === $request->phone ? 'phone' : '';
-            }
-            if( ! $matchField ){
-                $matchField = $otherContact->phone === $request->alt_phone || $otherContact->alt_phone === $request->alt_phone ? 'alt_phone' : '';
+                $matchField = $otherContact->phone === $request->phone ? 'phone' : '';
             }
 
             return response([
@@ -222,10 +176,6 @@ class ContactController extends Controller
             $contact->email = $request->email;
         if( $request->has('phone') )
             $contact->phone = $request->phone;
-        if( $request->has('alt_email') )
-            $contact->alt_email = $request->alt_email;
-        if( $request->has('alt_phone') )
-            $contact->alt_phone = $request->alt_phone;
         if( $request->has('city') )
             $contact->city = $request->city;
         if( $request->has('state') )

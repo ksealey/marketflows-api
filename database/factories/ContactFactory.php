@@ -11,8 +11,6 @@ $factory->define(\App\Models\Company\Contact::class, function (Faker $faker) {
         'last_name'  => $faker->lastName,
         'email'      => $faker->email,
         'phone'      => substr($faker->e164PhoneNumber, -10),
-        'alt_email'  => $faker->email,
-        'alt_phone'  => substr($faker->e164PhoneNumber, -10),
         'city'       => $faker->city,
         'state'      => $faker->state,
         'zip'        => $faker->postcode,

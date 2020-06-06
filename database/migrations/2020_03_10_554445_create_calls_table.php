@@ -18,6 +18,7 @@ class CreateCallsTable extends Migration
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned();
+            $table->bigInteger('contact_id')->unsigned();
             $table->string('type', 16);
             $table->string('category', 32)->nullable();
             $table->string('sub_category', 32)->nullable();
@@ -28,14 +29,6 @@ class CreateCallsTable extends Migration
             $table->string('external_id', 64)->unique();
             $table->string('direction', 16);
             $table->string('status', 64);
-
-            $table->string('caller_name', 64)->nullable();
-            $table->string('caller_country_code', 8)->nullable();
-            $table->string('caller_number', 16)->index();
-            $table->string('caller_city', 64)->index()->nullable();
-            $table->string('caller_state', 64)->index()->nullable();
-            $table->string('caller_zip', 16)->index()->nullable();
-            $table->string('caller_country', 64)->nullable();
 
             $table->string('source', 128)->nullable();
             $table->string('medium', 128)->nullable();
@@ -60,6 +53,7 @@ class CreateCallsTable extends Migration
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
+            $table->foreign('contact_id')->references('id')->on('contacts');
             $table->foreign('phone_number_pool_id')->references('id')->on('phone_number_pools');
             $table->foreign('tracking_session_id')->references('id')->on('tracking_sessions');
             $table->foreign('updated_by')->references('id')->on('users');

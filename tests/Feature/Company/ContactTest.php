@@ -48,8 +48,6 @@ class ContactTest extends TestCase
                     'last_name',
                     'email',
                     'phone',
-                    'alt_email',
-                    'alt_phone',
                     'kind',
                     'link'
                 ]
@@ -104,8 +102,6 @@ class ContactTest extends TestCase
                     'last_name'     => $contacts[0]['last_name'],
                     'email'         => $contacts[0]['email'],
                     'phone'         => $contacts[0]['phone'],
-                    'alt_email'     => $contacts[0]['alt_email'],
-                    'alt_phone'     => $contacts[0]['alt_phone'],
                     'kind'          => $contacts[0]['kind'],
                     'link'          => $contacts[0]['link']
                 ],
@@ -115,8 +111,6 @@ class ContactTest extends TestCase
                     'last_name'     => $contacts[1]['last_name'],
                     'email'         => $contacts[1]['email'],
                     'phone'         => $contacts[1]['phone'],
-                    'alt_email'     => $contacts[1]['alt_email'],
-                    'alt_phone'     => $contacts[1]['alt_phone'],
                     'kind'          => $contacts[1]['kind'],
                     'link'          => $contacts[1]['link']
                 ]
@@ -163,16 +157,6 @@ class ContactTest extends TestCase
                     'operator' => 'EQUALS',
                     'inputs' => [ $contact->phone ]
                 ],
-                [
-                    'field' => 'contacts.alt_email',
-                    'operator' => 'EQUALS',
-                    'inputs' => [ $contact->alt_email ]
-                ],
-                [
-                    'field' => 'contacts.alt_phone',
-                    'operator' => 'IN',
-                    'inputs' => [ $contact->alt_phone ]
-                ]
             ])
         ]);
 
@@ -193,8 +177,6 @@ class ContactTest extends TestCase
                     'last_name'     => $contact->last_name,
                     'email'         => $contact->email,
                     'phone'         => $contact->phone,
-                    'alt_email'     => $contact->alt_email,
-                    'alt_phone'     => $contact->alt_phone,
                     'kind'          => $contact->kind,
                     'link'          => $contact->link
                 ]
@@ -280,7 +262,7 @@ class ContactTest extends TestCase
     /**
      * Test exporting contacts with date ranges
      * 
-     * @group contacts--
+     * @group contacts
      */
     public function testExportContactsWithDateRanges()
     {
@@ -421,29 +403,6 @@ class ContactTest extends TestCase
         $response->assertJSON([
             'error' => 'Duplicate exists matching field email'
         ]);
-
-        //  Alt email
-        $contact = factory(Contact::class)->make([
-            'alt_email' => $otherContact->email
-        ]);
-        $body       = [
-            'first_name' => $contact->first_name,
-            'last_name' => $contact->last_name,
-            'email' => $contact->email,
-            'alt_email' => $contact->alt_email,
-            'phone' => $contact->phone,
-            'city' => $contact->city,
-            'state' => $contact->state,
-            'zip' => $contact->zip,
-        ];
-        $response = $this->json('POST', route('create-contact', [
-            'company' => $company->id
-        ]), $body);
-        
-        $response->assertStatus(400);
-        $response->assertJSON([
-            'error' => 'Duplicate exists matching field alt_email'
-        ]);
     }
 
     /**
@@ -460,7 +419,6 @@ class ContactTest extends TestCase
             'created_by' => $this->user->id
         ]);
 
-        //  Main phone
         $contact = factory(Contact::class)->make([
             'phone' => $otherContact->phone
         ]);
@@ -479,29 +437,6 @@ class ContactTest extends TestCase
         $response->assertStatus(400);
         $response->assertJSON([
             'error' => 'Duplicate exists matching field phone'
-        ]);
-
-        //  Alt email
-        $contact = factory(Contact::class)->make([
-            'alt_phone' => $otherContact->phone
-        ]);
-        $body       = [
-            'first_name' => $contact->first_name,
-            'last_name' => $contact->last_name,
-            'email' => $contact->email,
-            'phone' => $contact->phone,
-            'alt_phone' => $contact->alt_phone,
-            'city' => $contact->city,
-            'state' => $contact->state,
-            'zip' => $contact->zip,
-        ];
-        $response = $this->json('POST', route('create-contact', [
-            'company' => $company->id
-        ]), $body);
-        
-        $response->assertStatus(400);
-        $response->assertJSON([
-            'error' => 'Duplicate exists matching field alt_phone'
         ]);
     }
 
@@ -612,7 +547,6 @@ class ContactTest extends TestCase
             'zip' => $updateData->zip,
         ];
 
-        //  Main email
         $response = $this->json('PUT', route('update-contact', [
             'company' => $company->id,
             'contact' => $contact->id
@@ -620,31 +554,6 @@ class ContactTest extends TestCase
         $response->assertStatus(400);
         $response->assertJSON([
             'error' => 'Duplicate exists matching field email'
-        ]);
-
-        //  Alt email
-        $updateData = factory(Contact::class)->make([
-            'alt_email' => $otherContact->email
-        ]);
-        $body       = [
-            'alt_email'     => $updateData->alt_email,
-            'first_name'    => $updateData->first_name,
-            'last_name'     => $updateData->last_name,
-            'email'         => $updateData->email,
-            'phone'         => $updateData->phone,
-            'city'          => $updateData->city,
-            'state'         => $updateData->state,
-            'zip'           => $updateData->zip,
-            'country'       => $updateData->country
-        ];
-        $response = $this->json('PUT', route('update-contact', [
-            'company' => $company->id,
-            'contact' => $contact->id,
-        ]), $body);
-        
-        $response->assertStatus(400);
-        $response->assertJSON([
-            'error' => 'Duplicate exists matching field alt_email'
         ]);
     }
 
@@ -672,7 +581,8 @@ class ContactTest extends TestCase
         $updateData = factory(Contact::class)->make([
             'phone' => $otherContact->phone
         ]);
-        $body       = [
+
+        $body = [
             'first_name' => $updateData->first_name,
             'last_name' => $updateData->last_name,
             'email' => $updateData->email,
@@ -682,39 +592,14 @@ class ContactTest extends TestCase
             'zip' => $updateData->zip,
         ];
 
-        //  Main phone
         $response = $this->json('PUT', route('update-contact', [
             'company' => $company->id,
             'contact' => $contact->id
         ]), $body);
+
         $response->assertStatus(400);
         $response->assertJSON([
             'error' => 'Duplicate exists matching field phone'
-        ]);
-
-        //  Alt phone
-        $updateData = factory(Contact::class)->make([
-            'alt_phone' => $otherContact->phone
-        ]);
-        $body       = [
-            'first_name' => $updateData->first_name,
-            'last_name' => $updateData->last_name,
-            'email' => $updateData->email,
-            'phone' => $updateData->phone,
-            'alt_phone' => $updateData->alt_phone,
-            'city' => $updateData->city,
-            'state' => $updateData->state,
-            'zip' => $updateData->zip,
-        ];
-
-        $response = $this->json('PUT', route('update-contact', [
-            'company' => $company->id,
-            'contact' => $contact->id,
-        ]), $body);
-        
-        $response->assertStatus(400);
-        $response->assertJSON([
-            'error' => 'Duplicate exists matching field alt_phone'
         ]);
     }
 

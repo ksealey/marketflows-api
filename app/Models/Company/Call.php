@@ -14,6 +14,8 @@ class Call extends Model
         'account_id',
         'company_id',
         'phone_number_id',
+        'contact_id',
+        
         'type',
         'category',
         'sub_category',
@@ -26,15 +28,6 @@ class Call extends Model
         'status',
         'duration',
 
-        'caller_name',
-        'caller_last_name',
-        'caller_country_code',
-        'caller_number',
-        'caller_city',
-        'caller_state',
-        'caller_zip',
-        'caller_country',
-        
         'source',
         'medium',
         'content',

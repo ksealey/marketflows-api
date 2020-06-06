@@ -21,13 +21,11 @@ class CreateContactsTable extends Migration
             $table->string('last_name', 32)->nullable();
             $table->string('email', 128)->nullable()->index();
             $table->string('phone', 16)->nullable()->index();
-            $table->string('alt_email', 128)->nullable()->index();
-            $table->string('alt_phone', 16)->nullable();
             $table->string('city', 64)->nullable();
             $table->string('state', 64)->nullable();
             $table->string('zip', 16)->nullable();
             $table->string('country', 64)->nullable();
-            $table->bigInteger('created_by')->unsigned();
+            $table->bigInteger('created_by')->unsigned()->nullable();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();
             $table->softDeletes();

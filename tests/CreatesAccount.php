@@ -9,6 +9,7 @@ use App\Models\PaymentMethod;
 use \App\Models\AccountBlockedPhoneNumber;
 use \App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
 use App\Models\Company;
+use App\Models\Company\Contact;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Report;
 use \App\Models\Company\ReportAutomation;
@@ -79,6 +80,15 @@ trait CreatesAccount
     public function createConfig($company, $with = [])
     {
         return factory(PhoneNumberConfig::class)->create(array_merge([
+            'created_by' => $this->user->id,
+            'account_id' => $company->account_id,
+            'company_id' => $company->id
+        ], $with));
+    }
+
+    public function createContact($company, $with = [])
+    {
+        return factory(Contact::class)->create(array_merge([
             'created_by' => $this->user->id,
             'account_id' => $company->account_id,
             'company_id' => $company->id
