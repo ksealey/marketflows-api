@@ -127,7 +127,7 @@ class AudioClipTest extends TestCase
         ])); 
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         $this->assertDatabaseHas('audio_clips', [

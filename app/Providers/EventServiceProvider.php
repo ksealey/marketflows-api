@@ -30,9 +30,6 @@ class EventServiceProvider extends ServiceProvider
         'App\Events\Company\PhoneNumberEvent' => [
             'App\Listeners\Company\PhoneNumberListener',
         ],
-        'App\Events\Company\PhoneNumberPoolEvent' => [
-            'App\Listeners\Company\PhoneNumberPoolListener',
-        ],
         'App\Events\Company\PhoneNumberConfigEvent' => [
             'App\Listeners\Company\PhoneNumberConfigListener',
         ],

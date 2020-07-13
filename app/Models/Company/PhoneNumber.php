@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
 use \App\Models\Company\Call;
-use \App\Models\Company\PhoneNumberPool;
 use \App\Traits\CanSwapNumbers;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Contracts\Exportable;
@@ -55,7 +54,6 @@ class PhoneNumber extends Model implements Exportable
         'created_by',
         'updated_by',
         'deleted_by',
-        'phone_number_pool_id',
         'phone_number_config_id',
         'category',
         'sub_category',
@@ -135,7 +133,6 @@ class PhoneNumber extends Model implements Exportable
                                 DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
                           ])
                           ->leftJoin('calls', 'calls.phone_number_id', 'phone_numbers.id')
-                          ->whereNull('phone_numbers.phone_number_pool_id')
                           ->where('phone_numbers.company_id', $input['company_id']);
     }
 
@@ -151,11 +148,6 @@ class PhoneNumber extends Model implements Exportable
     public function phone_number_config()
     {
         return $this->belongsTo('\App\Models\Company\PhoneNumberConfig');
-    }
-
-    public function phone_number_pool()
-    {
-        return $this->belongsTo('\App\Models\Company\PhoneNumberPool');
     }
 
     public function calls()
@@ -250,11 +242,11 @@ class PhoneNumber extends Model implements Exportable
     public function callsForPreviousDays(int $days)
     {
         $since = today()->subDays($days);
-
-        return Call::where('phone_number_id', $this->id)
-                    ->where('direction', 'Inbound')
-                    ->where('created_at', '>=', $since)
-                    ->count();
+        $query = Call::where('phone_number_id', $this->id)
+                        ->where('direction', 'Inbound')
+                        ->where('created_at', '>=', $since);
+                        
+        return $query->count();
     }
 
     /**

@@ -26,7 +26,7 @@ class PhoneNumberTest extends TestCase
         $this->assertTrue($phoneNumber->willRenewBeforeDays(8));
         $this->assertTrue($phoneNumber->willRenewBeforeDays(7));
         $this->assertTrue($phoneNumber->willRenewBeforeDays(6));
-        $this->assertFalse($phoneNumber->willRenewBeforeDays(5));
+        $this->assertTrue($phoneNumber->willRenewBeforeDays(5));
         $this->assertFalse($phoneNumber->willRenewBeforeDays(4));
         $this->assertFalse($phoneNumber->willRenewBeforeDays(3));
         $this->assertFalse($phoneNumber->willRenewBeforeDays(2));
@@ -47,22 +47,24 @@ class PhoneNumberTest extends TestCase
         $phoneNumber = $this->createPhoneNumber($company, $config, [
             'purchased_at' => now()->subMonths(1)->addDays(5)
         ]);
-
+        $contact         = $this->createContact($company);
         $recentCallCount = mt_rand(10, 20);
 
-        factory(Call::class, $recentCallCount)->create([
-            'account_id'      => $company->account_id,
-            'company_id'      => $company->id,
-            'phone_number_id' => $phoneNumber->id,
-            'created_at'      => now()->subDays(2),
-        ]);
+        for($i = 0; $i < $recentCallCount; $i++){
+            $this->createCall($company, [
+                'contact_id'      => $contact->id,
+                'phone_number_id' => $phoneNumber->id,
+                'created_at' => now()->subDays(2),
+            ]);
+        }
 
-        factory(Call::class, 10)->create([
-            'account_id'      => $company->account_id,
-            'company_id'      => $company->id,
-            'phone_number_id' => $phoneNumber->id,
-            'created_at'      => now()->subDays(4),
-        ]);
+        for($i = 0; $i < 10; $i++){
+            $this->createCall($company, [
+                'contact_id'      => $contact->id,
+                'phone_number_id' => $phoneNumber->id,
+                'created_at' => now()->subDays(4),
+            ]);
+        }
 
         $this->assertEquals($phoneNumber->callsForPreviousDays(1), 0);
         $this->assertEquals($phoneNumber->callsForPreviousDays(2), $recentCallCount);

@@ -32,9 +32,12 @@ class CreateUsersTable extends Migration
             $table->boolean('login_disabled')->default(0);
             $table->dateTime('login_disabled_until')->nullable();
             $table->integer('login_attempts')->unsigned()->default(0);
+            $table->bigInteger('deleted_by')->unsigned()->nullable();
             $table->timestamps();
             $table->softDeletes();
+
             $table->foreign('account_id')->references('id')->on('accounts');
+            $table->foreign('deleted_by')->references('id')->on('users');
         });
     }
 

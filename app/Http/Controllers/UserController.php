@@ -214,7 +214,7 @@ class UserController extends Controller
         $user->save();
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
     }
 

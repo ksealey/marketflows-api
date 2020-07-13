@@ -258,7 +258,7 @@ class ReportTest extends TestCase
     /**
      * Test exporting reports
      * 
-     * @group reports--
+     * @group reports
      */
     public function testExportReports()
     {
@@ -419,24 +419,34 @@ class ReportTest extends TestCase
         ]);
 
         $source = str_random(40);
-        $count  = mt_rand(1, 10);
-        $calls = factory(Call::class, $count)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_id' => $phoneNumber->id,
-            'source'     => $source,
-            'created_at' => now()->subDays(2)
-        ]);
+        $count = mt_rand(1, 10);
+        $calls = [];
+        for( $i = 0; $i < $count; $i++ ){
+            $contact = $this->createContact($company);
+            $calls[] = factory(Call::class)->create([
+                'contact_id' => $contact->id,
+                'account_id' => $company->account_id,
+                'company_id' => $company->id,
+                'phone_number_id' => $phoneNumber->id,
+                'source'     => $source,
+                'created_at' => now()->subDays(2) 
+            ]);
+        }
 
         $source2 = str_random(40);
         $count2  = mt_rand(1, 10);
-        $calls2 = factory(Call::class, $count2)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_id' => $phoneNumber->id,
-            'source'     => $source2,
-            'created_at' => now()->subDays(2)
-        ]);
+        $calls2  = []; 
+        for( $i = 0; $i < $count2; $i++ ){
+            $contact = $this->createContact($company);
+            $calls2[] = factory(Call::class)->create([
+                'contact_id' => $contact->id,
+                'account_id' => $company->account_id,
+                'company_id' => $company->id,
+                'phone_number_id' => $phoneNumber->id,
+                'source'     => $source2,
+                'created_at' => now()->subDays(2)
+            ]);
+        }
 
         $response = $this->json('GET', route('read-report-chart', [
             'company' => $company->id,
@@ -510,23 +520,33 @@ class ReportTest extends TestCase
 
         $source = str_random(40);
         $count  = mt_rand(1, 10);
-        $calls = factory(Call::class, $count)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_id' => $phoneNumber->id,
-            'source'     => $source,
-            'created_at' => now()->subDays(2)
-        ]);
+        $calls = [];
+        for( $i = 0; $i < $count; $i++ ){
+            $contact = $this->createContact($company);
+            $calls[] = factory(Call::class)->create([
+                'contact_id' => $contact->id,
+                'account_id' => $company->account_id,
+                'company_id' => $company->id,
+                'phone_number_id' => $phoneNumber->id,
+                'source'     => $source,
+                'created_at' => now()->subDays(2) 
+            ]);
+        }
 
         $source2 = str_random(40);
         $count2  = mt_rand(1, 10);
-        $calls2 = factory(Call::class, $count2)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_id' => $phoneNumber->id,
-            'source'     => $source2,
-            'created_at' => now()->subDays(2)
-        ]);
+        $calls2  = []; 
+        for( $i = 0; $i < $count2; $i++ ){
+            $contact = $this->createContact($company);
+            $calls2[] = factory(Call::class)->create([
+                'contact_id' => $contact->id,
+                'account_id' => $company->account_id,
+                'company_id' => $company->id,
+                'phone_number_id' => $phoneNumber->id,
+                'source'     => $source2,
+                'created_at' => now()->subDays(2)
+            ]);
+        }
 
         $response = $this->json('GET', route('read-report-chart', [
             'company' => $company->id,
@@ -568,7 +588,7 @@ class ReportTest extends TestCase
      /**
      * Test viewing a conditioned report chart
      * 
-     * @group reports--
+     * @group reports
      */
     public function testViewConditionedChart()
     {
@@ -595,25 +615,35 @@ class ReportTest extends TestCase
             'date_type'   => 'LAST_7_DAYS'
         ]);
 
-        $count  = mt_rand(1, 10);
-        $calls = factory(Call::class, $count)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_id' => $phoneNumber->id,
-            'source'     => $source,
-            'created_at' => now()->subDays(2)
-        ]);
+        $count = mt_rand(1, 10);
+        $calls = [];
+        for( $i = 0; $i < $count; $i++ ){
+            $contact = $this->createContact($company);
+            $calls[] = factory(Call::class)->create([
+                'contact_id' => $contact->id,
+                'account_id' => $company->account_id,
+                'company_id' => $company->id,
+                'phone_number_id' => $phoneNumber->id,
+                'source'     => $source,
+                'created_at' => now()->subDays(2) 
+            ]);
+        }
 
         $source2 = str_random(40);
         $count2  = mt_rand(1, 10);
-        $calls2 = factory(Call::class, $count2)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_id' => $phoneNumber->id,
-            'source'     => $source2,
-            'created_at' => now()->subDays(2)
-        ]);
-
+        $calls2  = []; 
+        for( $i = 0; $i < $count2; $i++ ){
+            $contact = $this->createContact($company);
+            $calls2[] = factory(Call::class)->create([
+                'contact_id' => $contact->id,
+                'account_id' => $company->account_id,
+                'company_id' => $company->id,
+                'phone_number_id' => $phoneNumber->id,
+                'source'     => $source2,
+                'created_at' => now()->subDays(2)
+            ]);
+        }
+       
         $response = $this->json('GET', route('read-report-chart', [
             'company' => $company->id,
             'report'  => $report->id

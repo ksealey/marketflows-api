@@ -9,7 +9,6 @@ use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company;
 use \App\Models\Company\AudioClip;
-use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
@@ -397,11 +396,11 @@ class CompanyTest extends TestCase
         ]));
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         //
-        //  Make sure the reources were removed
+        //  Make sure the resources were removed
         //
 
         //  Companies
@@ -420,26 +419,6 @@ class CompanyTest extends TestCase
             'deleted_by' => $this->user->id
         ]);
         $this->assertDatabaseMissing('phone_number_configs', [
-            'company_id' => $company->id,
-            'deleted_at' => null
-        ]);
-
-        //  Phone numbers
-        $this->assertDatabaseHas('phone_numbers', [
-            'company_id' => $company->id,
-            'deleted_by' => $this->user->id
-        ]);
-        $this->assertDatabaseMissing('phone_numbers', [
-            'company_id' => $company->id,
-            'deleted_at' => null
-        ]);
-
-        //  Phone number pools
-        $this->assertDatabaseHas('phone_number_pools', [
-            'company_id' => $company->id,
-            'deleted_by' => $this->user->id
-        ]);
-        $this->assertDatabaseMissing('phone_number_pools', [
             'company_id' => $company->id,
             'deleted_at' => null
         ]);
@@ -518,7 +497,6 @@ class CompanyTest extends TestCase
         $company        = $data['company'];
         $audioClip      = $data['audio_clip'];
         $phoneNumber    = $data['phone_number'];
-        $pool           = $data['phone_number_pool'];
         $report         = $data['report'];
 
         //
@@ -535,20 +513,6 @@ class CompanyTest extends TestCase
             Storage::assertExists($callRecording->path);
         });
 
-        //
-        //  Make sure the numbers are releases
-        //
-        $poolNumberCount = count($pool->phone_numbers); // Pool numbers should be released due to date
-        $this->mock(PhoneNumberManager::class, function($mock) use($poolNumberCount){
-            $mock->shouldReceive('releaseNumber')
-                 ->times($poolNumberCount)
-                 ->andReturn($mock);
-
-            $mock->shouldReceive('bankNumber')
-                 ->once()
-                 ->andReturn($mock);
-        });
-
         //    
         //  Perform delete
         //
@@ -557,7 +521,7 @@ class CompanyTest extends TestCase
         ]));
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         //

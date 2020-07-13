@@ -307,7 +307,7 @@ class UserTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         $this->assertDatabaseMissing('users', [

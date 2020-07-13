@@ -406,55 +406,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
             }); 
 
             /*
-            |--------------------------------
-            | Handle phone number pools
-            |--------------------------------
-            */
-            Route::prefix('phone-number-pools')->group(function(){
-                Route::get('/', 'Company\PhoneNumberPoolController@list')
-                    ->middleware('can:list,\App\Models\Company\PhoneNumberPool,company')
-                    ->name('list-phone-number-pools');
-
-                Route::post('/', 'Company\PhoneNumberPoolController@create')
-                    ->middleware('can:create,App\Models\Company\PhoneNumberPool,company')
-                    ->name('create-phone-number-pool');
-
-                Route::get('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@read')
-                    ->middleware('can:read,phoneNumberPool,company')
-                    ->name('read-phone-number-pool');
-
-                Route::put('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@update')
-                    ->middleware('can:update,phoneNumberPool,company')
-                    ->name('update-phone-number-pool');
-
-                Route::delete('/{phoneNumberPool}', 'Company\PhoneNumberPoolController@delete')
-                    ->middleware('can:delete,phoneNumberPool,company')
-                    ->name('delete-phone-number-pool');
-
-                Route::get('/{phoneNumberPool}/numbers', 'Company\PhoneNumberPoolController@numbers')
-                    ->middleware('can:read,phoneNumberPool,company')
-                    ->name('list-phone-number-pool-numbers');
-
-                Route::get('/{phoneNumberPool}/numbers/export', 'Company\PhoneNumberPoolController@exportNumbers')
-                    ->middleware('can:read,phoneNumberPool,company')
-                    ->name('export-phone-number-pool-numbers');
-
-                Route::post('/{phoneNumberPool}/add-numbers', 'Company\PhoneNumberPoolController@addNumbers')
-                    ->middleware('can:update,phoneNumberPool,company')
-                    ->name('add-phone-number-pool-numbers');
-
-                Route::post('/{phoneNumberPool}/attach-numbers', 'Company\PhoneNumberPoolController@attachNumbers')
-                    ->middleware('can:update,phoneNumberPool,company')
-                    ->name('attach-phone-number-pool-numbers');
-
-                Route::post('/{phoneNumberPool}/detach-numbers', 'Company\PhoneNumberPoolController@detachNumbers')
-                     ->middleware('can:update,phoneNumberPool,company')
-                     ->name('detach-phone-number-pool-numbers');
-
-                
-            }); 
-            
-            /*
             |---------------------------------------
             | Handle company blocked phone numbers
             |---------------------------------------

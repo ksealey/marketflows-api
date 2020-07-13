@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
-use App\Models\Company\PhoneNumberPool;
 use \App\Traits\PerformsExport;
 use DB;
 
@@ -94,9 +93,6 @@ class PhoneNumberConfig extends Model
 
     public function isInUse()
     {
-        if( PhoneNumberPool::where('phone_number_config_id', $this->id)->count() )
-            return true;
-
         if( PhoneNumber::where('phone_number_config_id', $this->id)->count() )
             return true;
 
@@ -138,18 +134,21 @@ class PhoneNumberConfig extends Model
 
     public function variableMessage(string $message, Call $call)
     {
+        $contact = $call->contact;
+
         $variables = [
             '${source}'             => $call->source,
             '${medium}'             => $call->medium,
             '${content}'            => $call->content,
             '${campaign}'           => $call->campaign,
-            '${caller_name}'        => $call->caller_name,
-            '${caller_country_code}'=> $call->caller_country_code,
-            '${caller_number}'      => $call->caller_number,
-            '${caller_city}'        => $call->caller_city,
-            '${caller_state}'       => $call->caller_state,
-            '${caller_zip}'         => $call->caller_zip,
-            '${caller_country}'     => $call->caller_country,
+            '${caller_first_name}'  => $contact->first_name,
+            '${caller_last_name}'   => $contact->last_name,
+            '${caller_country_code}'=> PhoneNumber::countryCode($contact->phone) ?: '',
+            '${caller_number}'      => PhoneNumber::countryCode($contact->phone) ?: '',
+            '${caller_city}'        => $contact->city,
+            '${caller_state}'       => $contact->state,
+            '${caller_zip}'         => $contact->zip,
+            '${caller_country}'     => $contact->country,
             '${dialed_number}'      => $call->forwarded_to
         ];
 

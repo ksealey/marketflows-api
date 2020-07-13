@@ -13,7 +13,6 @@ use \App\Models\Company\AudioClip;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
-use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\PhoneNumberConfig;
 
 use \App\Rules\CountryRule;
@@ -45,13 +44,8 @@ class CompanyController extends Controller
 
         $user  = $request->user();
         $query = Company::select([
-            'companies.*',
-            'phone_number_pools.id AS phone_number_pool_id'
-        ])->where('companies.account_id', $user->account_id)
-         ->leftJoin('phone_number_pools',function($query){
-            $query->on('phone_number_pools.company_id', '=', 'companies.id')
-                  ->whereNull('phone_number_pools.deleted_at');
-         });
+            'companies.*'
+        ])->where('companies.account_id', $user->account_id);
 
         if( ! $user->canViewAllCompanies() ){
             $query->whereIn('companies.id', function($query) use($user){
@@ -127,11 +121,6 @@ class CompanyController extends Controller
      */
     public function read(Request $request, Company $company)
     {  
-        $pool = PhoneNumberPool::where('company_id', $company->id)
-                               ->first();
-
-        $company->phone_number_pool_id = $pool ? $pool->id : null;
-
         return response($company);
     }
 
@@ -180,11 +169,6 @@ class CompanyController extends Controller
 
         $company->updated_by = $user->id;
         $company->save();
-
-        $pool = PhoneNumberPool::where('company_id', $company->id)
-                               ->first();
-
-        $company->phone_number_pool_id = $pool ? $pool->id : null;
         
         return response($company);
     }
@@ -201,14 +185,14 @@ class CompanyController extends Controller
     {
         $user = $request->user();
 
-        $company->purge($user);
+        $user->deleteCompany($company);
 
         $company->deleted_by = $user->id;
         $company->deleted_at = now();
         $company->save();
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
     }
 

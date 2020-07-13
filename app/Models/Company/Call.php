@@ -4,7 +4,6 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use \App\Models\TrackingEntity;
 
 class Call extends Model
 {
@@ -19,9 +18,6 @@ class Call extends Model
         'type',
         'category',
         'sub_category',
-        
-        'phone_number_pool_id',
-        'tracking_session_id',
 
         'external_id',
         'direction',
@@ -32,7 +28,6 @@ class Call extends Model
         'medium',
         'content',
         'campaign',
-        'keyword',
 
         'recording_enabled',
         'forwarded_to',
@@ -65,9 +60,9 @@ class Call extends Model
         return $this->belongsTo('\App\Models\Company');
     }
 
-    public function tracking_session()
+    public function contact()
     {
-        return $this->belongsTo('\App\Models\TrackingSession');
+        return $this->belongsTo('\App\Models\Company\Contact');
     }
     
     public function getLinkAttribute()

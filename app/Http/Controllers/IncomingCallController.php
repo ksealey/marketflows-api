@@ -12,7 +12,6 @@ use App\Models\BankedPhoneNumber;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
-use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use App\Models\Company\BlockedPhoneNumber;
 use App\Models\Company\BlockedPhoneNumber\BlockedCall;
@@ -75,7 +74,7 @@ class IncomingCallController extends Controller
         if( $dialedCountryCode )
             $query->where('country_code', $dialedCountryCode);
         
-        //  If we don't recognize this call
+        //  If we don't recognize this call see if it's for a banked number
         $phoneNumber = $query->first();
         if( ! $phoneNumber ){
             $query = BankedPhoneNumber::where('number', $dialedNumber); 
@@ -186,37 +185,7 @@ class IncomingCallController extends Controller
         //
         //  Determine how to route this call and capture sourcing data
         //  
-        $trackingSessionId  = null;
-
-        $keyword  = null;
-        $source   = null;
-        $medium   = null;
-        $campaign = null;
-        $content  = null;
-
-        if( $phoneNumber->phone_number_pool_id ){
-            $pool        = $phoneNumber->phone_number_pool;
-            $config      = $pool->phone_number_config;
-            $session     = $pool->getSessionData($request->From, $phoneNumber);
-
-            if( $session ){
-                $trackingSessionId = $session->id;
-
-                $source     = $session->source   ?: null;
-                $medium     = $session->medium   ?: null;
-                $campaign   = $session->campaign ?: null;
-                $content    = $session->content  ?: null;
-                $keyword    = $session->keyword  ?: null;
-            }
-            
-        }else{
-            $config = $phoneNumber->phone_number_config;
-
-            $source     = $phoneNumber->source;
-            $medium     = $phoneNumber->medium ?: null;
-            $campaign   = $phoneNumber->campaign ?: null;
-            $content    = $phoneNumber->content ?: null;
-        }
+        $config     = $phoneNumber->phone_number_config;
 
         //
         //  Log call
@@ -229,17 +198,14 @@ class IncomingCallController extends Controller
             'type'                      => $phoneNumber->type,
             'category'                  => $phoneNumber->category,
             'sub_category'              => $phoneNumber->sub_category,
-            'phone_number_pool_id'      => $phoneNumber->phone_number_pool_id ?: null,
             'first_call'                => $firstCall,
-            'tracking_session_id'       => $trackingSessionId,
             'external_id'               => $request->CallSid,
             'direction'                 => substr(ucfirst($request->Direction), 0, 16),
             'status'                    => substr(ucfirst($request->CallStatus), 0, 64),
-            'source'                    => $source,
-            'medium'                    => $medium,
-            'content'                   => $content,
-            'campaign'                  => $campaign,
-            'keyword'                   => $keyword,
+            'source'                    => $phoneNumber->source,
+            'medium'                    => $phoneNumber->medium ?: null,
+            'content'                   => $phoneNumber->content ?: null,
+            'campaign'                  => $phoneNumber->campaign ?: null,
             'recording_enabled'         => $config->recording_enabled,
             'forwarded_to'              => $config->forwardToPhoneNumber(),
             'created_at'                => now()->format('Y-m-d H:i:s.u'),

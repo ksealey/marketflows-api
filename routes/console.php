@@ -152,23 +152,12 @@ Artisan::command('fill-calls', function(){
             'category'                  => 'OFFLINE',
             'sub_category'              => 'EMAIL',
 
-            'phone_number_pool_id'      => null,
-            'session_id'                => null,
-
             'recording_enabled'         => $recordingEnabled,
             'forwarded_to'              => '8135573005',
             
             'external_id'               => str_random(40),
             'direction'                 => 'Inbound',
             'status'                    => 'Completed',
-            
-            'caller_name'               => 'Jamie Smith',
-            'caller_country_code'       => 1,
-            'caller_number'             => '813' . mt_rand(1111111,9999999),
-            'caller_city'               => 'New York',
-            'caller_state'              => 'New York',
-            'caller_zip'                => '409483',
-            'caller_country'            => 'US',
             
             'duration'                  => mt_rand(0, 100),
             'source'                    => $sources[mt_rand(0, count($sources)-1)],

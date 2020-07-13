@@ -24,8 +24,9 @@ class CallController extends Controller
     {
         $fields = [
             'caller_name',
-            'calls.caller_name',
-            'calls.caller_number',
+            'contacts.first_name',
+            'contacts.last_name',
+            'contacts.phone',
             'phone_numbers.name',
             'calls.category',
             'calls.sub_category',
@@ -40,20 +41,20 @@ class CallController extends Controller
 
         $query = DB::table('calls')
                    ->select([
-                       'calls.*', 
-                       DB::raw('
-                            CASE
+                        'calls.*', 
+                        'phone_numbers.name AS phone_number_name',
+                        'companies.id AS company_id',
+                        'companies.name AS company_name',
+                        DB::raw(
+                            'CASE
                                 WHEN call_recordings.path IS NOT NULL
                                     THEN CONCAT(\'' . env('CDN_URL') . '/' . '\', call_recordings.path)
                                 ELSE NULL
                             END
-                            AS recording_url
-                       '),
-                       'phone_numbers.name AS phone_number_name',
-                       DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
-                       'phone_number_pools.name AS phone_number_pool_name',
-                       'companies.id AS company_id',
-                       'companies.name AS company_name'
+                            AS recording_url'
+                        ),
+                        DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
+                        DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name')
                     ])
                    ->where('calls.company_id', $company->id);
 
@@ -67,16 +68,16 @@ class CallController extends Controller
                  ->whereNull('phone_numbers.deleted_at');
         });
 
-        //  Join non-deleted number pools
-        $query->leftJoin('phone_number_pools', function($join){
-            $join->on('phone_number_pools.id', 'calls.phone_number_pool_id')
-                 ->whereNull('phone_number_pools.deleted_at');
-        });
-
         //  Join non-deleted companies
         $query->leftJoin('companies', function($join){
             $join->on('companies.id', 'phone_numbers.company_id')
                  ->whereNull('companies.deleted_at');
+        });
+
+        //  Join non-deleted contacts
+        $query->leftJoin('contacts', function($join){
+            $join->on('contacts.id', 'calls.contact_id')
+                 ->whereNull('contacts.deleted_at');
         });
 
         return parent::results(

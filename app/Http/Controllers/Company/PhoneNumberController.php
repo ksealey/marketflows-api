@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Company;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
-use App\Rules\Company\PhoneNumberPoolRule;
 use App\Rules\Company\PhoneNumberConfigRule;
 use App\Models\Company;
 use App\Models\Transaction;
@@ -53,7 +52,6 @@ class PhoneNumberController extends Controller
                         DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
                         DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
                     ])
-                    ->whereNull('phone_numbers.phone_number_pool_id')
                     ->whereNull('phone_numbers.deleted_at')
                     ->where('phone_numbers.company_id', $company->id);
         
@@ -233,13 +231,6 @@ class PhoneNumberController extends Controller
      */
     public function update(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        //  Disable updates when attached to a pool
-        if( $phoneNumber->phone_number_pool_id ){
-            return response([
-                'error' => 'This phone number is associated with a phone number pool. You must detach it before attempting to update.'
-            ], 400);
-        }
-
         $rules = [
             'disabled'            => 'bail|boolean',
             'name'                => 'bail|min:1,max:64',
@@ -324,7 +315,7 @@ class PhoneNumberController extends Controller
         $phoneNumber->save();
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
     }
     

@@ -65,7 +65,7 @@ class APICredentialController extends Controller
         $apiCredential->delete();
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
     }
 }

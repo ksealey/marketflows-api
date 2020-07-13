@@ -194,7 +194,7 @@ class BlockedPhoneNumberTest extends TestCase
         ]));
 
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         $this->assertDatabaseMissing('blocked_phone_numbers', [

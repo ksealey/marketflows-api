@@ -8,7 +8,6 @@ use \App\Models\Role;
 use \App\Models\UserCompany;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
-use \App\Models\Company\PhoneNumberPool;
 use \App\Models\Company\Campaign;
 
 trait CreatesUser
@@ -52,19 +51,6 @@ trait CreatesUser
             'phone_number_config_id' => $config->id,
             'company_id'             => $this->company->id,
             'user_id'             => $user->id,
-        ], $fields));
-    }
-
-    public function createPhoneNumberPool($fields = [])
-    {
-        $user = $this->user ?: $this->createUser();
-        
-        $config = $this->createPhoneNumberConfig();
-
-        return factory(PhoneNumberPool::class)->create(array_merge([
-            'phone_number_config_id' => $config->id,
-            'company_id' => $this->company->id,
-            'user_id' => $user->id
         ], $fields));
     }
 

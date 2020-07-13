@@ -137,7 +137,7 @@ class AudioClipController extends Controller
         $audioClip->delete();
 
         return response([
-            'message' => 'deleted',
+            'message' => 'Deleted',
         ], 200);
     }
 }

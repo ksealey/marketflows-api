@@ -16,15 +16,7 @@ $factory->define(\App\Models\Company\Call::class, function (Faker $faker) {
         'direction'   => 'inbound',
         'status'      => 'completed',
 
-        'caller_name' => $faker->firstName . ' ' . $faker->lastName,
-
         'duration'    => mt_rand(30, 500),
-        'caller_country_code' => 1,
-        'caller_number' => substr($faker->e164PhoneNumber, -10),
-        'caller_city'   => $faker->city,
-        'caller_state'  => $faker->stateAbbr,
-        'caller_zip'    => $faker->postcode,
-        'caller_country'=> 'US',
 
         'source'            => $faker->realText(40),
         'medium'            => $faker->realText(40),
@@ -34,7 +26,6 @@ $factory->define(\App\Models\Company\Call::class, function (Faker $faker) {
         'medium'            => $faker->realText(40),
         'content'           => $faker->realText(40),
         'campaign'          => $faker->realText(40),
-        'keyword'           => $faker->realText(40),
 
         'recording_enabled' => mt_rand(0,1) ? 1 : 0,
         'forwarded_to' => str_replace('+', '', $faker->e164PhoneNumber),

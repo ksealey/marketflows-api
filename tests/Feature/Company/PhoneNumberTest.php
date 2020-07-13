@@ -1538,11 +1538,15 @@ class PhoneNumberTest extends TestCase
         $config      = $this->createConfig($company);
         $phoneNumber = $this->createPhoneNumber($company, $config);
         
-        factory(Call::class, 30)->create([
-            'account_id'      => $company->account_id,
-            'company_id'      => $company->id,
-            'phone_number_id' => $phoneNumber->id
-        ]);
+        for( $i = 0; $i < 30; $i++ ){
+            $contact = $this->createContact($company);
+            factory(Call::class)->create([ 
+                'contact_id'      => $contact->id,
+                'account_id'      => $company->account_id,
+                'company_id'      => $company->id,
+                'phone_number_id' => $phoneNumber->id
+            ]);
+        }
 
         $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
             $mock->shouldReceive('releaseNumber')
@@ -1557,7 +1561,7 @@ class PhoneNumberTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         $this->assertDatabaseMissing('phone_numbers', [
@@ -1579,12 +1583,15 @@ class PhoneNumberTest extends TestCase
             'purchased_at' => now()->subMonths(1)->addDays(6) // Renews in 6 days
         ]); 
 
-        factory(Call::class, 10)->create([
-            'account_id'      => $company->account_id,
-            'company_id'      => $company->id,
-            'phone_number_id' => $phoneNumber->id
-        ]);
-
+        for( $i = 0; $i < 10; $i++ ){
+            $contact = $this->createContact($company);
+            factory(Call::class)->create([ 
+                'contact_id'      => $contact->id,
+                'account_id'      => $company->account_id,
+                'company_id'      => $company->id,
+                'phone_number_id' => $phoneNumber->id
+            ]);
+        }
 
         $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
             $mock->shouldReceive('bankNumber')
@@ -1600,7 +1607,7 @@ class PhoneNumberTest extends TestCase
         $response->assertStatus(200);
         
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         $this->assertDatabaseMissing('phone_numbers', [
@@ -1621,11 +1628,16 @@ class PhoneNumberTest extends TestCase
         $phoneNumber = $this->createPhoneNumber($company, $config);
        
         //  3 calls per day over last 3 days
-        factory(Call::class, 9)->create([ 
-            'account_id'      => $company->account_id,
-            'company_id'      => $company->id,
-            'phone_number_id' => $phoneNumber->id
-        ]);
+        for( $i = 0; $i < 9; $i++ ){
+            $contact = $this->createContact($company);
+            factory(Call::class)->create([ 
+                'contact_id'      => $contact->id,
+                'account_id'      => $company->account_id,
+                'company_id'      => $company->id,
+                'phone_number_id' => $phoneNumber->id
+            ]);
+        }
+        
 
         $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
             $mock->shouldReceive('bankNumber')
@@ -1639,7 +1651,7 @@ class PhoneNumberTest extends TestCase
         ]));
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         $this->assertDatabaseMissing('phone_numbers', [

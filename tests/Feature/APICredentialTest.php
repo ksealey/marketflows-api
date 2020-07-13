@@ -58,7 +58,7 @@ class APICredentialTest extends TestCase
         ]));
 
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         $response->assertStatus(200);
