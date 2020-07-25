@@ -1387,6 +1387,7 @@ class PhoneNumberTest extends TestCase
         ]); 
         $expectedData = json_decode(json_encode($phoneNumber->toArray()), true);
         unset($expectedData['disabled_at']); // Disabled time may differ by seconds from now
+        unset($expectedData['updated_at']);
         
         //  Disable
         $response = $this->json('PUT', route('update-phone-number', [
