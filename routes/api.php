@@ -59,10 +59,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
              ->middleware('can:update,\App\Models\Account')
              ->name('update-account');
 
-        Route::put('/upgrade', 'AccountController@upgrade')
-             ->middleware('can:upgrade,\App\Models\Account')
-             ->name('upgrade-account');
-
         Route::delete('/', 'AccountController@delete')
              ->middleware('can:update,\App\Models\Account')
              ->name('delete-account');

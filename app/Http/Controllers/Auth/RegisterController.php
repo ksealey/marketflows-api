@@ -31,7 +31,6 @@ class RegisterController extends Controller
     {
         $rules = [
             'account_name'          => 'bail|required|min:4|max:64',
-            'account_type'          => 'bail|required|in:BASIC,ANALYTICS,ANALYTICS_PRO',
             'first_name'            => 'bail|required|min:2|max:32',
             'last_name'             => 'bail|required|min:2|max:32',
             'email'                 => 'bail|required|email|max:128|unique:users,email',
@@ -69,8 +68,6 @@ class RegisterController extends Controller
             //  Create account
             $account = Account::create([
                 'name'                => $request->account_name,
-                'account_type'        => $request->account_type,
-                
                 'default_tts_voice'   => 'Joanna',
                 'default_tts_language'=> 'en-US',
             ]);
