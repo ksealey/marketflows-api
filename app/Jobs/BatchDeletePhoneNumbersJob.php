@@ -42,20 +42,14 @@ class BatchDeletePhoneNumbersJob implements ShouldQueue
         $this->numberManager = App::make(PhoneNumberManager::class);
         
         //
-        //  Release or bank remote number
+        //  Release remote number
         //
         PhoneNumber::where('company_id', $this->company->id)
                     ->get()
                     ->each(function($phoneNumber){
-                        $callsOverThreeDays = $phoneNumber->callsForPreviousDays(3);
-                        if( $phoneNumber->willRenewBeforeDays(5) || $callsOverThreeDays >= 30 ){
-                            $this->numberManager
-                                 ->releaseNumber($phoneNumber);
-                            usleep(250); // Limit to 4 requests per second
-                        }else{
-                            $this->numberManager
-                                 ->bankNumber($phoneNumber, $callsOverThreeDays <= 9 ? true : false); // Make avaiable now if it gets less than or equal to 3 calls per day
-                        }
+                        $this->numberManager
+                                ->releaseNumber($phoneNumber);
+                        usleep(250); // Limit to 4 requests per second
                     }); 
         //
         //  Delete from database

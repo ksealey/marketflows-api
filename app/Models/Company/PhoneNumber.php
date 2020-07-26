@@ -227,18 +227,6 @@ class PhoneNumber extends Model implements Exportable
         return $renewDate;
     }
 
-    /**
-     * Given a number of days, determine if a number will be renewed by then
-     * 
-     * @param int $days
-     * 
-     * @return bool
-     */
-    public function willRenewBeforeDays(int $days)
-    {
-        return today()->diff($this->renewalDate())->days <= $days;
-    }
-
     public function callsForPreviousDays(int $days)
     {
         $since = today()->subDays($days);

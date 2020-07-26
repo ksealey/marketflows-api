@@ -8,7 +8,6 @@ use Illuminate\Http\Response;
 use App\Models\Account;
 use App\Models\AccountBlockedPhoneNumber;
 use App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
-use App\Models\BankedPhoneNumber;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
@@ -74,19 +73,9 @@ class IncomingCallController extends Controller
         if( $dialedCountryCode )
             $query->where('country_code', $dialedCountryCode);
         
-        //  If we don't recognize this call see if it's for a banked number
+        //  If we don't recognize this call, end it
         $phoneNumber = $query->first();
         if( ! $phoneNumber ){
-            $query = BankedPhoneNumber::where('number', $dialedNumber); 
-            if( $dialedCountryCode )
-                $query->where('country_code', $dialedCountryCode);
-            
-            $bankedNumber = $query->first();
-            if( $bankedNumber ){
-                $bankedNumber->calls++;
-                $bankedNumber->save();
-            }
-
             $response->reject();
 
             return Response::xmlResponse($response);

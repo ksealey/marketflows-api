@@ -11,7 +11,6 @@ use \App\Models\Account;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
-use \App\Models\BankedPhoneNumber;
 use \App\Helpers\PhoneNumberManager;
 use \App\Jobs\ExportResultsJob;
 use DateTimeZone;
@@ -326,93 +325,14 @@ class PhoneNumberTest extends TestCase
         });
     }
 
+   
+
     /**
-     * Test checking available numbers with enough banked numbers
+     * Test checking available numbers
      *
      * @group phone-numbers
      */
-    public function testCheckingAvailableNumbersWithBankedNumbers()
-    {
-        $otherAccount = $this->createAccount();
-        $company      = $this->createCompany();
-        $type         = mt_rand(0,1) ? PhoneNumber::TYPE_LOCAL : PhoneNumber::TYPE_TOLL_FREE;
-
-        $bankedNumbers = factory(BankedPhoneNumber::class, mt_rand(1,30))->create([
-            'released_by_account_id' => $otherAccount->id,
-            'number'                 => '813' . mt_rand(1000000, 9999999),
-            'type'                   => $type
-        ]);
-
-        $this->mock(PhoneNumberManager::class, function ($mock){
-            $mock->shouldNotReceive('listAvailable');
-        });
-
-        $response = $this->json('GET', route('phone-numbers-available', [
-            'company' => $company->id
-        ]), [
-            'type'          => $type,
-            'count'         => count($bankedNumbers),
-            'starts_with'   => '813'
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'available' => true,
-            'count'     => count($bankedNumbers),
-            'type'      => $type
-        ]);
-    }
-
-    /**
-     * Test checking available numbers with not enough banked numbers
-     *
-     * @group phone-numbers
-     */
-    public function testCheckingAvailableNumbersWithSomeBankedNumbers()
-    {
-        $otherAccount = $this->createAccount();
-        $company      = $this->createCompany();
-        $type         = mt_rand(0,1) ? PhoneNumber::TYPE_LOCAL : PhoneNumber::TYPE_TOLL_FREE;
-
-        $bankedNumbers = factory(BankedPhoneNumber::class, mt_rand(1,10))->create([
-            'released_by_account_id' => $otherAccount->id,
-            'number'                 => '813' . mt_rand(1000000, 9999999),
-            'type'                   => $type
-        ]);
-
-        $additionalNumberCount = 2;
-
-        $this->mock(PhoneNumberManager::class, function ($mock) use($additionalNumberCount, $type, $company){
-            $returnNumbers = factory('Tests\Models\TwilioPhoneNumber', $additionalNumberCount)->make();
-
-            $mock->shouldReceive('listAvailable')
-                 ->once()
-                 ->with('813', $additionalNumberCount, $type, $company->country)
-                 ->andReturn($returnNumbers);
-        });
-
-        $response = $this->json('GET', route('phone-numbers-available', [
-            'company' => $company->id
-        ]), [
-            'type'          => $type,
-            'count'         => count($bankedNumbers) + $additionalNumberCount,
-            'starts_with'   => '813'
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'available' => true,
-            'count'     =>  count($bankedNumbers) + $additionalNumberCount,
-            'type'      => $type
-        ]);
-    }
-
-    /**
-     * Test checking available numbers with no banked numbers
-     *
-     * @group phone-numbers
-     */
-    public function testCheckingAvailableNumbersWithNoBankedNumbers()
+    public function testCheckingAvailableNumbers()
     {
         $otherAccount = $this->createAccount();
         $company      = $this->createCompany();
@@ -486,7 +406,7 @@ class PhoneNumberTest extends TestCase
      *
      * @group phone-numbers
      */
-    public function testCheckingAvailableNumbersWithNotNumbers()
+    public function testCheckingAvailableNumbersWithNoNumbers()
     {
         $otherAccount = $this->createAccount();
         $company      = $this->createCompany();
@@ -1226,145 +1146,6 @@ class PhoneNumberTest extends TestCase
         }
     }
 
-    /**
-     * Test creating a phone number from a banked number
-     * 
-     * @group phone-numbers
-     */
-    public function testCreateLocalPhoneNumberFromBank()
-    {
-        $otherAccont   = $this->createAccount(); 
-        $company       = $this->createCompany();
-        $config        = $this->createConfig($company);
-
-        $bankedNumber = factory(BankedPhoneNumber::class)->create([
-            'released_by_account_id' => $otherAccont->id,
-            'number'                 => '813' . mt_rand(1111111,9999999),
-            'status'                 => 'Available',
-            'type'                   => PhoneNumber::TYPE_LOCAL
-        ]);
-    
-        $numberData = factory(PhoneNumber::class)->make([
-            'type' => PhoneNumber::TYPE_LOCAL
-        ]);
-
-        $response = $this->json('POST', route('create-phone-number', [
-            'company' => $company->id
-        ]), [
-            'name'        => $numberData->name,
-            'category'    => $numberData->category,
-            'sub_category'=> $numberData->sub_category,
-            'type'        => $numberData->type,
-            'starts_with' => '813',
-            'source'      => $numberData->source,
-            'medium'      => $numberData->medium,
-            'content'     => $numberData->content,
-            'campaign'    => $numberData->campaign,
-            'phone_number_config_id' => $config->id,
-            'swap_rules'  => json_encode($numberData->swap_rules)
-        ]);
-        $response->assertStatus(201);
-
-        $response->assertJSON([
-            'account_id'  => $company->account_id,
-            'company_id'  => $company->id,
-            'name'        => $numberData->name,
-            'category'    => $numberData->category,
-            'sub_category'=> $numberData->sub_category,
-            'type'        => $numberData->type,
-            'source'      => $numberData->source,
-            'medium'      => $numberData->medium,
-            'content'     => $numberData->content,
-            'country_code' => $bankedNumber->country_code,
-            'number'       => $bankedNumber->number,
-            'campaign'     => $numberData->campaign,
-            'phone_number_config_id' => $config->id,
-            'country'      => $company->country,
-            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? json_decode(json_encode($numberData->swap_rules), true) : null,
-            'call_count'   => 0,
-            'link'         => route('read-phone-number', [
-                'company' => $company->id,
-                'phoneNumber' => $response['id']
-            ]),
-            'kind'             => 'PhoneNumber',
-        ]);
-
-        $this->assertDatabaseMissing('banked_phone_numbers', [
-            'id'         => $bankedNumber->id,
-            'deleted_at' => null
-        ]);
-    }
-
-    /**
-     * Test creating a toll-free phone number from a banked number
-     * 
-     * @group phone-numbers-
-     */
-    public function testCreateTollFreePhoneNumberFromBank()
-    {
-        $otherAccont   = $this->createAccount(); 
-        $company       = $this->createCompany();
-        $config        = $this->createConfig($company);
-
-        $bankedNumber = factory(BankedPhoneNumber::class)->create([
-            'released_by_account_id' => $otherAccont->id,
-            'number'                 => '813' . mt_rand(1111111,9999999),
-            'status'                 => 'Available',
-            'type'                   => PhoneNumber::TYPE_TOLL_FREE
-        ]);
-    
-        $numberData = factory(PhoneNumber::class)->make([
-            'type' => PhoneNumber::TYPE_TOLL_FREE
-        ]);
-
-        $response = $this->json('POST', route('create-phone-number', [
-            'company' => $company->id
-        ]), [
-            'name'        => $numberData->name,
-            'category'    => $numberData->category,
-            'sub_category'=> $numberData->sub_category,
-            'type'        => $numberData->type,
-            'starts_with' => '813',
-            'source'      => $numberData->source,
-            'medium'      => $numberData->medium,
-            'content'     => $numberData->content,
-            'campaign'    => $numberData->campaign,
-            'phone_number_config_id' => $config->id,
-            'swap_rules'  => json_encode($numberData->swap_rules)
-        ]);
-
-        $response->assertStatus(201);
-        
-        $response->assertJSON([
-            'account_id'  => $company->account_id,
-            'company_id'  => $company->id,
-            'name'        => $numberData->name,
-            'category'    => $numberData->category,
-            'sub_category'=> $numberData->sub_category,
-            'type'        => $numberData->type,
-            'source'      => $numberData->source,
-            'medium'      => $numberData->medium,
-            'content'     => $numberData->content,
-            'country_code' => $bankedNumber->country_code,
-            'number'       => $bankedNumber->number,
-            'campaign'     => $numberData->campaign,
-            'phone_number_config_id' => $config->id,
-            'country'      => $company->country,
-            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? json_decode(json_encode($numberData->swap_rules), true) : null,
-            'call_count'   => 0,
-            'link'         => route('read-phone-number', [
-                'company' => $company->id,
-                'phoneNumber' => $response['id']
-            ]),
-            'kind'             => 'PhoneNumber',
-        ]);
-
-        $this->assertDatabaseMissing('banked_phone_numbers', [
-            'id'         => $bankedNumber->id,
-            'deleted_at' => null
-        ]);
-    }
-
     /*
      |-------------
      | Update
@@ -1504,17 +1285,15 @@ class PhoneNumberTest extends TestCase
     }
 
     /**
-     * Test deleting a phone number will be released because the renewal date is within 5 days
+     * Test deleting a phone number will release it
      * 
      * @group phone-numbers
      */
-    public function testDeletePhoneNumberIsReleasedForRenewalDate()
+    public function testDeletePhoneNumberIsReleased()
     {
         $company     = $this->createCompany();
         $config      = $this->createConfig($company);
-        $phoneNumber = $this->createPhoneNumber($company, $config, [
-            'purchased_at' => now()->subMonths(1)->addDays(4) // Renews in 4 days
-        ]); 
+        $phoneNumber = $this->createPhoneNumber($company, $config); 
 
         $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
             $mock->shouldReceive('releaseNumber')
@@ -1526,145 +1305,12 @@ class PhoneNumberTest extends TestCase
             'company'     => $company->id,
             'phoneNumber' => $phoneNumber->id
         ]));
-    }
-
-    /**
-     * Test deleting a phone number will release it because there is too many calls
-     * 
-     * @group phone-numbers
-     */
-    public function testDeletePhoneNumberIsReleasedForTooManyCalls()
-    {
-        $company     = $this->createCompany();
-        $config      = $this->createConfig($company);
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-        
-        for( $i = 0; $i < 30; $i++ ){
-            $contact = $this->createContact($company);
-            factory(Call::class)->create([ 
-                'contact_id'      => $contact->id,
-                'account_id'      => $company->account_id,
-                'company_id'      => $company->id,
-                'phone_number_id' => $phoneNumber->id
-            ]);
-        }
-
-        $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
-            $mock->shouldReceive('releaseNumber')
-                 ->once()
-                 ->with(PhoneNumber::class);
-        });
-
-        $response = $this->json('DELETE', route('delete-phone-number', [
-            'company'     => $company->id,
-            'phoneNumber' => $phoneNumber->id
-        ]));
-
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'message' => 'Deleted'
-        ]);
-
-        $this->assertDatabaseMissing('phone_numbers', [
-            'id'         => $phoneNumber->id,
-            'deleted_at' => null
-        ]);
-    }
-
-    /**
-     * Test deleting a phone number will be banked because the renewal date is after 5 days
-     * 
-     * @group phone-numbers
-     */
-    public function testDeletePhoneNumberIsBankedForRenewalDate()
-    {
-        $company     = $this->createCompany();
-        $config      = $this->createConfig($company);
-        $phoneNumber = $this->createPhoneNumber($company, $config, [
-            'purchased_at' => now()->subMonths(1)->addDays(6) // Renews in 6 days
-        ]); 
-
-        for( $i = 0; $i < 10; $i++ ){
-            $contact = $this->createContact($company);
-            factory(Call::class)->create([ 
-                'contact_id'      => $contact->id,
-                'account_id'      => $company->account_id,
-                'company_id'      => $company->id,
-                'phone_number_id' => $phoneNumber->id
-            ]);
-        }
-
-        $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
-            $mock->shouldReceive('bankNumber')
-                 ->once()
-                 ->with(PhoneNumber::class, false);
-        });
-
-        $response = $this->json('DELETE', route('delete-phone-number', [
-            'company'     => $company->id,
-            'phoneNumber' => $phoneNumber->id
-        ]));
-
-        $response->assertStatus(200);
-        
-        $response->assertJSON([
-            'message' => 'Deleted'
-        ]);
-
-        $this->assertDatabaseMissing('phone_numbers', [
-            'id'         => $phoneNumber->id,
-            'deleted_at' => null
-        ]);
-    }
-
-    /**
-     * Test deleting a phone number will be banked and available for low call volume
-     * 
-     * @group phone-numbers
-     */
-    public function testDeletePhoneNumberIsBankedForAndAvailbleForLowCallVolume()
-    {
-        $company     = $this->createCompany();
-        $config      = $this->createConfig($company);
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-       
-        //  3 calls per day over last 3 days
-        for( $i = 0; $i < 9; $i++ ){
-            $contact = $this->createContact($company);
-            factory(Call::class)->create([ 
-                'contact_id'      => $contact->id,
-                'account_id'      => $company->account_id,
-                'company_id'      => $company->id,
-                'phone_number_id' => $phoneNumber->id
-            ]);
-        }
-        
-
-        $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
-            $mock->shouldReceive('bankNumber')
-                 ->once()
-                 ->with(PhoneNumber::class, true);
-        });
-
-        $response = $this->json('DELETE', route('delete-phone-number', [
-            'company'     => $company->id,
-            'phoneNumber' => $phoneNumber->id
-        ]));
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'message' => 'Deleted'
-        ]);
-
-        $this->assertDatabaseMissing('phone_numbers', [
-            'id'         => $phoneNumber->id,
-            'deleted_at' => null
-        ]);
     }
 
     /**
      * Test twilio client function numbers
      * 
-     * @group phone-numbers--
+     * @group phone-numbers
      */
     public function testTwilioListsNumbersWithPurchase()
     {

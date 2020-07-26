@@ -6,7 +6,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use \App\Models\AccountBlockedPhoneNumber;
-use \App\Models\BankedPhoneNumber;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\Call;
@@ -400,48 +399,7 @@ class IncomingCallTest extends TestCase
         $response->assertSee('<Response><Reject/></Response>', false);
     }
 
-    /**
-     * Test that when a number is deleted and added to the phone number bank, it's call count increases
-     * 
-     * @group incoming-calls
-     */
-    public function testDeletedNumberInBankIncrementsCalls()
-    {
-        $company     = $this->createCompany();
-        $audioClip   = $this->createAudioClip($company);
-        $config      = $this->createConfig($company);
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
-        ]);
-
-        //  Make sure it works at first
-        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-        $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'application/xml');
-        $response->assertDontSee('<Response><Reject/></Response>', false);
-
-        $phoneNumber->delete();
-        $bankedNumber= factory(BankedPhoneNumber::class)->create([
-            'released_by_account_id' => $this->account->id,
-            'country_code'           => $phoneNumber->country_code,
-            'number'                 => $phoneNumber->number
-        ]);
-
-        //  Then make sure its rejected
-        for( $i = 0; $i < 2; $i++ ){
-            $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-            $response->assertStatus(200);
-            $response->assertHeader('Content-Type', 'application/xml');
-            $response->assertSee('<Response><Reject/></Response>', false);
-
-            //  And the count has incremented
-            $callCount = BankedPhoneNumber::find($bankedNumber->id)->calls;
-            $this->assertEquals($callCount, $i+1);
-        }
-    }
-
+   
     /**
      * Test that calls to disabled phone numbers are rejected
      * 

@@ -4,7 +4,6 @@ namespace App\Helpers;
 use Twilio\Rest\Client as Twilio;
 use Exception;
 use App;
-use App\Models\BankedPhoneNumber;
 use App\Models\Company\PhoneNumber;
 use \Carbon\Carbon;
 
@@ -76,32 +75,5 @@ class PhoneNumberManager
              ->delete();
        
         return $this;
-    }
-
-    /**
-     * Bank a phone number
-     * 
-     */
-    public function bankNumber(PhoneNumber $phoneNumber, $availableNow = false)
-    {
-        //  Make sure it's released 2 days before it will be renewed
-        $releaseBy = $phoneNumber->renewalDate()
-                                 ->subDays(2);
-
-        return BankedPhoneNumber::create([
-            'released_by_account_id' => $phoneNumber->account_id,
-            'external_id'            => $phoneNumber->external_id,
-            'country'                => $phoneNumber->country,
-            'country_code'           => $phoneNumber->country_code,
-            'number'                 => $phoneNumber->number,
-            'voice'                  => $phoneNumber->voice,
-            'sms'                    => $phoneNumber->sms,
-            'mms'                    => $phoneNumber->mms,
-            'type'                   => $phoneNumber->type,
-            'calls'                  => 0,
-            'status'                 => $availableNow ? 'Available' : 'Banked',
-            'purchased_at'           => $phoneNumber->purchased_at,
-            'release_by'             => $releaseBy
-        ]);
     }
 }

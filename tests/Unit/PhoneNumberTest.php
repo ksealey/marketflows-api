@@ -11,31 +11,6 @@ class PhoneNumberTest extends TestCase
     use \Tests\CreatesAccount;
 
     /**
-     * Test checking renewal days
-     * 
-     * @group phone-numbers-unit
-     */
-    public function testwillRenewBeforeDays()
-    {
-        $company = $this->createCompany();
-        $config  = $this->createConfig($company);
-        $phoneNumber = $this->createPhoneNumber($company, $config, [
-            'purchased_at' => now()->subMonths(1)->addDays(5)
-        ]);
-
-        $this->assertTrue($phoneNumber->willRenewBeforeDays(8));
-        $this->assertTrue($phoneNumber->willRenewBeforeDays(7));
-        $this->assertTrue($phoneNumber->willRenewBeforeDays(6));
-        $this->assertTrue($phoneNumber->willRenewBeforeDays(5));
-        $this->assertFalse($phoneNumber->willRenewBeforeDays(4));
-        $this->assertFalse($phoneNumber->willRenewBeforeDays(3));
-        $this->assertFalse($phoneNumber->willRenewBeforeDays(2));
-        $this->assertFalse($phoneNumber->willRenewBeforeDays(1));
-        $this->assertFalse($phoneNumber->willRenewBeforeDays(0));
-        $this->assertFalse($phoneNumber->willRenewBeforeDays(-1));
-    }
-
-    /**
      * Test checking calls for previous days
      * 
      * @group phone-numbers-unit

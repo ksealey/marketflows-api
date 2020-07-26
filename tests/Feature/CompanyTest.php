@@ -489,7 +489,7 @@ class CompanyTest extends TestCase
     /**
      * Test that the back jobs for companies work as eexpected
      * 
-     * @group companies--
+     * @group companies
      */
     public function testDeleteCompaniesBatchJobsWork()
     {
@@ -498,6 +498,16 @@ class CompanyTest extends TestCase
         $audioClip      = $data['audio_clip'];
         $phoneNumber    = $data['phone_number'];
         $report         = $data['report'];
+
+        //
+        //  Setup mock
+        //
+        $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
+            $mock->shouldReceive('releaseNumber')
+                 ->once()
+                 ->with(PhoneNumber::class);
+        });
+
 
         //
         //  Make sure the files are there originally
