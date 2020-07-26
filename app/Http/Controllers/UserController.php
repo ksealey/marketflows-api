@@ -7,7 +7,6 @@ use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\UserSettings;
 use App\Models\Company;
-use App\Models\UserCompany;
 use App\Mail\AddUser as AddUserEmail;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use App\Rules\CompanyListRule;
@@ -87,20 +86,6 @@ class UserController extends Controller
                 'user_id' => $user->id
             ]);
 
-            //  Create company links for lower level users
-            if( ! $user->canViewAllCompanies() ){
-                $companyIds = json_decode($request->companies);
-                $companyIds = array_unique($companyIds);
-                $inserts    = [];
-                foreach( $companyIds as $companyId ){
-                    $inserts[] = [
-                        'user_id'    => $user->id,
-                        'company_id' => $companyId
-                    ];
-                }
-                UserCompany::insert($inserts);
-            }
-
             //  Send out email to user
             Mail::to($user)->send(new AddUserEmail($creator, $user, $tempPassword));
         }catch(Exception $e){
@@ -116,8 +101,6 @@ class UserController extends Controller
 
     public function read(Request $request, User $user)
     {
-        $user->companies = $user->companies;
-
         return response($user);
     }
 
@@ -146,28 +129,8 @@ class UserController extends Controller
             return $request->has('role') && $request->role !== User::ROLE_ADMIN && $request->role !== User::ROLE_SYSTEM;
         });
 
-        if( $request->filled('role') ){
+        if( $request->filled('role') )
             $user->role = $request->role;
-            
-            if( $user->canViewAllCompanies() )
-                UserCompany::where('user_id', $user->id)->delete();
-        }
-
-        if( $request->filled('companies') ){
-            if( ! $user->canViewAllCompanies() ){
-                UserCompany::where('user_id', $user->id)->delete();
-                $companyIds = json_decode($request->companies);
-                $companyIds = array_unique($companyIds);
-                $inserts    = [];
-                foreach( $companyIds as $companyId ){
-                    $inserts[] = [
-                        'user_id'    => $user->id,
-                        'company_id' => $companyId
-                    ];
-                }
-                UserCompany::insert($inserts);
-            }
-        }
 
         if( $request->filled('timezone') )
             $user->timezone = $request->timezone;

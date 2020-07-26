@@ -16,7 +16,6 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 
 use \App\Rules\CountryRule;
-use \App\Rules\BulkCompanyRule;
 
 use Validator;
 use Exception;
@@ -45,15 +44,7 @@ class CompanyController extends Controller
         $user  = $request->user();
         $query = Company::select([
             'companies.*'
-        ])->where('companies.account_id', $user->account_id);
-
-        if( ! $user->canViewAllCompanies() ){
-            $query->whereIn('companies.id', function($query) use($user){
-                        $query->select('company_id')
-                                ->from('user_companies')
-                                ->where('user_id', $user->id);
-                    });
-        }        
+        ])->where('companies.account_id', $user->account_id);   
         
         return parent::results(
             $request,

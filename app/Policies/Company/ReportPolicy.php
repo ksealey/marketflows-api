@@ -6,11 +6,10 @@ use App\Models\User;
 use App\Models\Company;
 use App\Models\Company\Report;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Policies\Traits\HandlesCompanyResources;
 
 class ReportPolicy
 {
-    use HandlesAuthorization, HandlesCompanyResources;
+    use HandlesAuthorization;
 
   
     

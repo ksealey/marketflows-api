@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use \App\Models\EmailVerification;
 use \App\Models\Company;
-use \App\Models\UserCompany;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company\Report;
@@ -73,7 +72,6 @@ class User extends Authenticatable
  
     public $appends = [
         'full_name',
-        'pretty_role',
         'status'
     ];
 
@@ -98,7 +96,6 @@ class User extends Authenticatable
             'first_name'        => 'First Name',
             'last_name'         => 'Last Name',
             'email'             => 'Email',
-            'role'              => 'Role',
             'created_at_local'  => 'Created'
         ];
     }
@@ -123,11 +120,6 @@ class User extends Authenticatable
         return $this->belongsTo('\App\Models\Account');
     }
 
-    public function companies()
-    {
-        return $this->belongsToMany('App\Models\Company', 'user_companies');
-    }
-
     public function settings()
     {
         $this->hasOne('\App\Models\UserSettings');
@@ -136,19 +128,6 @@ class User extends Authenticatable
     public function getFullNameAttribute()
     {
         return  ucfirst(strtolower($this->first_name)) . ' ' . ucfirst(strtolower($this->last_name));
-    }
-
-    public function getPrettyRoleAttribute()
-    {
-        if( $this->role === self::ROLE_ADMIN )
-            return 'Administrator';
-        if( $this->role === self::ROLE_SYSTEM )
-            return 'System User';
-        if( $this->role === self::ROLE_REPORTING)
-            return 'Reporting User';
-        if( $this->role === self::ROLE_CLIENT)
-            return 'Client';
-        return $this->role;
     }
 
     public function getStatusAttribute()
@@ -185,20 +164,7 @@ class User extends Authenticatable
      */
     public function canViewCompany(Company $company)
     {
-        if( $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_SYSTEM )
-            return true;
-
-        foreach( $this->companies as $c ){
-            if( $c->id === $company->id )
-                return true;
-        }
-        
-        return false;
-    }
-
-    public function canViewAllCompanies()
-    {
-        return  $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_SYSTEM;
+        return $company->account_id == $user->account_id;
     }
 
     /**
@@ -221,8 +187,6 @@ class User extends Authenticatable
             'deleted_at' => now()
         ]);
         
-        UserCompany::where('company_id', $company->id)->delete();
-
         PhoneNumberConfig::where('company_id', $company->id)->update([
             'deleted_by' => $this->id,
             'deleted_at' => now()

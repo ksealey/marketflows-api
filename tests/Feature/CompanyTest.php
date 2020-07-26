@@ -59,10 +59,6 @@ class CompanyTest extends TestCase
             'created_by' => $this->user->id,
             'updated_by' => null
         ]);
-
-        $this->assertDatabaseMissing('user_companies', [
-            'id' => $response['id']
-        ]);
     }
 
     /**
@@ -365,10 +361,6 @@ class CompanyTest extends TestCase
             'industry' => $updateData->industry,
             'created_by' => $this->user->id,
             'updated_by' => $this->user->id
-        ]);
-
-        $this->assertDatabaseMissing('user_companies', [
-            'id' => $response['id']
         ]);
     }
 

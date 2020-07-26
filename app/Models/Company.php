@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Contracts\Exportable;
 use \App\Traits\PerformsExport;
-use \App\Models\UserCompany;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company\Report;
@@ -75,13 +74,6 @@ class Company extends Model implements Exportable
                             DB::raw("DATE_FORMAT(CONVERT_TZ(companies.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local") 
                         ])
                         ->where('companies.account_id', $user->account_id);
-
-        if( ! $user->canViewAllCompanies() )
-            $query->whereIn('companies.id', function($query) use($user){
-                $query->select('company_id')
-                        ->from('user_companies')
-                        ->where('user_id', $user->id);
-            });
 
         return $query;
     }

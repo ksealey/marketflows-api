@@ -36,13 +36,7 @@ class WidgetController extends Controller
         $query = DB::table('calls')
                     ->select([ 'calls.source as source', DB::raw('COUNT(*) AS call_count') ])
                     ->where('account_id', $user->account_id);
-        if( ! $user->canViewAllCompanies() ){
-            $query->whereIn('company_id', function($query) use($user){
-                $query->select('company_id')
-                        ->from('user_companies')
-                        ->where('user_id', $user->id);
-            });
-        }
+
         $query->groupBy('calls.source')
               ->orderBy('call_count', 'DESC')
               ->limit(5);
@@ -86,14 +80,7 @@ class WidgetController extends Controller
         $userTZ = new DateTimeZone($user->timezone);
         $utcTZ  = new DateTimeZone('UTC');
         $query  = Call::where('account_id', $user->account_id);
-        if( ! $user->canViewAllCompanies() ){
-            $query->whereIn('company_id', function($query) use($user){
-                $query->select('company_id')
-                        ->from('user_companies')
-                        ->where('user_id', $user->id);
-            });
-        }
-        
+       
         if( $request->start_date ){
             $startDate = new DateTime($request->start_date, $userTZ);
             $startDate->setTimeZone($utcTZ);
@@ -136,13 +123,6 @@ class WidgetController extends Controller
         $userTZ = new DateTimeZone($user->timezone);
         $utcTZ  = new DateTimeZone('UTC');
         $query  = Company::where('account_id', $user->account_id);
-        if( ! $user->canViewAllCompanies() ){
-            $query->whereIn('company_id', function($query) use($user){
-                $query->select('company_id')
-                        ->from('user_companies')
-                        ->where('user_id', $user->id);
-            });
-        }
         
         if( $request->start_date ){
             $startDate = new DateTime($request->start_date, $userTZ);
@@ -192,14 +172,6 @@ class WidgetController extends Controller
                     ->whereNull('deleted_at');
         });
 
-        if( ! $user->canViewAllCompanies() ){
-            $query->whereIn('company_id', function($query) use($user){
-                $query->select('company_id')
-                        ->from('user_companies')
-                        ->where('user_id', $user->id);
-            });
-        }
-        
         if( $request->start_date ){
             $startDate = new DateTime($request->start_date, $userTZ);
             $startDate->setTimeZone($utcTZ);
