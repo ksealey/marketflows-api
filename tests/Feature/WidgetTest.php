@@ -135,7 +135,6 @@ class WidgetTest extends TestCase
                         'description' => 'The monthly service fee charged for your account type.',
                         'items' => [
                             [
-                                'label'       => $this->account->pretty_account_type,
                                 'details'     => '',
                                 'value'       => number_format($this->account->monthly_fee, 2)
                             ]

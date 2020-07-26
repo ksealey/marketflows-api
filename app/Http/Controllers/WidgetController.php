@@ -377,7 +377,6 @@ class WidgetController extends Controller
                         'description' => 'The monthly service fee charged for your account type.',
                         'items' => [
                             [
-                                'label'       => $account->pretty_account_type,
                                 'details'     => '',
                                 'value'       => number_format($account->monthly_fee, 2)
                             ]

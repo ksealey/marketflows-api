@@ -21,7 +21,6 @@ class BillingTest extends TestCase
         $response->assertStatus(200);
 
         $response->assertJSON([
-            "account_type" => $this->account->pretty_account_type,
             "monthly_fee"  => $this->account->monthly_fee,
             "primary_payment_method" => $this->billing->primary_payment_method,
             "past_due_amount" => $this->billing->past_due_amount,

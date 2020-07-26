@@ -28,7 +28,6 @@ class AuthTest extends TestCase
         $account = factory(Account::class)->make();
         $user    = factory(User::class)->make([
             'account_name' => $account->name,
-            'account_type' => $account->account_type,
             'password'     => 'Password1!'
         ]);
 
@@ -43,7 +42,6 @@ class AuthTest extends TestCase
             ],
             "account" => [
                 'name' => $account->name,
-                'account_type' => $account->account_type,
                 'default_tts_voice' => $account->default_tts_voice,
                 'default_tts_language' => $account->default_tts_language
             ],
@@ -72,7 +70,6 @@ class AuthTest extends TestCase
         $account = factory(Account::class)->make();
         $user    = factory(User::class)->make([
             'account_name' => $account->name,
-            'account_type' => $account->account_type,
             'password'     => 'Password1!',
             'email'        => str_random(10) . '@' . config('app.spoof_email_domains')[0]
         ]);
@@ -159,7 +156,6 @@ class AuthTest extends TestCase
             ],
             "account" => [
                 'name' => $account->name,
-                'account_type' => $account->account_type,
                 'default_tts_voice' => $account->default_tts_voice,
                 'default_tts_language' => $account->default_tts_language
             ],
@@ -300,7 +296,6 @@ class AuthTest extends TestCase
             ],
             'account' => [
                 'name' => $account->name,
-                'account_type' => $account->account_type,
                 'default_tts_voice' => $account->default_tts_voice,
                 'default_tts_language' => $account->default_tts_language
             ],

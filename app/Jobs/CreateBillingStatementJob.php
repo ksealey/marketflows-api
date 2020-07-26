@@ -66,7 +66,6 @@ class CreateBillingStatementJob implements ShouldQueue
                 [
                     'billing_statement_id'  => $statement->id,
                     'label'                 => 'Monthly Service Fee',
-                    'details'               => $account->pretty_account_type,
                     'total'                 => $monthlyFee
                 ],
                 [

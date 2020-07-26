@@ -12,7 +12,6 @@ class BillingController extends Controller
         $billing = $account->billing; 
 
         return response([
-            'account_type'          => $account->pretty_account_type,
             'monthly_fee'           => number_format($account->monthly_fee, 2),
             'primary_payment_method'=> $account->primary_payment_method,
             'past_due_amount'       => number_format($billing->past_due_amount, 2),

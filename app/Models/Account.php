@@ -18,19 +18,13 @@ class Account extends Model
 {
     use SoftDeletes;
 
-    const TYPE_BASIC              = 'BASIC';
-    const TYPE_ANALYTICS          = 'ANALYTICS';
-    const TYPE_ANALYTICS_PRO      = 'ANALYTICS_PRO';
-
     const TIER_NUMBERS_LOCAL      = 10;
     const TIER_NUMBERS_TOLL_FREE  = 0;
     const TIER_MINUTES_LOCAL      = 500;
     const TIER_MINUTES_TOLL_FREE  = 0;
     const TIER_STORAGE            = 1;
 
-    const COST_TYPE_BASIC         = 45.00;
-    const COST_TYPE_ANALYTICS     = 90.00;
-    const COST_TYPE_ANALYTICS_PRO = 130.00;
+    const COST_MONTHLY            = 20.00;
     const COST_STORAGE_GB         = 0.25;
     const COST_NUMBER_LOCAL       = 3.00;
     const COST_NUMBER_TOLL_FREE   = 5.00;
@@ -44,8 +38,6 @@ class Account extends Model
 
     protected $fillable = [
         'name',
-        'account_type',
-        'account_type_updated_at',
         'default_tts_voice',
         'default_tts_language',
         'suspended_at',
@@ -55,7 +47,6 @@ class Account extends Model
     ];
 
     protected $hidden = [
-        'account_type_updated_at',
         'suspension_code',
         'suspension_warning_at',
         'deleted_at'
@@ -63,22 +54,11 @@ class Account extends Model
 
     protected $appends = [
         'link',
-        'kind',
-        'pretty_account_type',
-        'monthly_fee',
+        'kind'
     ];
 
     protected $currentStorage;
     protected $currentUsage;
-
-    static public function types()
-    {
-        return [
-            self::TYPE_BASIC,
-            self::TYPE_ANALYTICS,
-            self::TYPE_ANALYTICS_PRO
-        ];
-    }
 
     /**
      * Relationships
@@ -109,24 +89,9 @@ class Account extends Model
         return 'Account';
     }
 
-    public function getPrettyAccountTypeAttribute()
-    {
-        switch($this->account_type){
-            case self::TYPE_BASIC: return 'Basic';
-            case self::TYPE_ANALYTICS: return 'Analytics';
-            case self::TYPE_ANALYTICS_PRO: return 'Analytics Pro';
-            default: return '';
-        }
-    }
-
     public function getMonthlyFeeAttribute()
     {
-        switch($this->account_type){
-            case self::TYPE_BASIC: return self::COST_TYPE_BASIC;
-            case self::TYPE_ANALYTICS: return self::COST_TYPE_ANALYTICS;
-            case self::TYPE_ANALYTICS_PRO: return self::COST_TYPE_ANALYTICS_PRO;
-            default: return '';
-        }
+        return self::COST_MONTHLY;
     }
 
     public function getAdminUsersAttribute()

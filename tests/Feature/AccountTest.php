@@ -25,9 +25,7 @@ class AccountTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'id' => $this->account->id,
-            'name' => $this->account->name,
-            'account_type' => $this->account->account_type,
-            'pretty_account_type' => $this->account->pretty_account_type
+            'name' => $this->account->name
         ]);
     }  
     
@@ -46,8 +44,6 @@ class AccountTest extends TestCase
         $response->assertJSON([
             'id' => $this->account->id,
             'name' => $newName,
-            'account_type' => $this->account->account_type,
-            'pretty_account_type' => $this->account->pretty_account_type
         ]);
 
         $account = Account::find($this->account->id);
