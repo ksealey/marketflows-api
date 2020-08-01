@@ -64,7 +64,7 @@ class BillingTest extends TestCase
     /**
      * Test billing job
      * 
-     * @group billing--
+     * @group billing
      */
     public function testBillingJobWorks()
     {
@@ -101,7 +101,7 @@ class BillingTest extends TestCase
     /**
      * Test billing job fails gracefully
      * 
-     * @group billing--
+     * @group billing
      */
     public function testBillingJobFailsGracefully()
     {
@@ -134,7 +134,7 @@ class BillingTest extends TestCase
     /**
      * Test that the billing calculates properly
      * 
-     * @group billing---
+     * @group billing
      */
     public function testBillingCalculatesProperly()
     {
