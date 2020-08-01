@@ -70,50 +70,6 @@ Artisan::command('reports:dispatch-automations', function(){
     ]);
 });
 
-
-Artisan::command('billing:create-statements', function(){
-    $billings = Billing::where('period_ends_at', '<=', now())
-                       ->limit(100)
-                       ->get();
-
-    foreach( $billings as $billing ){
-        CreateBillingStatementJob::dispatch($billing);
-    }
-});
-
-
-Artisan::command('billing:bill-accounts', function(){
-    //  Find all accounts with:
-    //  - bill_at date in the past
-    //  - No lock
-    //  - Unpaid statements
-    //  - Less than 3 failed billing attempts
-    $billings = Billing::where('bill_at', '<=', now())
-                       ->whereNull('locked_at')
-                        ->where('attempts', '<', Billing::MAX_ATTEMPTS)
-                        ->whereIn('account_id', function($query){
-                            $query->select('account_id')
-                                  ->from('billing_statements')
-                                  ->whereNull('paid_at');
-                        })
-                        ->limit(100)
-                        ->get();
-
-    //  Add a lock so if something happens we don't charge the account twice
-    if( count($billings) ){
-        $ids = array_column($billings->toArray(), 'id');
-        Billing::whereIn('id', $ids)->update([
-           'locked_at' => now()
-        ]);
-    }
-
-    //  Push job to queue
-    foreach( $billings as $billing ){
-        BillAccountJob::dispatch($billing);
-    }
-});
-
-
 Artisan::command('accounts:suspension-warnings', function(){
     $accounts = Account::where('suspension_warning_at', '<=', now())->get();
 

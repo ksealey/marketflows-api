@@ -24,6 +24,7 @@ class CreatePaymentMethodsTable extends Migration
             $table->boolean('primary_method')->default(0);
             $table->dateTime('last_used_at')->nullable();
             $table->dateTime('disabled_at')->nullable();
+            $table->string('error', 255)->nullable();
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();

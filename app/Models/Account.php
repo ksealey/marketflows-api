@@ -18,19 +18,6 @@ class Account extends Model
 {
     use SoftDeletes;
 
-    const TIER_NUMBERS_LOCAL      = 10;
-    const TIER_NUMBERS_TOLL_FREE  = 0;
-    const TIER_MINUTES_LOCAL      = 500;
-    const TIER_MINUTES_TOLL_FREE  = 0;
-    const TIER_STORAGE            = 1;
-
-    const COST_MONTHLY            = 20.00;
-    const COST_STORAGE_GB         = 0.25;
-    const COST_NUMBER_LOCAL       = 3.00;
-    const COST_NUMBER_TOLL_FREE   = 5.00;
-    const COST_MINUTE_LOCAL       = 0.05;
-    const COST_MINUTE_TOLL_FREE   = 0.08;
-
     const SUSPENSION_CODE_NO_PAYMENT_METHOD                 = 1;
     const SUSPENSION_CODE_TOO_MANY_FAILED_BILLING_ATTEMPTS  = 2;
 
@@ -75,6 +62,11 @@ class Account extends Model
         return $this->hasOne('App\Models\Billing');
     }
 
+    public function services()
+    {
+        return $this->hasMany('App\Models\Service');
+    }
+
     /**
      * Appends
      * 
@@ -87,11 +79,6 @@ class Account extends Model
     public function getKindAttribute()
     {
         return 'Account';
-    }
-
-    public function getMonthlyFeeAttribute()
-    {
-        return self::COST_MONTHLY;
     }
 
     public function getAdminUsersAttribute()
@@ -150,169 +137,5 @@ class Account extends Model
         }
         
         return true;
-    }
-
-    /**
-     * Get the current usage
-     * 
-     */
-    public function currentUsage()
-    {
-        if( $this->currentUsage ) return $this->currentUsage;
-
-        $billingPeriod = $this->billing->current_billing_period;
-
-        //
-        //  Get number usage
-        //
-        $numbers = PhoneNumber::withTrashed()
-                                ->whereIn('company_id', function($query){
-                                    $query->select('id')
-                                        ->from('companies')
-                                        ->where('account_id', $this->id);
-                                })
-                                ->where(function($query) use($billingPeriod){
-                                    $query->whereNull('deleted_at')
-                                          ->orWhere(function($query) use($billingPeriod){
-                                                $query->whereBetween('deleted_at', [
-                                                    $billingPeriod['start'], 
-                                                    $billingPeriod['end']
-                                                ]);
-                                          });
-                                })
-                                ->get()
-                                ->toArray();
-
-        $localNumbers = array_filter($numbers, function($number){
-            return $number['type'] === PhoneNumber::TYPE_LOCAL;
-        });
-
-        $tollFreeNumbers = array_filter($numbers, function($number){
-            return $number['type'] === PhoneNumber::TYPE_TOLL_FREE;
-        });
-
-        $localNumbersCost    = count($localNumbers)    > self::TIER_NUMBERS_LOCAL     ? ((count($localNumbers)- self::TIER_NUMBERS_LOCAL)  * self::COST_NUMBER_LOCAL)            : 0.00;
-        $tollFreeNumbersCost = count($tollFreeNumbers) > self::TIER_NUMBERS_TOLL_FREE ? ((count($tollFreeNumbers) - self::TIER_NUMBERS_TOLL_FREE) * self::COST_NUMBER_TOLL_FREE) : 0.00;
-
-        //
-        //  Get Call usage
-        //
-        $minutes = DB::table('calls')
-                    ->select([
-                            DB::raw('SUM( CEIL(duration / 60) ) AS total_minutes'),
-                            'type'
-                    ])
-                    ->whereIn('calls.company_id', function($query){
-                            $query->select('id')
-                                ->from('companies')
-                                ->where('account_id', $this->id);
-                    })
-                    ->whereBetween('calls.created_at', [$billingPeriod['start'], $billingPeriod['end']])
-                    ->groupBy('type')
-                    ->get();
-    
-        $localMinutes     = 0;
-        $tollFreeMinutes  = 0;
-        foreach( $minutes as $m ){
-            if( $m->type == PhoneNumber::TYPE_LOCAL ){
-                $localMinutes = $m->total_minutes;
-            }elseif($m->type == PhoneNumber::TYPE_TOLL_FREE){
-                $tollFreeMinutes = $m->total_minutes;
-            }
-        }
-
-        $localMinutesCost    = $localMinutes > self::TIER_MINUTES_LOCAL ? (($localMinutes - self::TIER_MINUTES_LOCAL) * self::COST_MINUTE_LOCAL) : 0.00;
-        $tollFreeMinutesCost = $tollFreeMinutes > self::TIER_MINUTES_TOLL_FREE ? (($tollFreeMinutes - self::TIER_MINUTES_TOLL_FREE) * self::COST_MINUTE_TOLL_FREE) : 0.00;
-
-        $localNumbersCost    = round($localNumbersCost, 2);
-        $localMinutesCost    = round($localMinutesCost, 2);
-        $tollFreeNumbersCost = round($tollFreeNumbersCost, 2);
-        $tollFreeMinutesCost = round($tollFreeMinutesCost, 2);
-
-        $this->currentUsage =  [
-            'local' => [
-                'numbers' => [
-                    'count' => count($localNumbers),
-                    'cost'  => $localNumbersCost
-                ],
-                'minutes' => [
-                    'count' => $localMinutes,
-                    'cost'  => $localMinutesCost
-                ]
-            ],
-            'toll_free' => [
-                'numbers' => [
-                    'count' => count($tollFreeNumbers),
-                    'cost'  => $tollFreeNumbersCost
-                ],
-                'minutes' => [
-                    'count' => $tollFreeMinutes,
-                    'cost'  => $tollFreeMinutesCost
-                ]
-            ],
-            'total' => [
-                'cost' => $localNumbersCost + $localMinutesCost + $tollFreeNumbersCost + $tollFreeMinutesCost,
-            ]
-
-        ];
-
-        return $this->currentUsage;
-    }
-
-    /**
-     * Storage
-     * 
-     */
-    public function currentStorage()
-    {
-        if( $this->currentStorage ) return $this->currentStorage;
-
-        $fileStorageSize          = 0;
-        $callRecordingStorageSize = DB::table('call_recordings')
-                                        ->select(
-                                            DB::raw(
-                                                'CASE  
-                                                    WHEN SUM(file_size) IS NOT NULL
-                                                            THEN sum(file_size)
-                                                        ELSE 0
-                                                    END AS storage_size'
-                                            )
-                                        )
-                                        ->whereIn('call_id', function($query){
-                                            $query->select('id')
-                                                  ->from('calls')
-                                                  ->where('account_id', $this->id);
-                                        })
-                                        ->first()
-                                        ->storage_size;
-        
-        //  Get storage sizes in GBs
-        $gbSize                     = 1024 * 1024;
-        $fileStorageSizeGB          = round($fileStorageSize / $gbSize, 2);
-        $callRecordingStorageSizeGB = round($callRecordingStorageSize / $gbSize, 2);
-        $totalStorageSizeGB         = $callRecordingStorageSizeGB + $fileStorageSizeGB;
-
-
-        //  Get the cost to account
-        $fileStorageCost          = $fileStorageSizeGB          > self::TIER_STORAGE ? round(self::COST_STORAGE_GB * ($fileStorageSizeGB - self::TIER_STORAGE), 2)          : 0.00;
-        $callRecordingStorageCost = $callRecordingStorageSizeGB > self::TIER_STORAGE ? round(self::COST_STORAGE_GB * ($callRecordingStorageSizeGB - self::TIER_STORAGE), 2) : 0.00;
-        $totalStorageCost         = $callRecordingStorageCost + $fileStorageCost;
-
-        $this->currentStorage = [
-            'call_recordings' => [
-                'cost'    => round($callRecordingStorageCost, 2),
-                'size_gb' => $callRecordingStorageSizeGB,
-            ],
-            'files' => [
-                'cost'    => round($fileStorageCost, 2),
-                'size_gb' => $fileStorageSizeGB
-            ],
-            'total' => [
-                'cost'    => round($totalStorageCost, 2),
-                'size_gb' => $totalStorageSizeGB
-            ]
-        ];
-
-        return $this->currentStorage;
-    }    
+    } 
 }

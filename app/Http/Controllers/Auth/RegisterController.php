@@ -74,9 +74,9 @@ class RegisterController extends Controller
 
             //  Setup billing for account
             Billing::create([
-                'account_id'          => $account->id,
-                'period_starts_at'    => now()->format('Y-m-d'),
-                'period_ends_at'      => now()->addDays(7)->format('Y-m-d')
+                'account_id'                => $account->id,
+                'billing_period_starts_at'  => now()->startOfDay(); // Start of the next day
+                'billing_period_ends_at'    => now()->addDays(30)->endOfDay(); // End of day, 30 days from now
             ]);
 
             //  Create this user

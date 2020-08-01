@@ -7,7 +7,7 @@ use Faker\Generator as Faker;
 
 $factory->define(\App\Models\PaymentMethod::class, function (Faker $faker) {
     return [
-        'external_id'    => str_random(32),
+        'external_id'    => 'tok_visa',
         'last_4'         => mt_rand(1111, 9999),
         'expiration'     => now()->addYears(2)->format('Y-m-d'),
         'brand'          => 'visa',

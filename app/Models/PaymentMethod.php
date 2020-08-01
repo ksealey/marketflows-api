@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
-use \App\Models\PaymentMethodError;
+use \App\Models\Payment;
 use \App\Traits\PerformsExport;
 use \Stripe\Stripe;
 use \Stripe\Customer;
@@ -15,6 +15,7 @@ use Stripe\PaymentMethod as StripePaymentMethod;
 use DB;
 use Exception;
 use DateTime;
+use App;
 
 class PaymentMethod extends Model
 {
@@ -78,11 +79,6 @@ class PaymentMethod extends Model
     public function account()
     {
         return $this->belongsTo('\App\Models\Account');
-    }
-
-    public function errors()
-    {
-        return $this->hasMany('\App\Models\PaymentMethodError');
     }
 
     /**
@@ -160,12 +156,6 @@ class PaymentMethod extends Model
      */
     public function charge(float $amount, string $description, $attempts = 1)
     {
-        if( ! $this->external_id )
-            return null;
-
-        if( $this->disabled_at )
-            return null;
-
         if( $attempts >= 3 )
             return null;
 
@@ -180,34 +170,28 @@ class PaymentMethod extends Model
                 'description'   => $description
             ]);
 
-            //  Update used time
             $this->last_used_at = now();
             $this->error        = null;
             $this->save();
 
-            PaymentMethodError::where('payment_method_id', $this->id)
-                              ->delete();
-
-            return $stripeCharge->id;
+            return Payment::create([
+                'payment_method_id' => $this->id,
+                'external_id'       => $stripeCharge->id,
+                'total'             => $amount
+            ]);
         }catch(\Stripe\Exception\RateLimitException $e){
             //  We hit a rate limit
             //  Wait a second and try again
             usleep(1);
+
             return $this->charge($amount, $description, $attempts + 1);
         }catch(Exception $e){
-            PaymentMethodError::create([
-                'payment_method_id' => $this->id,
-                'error'             => substr($e->getMessage(), 0, 255)
-            ]);
+            $this->last_used_at = now();
+            $this->error        = substr($e->getMessage(), 0, 255);
+            $this->save();
+
+            return false;
         }
-
-        //  Disable this payment method after three failed attempts
-        if( PaymentMethodError::where('payment_method_id', $this->id)->count() >= 3 )
-            $this->disabled_at = now();
-        
-        $this->save();
-
-        return null;
     }
 
     /**
