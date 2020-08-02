@@ -41,7 +41,9 @@ class Call extends Model
     ];
 
     protected $hidden = [
-        'external_id'
+        'external_id',
+        'deleted_at',
+        'deleted_by'
     ];
 
     protected $appends = [
@@ -68,8 +70,8 @@ class Call extends Model
     public function getLinkAttribute()
     {
         return route('read-call', [
-            'companyId'  => $this->company_id,
-            'callId'    => $this->id
+            'company' => $this->company_id,
+            'call'    => $this->id
         ]);
     }
 

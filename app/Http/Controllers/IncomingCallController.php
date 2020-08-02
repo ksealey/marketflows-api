@@ -16,8 +16,8 @@ use App\Models\Company\BlockedPhoneNumber;
 use App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
-use App\Models\Events\Session;
-use App\Models\Events\SessionEvent;
+use App\Models\Company\Webhook;
+use App\Events\Company\CallEvent;
 use Twilio\TwiML\VoiceResponse;
 use Twilio\Rest\Client as Twilio;
 use \App\Helpers\PhoneNumberManager;
@@ -200,6 +200,8 @@ class IncomingCallController extends Controller
             'created_at'                => now()->format('Y-m-d H:i:s.u'),
             'updated_at'                => now()->format('Y-m-d H:i:s.u')
         ]);
+
+        event(new CallEvent(Webhook::ACTION_CALL_START, $call));
 
         //
         //  Handle recording, greeting, keypad entry, forwarding, and whisper message

@@ -15,32 +15,14 @@ class EventServiceProvider extends ServiceProvider
      * @var array
      */
     protected $listen = [
-        'App\Events\AccountEvent' => [
-            'App\Listeners\AccountListener',
-        ],
-        'App\Events\PaymentMethodEvent' => [
-            'App\Listeners\PaymentMethodListener',
-        ],
         'App\Events\AlertEvent' => [
             'App\Listeners\AlertListener',
-        ],
-        'App\Events\CompanyEvent' => [
-            'App\Listeners\CompanyListener',
         ],
         'App\Events\Company\PhoneNumberEvent' => [
             'App\Listeners\Company\PhoneNumberListener',
         ],
-        'App\Events\Company\PhoneNumberConfigEvent' => [
-            'App\Listeners\Company\PhoneNumberConfigListener',
-        ],
-        'App\Events\Company\AudioClipEvent' => [
-            'App\Listeners\Company\AudioClipListener',
-        ],
-        'App\Events\Company\BlockedPhoneNumberEvent' => [
-            'App\Listeners\Company\BlockedPhoneNumberListener',
-        ],
-        'App\Events\Company\ReportEvent' => [
-            'App\Listeners\Company\ReportListener',
+        'App\Events\Company\CallEvent' => [
+            'App\Listeners\Company\CallListener',
         ]
     ];
 

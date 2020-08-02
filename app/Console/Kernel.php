@@ -42,10 +42,7 @@ class Kernel extends ConsoleKernel
                   ->everyFifteenMinutes()
                   ->onOneServer();
 
-         // Release suspended account numbers every 15 minutes
-         $schedule->command('accounts:release-suspended-numbers')
-                  ->everyFifteenMinutes()
-                  ->onOneServer();
+
 
         $schedule->command('clear:password-resets')
                  ->hourly()

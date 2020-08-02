@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 use \App\Models\AccountBlockedPhoneNumber;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\Call;
+use \App\Events\Company\CallEvent;
+use \App\Models\Company\Webhook;
 
 class IncomingCallTest extends TestCase
 {
@@ -20,6 +23,7 @@ class IncomingCallTest extends TestCase
      */
     public function testValidIncomingCallWithNoOptions()
     {
+        //Event::fake();
         $company     = $this->createCompany();
         $config      = $this->createConfig($company, [
             'recording_enabled'      => false,
@@ -30,6 +34,11 @@ class IncomingCallTest extends TestCase
             'keypress_key'           => 1
         ]);
         $phoneNumber = $this->createPhoneNumber($company, $config);
+         
+        $webhook = factory(Webhook::class)->create([
+            'company_id' => $company->id,
+            'action'     => Webhook::ACTION_CALL_START
+        ]);
 
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
             'To' => $phoneNumber->e164Format()
@@ -63,16 +72,21 @@ class IncomingCallTest extends TestCase
         ]);
 
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
-        
+
+        /*Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+        });*/
     }
 
     /**
      * Test handling an incoming call with recording enabled
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testValidIncomingCallWithRecordingEnabled()
     {
+        Event::fake();
+
         $company     = $this->createCompany();
         $config      = $this->createConfig($company, [
             'recording_enabled'      => true,
@@ -116,15 +130,21 @@ class IncomingCallTest extends TestCase
         ]);
 
         $response->assertSee('<Response><Dial answerOnBridge="true" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
+            
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+        });
     }
 
     /**
      * Test handling an incoming call with recording and greeting enabled with Message
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testValidIncomingCallWithRecordingAndGreetingEnabledMessage()
     {
+        Event::fake();
+
         $company     = $this->createCompany();
         $config      = $this->createConfig($company, [
             'recording_enabled'      => true,
@@ -173,15 +193,20 @@ class IncomingCallTest extends TestCase
         
         $response->assertSee('<Response><Say language="' . $company->tts_language . '" voice="Polly.'  . $company->tts_voice . '">hello ' . $contact->first_name . ' ' . $contact->last_name . '</Say><Dial answerOnBridge="true" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
 
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+        });
     }
 
     /**
      * Test handling an incoming call with recording and greeting enabled using an audio clip
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testValidIncomingCallWithRecordingAndGreetingEnabledAudioClip()
     {
+        Event::fake();
+
         $company     = $this->createCompany();
         $audioClip   = $this->createAudioClip($company);
         $config      = $this->createConfig($company, [
@@ -230,15 +255,20 @@ class IncomingCallTest extends TestCase
         
         $response->assertSee('<Response><Play>' . $audioClip->url . '</Play><Dial answerOnBridge="true" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
         
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+        });
     }
 
     /**
      * Test handling an incoming call with recording, greeting and keypress
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testValidIncomingCallWithRecordingAndGreetingAndKeypressEnabled()
     {
+        Event::fake();
+
         $company     = $this->createCompany();
         $audioClip   = $this->createAudioClip($company);
         $config      = $this->createConfig($company, [
@@ -299,16 +329,22 @@ class IncomingCallTest extends TestCase
                                      ]))
                                 .    '</Redirect>'
                                 . '</Response>', false);
+
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+        });
         
     }
 
     /**
      * Test handling an incoming call with recording, greeting and whisper
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testValidIncomingCallWithRecordingAndGreetingAndWhisperEnabled()
     {
+        Event::fake();
+
         $company     = $this->createCompany();
         $audioClip   = $this->createAudioClip($company);
         $config      = $this->createConfig($company, [
@@ -365,16 +401,21 @@ class IncomingCallTest extends TestCase
                             .   '</Dial>'
                             .'</Response>'
                     , false);
-        
+
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+        }); 
     }
 
     /**
      * Test that when a number is deleted, the call is rejected
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testDeletedNumberIsRejected()
     {
+        
+
         $company     = $this->createCompany();
         $audioClip   = $this->createAudioClip($company);
         $config      = $this->createConfig($company);
@@ -393,10 +434,14 @@ class IncomingCallTest extends TestCase
         $phoneNumber->delete();
 
         //  Then make sure it's rejected
+        Event::fake();
+
         $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
         $response->assertSee('<Response><Reject/></Response>', false);
+
+        Event::assertNotDispatched(CallEvent::class);
     }
 
    
@@ -426,10 +471,14 @@ class IncomingCallTest extends TestCase
          $phoneNumber->save();
  
          //  Then make sure it's rejected
+         Event::fake();
+
          $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
          $response->assertStatus(200);
          $response->assertHeader('Content-Type', 'application/xml');
          $response->assertSee('<Response><Reject/></Response>', false);
+
+         Event::assertNotDispatched(CallEvent::class);
     }
 
     /**
@@ -464,10 +513,14 @@ class IncomingCallTest extends TestCase
          ]);
  
          //  Then make sure it's rejected
+         Event::fake();
+
          $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
          $response->assertStatus(200);
          $response->assertHeader('Content-Type', 'application/xml');
          $response->assertSee('<Response><Reject/></Response>', false);
+
+         Event::assertNotDispatched(CallEvent::class);
 
          // And make sure the blocked call is logged
          $this->assertDatabaseHas('blocked_calls', [
@@ -507,10 +560,14 @@ class IncomingCallTest extends TestCase
          ]);
  
          //  Then make sure it's rejected
+         Event::fake();
+
          $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
          $response->assertStatus(200);
          $response->assertHeader('Content-Type', 'application/xml');
          $response->assertSee('<Response><Reject/></Response>', false);
+
+         Event::assertNotDispatched(CallEvent::class);
 
          // And make sure the blocked call is logged
          $this->assertDatabaseHas('account_blocked_calls', [
