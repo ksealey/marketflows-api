@@ -20,6 +20,7 @@ class CreateBillingTable extends Migration
             $table->dateTime('billing_period_ends_at');
             $table->dateTime('locked_at')->nullable();
             $table->tinyInteger('warnings')->default(0);
+            $table->string('external_id', 128);
             $table->softDeletes();
             $table->timestamps();
 

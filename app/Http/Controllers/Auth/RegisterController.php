@@ -7,11 +7,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Billing;
 use App\Models\User;
+use App\Models\PaymentMethod;
 use App\Models\UserSettings;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use \App\Rules\CountryRule;
 use \Carbon\Carbon;
+use \Stripe\Stripe;
+use \Stripe\Customer;
+use \Stripe\Card;
 use Validator;
 use DB;
 use Exception;
@@ -41,6 +45,7 @@ class RegisterController extends Controller
                 'regex:/(?=.*[0-9])(?=.*[A-Z])/'
             ],
             'timezone'              => 'bail|required|timezone',
+            'payment_token'         => 'required' 
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -62,9 +67,24 @@ class RegisterController extends Controller
             ], 400);
         }
 
+        //
+        //  Try to add customer with payment method
+        //
+        $customer = null;
+        $card = null;
+
         DB::beginTransaction();
 
         try{
+            Stripe::setApiKey(env('STRIPE_SK'));
+            
+            $customer = Customer::create([
+                'description' => $request->account_name,
+                'source'      => $request->payment_token
+            ]);
+            
+            $card = $customer->sources->data[0];
+
             //  Create account
             $account = Account::create([
                 'name'                => $request->account_name,
@@ -75,12 +95,12 @@ class RegisterController extends Controller
             //  Setup billing for account
             Billing::create([
                 'account_id'                => $account->id,
-                'billing_period_starts_at'  => now()->startOfDay(); // Start of the next day
-                'billing_period_ends_at'    => now()->addDays(30)->endOfDay(); // End of day, 30 days from now
+                'billing_period_starts_at'  => now()->startOfDay(),// Start of the next day
+                'billing_period_ends_at'    => now()->addDays(30)->endOfDay(), // End of day, 30 days from now,
+                'external_id'               => $customer->id
             ]);
 
             //  Create this user
-            $now = now();
             $user = User::create([
                 'account_id'                => $account->id,
                 'role'                      => User::ROLE_ADMIN,
@@ -92,9 +112,22 @@ class RegisterController extends Controller
                 'auth_token'                => str_random(255),
                 'last_login_at'             => now()
             ]);
-
             UserSettings::create([
                 'user_id' => $user->id
+            ]);
+
+            //  Add initial payment method
+            $expiration = new Carbon($card->exp_year . '-' . $card->exp_month . '-01 00:00:00'); 
+            $expiration->endOfMonth();
+            PaymentMethod::create([
+                'account_id'     => $user->account_id,
+                'created_by'     => $user->id,
+                'external_id'    => $card->id,
+                'last_4'         => $card->last4,
+                'type'           => $card->funding,
+                'brand'          => $card->brand,
+                'expiration'     => $expiration->format('Y-m-d'),
+                'primary_method' => true
             ]);
 
             //  Add verification mail to queue

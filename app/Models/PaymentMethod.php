@@ -106,27 +106,15 @@ class PaymentMethod extends Model
         //
         //  Create remote resources
         //
-        Stripe::setApiKey(env('STRIPE_SK'));
-
-        //  Create customer with source if not exists
         $account = $user->account;
         $billing = $account->billing;
-        if( ! $billing->stripe_id ){
-            $primaryMethod = true; // Since there is no primary methon set this as true
-            $customer = Customer::create([
-                'description' => $account->name,
-                'source'      => $stripeToken
-            ]);
-            $billing->stripe_id = $customer->id;
-            $billing->save();
-            
-            $card = $customer->sources->data[0];
-        }else{
-            $card = Customer::createSource(
-                $billing->stripe_id,
-                ['source' => $stripeToken]
-            );
-        }
+
+        Stripe::setApiKey(env('STRIPE_SK'));
+        
+        $card = Customer::createSource(
+            $billing->external_id,
+            ['source' => $stripeToken]
+        );
 
         //  If this is the new primary method, unset existing
         if( $primaryMethod ){

@@ -56,10 +56,6 @@ class UserController extends Controller
         ];
 
         $validator = validator($request->input(), $rules);
-        $validator->sometimes('companies', ['bail', 'required', 'json', new CompanyListRule($creator->account_id)], function($input){
-            return $input->role !== User::ROLE_ADMIN && $input->role !== User::ROLE_SYSTEM;
-        });
-
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -125,10 +121,7 @@ class UserController extends Controller
         ];
 
         $validator = validator($request->input(), $rules);
-        $validator->sometimes('companies', ['bail', 'required', 'json', new CompanyListRule($me->account_id)], function($input) use($request){
-            return $request->has('role') && $request->role !== User::ROLE_ADMIN && $request->role !== User::ROLE_SYSTEM;
-        });
-
+        
         if( $request->filled('role') )
             $user->role = $request->role;
 

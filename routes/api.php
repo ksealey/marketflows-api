@@ -159,7 +159,7 @@ Route::middleware(['auth:api', 'api'])->group(function(){
      |------------------------------
      |  Handle widgets
      |------------------------------
-     */
+     
     Route::prefix('widgets')->group(function(){
         Route::get('/top-call-sources', 'WidgetController@topCallSources')
              ->middleware('can:read,\App\Models\Account')
@@ -191,6 +191,7 @@ Route::middleware(['auth:api', 'api'])->group(function(){
             
         });
     });
+    */
 
     /*
     |----------------------------------------

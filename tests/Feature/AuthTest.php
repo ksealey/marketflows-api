@@ -31,7 +31,7 @@ class AuthTest extends TestCase
             'password'     => 'Password1!'
         ]);
 
-        $response = $this->json('POST', route('auth-register'), $user->toArray());
+        $response = $this->json('POST', route('auth-register'), array_merge($user->toArray(), ['payment_token' => 'tok_bypassPending']));
         $response->assertStatus(201);
         $response->assertJSON([
             "user" => [

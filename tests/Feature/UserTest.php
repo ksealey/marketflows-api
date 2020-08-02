@@ -167,9 +167,10 @@ class UserTest extends TestCase
             'timezone'   => $user->timezone,
             'role'       => User::ROLE_REPORTING
         ]);
-
+        
         $this->assertDatabaseHas('users', [
-            'id' => $response['id']
+            'id' => $response['id'],
+            'account_id' => $this->account->id
         ]);
 
         Mail::assertSent(AddUserEmail::class);

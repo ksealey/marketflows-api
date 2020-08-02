@@ -16,7 +16,8 @@ class Billing extends Model
     protected $fillable = [
         'account_id',
         'billing_period_starts_at',
-        'billing_period_ends_at'
+        'billing_period_ends_at',
+        'external_id'
     ];
 
     public function account()

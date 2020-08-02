@@ -164,7 +164,7 @@ class User extends Authenticatable
      */
     public function canViewCompany(Company $company)
     {
-        return $company->account_id == $user->account_id;
+        return $company->account_id == $this->account_id;
     }
 
     /**
