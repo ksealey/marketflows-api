@@ -49,6 +49,10 @@ class PaymentMethod extends Model
         'link'
     ];
 
+    protected $casts = [
+        'primary_method' => 'boolean'
+    ];
+
     static public function exports() : array
     {
         return [
@@ -132,7 +136,7 @@ class PaymentMethod extends Model
             'last_4'         => $card->last4,
             'expiration'     => $expiration->format('Y-m-d'),
             'type'           => $card->funding,
-            'brand'          => $card->brand,
+            'brand'          => ucfirst($card->brand),
             'primary_method' => $primaryMethod
         ]);
     }
@@ -142,7 +146,7 @@ class PaymentMethod extends Model
      * Charge payment method
      * 
      */
-    public function charge(float $amount, string $description, $attempts = 1)
+    public function charge(float $amount, string $description = 'MarketFlows, LLC', $attempts = 1)
     {
         if( $attempts >= 3 )
             return null;
@@ -151,7 +155,7 @@ class PaymentMethod extends Model
             Stripe::setApiKey(env('STRIPE_SK'));
 
             $stripeCharge = StripeCharge::create([
-                'customer'      => $this->account->billing->stripe_id,
+                'customer'      => $this->account->billing->external_id,
                 'source'        => $this->external_id,
                 'amount'        => $amount * 100,
                 'currency'      => 'usd',

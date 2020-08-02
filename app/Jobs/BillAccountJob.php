@@ -16,8 +16,6 @@ use App\Mail\PaymentMethodFailed;
 use Carbon\Carbon;
 use Mail;
 
-
-
 class BillAccountJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -150,7 +148,7 @@ class BillAccountJob implements ShouldQueue
         $account       = $billing->account;
         $paymentMethod = $account->primary_payment_method; 
         
-        $payment = $paymentMethod->charge($statementTotal, 'MarketFlows, LLC');
+        $payment = $paymentMethod->charge($statementTotal);
         $user    = User::find($paymentMethod->created_by);
 
         //

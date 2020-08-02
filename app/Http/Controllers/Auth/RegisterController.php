@@ -125,7 +125,7 @@ class RegisterController extends Controller
                 'external_id'    => $card->id,
                 'last_4'         => $card->last4,
                 'type'           => $card->funding,
-                'brand'          => $card->brand,
+                'brand'          => ucfirst($card->brand),
                 'expiration'     => $expiration->format('Y-m-d'),
                 'primary_method' => true
             ]);

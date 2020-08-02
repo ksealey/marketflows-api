@@ -10,7 +10,7 @@ $factory->define(\App\Models\PaymentMethod::class, function (Faker $faker) {
         'external_id'    => 'tok_visa',
         'last_4'         => mt_rand(1111, 9999),
         'expiration'     => now()->addYears(2)->format('Y-m-d'),
-        'brand'          => 'visa',
+        'brand'          => 'Visa',
         'type'           => 'credit',
         'primary_method' => 1,
         'last_used_at'   => now()->subDays(10),
