@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\Account;
@@ -156,12 +157,14 @@ class IncomingCallController extends Controller
             $callerNamePieces = explode(' ', $callerName);
     
             $contact = Contact::create([
+                'uuid'          => Str::uuid(),
                 'account_id'    => $phoneNumber->account_id,
                 'company_id'    => $phoneNumber->company_id,
                 'first_name'    => $callerNamePieces[0],
                 'last_name'     => !empty($callerNamePieces[1]) ? $callerNamePieces[1] : '',
                 'email'         => null,
-                'phone'         => $cleanFullPhone,
+                'country_code'  => $callerCountryCode,
+                'phone'         => $callerNumber,
                 'city'          => $request->FromCity ? substr($request->FromCity, 0, 64) : null,
                 'state'         => $request->FromState ? substr($request->FromState, 0, 64) : null,
                 'zip'           => $request->FromZip ? substr($request->FromZip, 0, 64) : null,
@@ -174,7 +177,8 @@ class IncomingCallController extends Controller
         //
         //  Determine how to route this call and capture sourcing data
         //  
-        $config     = $phoneNumber->phone_number_config;
+        $config  = $phoneNumber->phone_number_config;
+        $company = $phoneNumber->company;
 
         //
         //  Log call
@@ -201,12 +205,11 @@ class IncomingCallController extends Controller
             'updated_at'                => now()->format('Y-m-d H:i:s.u')
         ]);
 
-        event(new CallEvent(Webhook::ACTION_CALL_START, $call));
+        event(new CallEvent(Webhook::ACTION_CALL_START, $call, $contact, $company));
 
         //
         //  Handle recording, greeting, keypad entry, forwarding, and whisper message
         //
-        $company    = $phoneNumber->company;
         $dialConfig = ['answerOnBridge' => 'true'];
 
         //  Handle recording

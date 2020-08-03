@@ -26,8 +26,10 @@ class CallListener implements ShouldQueue
      */
     public function handle($event)
     {
-        $call      = $event->call;
         $eventName = $event->name;
+        $call      = $event->call;
+        $contact   = $event->contact;
+        $company   = $event->company;
 
         //
         //  Fire webhooks
@@ -40,18 +42,46 @@ class CallListener implements ShouldQueue
         $client = new \GuzzleHttp\Client();
         foreach( $webhooks as $webhook ){
             try{
-                $params     = $webhook->params ? (array)$webhook->params : [];
-                $params     = array_merge($call->toArray(), $params);
-                $fieldsKey  = $webhook->method == 'GET' ? 'query' : 'form_params';
-                $fieldsType = $webhook->method == 'GET' ? 'application/text' : 'application/x-www-form-urlencoded';  
-                $request = $client->request($webhook->method, $webhook->url, [
+                $params      = $webhook->params ? (array)$webhook->params : [];
+                $params      = array_merge($call->toArray(), $params);
+                $fieldsKey   = $webhook->method == 'GET' ? 'query' : 'form_params';
+                $contentType = $webhook->method == 'GET' ? 'application/text' : 'application/x-www-form-urlencoded';  
+                $request     = $client->request($webhook->method, $webhook->url, [
                     'headers' => [
                         'X-Sender'     => 'MarketFlows',
-                        'Content-Type' => $fieldsType
+                        'Content-Type' => $contentType
                     ],
                     $fieldsKey => $params
                 ]);
             }catch(\Exception $e){}
         }
+
+        //
+        //  Push ended calls to GA
+        //
+        //if( $company->ga_id && $eventName === Webhook::ACTION_CALL_END ){
+            $phoneNumber = $call->phone_number;
+            $endpoint = 'https://www.google-analytics.com/collect';
+            $params = [
+                'tid'           => $company->ga_id, // GA ID 
+                'v'             => 1, // Version
+                'aip'           => 1, // Anonymize IP
+                't'             => 'event', // Type
+                'cid'           => $contact->uuid, // Unique id
+                'ec'            => 'call', // Event Category
+                'ea'            => 'call',  // Event action
+                'ds'            => 'MarketFlows', // Data Source
+                'cn'            => $call->campaign, // Campaign
+                'cs'            => $call->source, // Source
+                'cm'            => $call->medium, // Medium
+                'cc'            => $call->content, // Content
+                'caller_number'     => $contact->country_code . $contact->phone,
+                'caller_name'       => $contact->first_name . ' ' . $contact->last_name,
+                'dialed_number'     => $phoneNumber->country_code . $phoneNumber->number,
+                'dialed_number_name'=> $phoneNumber->name,
+                'duration'          => $call->duration
+            ];
+            var_dump($params); exit;
+        //}
     }
 }

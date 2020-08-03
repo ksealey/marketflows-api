@@ -10,6 +10,7 @@ $factory->define(\App\Models\Company::class, function (Faker $faker) {
         'industry'       => 'Manufacturing',
         'country'        => 'US',
         'tts_language'   => 'en-US',
-        'tts_voice'      => 'Joanna'
+        'tts_voice'      => 'Joanna',
+        'ga_id'          => 'UA-' . strtoupper(str_random(10))
     ];
 });

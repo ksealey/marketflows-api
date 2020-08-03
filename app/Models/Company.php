@@ -35,6 +35,7 @@ class Company extends Model implements Exportable
         'country',
         'tts_voice',
         'tts_language',
+        'ga_id',
         'created_by',
         'updated_by'
     ];

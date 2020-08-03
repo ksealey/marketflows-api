@@ -141,51 +141,6 @@ class PaymentMethod extends Model
         ]);
     }
 
-
-    /**
-     * Charge payment method
-     * 
-     */
-    public function charge(float $amount, string $description = 'MarketFlows, LLC', $attempts = 1)
-    {
-        if( $attempts >= 3 )
-            return null;
-
-        try{
-            Stripe::setApiKey(env('STRIPE_SK'));
-
-            $stripeCharge = StripeCharge::create([
-                'customer'      => $this->account->billing->external_id,
-                'source'        => $this->external_id,
-                'amount'        => $amount * 100,
-                'currency'      => 'usd',
-                'description'   => $description
-            ]);
-
-            $this->last_used_at = now();
-            $this->error        = null;
-            $this->save();
-
-            return Payment::create([
-                'payment_method_id' => $this->id,
-                'external_id'       => $stripeCharge->id,
-                'total'             => $amount
-            ]);
-        }catch(\Stripe\Exception\RateLimitException $e){
-            //  We hit a rate limit
-            //  Wait a second and try again
-            usleep(1);
-
-            return $this->charge($amount, $description, $attempts + 1);
-        }catch(Exception $e){
-            $this->last_used_at = now();
-            $this->error        = substr($e->getMessage(), 0, 255);
-            $this->save();
-
-            return false;
-        }
-    }
-
     /**
      * Check if payment method has a remote resource
      * 

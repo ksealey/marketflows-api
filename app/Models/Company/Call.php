@@ -66,6 +66,11 @@ class Call extends Model
     {
         return $this->belongsTo('\App\Models\Company\Contact');
     }
+
+    public function phone_number()
+    {
+        return $this->belongsTo('\App\Models\Company\PhoneNumber');
+    }
     
     public function getLinkAttribute()
     {

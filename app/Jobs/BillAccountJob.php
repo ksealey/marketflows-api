@@ -15,12 +15,15 @@ use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
 use Carbon\Carbon;
 use Mail;
+use App;
 
 class BillAccountJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $billing;
+
+    protected $paymentManager;
     
     /**
      * Create a new job instance.
@@ -39,6 +42,8 @@ class BillAccountJob implements ShouldQueue
      */
     public function handle()
     {
+        $this->paymentManager = App::make('App\Helpers\PaymentManager');
+        
         $billing = $this->billing;
         
         //
@@ -148,7 +153,7 @@ class BillAccountJob implements ShouldQueue
         $account       = $billing->account;
         $paymentMethod = $account->primary_payment_method; 
         
-        $payment = $paymentMethod->charge($statementTotal);
+        $payment = $this->paymentManager->charge($paymentMethod, $statementTotal);
         $user    = User::find($paymentMethod->created_by);
 
         //

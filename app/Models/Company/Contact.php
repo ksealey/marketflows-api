@@ -11,11 +11,13 @@ class Contact extends Model
     use SoftDeletes, PerformsExport;
     
     protected $fillable = [
+        'uuid',
         'account_id',
         'company_id',
         'first_name',
         'last_name',
         'email',
+        'country_code',
         'phone',
         'city',
         'state',

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Company\Contact;
+use App\Models\Company\PhoneNumber;
 
 class ContactController extends Controller
 {
@@ -91,12 +93,14 @@ class ContactController extends Controller
         }
             
         $contact = Contact::create([
+            'uuid'       => Str::uuid(),
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'first_name' => $request->first_name,
             'last_name'  => $request->last_name,
             'email'      => $request->email,
-            'phone'      => $request->phone,
+            'country_code' => PhoneNumber::number($request->phone),
+            'phone'        => PhoneNumber::countryCode($request->phone),
             'city'       => $request->city,
             'state'      => $request->state,
             'zip'        => $request->zip,

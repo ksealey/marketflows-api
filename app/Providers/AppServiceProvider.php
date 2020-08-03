@@ -48,6 +48,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind('App\Helpers\TextToSpeech', function($app){
             return new \App\Helpers\TextToSpeech(AWS::createClient('polly'));
         });
+
+        $this->app->bind('App\Helpers\PaymentManager', function(){
+            return new \App\Helpers\PaymentManager();
+        });
     }
 
     /**

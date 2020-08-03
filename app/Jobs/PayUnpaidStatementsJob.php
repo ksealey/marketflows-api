@@ -15,12 +15,15 @@ use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
 use Mail;
 use DB;
+use App;
 
 class PayUnpaidStatementsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $paymentMethod;
+
+    protected $paymentManager;
 
     /**
      * Create a new job instance.
@@ -39,6 +42,8 @@ class PayUnpaidStatementsJob implements ShouldQueue
      */
     public function handle()
     {
+        $this->paymentManager = App::make('App\Helpers\PaymentManager');
+
         $paymentMethod = $this->paymentMethod;
         $statements    = BillingStatement::whereNull('payment_id')
                                          ->where('billing_id', DB::raw(
@@ -54,7 +59,7 @@ class PayUnpaidStatementsJob implements ShouldQueue
 
         $user = User::find($paymentMethod->created_by);
         foreach( $statements as $statement ){
-            $payment = $paymentMethod->charge($statement->total());
+            $payment = $this->paymentManager->charge($paymentMethod, $statement->total());
             if( ! $payment ){
                 Mail::to($user)
                     ->send(new PaymentMethodFailed($user, $paymentMethod, $statement));

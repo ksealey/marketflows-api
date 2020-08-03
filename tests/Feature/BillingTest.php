@@ -17,6 +17,7 @@ use App\Mail\PaymentMethodFailed;
 use Artisan;
 use Mail;
 use \Mockery;
+use \PaymentManager;
 
 class BillingTest extends TestCase
 {
@@ -68,7 +69,7 @@ class BillingTest extends TestCase
      */
     public function testBillingJobWorks()
     {
-       Mail::fake();
+        Mail::fake();
 
         $companyCount = 5;
         for( $i = 0; $i < $companyCount; $i++ ){
@@ -78,6 +79,15 @@ class BillingTest extends TestCase
         $this->billing->billing_period_ends_at   = now()->subMinutes(2);
         $this->billing->save();
 
+        $payment = factory(Payment::class)->create([
+            'payment_method_id' => $this->account->primary_payment_method->id
+        ]);
+
+        $this->mock('App\Helpers\PaymentManager', function($mock) use($payment){
+            $mock->shouldReceive('charge')
+                 ->once()
+                 ->andReturn($payment);
+        });
         BillAccountJob::dispatch($this->billing);
 
         //  
@@ -86,9 +96,6 @@ class BillingTest extends TestCase
         $statement = BillingStatement::where('billing_id', $this->billing->id)->first();
         $this->assertNotNull($statement);
         $this->assertNotNull($statement->payment_id);
-
-        $payment = Payment::find($statement->payment_id);
-        $this->assertEquals($payment->total, $statement->total());
 
         //
         //  Make sure the mail was sent
@@ -114,17 +121,27 @@ class BillingTest extends TestCase
         $this->billing->billing_period_ends_at   = now()->subMinutes(2);
         $this->billing->save();
 
+        $payment = factory(Payment::class)->create([
+            'payment_method_id' => $this->account->primary_payment_method->id
+        ]);
+
+        $this->mock('App\Helpers\PaymentManager', function($mock) use($payment){
+            $mock->shouldReceive('charge')
+                 ->once()
+                 ->andReturn(false);
+        });
+        
         BillAccountJob::dispatch($this->billing);
 
         //  
-        //  Make sure a statement was created and paid
+        //  Make sure a statement was created and not paid
         //
         $statement = BillingStatement::where('billing_id', $this->billing->id)->first();
         $this->assertNotNull($statement);
         $this->assertNull($statement->payment_id);
 
         //
-        //  Make sure the mail was sent
+        //  Make sure the payment failure mail was sent
         //  
         Mail::assertQueued(PaymentMethodFailed::class, function($mail){
             return $mail->hasTo($this->user->email);
