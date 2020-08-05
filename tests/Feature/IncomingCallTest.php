@@ -584,11 +584,15 @@ class IncomingCallTest extends TestCase
      */
     public function testCallStatusChange()
     {
+        Event::fake();
+
         $company      = $this->createCompany();
         $config       = $this->createConfig($company);
         $phoneNumber  = $this->createPhoneNumber($company, $config);
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
+            'To' => $phoneNumber->e164Format(),
+            'CallStatus' => 'completed',
+            'CallDuration' => mt_rand(10, 600)
         ]);
         $contact     = $this->createContact($company);
         $call        = $this->createCall($company, [
@@ -598,9 +602,14 @@ class IncomingCallTest extends TestCase
         ]);
 
         $response = $this->json('POST', route('incoming-call-status-changed', $incomingCall->toArray()));
-        $response->dump();
-
+        $response->assertStatus(200);
         
-
+        $call = Call::find($call->id);
+        $this->assertEquals($call->status, 'Completed');
+        $this->assertEquals($call->duration, $incomingCall->CallDuration);
+        
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event){
+            return $event->name === Webhook::ACTION_CALL_END;    
+        });
     }
 }

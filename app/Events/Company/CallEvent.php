@@ -24,7 +24,7 @@ class CallEvent
      *
      * @return void
      */
-    public function __construct($name, $call, $contact, $company)
+    public function __construct($name, $call, $contact = null, $company = null)
     {
         $this->name     = $name;
         $this->call     = $call;

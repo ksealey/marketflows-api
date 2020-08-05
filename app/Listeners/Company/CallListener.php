@@ -5,7 +5,7 @@ namespace App\Listeners\Company;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use App\Models\Company\Webhook;
-use \Analytics;
+use App;
 
 class CallListener implements ShouldQueue
 {
@@ -18,7 +18,7 @@ class CallListener implements ShouldQueue
      */
     public function __construct()
     {
-        $this->analytics = App::make(Analytics::class);
+        $this->analytics = App::make('Analytics');
     }
 
     /**
@@ -33,6 +33,11 @@ class CallListener implements ShouldQueue
         $call      = $event->call;
         $contact   = $event->contact;
         $company   = $event->company;
+
+        if( ! $contact )
+            $contact = $call->contact;
+        if( ! $company )
+            $company = $call->company;
 
         //
         //  Fire webhooks
@@ -70,6 +75,12 @@ class CallListener implements ShouldQueue
                             ->setEventAction('called')
                             ->setEventLabel($contact->e164PhoneFormat())
                             ->setEventValue(1)
+                            ->setAnonymizeIp(1)
+                            ->setGeographicalOverride($contact->country)
+                            ->setCampaignName($call->campaign)
+                            ->setCampaignSource($call->source)
+                            ->setCampaignMedium($call->medium)
+                            ->setCampaignContent($call->content)
                             ->sendEvent();
         }
     }

@@ -305,12 +305,11 @@ class IncomingCallController extends Controller
         //  Update call  
         $call->status   = substr(ucfirst(strtolower($request->CallStatus)), 0, 64);
         $call->duration = intval($request->CallDuration) ?: null;
-         
-        //  ... 
-        
         $call->save();
-        
-        event(new CallEvent(Webhook::ACTION_CALL_START, $call));
+
+        $isComplete = trim(strtolower($request->CallStatus)) == 'completed' ? true : false;
+
+        event(new CallEvent($isComplete ? Webhook::ACTION_CALL_END : Webhook::ACTION_CALL_UPDATED, $call));
     }
 
     /**
@@ -369,6 +368,10 @@ class IncomingCallController extends Controller
         );
     }
 
+    /**
+     * Handle collecting digits
+     * 
+     */
     public function handleCollect(Request $request)
     {
         $attempts = intval($request->attempts);
