@@ -52,6 +52,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind('App\Helpers\PaymentManager', function(){
             return new \App\Helpers\PaymentManager();
         });
+
+        $this->app->bind('\Analytics', function(){
+            return new \TheIconic\Tracking\GoogleAnalytics\Analytics(true);
+        });
     }
 
     /**

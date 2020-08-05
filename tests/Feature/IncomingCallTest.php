@@ -19,11 +19,11 @@ class IncomingCallTest extends TestCase
     /**
      * Test handling an incoming call with no options
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testValidIncomingCallWithNoOptions()
     {
-        //Event::fake();
+        Event::fake();
         $company     = $this->createCompany();
         $config      = $this->createConfig($company, [
             'recording_enabled'      => false,
@@ -49,7 +49,8 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
 
         $this->assertDatabaseHas('contacts', [
-            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+            'country_code' => PhoneNumber::countryCode($incomingCall->From),
+            'phone' => PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -73,9 +74,9 @@ class IncomingCallTest extends TestCase
 
         $response->assertSee('<Response><Dial answerOnBridge="true" record="do-not-record"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
 
-        /*Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
             return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
-        });*/
+        });
     }
 
     /**
@@ -574,5 +575,32 @@ class IncomingCallTest extends TestCase
             'account_blocked_phone_number_id' => $blockedNumber->id,
             'phone_number_id'                 => $phoneNumber->id,
          ]);
+    }
+
+    /**
+     * Test call status change
+     * 
+     * @group incoming-calls--
+     */
+    public function testCallStatusChange()
+    {
+        $company      = $this->createCompany();
+        $config       = $this->createConfig($company);
+        $phoneNumber  = $this->createPhoneNumber($company, $config);
+        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
+            'To' => $phoneNumber->e164Format()
+        ]);
+        $contact     = $this->createContact($company);
+        $call        = $this->createCall($company, [
+            'phone_number_id' => $phoneNumber->id,
+            'contact_id'      => $contact->id,
+            'external_id'     => $incomingCall->CallSid
+        ]);
+
+        $response = $this->json('POST', route('incoming-call-status-changed', $incomingCall->toArray()));
+        $response->dump();
+
+        
+
     }
 }

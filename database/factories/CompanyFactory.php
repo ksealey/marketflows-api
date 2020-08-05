@@ -11,6 +11,6 @@ $factory->define(\App\Models\Company::class, function (Faker $faker) {
         'country'        => 'US',
         'tts_language'   => 'en-US',
         'tts_voice'      => 'Joanna',
-        'ga_id'          => 'UA-' . strtoupper(str_random(10))
+        'ga_id'          => 'UA-147271162-1'
     ];
 });

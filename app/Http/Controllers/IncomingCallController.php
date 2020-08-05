@@ -193,8 +193,8 @@ class IncomingCallController extends Controller
             'sub_category'              => $phoneNumber->sub_category,
             'first_call'                => $firstCall,
             'external_id'               => $request->CallSid,
-            'direction'                 => substr(ucfirst($request->Direction), 0, 16),
-            'status'                    => substr(ucfirst($request->CallStatus), 0, 64),
+            'direction'                 => substr(ucfirst(strtolower($request->Direction)), 0, 16),
+            'status'                    => substr(ucfirst(strtolower($request->CallStatus)), 0, 64),
             'source'                    => $phoneNumber->source,
             'medium'                    => $phoneNumber->medium ?: null,
             'content'                   => $phoneNumber->content ?: null,
@@ -296,24 +296,21 @@ class IncomingCallController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
-        
-
         $call = Call::where('external_id', $request->CallSid)
                     ->first();
 
         if( ! $call )
             return response('No Content', 204);
 
-        //  Update call
+        //  Update call  
         $call->status   = substr(ucfirst(strtolower($request->CallStatus)), 0, 64);
         $call->duration = intval($request->CallDuration) ?: null;
          
         //  ... 
         
         $call->save();
-        //  Let the rest of the system know it happened
-        //
-        //
+        
+        event(new CallEvent(Webhook::ACTION_CALL_START, $call));
     }
 
     /**

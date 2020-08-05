@@ -72,4 +72,10 @@ class Contact extends Model
             'contact' => $this->id
         ]);
     }
+
+    public function e164PhoneFormat()
+    {
+        return  ($this->country_code ? '+' . $this->country_code : '') 
+                . $this->phone;
+    }
 }
