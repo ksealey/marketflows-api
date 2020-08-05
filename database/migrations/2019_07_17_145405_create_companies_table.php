@@ -21,6 +21,7 @@ class CreateCompaniesTable extends Migration
             $table->string('country', 32);
             $table->string('tts_voice', 32);
             $table->string('tts_language', 32);
+            $table->string('ga_id', 32)->nullable();
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();

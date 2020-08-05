@@ -14,19 +14,19 @@ class PhoneNumberEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $account;
-    public $phoneNumbers;
-    public $action;
+    public $eventName;
+    public $company;
+    public $phoneNumber;
 
     /**
      * Create a new event instance.
      *
      * @return void
      */
-    public function __construct($account, $phoneNumbers, $action)
+    public function __construct($eventName, $company, $phoneNumber)
     {
-        $this->account      = $account;
-        $this->phoneNumbers = $phoneNumbers;
-        $this->action       = $action;
+        $this->eventName    = $eventName;
+        $this->company      = $company;
+        $this->phoneNumber  = $phoneNumber;
     }
 }

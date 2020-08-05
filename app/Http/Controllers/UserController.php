@@ -7,7 +7,6 @@ use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\UserSettings;
 use App\Models\Company;
-use App\Models\UserCompany;
 use App\Mail\AddUser as AddUserEmail;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use App\Rules\CompanyListRule;
@@ -57,10 +56,6 @@ class UserController extends Controller
         ];
 
         $validator = validator($request->input(), $rules);
-        $validator->sometimes('companies', ['bail', 'required', 'json', new CompanyListRule($creator->account_id)], function($input){
-            return $input->role !== User::ROLE_ADMIN && $input->role !== User::ROLE_SYSTEM;
-        });
-
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
@@ -71,8 +66,7 @@ class UserController extends Controller
 
         try{
             //  Create this user
-            $resetToken = str_random(128);
-
+            $tempPassword = str_random(10);
             $user = User::create([
                 'account_id'                => $creator->account_id,
                 'role'                      => $request->role,
@@ -80,9 +74,7 @@ class UserController extends Controller
                 'first_name'                => $request->first_name,
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
-                'password_hash'             => bcrypt($resetToken),
-                'password_reset_token'      => $resetToken,
-                'password_reset_expires_at' => now()->addDays(90),
+                'password_hash'             => bcrypt($tempPassword),
                 'auth_token'                => str_random(255)
             ]);
 
@@ -90,22 +82,8 @@ class UserController extends Controller
                 'user_id' => $user->id
             ]);
 
-            //  Create company links for lower level users
-            if( ! $user->canViewAllCompanies() ){
-                $companyIds = json_decode($request->companies);
-                $companyIds = array_unique($companyIds);
-                $inserts    = [];
-                foreach( $companyIds as $companyId ){
-                    $inserts[] = [
-                        'user_id'    => $user->id,
-                        'company_id' => $companyId
-                    ];
-                }
-                UserCompany::insert($inserts);
-            }
-
             //  Send out email to user
-            Mail::to($user)->send(new AddUserEmail($creator, $user));
+            Mail::to($user)->send(new AddUserEmail($creator, $user, $tempPassword));
         }catch(Exception $e){
             DB::rollBack();
 
@@ -119,8 +97,6 @@ class UserController extends Controller
 
     public function read(Request $request, User $user)
     {
-        $user->companies = $user->companies;
-
         return response($user);
     }
 
@@ -145,32 +121,9 @@ class UserController extends Controller
         ];
 
         $validator = validator($request->input(), $rules);
-        $validator->sometimes('companies', ['bail', 'required', 'json', new CompanyListRule($me->account_id)], function($input) use($request){
-            return $request->has('role') && $request->role !== User::ROLE_ADMIN && $request->role !== User::ROLE_SYSTEM;
-        });
-
-        if( $request->filled('role') ){
+        
+        if( $request->filled('role') )
             $user->role = $request->role;
-            
-            if( $user->canViewAllCompanies() )
-                UserCompany::where('user_id', $user->id)->delete();
-        }
-
-        if( $request->filled('companies') ){
-            if( ! $user->canViewAllCompanies() ){
-                UserCompany::where('user_id', $user->id)->delete();
-                $companyIds = json_decode($request->companies);
-                $companyIds = array_unique($companyIds);
-                $inserts    = [];
-                foreach( $companyIds as $companyId ){
-                    $inserts[] = [
-                        'user_id'    => $user->id,
-                        'company_id' => $companyId
-                    ];
-                }
-                UserCompany::insert($inserts);
-            }
-        }
 
         if( $request->filled('timezone') )
             $user->timezone = $request->timezone;
@@ -205,16 +158,19 @@ class UserController extends Controller
 
     public function delete(Request $request, User $user)
     {
-        if( $user->id === $request->user()->id ){
+        $me = $request->user();
+        if( $user->id === $me->id ){
             return response([
                 'error' => 'You cannot delete your own account!'
             ], 400);
         }
         
-        $user->delete();
+        $user->deleted_at = now();
+        $user->deleted_by = $me->id;
+        $user->save();
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
     }
 

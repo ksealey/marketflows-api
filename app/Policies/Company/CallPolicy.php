@@ -7,11 +7,10 @@ use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Policies\Traits\HandlesCompanyResources;
 
 class CallPolicy
 {
-    use HandlesAuthorization, HandlesCompanyResources;
+    use HandlesAuthorization;
 
     public function list(User $user)
     {

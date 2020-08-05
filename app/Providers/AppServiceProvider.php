@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Http\Response;
 use Twilio\Rest\Client as Twilio;
+use \Stripe\Stripe;
 use AWS;
 use App;
 
@@ -47,6 +48,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind('App\Helpers\TextToSpeech', function($app){
             return new \App\Helpers\TextToSpeech(AWS::createClient('polly'));
         });
+
+        $this->app->bind('App\Helpers\PaymentManager', function(){
+            return new \App\Helpers\PaymentManager();
+        });
+
+        $this->app->bind('\Analytics', function(){
+            return new \TheIconic\Tracking\GoogleAnalytics\Analytics(true);
+        });
     }
 
     /**
@@ -56,7 +65,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function provides()
     {
-        return [Twilio::class];
+        
     }
 
     /**

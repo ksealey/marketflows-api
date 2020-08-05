@@ -36,8 +36,6 @@
         <server name="AWS_BUCKET" value="foobar"/>
         <server name="AWS_ACCESS_KEY_ID" value="foobar"/>
         <server name="AWS_SECRET_ACCESS_KEY" value="foobar"/>
-        <server name="STRIPE_PK" value="foobar"/>
-        <server name="STRIPE_SK" value="foobar"/>
         <server name="TWILIO_SID" value="foobar"/>
         <server name="TWILIO_TOKEN" value="foobar"/>
         <server name="TWILIO_TEST_SID" value="foobar"/>

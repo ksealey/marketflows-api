@@ -6,11 +6,10 @@ use App\Models\User;
 use App\Models\Company;
 use App\Models\Company\PhoneNumberConfig;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Policies\Traits\HandlesCompanyResources;
 
 class PhoneNumberConfigPolicy
 {
-    use HandlesAuthorization, HandlesCompanyResources;
+    use HandlesAuthorization;
 
     public function list(User $user, Company $company)
     {

@@ -6,9 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\ReportAutomation;
 use League\Flysystem\Adapter\Local;
-use League\Flysystem\Filesystem;
-use Cache\Adapter\Filesystem\FilesystemCachePool;
-use Cache\Bridge\SimpleCache\SimpleCacheBridge;
 use App\Traits\AppliesConditions;
 use \App\Traits\PerformsExport;
 use Spreadsheet;
@@ -24,6 +21,7 @@ class Report extends Model
     use AppliesConditions, PerformsExport, SoftDeletes;
 
     protected $fillable = [
+        'account_id',
         'company_id',
         'created_by',
         'updated_by',
@@ -51,102 +49,11 @@ class Report extends Model
         'kind'
     ];
 
-    protected $casts = [
-        'comparisons' => 'array',
-        'conditions'  => 'array'
-    ];
-
     protected $allTimeStart = '';
-
-    protected $dataOptions = [];
 
     static protected $moduleLabels  = [
         'calls' => 'Calls'
-    ];
-
-    static protected $metrics = [
-        'calls' => [
-            'calls.source'          => 'Source',
-            'calls.medium'          => 'Medium',
-            'calls.campaign'        => 'Campaign',
-            'calls.content'         => 'Content',
-            'calls.category'        => 'Category',
-            'calls.sub_category'    => 'Sub-Category',
-            'calls.caller_city'     => 'Caller City',
-            'calls.caller_state'    => 'Caller State',
-            'calls.caller_zip'      => 'Caller Zip',
-            'phone_numbers.name'    => 'Dialed Phone Number'
-        ]
-    ];
-
-    static protected $exposedFields = [
-        'calls' => [
-            'fields' => [
-                'calls.id',
-                'calls.company_id',
-                'companies.name',
-                'calls.type',
-                'calls.category',
-                'calls.sub_category',
-                'calls.phone_number_pool_id',
-                'phone_number_pools.name',
-                'calls.phone_number_id',
-                'phone_numbers.name',
-                'calls.caller_name',
-                'calls.caller_country_code',
-                'calls.caller_number',
-                'calls.caller_city',
-                'calls.caller_state',
-                'calls.caller_zip',
-                'calls.caller_country',
-                'calls.source',
-                'calls.medium',
-                'calls.content',
-                'calls.campaign',
-                'calls.forwarded_to',
-                'calls.direction',
-                'calls.status',
-                'calls.duration',
-                'calls.recording_enabled',
-                'calls.created_at'
-            ],
-            'aliases' => [
-                'phone_numbers.name'        => 'phone_number_name',
-                'phone_number_pools.name'   => 'phone_number_pool_name',
-                'companies.name'            => 'company_name'
-            ],
-            //  IMORTANT: Keep in order for export headers
-            'headers' => [
-                'id'                        => 'Call Id',
-                'company_id'                => 'Company Id',
-                'company_name'              => 'Company',
-                'type'                      => 'Toll-Free',
-                'category'                  => 'Category',
-                'sub_category'              => 'Sub-Category',
-                'phone_number_pool_id'      => 'Keyword Tracking Pool Id',
-                'phone_number_pool_name'    => 'Keyword Tracking Pool',
-                'phone_number_id'           => 'Tracking Number Id',
-                'phone_number_name'         => 'Tracking Number',
-                'caller_name'               => 'Caller Name',
-                'caller_country_code'       => 'Caller Country Code',
-                'caller_number'             => 'Caller Number',
-                'caller_city'               => 'Caller City',
-                'caller_state'              => 'Caller State',
-                'caller_zip'                => 'Caller Zip',
-                'caller_country'            => 'Caller Country',
-                'source'                    => 'Caller Source',
-                'medium'                    => 'Caller Medium',
-                'content'                   => 'Caller Content',
-                'campaign'                  => 'Caller Campaign',
-                'forwarded_to'              => 'Forwarded To',
-                'direction'                 => 'Direction',
-                'status'                    => 'Status',
-                'duration'                  => 'Duration',
-                'recording_enabled'         => 'Recording Enabled',
-                'created_at'                => 'Call Time'
-            ]
-        ]
-    ];
+     ];
 
     static public function exports() : array
     {
@@ -185,16 +92,19 @@ class Report extends Model
         return 'Report';
     }
 
-    public function getTimezoneAttribute($timezone)
-    {
-        return new DateTimeZone($timezone);
-    }
-
-    /*
     public function getConditionsAttribute($conditions)
     {
-        return is_string($conditions) ? json_decode($conditions) : $conditions;
-    }*/
+        if( ! $conditions ) return [];
+
+        return json_decode($conditions);
+    }
+
+    public function getComparisonsAttribute($comparisons)
+    {
+        if( ! $comparisons ) return [];
+
+        return json_decode($comparisons);
+    }
 
     /**
      * Relationships
@@ -281,7 +191,7 @@ class Report extends Model
 
     public function chartLabels()
     {
-        $timezone   = $this->timezone;
+        $timezone   = new DateTimeZone($this->timezone);
         $labels     = [];
         $timeUnit   = $this->timeUnit();
         $dateOffset = $this->dateOffset();
@@ -290,7 +200,7 @@ class Report extends Model
             //  With metric
             $dateRanges  = $this->dateRanges();
             foreach( $dateRanges as $dateRange ){
-                $label    = $dateRange['start']->format('M, j Y');
+                $label  = $dateRange['start']->format('M, j Y');
                 if( $dateRange['start']->format('Y-m-d') !== $dateRange['end']->format('Y-m-d') ){
                     $label .= ' - ' . $dateRange['end']->format('M, j Y');
                 }
@@ -342,7 +252,7 @@ class Report extends Model
      */
     public function dateOffset()
     {
-        $timezone = $this->timezone;
+        $timezone = new DateTimeZone($this->timezone);
         $offset   = 0;
         switch($this->date_type){
             case 'LAST_7_DAYS':  $offset = 7;  break;
@@ -395,7 +305,7 @@ class Report extends Model
      */
     public function dateRanges()
     {
-        $timezone   = $this->timezone;
+        $timezone   = new DateTimeZone($this->timezone);
         $dateSets   = [];
         $dateRanges = [];
 
@@ -485,7 +395,7 @@ class Report extends Model
      */
     public function datasets($metricLimit = 10)
     {
-        $timezone   = $this->timezone;
+        $timezone   = new DateTimeZone($this->timezone);
         $dateRanges = $this->dateRanges();
         $offset     = $this->dateOffset();
         $timeUnit   = $this->timeUnit();
@@ -507,7 +417,6 @@ class Report extends Model
                                 $this->metric
                             ])
                             ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
-                            ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $firstDate->format('Y-m-d H:i:s.u'))
                             ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $lastDate->format('Y-m-d H:i:s.u'))
                             ->where('calls.company_id', $this->company_id)
@@ -549,7 +458,6 @@ class Report extends Model
                                     $this->metric
                                 ])
                                 ->leftJoin('phone_numbers', 'phone_numbers.id', 'calls.phone_number_id')
-                                ->leftJoin('phone_number_pools', 'phone_number_pools.id', 'calls.phone_number_pool_id')
                                 ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '>=', $dateRange['start']->format('Y-m-d H:i:s.u'))
                                 ->where(DB::raw("CONVERT_TZ(calls.created_at,'UTC','" . $timezone->getName() . "')"), '<=', $dateRange['end']->format('Y-m-d H:i:s.u'))
                                 ->where('calls.company_id', $this->company_id)
@@ -660,13 +568,6 @@ class Report extends Model
      */
     public function export($toFile = false)
     {
-        /*
-        $filesystemAdapter = new Local(storage_path());
-        $filesystem        = new Filesystem($filesystemAdapter);
-        $pool              = new FilesystemCachePool($filesystem);
-        $simpleCache       = new SimpleCacheBridge($pool);
-        SpreadsheetSettings::setCache($simpleCache);
-        */
         $fileName    = preg_replace('/[^0-9A-z]+/', '-', $this->name) . '.xlsx';
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()

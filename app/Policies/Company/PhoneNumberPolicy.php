@@ -6,11 +6,10 @@ use App\Models\User;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Policies\Traits\HandlesCompanyResources;
 
 class PhoneNumberPolicy
 {
-    use HandlesAuthorization, HandlesCompanyResources;
+    use HandlesAuthorization;
 
     public function list(User $user, Company $company)
     {
@@ -21,7 +20,8 @@ class PhoneNumberPolicy
     public function create(User $user, Company $company)
     {
         return $user->canDoAction('create')
-            && $user->canViewCompany($company);
+            && $user->canViewCompany($company)
+            && $user->email_verified_at;
     }
 
     public function read(User $user, PhoneNumber $phoneNumber, Company $company)
@@ -35,7 +35,8 @@ class PhoneNumberPolicy
     {
         return $user->canDoAction('update')
             && $user->canViewCompany($company)
-            && $phoneNumber->company_id === $company->id;
+            && $phoneNumber->company_id === $company->id
+            && $user->email_verified_at;
     }
 
     public function delete(User $user, PhoneNumber $phoneNumber, Company $company)

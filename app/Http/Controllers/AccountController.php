@@ -46,27 +46,6 @@ class AccountController extends Controller
     }
 
     /**
-     * Upgrade account
-     * 
-     */
-    public function upgrade(Request $request)
-    {
-        //  If user is already on a pro account, they and can't update inline or downwards
-        $account = $request->user()->account;
-        if( $account->account_type === Account::TYPE_ANALYTICS_PRO ){
-            return response([
-                'error' => 'Your account has already been upgraded to Analytics Pro - Upgrades are not available.'
-            ], 400);
-        }
-
-        $account->account_type            = $account->account_type == Account::TYPE_BASIC ? Account::TYPE_ANALYTICS :  Account::TYPE_ANALYTICS_PRO;
-        $account->account_type_updated_at = now();
-        $account->save();
-
-        return response($account);
-    }
-
-    /**
      * Close Account
      * 
      */

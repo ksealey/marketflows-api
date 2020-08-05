@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
-use \App\Models\PaymentMethodError;
+use \App\Models\Payment;
 use \App\Traits\PerformsExport;
 use \Stripe\Stripe;
 use \Stripe\Customer;
@@ -15,6 +15,7 @@ use Stripe\PaymentMethod as StripePaymentMethod;
 use DB;
 use Exception;
 use DateTime;
+use App;
 
 class PaymentMethod extends Model
 {
@@ -46,6 +47,10 @@ class PaymentMethod extends Model
     protected $appends = [
         'kind',
         'link'
+    ];
+
+    protected $casts = [
+        'primary_method' => 'boolean'
     ];
 
     static public function exports() : array
@@ -80,11 +85,6 @@ class PaymentMethod extends Model
         return $this->belongsTo('\App\Models\Account');
     }
 
-    public function errors()
-    {
-        return $this->hasMany('\App\Models\PaymentMethodError');
-    }
-
     /**
      * Appends
      * 
@@ -110,27 +110,15 @@ class PaymentMethod extends Model
         //
         //  Create remote resources
         //
-        Stripe::setApiKey(env('STRIPE_SK'));
-
-        //  Create customer with source if not exists
         $account = $user->account;
         $billing = $account->billing;
-        if( ! $billing->stripe_id ){
-            $primaryMethod = true; // Since there is no primary methon set this as true
-            $customer = Customer::create([
-                'description' => $account->name,
-                'source'      => $stripeToken
-            ]);
-            $billing->stripe_id = $customer->id;
-            $billing->save();
-            
-            $card = $customer->sources->data[0];
-        }else{
-            $card = Customer::createSource(
-                $billing->stripe_id,
-                ['source' => $stripeToken]
-            );
-        }
+
+        Stripe::setApiKey(env('STRIPE_SK'));
+        
+        $card = Customer::createSource(
+            $billing->external_id,
+            ['source' => $stripeToken]
+        );
 
         //  If this is the new primary method, unset existing
         if( $primaryMethod ){
@@ -148,66 +136,9 @@ class PaymentMethod extends Model
             'last_4'         => $card->last4,
             'expiration'     => $expiration->format('Y-m-d'),
             'type'           => $card->funding,
-            'brand'          => $card->brand,
+            'brand'          => ucfirst($card->brand),
             'primary_method' => $primaryMethod
         ]);
-    }
-
-
-    /**
-     * Charge payment method
-     * 
-     */
-    public function charge(float $amount, string $description, $attempts = 1)
-    {
-        if( ! $this->external_id )
-            return null;
-
-        if( $this->disabled_at )
-            return null;
-
-        if( $attempts >= 3 )
-            return null;
-
-        try{
-            Stripe::setApiKey(env('STRIPE_SK'));
-
-            $stripeCharge = StripeCharge::create([
-                'customer'      => $this->account->billing->stripe_id,
-                'source'        => $this->external_id,
-                'amount'        => $amount * 100,
-                'currency'      => 'usd',
-                'description'   => $description
-            ]);
-
-            //  Update used time
-            $this->last_used_at = now();
-            $this->error        = null;
-            $this->save();
-
-            PaymentMethodError::where('payment_method_id', $this->id)
-                              ->delete();
-
-            return $stripeCharge->id;
-        }catch(\Stripe\Exception\RateLimitException $e){
-            //  We hit a rate limit
-            //  Wait a second and try again
-            usleep(1);
-            return $this->charge($amount, $description, $attempts + 1);
-        }catch(Exception $e){
-            PaymentMethodError::create([
-                'payment_method_id' => $this->id,
-                'error'             => substr($e->getMessage(), 0, 255)
-            ]);
-        }
-
-        //  Disable this payment method after three failed attempts
-        if( PaymentMethodError::where('payment_method_id', $this->id)->count() >= 3 )
-            $this->disabled_at = now();
-        
-        $this->save();
-
-        return null;
     }
 
     /**

@@ -5,8 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use App\Models\EmailVerification;
-use App\Models\Company;
+use \App\Models\EmailVerification;
+use \App\Models\Company;
+use \App\Models\Company\BlockedPhoneNumber;
+use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
+use \App\Models\Company\Report;
+use \App\Models\Company\ReportAutomation;
+use \App\Models\Company\AudioClip;
+use \App\Models\Company\Call;
+use \App\Models\Company\CallRecording;
+use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\PhoneNumberConfig;
+use \App\Jobs\BatchDeleteAudioJob;
+use \App\Jobs\BatchDeletePhoneNumbersJob;
+use \App\Jobs\BatchDeleteCallRecordingsJob;
 use \App\Traits\PerformsExport;
 use Mail;
 use DateTime;
@@ -39,7 +51,6 @@ class User extends Authenticatable
         'auth_token',
         'email_verified_at',
         'phone_verified_at',
-        'first_login_at',
         'last_login_at',
         'login_disabled_until',
         'login_attempts',
@@ -61,7 +72,6 @@ class User extends Authenticatable
  
     public $appends = [
         'full_name',
-        'pretty_role',
         'status'
     ];
 
@@ -86,7 +96,6 @@ class User extends Authenticatable
             'first_name'        => 'First Name',
             'last_name'         => 'Last Name',
             'email'             => 'Email',
-            'role'              => 'Role',
             'created_at_local'  => 'Created'
         ];
     }
@@ -111,11 +120,6 @@ class User extends Authenticatable
         return $this->belongsTo('\App\Models\Account');
     }
 
-    public function companies()
-    {
-        return $this->belongsToMany('App\Models\Company', 'user_companies');
-    }
-
     public function settings()
     {
         $this->hasOne('\App\Models\UserSettings');
@@ -126,25 +130,12 @@ class User extends Authenticatable
         return  ucfirst(strtolower($this->first_name)) . ' ' . ucfirst(strtolower($this->last_name));
     }
 
-    public function getPrettyRoleAttribute()
-    {
-        if( $this->role === self::ROLE_ADMIN )
-            return 'Administrator';
-        if( $this->role === self::ROLE_SYSTEM )
-            return 'System User';
-        if( $this->role === self::ROLE_REPORTING)
-            return 'Reporting User';
-        if( $this->role === self::ROLE_CLIENT)
-            return 'Client';
-        return $this->role;
-    }
-
     public function getStatusAttribute()
     {
-        if( $this->login_disabled_until )
+        if( $this->login_disabled_until || $this->login_disabled_until )
             return 'Disabled';
 
-        if( ! $this->first_login_at )
+        if( ! $this->last_login_at )
             return 'Inactive';
 
         return 'Active';
@@ -173,20 +164,7 @@ class User extends Authenticatable
      */
     public function canViewCompany(Company $company)
     {
-        if( $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_SYSTEM )
-            return true;
-
-        foreach( $this->companies as $c ){
-            if( $c->id === $company->id )
-                return true;
-        }
-        
-        return false;
-    }
-
-    public function canViewAllCompanies()
-    {
-        return  $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_SYSTEM;
+        return $company->account_id == $this->account_id;
     }
 
     /**
@@ -196,5 +174,51 @@ class User extends Authenticatable
     public function isOnline()
     {
         return Cache::has('websockets.users.' . $this->id);
+    }
+
+    /**
+     * Remove a company from the system along with all traces of it
+     * 
+     */
+    public function deleteCompany(Company $company)
+    {
+        Call::where('company_id', $company->id)->update([
+            'deleted_by' => $this->id,
+            'deleted_at' => now()
+        ]);
+        
+        PhoneNumberConfig::where('company_id', $company->id)->update([
+            'deleted_by' => $this->id,
+            'deleted_at' => now()
+        ]);
+
+        BlockedCall::whereIn('blocked_phone_number_id', function($q) use($company){
+                        $q->select('id')
+                            ->from('blocked_phone_numbers')
+                            ->where('blocked_phone_numbers.company_id', $company->id);
+                    })->delete();
+
+        BlockedPhoneNumber::where('company_id', $company->id)->update([
+            'deleted_by' => $this->id,
+            'deleted_at' => now()
+        ]);
+
+        ReportAutomation::whereIn('report_id', function($q) use($company){
+                            $q->select('id')
+                                ->from('reports')
+                                ->where('reports.company_id', $company->id);
+                        })->delete();
+
+        Report::where('company_id', $company->id)->update([
+            'deleted_by' => $this->id,
+            'deleted_at' => now()
+        ]);
+
+        //
+        //  Batch delete items with remote resources
+        //
+        BatchDeletePhoneNumbersJob::dispatch($this, $company);
+        BatchDeleteAudioJob::dispatch($this, $company);
+        BatchDeleteCallRecordingsJob::dispatch($this, $company);
     }
 }

@@ -9,7 +9,6 @@ use Tests\TestCase;
 use App\Models\Company;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
-use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\AudioClip;
 use Storage;
 
@@ -251,7 +250,7 @@ class PhoneNumberConfigTest extends TestCase
             ]));
             $response->assertStatus(200);
             $response->assertJSON([
-                  'message' => 'deleted'
+                  'message' => 'Deleted'
             ]);
 
             $this->assertDatabaseMissing('phone_number_configs', [
@@ -288,48 +287,6 @@ class PhoneNumberConfigTest extends TestCase
 
             $response = $this->json('DELETE', route('delete-phone-number-config', [
                   'company' => $company->id,
-                  'phoneNumberConfig' => $config->id
-            ]));
-
-            $response->assertStatus(400);
-            $response->assertJSONStructure([
-                  'error'
-            ]);
-
-            $this->assertDatabaseHas('phone_number_configs', [
-                  'id'         => $config->id,
-                  'deleted_at' => null
-            ]);
-    }
-
-    /**
-     * Test deleting config in use by number pool fails
-     * 
-     * @group phone-number-configs
-     */
-    public function testDeletePhoneNumberConfigInUseByNumberPoolFails()
-    {
-            $company = $this->createCompany();
-            $config  = factory(PhoneNumberConfig::class)->create([
-                  'account_id' => $company->account_id,
-                  'company_id' => $company->id,
-                  'created_by' => $this->user->id,
-                  'recording_enabled'     => 1,
-                  'keypress_enabled'      => 1,
-                  'keypress_key'          => 0,
-                  'keypress_attempts'     => 1,
-                  'keypress_timeout'      => 5
-            ]);
-
-            factory(PhoneNumberPool::class)->create([
-                  'account_id' => $company->account_id,
-                  'company_id' => $company->id,
-                  'created_by' => $this->user->id,
-                  'phone_number_config_id' => $config->id
-            ]);
-
-            $response = $this->json('DELETE', route('delete-phone-number-config', [
-                  'company'           => $company->id,
                   'phoneNumberConfig' => $config->id
             ]));
 

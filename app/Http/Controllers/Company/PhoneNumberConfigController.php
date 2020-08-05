@@ -199,14 +199,14 @@ class PhoneNumberConfigController extends Controller
     {
         if( $phoneNumberConfig->isInUse() ){
             return response([
-                'error' => 'This configuration is in use - Detach from all phone numbers and phone number pools then try again'
+                'error' => 'This configuration is in use - Detach from all phone numbers and try again'
             ], 400);
         }
 
         $phoneNumberConfig->delete();
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
     }
 

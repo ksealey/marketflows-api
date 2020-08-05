@@ -4,13 +4,12 @@ namespace App\Helpers;
 use Twilio\Rest\Client as Twilio;
 use Exception;
 use App;
-use App\Models\BankedPhoneNumber;
 use App\Models\Company\PhoneNumber;
-
+use \Carbon\Carbon;
 
 class PhoneNumberManager
 {
-    protected $client;
+    public $client;
 
     public function __construct(Twilio $client)
     {
@@ -26,19 +25,21 @@ class PhoneNumberManager
             'voiceEnabled' => true,
             'smsEnabled'   => true,
         ]; 
-
+       
         $numbers = [];
-        try{
-            $query = $this->client->availablePhoneNumbers($country);
-
-            $query = $type === 'Toll-Free' ? $query->tollFree : $query->local;
-
-            $numbers = $query->read($config, $limit);
-        }catch(Exception $e){ 
-
+        if( App::environment(['local', 'dev', 'development', 'staging']) ){
+            return array_map(function(){
+                $phoneNumber = new \stdClass();
+                $phoneNumber->phoneNumber = config('services.twilio.magic_numbers.available');
+                return $phoneNumber;
+            }, [1,2,3,4,5,6,7,8,9,10]);
         }
 
-        return $numbers;
+        $query   = $this->client->availablePhoneNumbers($country);
+        $query   = $type === 'Toll-Free' ? $query->tollFree : $query->local;
+        $numbers = $query->read($config, $limit);
+
+        return $numbers ?: [];
     }
 
 
@@ -51,10 +52,10 @@ class PhoneNumberManager
                             'voiceMethod'           => 'POST',
                             'statusCallback'        => route('incoming-call-status-changed'),
                             'statusCallbackMethod'  => 'POST',
-                            'smsUrl'                => route('incoming-sms'),
-                            'smsMethod'             => 'POST',
-                            'mmsUrl'                => route('incoming-mms'),
-                            'mmsMethod'             => 'POST',
+                            //'smsUrl'                => route('incoming-sms'),
+                           // 'smsMethod'             => 'POST',
+                            //'mmsUrl'                => route('incoming-mms'),
+                           // 'mmsMethod'             => 'POST',
                             'voiceCallerIdLookup'   => true
                       ]);
         
@@ -64,46 +65,15 @@ class PhoneNumberManager
      * Release a phone number
      * 
      */
-    public function releaseNumber(PhoneNumber $phoneNumber)
+    public function releaseNumber($phoneNumber)
     {
+        if( App::environment(['local', 'dev', 'development', 'staging']) )
+            return $this;
+
         $this->client
              ->incomingPhoneNumbers($phoneNumber->external_id)
              ->delete();
        
         return $this;
-    }
-
-    /**
-     * Bank a phone number
-     * 
-     */
-    public function bankNumber(PhoneNumber $phoneNumber, $availableNow = false)
-    {
-        //  Wipe voice and sms url so we won't be charged for calls
-        $this->client
-             ->incomingPhoneNumbers($phoneNumber->external_id);
-
-        //  Make sure it's released 2 days before it will be renewed
-        $purchaseDate  = new Carbon($this->purchased_at);
-        $renewDate     = new Carbon($today->format('Y-m-' . $purchaseDate->format('d')));
-        
-        $releaseBy = $phoneNumber->renewalDate()
-                                 ->subDays(2);
-
-        return BankedPhoneNumber::create([
-            'released_by_account_id' => $phoneNumber->account_id,
-            'external_id'            => $phoneNumber->external_id,
-            'country'                => $phoneNumber->country,
-            'country_code'           => $phoneNumber->country_code,
-            'number'                 => $phoneNumber->number,
-            'voice'                  => $phoneNumber->voice,
-            'sms'                    => $phoneNumber->sms,
-            'mms'                    => $phoneNumber->mms,
-            'type'                   => $phoneNumber->type,
-            'calls'                  => 0,
-            'status'                 => $availableNow ? 'Available' : 'Banked',
-            'purchased_at'           => $phoneNumber->purchased_at,
-            'release_by'             => $releaseBy
-        ]);
     }
 }

@@ -8,21 +8,25 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Company\CallRecording;
+use App\Models\User;
+use App\Models\Company;
 
 class BatchDeleteCallRecordingsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $companyId;
+    public $user;
+    public $company;
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct($companyId)
+    public function __construct(User $user, Company $company)
     {
-        $this->companyId = $companyId;
+        $this->user    = $user;
+        $this->company = $company;
     }
 
     /**
@@ -32,8 +36,10 @@ class BatchDeleteCallRecordingsJob implements ShouldQueue
      */
     public function handle()
     {
-        CallRecording::withTrashed()
-                    ->whereIn('call_id', function($q){
+        //
+        //  Delete file
+        //
+        CallRecording::whereIn('call_id', function($q){
                         $q->select('id')
                           ->from('calls')
                           ->where('company_id', $this->company->id); 
@@ -42,5 +48,15 @@ class BatchDeleteCallRecordingsJob implements ShouldQueue
                     ->each(function($callRecording){
                         $callRecording->deleteRemoteResource();
                     });  
+        //
+        //  Delete from database
+        //
+        CallRecording::whereIn('call_id', function($q){
+                        $q->select('id')
+                        ->from('calls')
+                        ->where('company_id', $this->company->id); 
+                    })
+                    ->update([ 'deleted_at' => now() ]);  
+
     }
 }

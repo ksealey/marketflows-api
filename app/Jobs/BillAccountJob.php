@@ -3,23 +3,19 @@
 namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Mail\AccountSuspended as AccountSuspendedEmail;
-use App\Mail\BillingStatementReceipt as BillingStatementReceiptEmail;
-use App\Mail\PaymentMethodFailed as PaymentMethodFailedEmail;
-use App\Models\Account;
-use App\Models\User;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use App\Models\Billing;
-use App\Models\Statement;
-use App\Models\StatementItem;
-use App\Models\PaymentMethod;
+use App\Models\BillingStatement;
+use App\Models\BillingStatementItem;
+use App\Models\User;
+use App\Mail\BillingReceipt;
+use App\Mail\PaymentMethodFailed;
+use Carbon\Carbon;
 use Mail;
-use Exception;
-use Log;
-use DateTime;
+use App;
 
 class BillAccountJob implements ShouldQueue
 {
@@ -27,6 +23,8 @@ class BillAccountJob implements ShouldQueue
 
     public $billing;
 
+    protected $paymentManager;
+    
     /**
      * Create a new job instance.
      *
@@ -44,119 +42,137 @@ class BillAccountJob implements ShouldQueue
      */
     public function handle()
     {
+        $this->paymentManager = App::make('App\Helpers\PaymentManager');
+        
         $billing = $this->billing;
-        $account = $billing->account;
-        $users   = $account->admin_users;
-
+        
         //
-        //  If the account does not have a valid payment method when it's time to pay, suspend the account
+        //  Create statement. This includes monthly service fees, usage and any additional services
         //
-        $paymentMethods = $account->payment_methods;
-        if( ! count($paymentMethods) ){
-            //
-            //  Email the user and let them know that they must add a payment method
-            //
+        $statement = BillingStatement::create([
+            'billing_id'               => $billing->id,
+            'billing_period_starts_at' => $billing->billing_period_starts_at,
+            'billing_period_ends_at'   => $billing->billing_period_ends_at
+        ]);
 
-            //  Suspend account
-            $releaseNumbersAt               = now()->addDays(7);
-            $account->suspended_at          = now();
-            $account->suspension_code       = Account::SUSPENSION_CODE_NO_PAYMENT_METHOD;
-            $account->suspension_message    = 'Your account has been suspended. To re-enable add a valid payment method. If a valid payment method is not added before ' . $releaseNumbersAt->format('M, j Y') . ', all numbers tied to this account will be released.';
-            $account->suspension_warning_at = now()->addDays(2);
-            $account->save();
+        $serviceQuantity        = $billing->quantity(Billing::ITEM_SERVICE);
+        $serviceTotal           = $billing->total(Billing::ITEM_SERVICE, $serviceQuantity);
 
-            foreach( $users as $user ){
-                try{
-                    Mail::to($user->email)->send(new AccountSuspendedEmail($user, $account));
-                }catch(Exception $e){
-                    Log::error($e->getTraceAsString());
-                }
-            }
+        $localNumberQuantity    = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL);
+        $localNumberTotal       = $billing->total(Billing::ITEM_NUMBERS_LOCAL, $localNumberQuantity);
 
-            return; // Leave billing locked
-        } 
+        $tollFreeNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_TOLL_FREE);
+        $tollFreeNumberTotal    = $billing->total(Billing::ITEM_NUMBERS_TOLL_FREE, $tollFreeNumberQuantity);
 
-        //  
-        //  Try billing account, starting with the primary payment method
-        //
-        foreach( $billing->unpaid_statements as $statement ){
-            $total       = $statement->total;
-            $periodStart = new DateTime($statement->period_starts_at);
-            $periodEnd   = new DateTime($statement->period_ends_at);
-            $description = env('APP_NAME') . ' Statement ' . $periodStart->format('M, j Y') . ' - ' . $periodEnd->format('M, j Y');
-            
-            $chargeId = null;
-            foreach( $paymentMethods as $paymentMethod ){
-                $chargeId = $paymentMethod->charge($total, $description);
-                if( $chargeId )
-                    break;
-            }
+        $localMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_LOCAL);
+        $localMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_LOCAL, $localMinutesQuantity);
 
-            if( $chargeId ){
-                $statement->paid_at   = now();
-                $statement->charge_id = $chargeId;
-                $statement->payment_method_id = $paymentMethod->id;
-                $statement->save();
-                foreach( $users as $user ){
-                    try{
-                        Mail::to($user->email)->send(new BillingStatementReceiptEmail($user, $statement) );
-                    }catch(Exception $e){
-                        Log::error($e->getTraceAsString());
-                    }
-                }
-            }else{
-                //
-                //  No payment method worked
-                //
-                $billing->attempts++;
-                if( $billing->attempts >= 3 ){
-                    //  Suspend account and leave billing locked
-                    $billing->save();
+        $tollFreeMinutesQuantity= $billing->quantity(Billing::ITEM_MINUTES_TOLL_FREE);
+        $tollFreeMinutesTotal   = $billing->total(Billing::ITEM_MINUTES_TOLL_FREE, $tollFreeMinutesQuantity);
 
-                    $releaseNumbersAt               = now()->addDays(7);
-                    $account->suspended_at          = now();
-                    $account->suspension_code       = Account::SUSPENSION_CODE_TOO_MANY_FAILED_BILLING_ATTEMPTS;
-                    $account->suspension_message    = 'Your account has been suspended for too many failed billing attempts. To re-enable add a valid payment method. If a valid payment method is not added by ' . $releaseNumbersAt->format('M, j Y') . ', all numbers tied to this account will be released.';
-                    $account->suspension_warning_at = now()->addDays(2);
-                    $account->save();
+        $transMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION);
+        $transMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $transMinutesQuantity);
 
-                    foreach( $users as $user ){
-                        try{
-                            Mail::to($user->email)->send( new AccountSuspendedEmail($user, $account) );
-                        }catch(Exception $e){
-                            Log::error($e->getTraceAsString());
-                        }
-                    }
-                }else{
-                    //  Set to re-bill in 2 days and unlock billing
-                    $billing->bill_at   = now()->addDays(2);
-                    $billing->locked_at = null;
-                    $billing->save();
+        $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB);
+        $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
 
-                    //  Let users know that payment method failed
-                    foreach( $users as $user ){
-                        try{
-                            Mail::to($user)->send(new PaymentMethodFailedEmail($user, $paymentMethods[0], $statement) );
-                        }catch(Exception $e){
-                            Log::error($e->getTraceAsString());
-                        }
-                    }
-                }
+        $statementTotal         = $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
 
-                return;
-            }
+        $items = [
+            [
+                'billing_statement_id' => $statement->id,
+                'label'                => $billing->label(Billing::ITEM_SERVICE),
+                'quantity'             => $serviceQuantity,
+                'price'                => $billing->price(Billing::ITEM_SERVICE),
+                'total'                => $serviceTotal
+            ],
+            [
+                'billing_statement_id' => $statement->id,
+                'label'                => $billing->label(Billing::ITEM_NUMBERS_LOCAL),
+                'quantity'             => $localNumberQuantity,
+                'price'                => $billing->price(Billing::ITEM_NUMBERS_LOCAL),
+                'total'                => $localNumberTotal
+            ],
+            [
+                'billing_statement_id' => $statement->id,
+                'label'                => $billing->label(Billing::ITEM_NUMBERS_TOLL_FREE),
+                'quantity'             => $tollFreeNumberQuantity,
+                'price'                => $billing->price(Billing::ITEM_NUMBERS_TOLL_FREE),
+                'total'                => $tollFreeNumberTotal,
+            ],
+            [
+                'billing_statement_id' => $statement->id,
+                'label'                => $billing->label(Billing::ITEM_MINUTES_LOCAL),
+                'quantity'             => $localMinutesQuantity,
+                'price'                => $billing->price(Billing::ITEM_MINUTES_LOCAL),
+                'total'                => $localMinutesTotal,
+            ],
+            [
+                'billing_statement_id' => $statement->id,
+                'label'                => $billing->label(Billing::ITEM_MINUTES_TOLL_FREE),
+                'quantity'             => $tollFreeMinutesQuantity,
+                'price'                => $billing->price(Billing::ITEM_MINUTES_TOLL_FREE),
+                'total'                => $tollFreeMinutesTotal,
+            ],
+            [
+                'billing_statement_id' => $statement->id,
+                'label'                => $billing->label(Billing::ITEM_MINUTES_TRANSCRIPTION),
+                'quantity'             => $transMinutesQuantity,
+                'price'                => $billing->price(Billing::ITEM_MINUTES_TRANSCRIPTION),
+                'total'                => $transMinutesTotal
+            ],
+            [
+                'billing_statement_id' => $statement->id,
+                'label'                => $billing->label(Billing::ITEM_STORAGE_GB),
+                'quantity'             => $storageQuantity,
+                'price'                => $billing->price(Billing::ITEM_STORAGE_GB),
+                'total'                => $storageTotal
+            ],
+        ];
+
+        foreach( $billing->account->services as $service ){
+            $serviceQuantity = $service->quantity();
+            $serviceTotal    = $service->total();
+
+            $items[] = [
+                'billing_statement_id' => $statement->id,
+                'label'                => $service->label(),
+                'quantity'             => $serviceQuantity,
+                'price'                => $service->price(),
+                'total'                => $serviceTotal
+            ];
+
+            $statementTotal += $serviceTotal;
         }
 
-        $account->suspended_at          = null;
-        $account->suspension_code       = null;
-        $account->suspension_warning_at = null;
-        $account->suspension_message    = null;
-        $account->save();
+        BillingStatementItem::insert($items);
 
-        $billing->last_billed_at = now();
-        $billing->attempts       = 0;
-        $billing->bill_at        = null;
-        $billing->locked_at      = null;
+        //
+        //  Charge payment method
+        // 
+        $account       = $billing->account;
+        $paymentMethod = $account->primary_payment_method; 
+        
+        $payment = $this->paymentManager->charge($paymentMethod, $statementTotal);
+        $user    = User::find($paymentMethod->created_by);
+
+        //
+        //  Unlock billing and forward billing period
+        //
+        $billing->locked_at = null;
+        $billing->billing_period_starts_at = (new Carbon($billing->billing_period_ends_at))->addDays(1)->startOfDay(); // Start of the next day
+        $billing->billing_period_ends_at   = (new Carbon($billing->billing_period_starts_at))->addDays(30)->endOfDay(); // End of day, 30 days from now
         $billing->save();
+
+        if( $payment ){
+            $statement->payment_id = $payment->id;
+            $statement->save();
+            
+            Mail::to($user)
+                ->queue(new BillingReceipt($user, $payment));
+        }else{
+            Mail::to($user)
+                ->queue(new PaymentMethodFailed($user, $paymentMethod, $statement));
+        }
     }
 }

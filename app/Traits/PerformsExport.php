@@ -2,9 +2,6 @@
 namespace App\Traits;
 
 use League\Flysystem\Adapter\Local;
-use League\Flysystem\Filesystem;
-use Cache\Adapter\Filesystem\FilesystemCachePool;
-use Cache\Bridge\SimpleCache\SimpleCacheBridge;
 use Spreadsheet;
 use Xlsx;
 use Worksheet;

@@ -70,50 +70,6 @@ Artisan::command('reports:dispatch-automations', function(){
     ]);
 });
 
-
-Artisan::command('billing:create-statements', function(){
-    $billings = Billing::where('period_ends_at', '<=', now())
-                       ->limit(100)
-                       ->get();
-
-    foreach( $billings as $billing ){
-        CreateBillingStatementJob::dispatch($billing);
-    }
-});
-
-
-Artisan::command('billing:bill-accounts', function(){
-    //  Find all accounts with:
-    //  - bill_at date in the past
-    //  - No lock
-    //  - Unpaid statements
-    //  - Less than 3 failed billing attempts
-    $billings = Billing::where('bill_at', '<=', now())
-                       ->whereNull('locked_at')
-                        ->where('attempts', '<', Billing::MAX_ATTEMPTS)
-                        ->whereIn('account_id', function($query){
-                            $query->select('account_id')
-                                  ->from('billing_statements')
-                                  ->whereNull('paid_at');
-                        })
-                        ->limit(100)
-                        ->get();
-
-    //  Add a lock so if something happens we don't charge the account twice
-    if( count($billings) ){
-        $ids = array_column($billings->toArray(), 'id');
-        Billing::whereIn('id', $ids)->update([
-           'locked_at' => now()
-        ]);
-    }
-
-    //  Push job to queue
-    foreach( $billings as $billing ){
-        BillAccountJob::dispatch($billing);
-    }
-});
-
-
 Artisan::command('accounts:suspension-warnings', function(){
     $accounts = Account::where('suspension_warning_at', '<=', now())->get();
 
@@ -152,23 +108,12 @@ Artisan::command('fill-calls', function(){
             'category'                  => 'OFFLINE',
             'sub_category'              => 'EMAIL',
 
-            'phone_number_pool_id'      => null,
-            'session_id'                => null,
-
             'recording_enabled'         => $recordingEnabled,
             'forwarded_to'              => '8135573005',
             
             'external_id'               => str_random(40),
             'direction'                 => 'Inbound',
             'status'                    => 'Completed',
-            
-            'caller_name'               => 'Jamie Smith',
-            'caller_country_code'       => 1,
-            'caller_number'             => '813' . mt_rand(1111111,9999999),
-            'caller_city'               => 'New York',
-            'caller_state'              => 'New York',
-            'caller_zip'                => '409483',
-            'caller_country'            => 'US',
             
             'duration'                  => mt_rand(0, 100),
             'source'                    => $sources[mt_rand(0, count($sources)-1)],

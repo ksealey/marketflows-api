@@ -6,20 +6,20 @@ use \App\Models\Account;
 use \App\Models\Billing;
 use \App\Models\User;
 use App\Models\PaymentMethod;
+use \App\Models\AccountBlockedPhoneNumber;
+use \App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
 use App\Models\Company;
+use App\Models\Company\Contact;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Report;
 use \App\Models\Company\ReportAutomation;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
-use App\Models\Company\PhoneNumberPool;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
+use App\Models\Company\Transcription;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
-use \App\Models\TrackingEntity;
-use \App\Models\TrackingSession;
-use \App\Models\TrackingSessionEvent;
 use Storage;
 
 trait CreatesAccount
@@ -27,6 +27,7 @@ trait CreatesAccount
     public $account;
     public $billing;
     public $user;
+    public $paymentMethod;
 
     public function setUp() : void
     {
@@ -39,7 +40,13 @@ trait CreatesAccount
         ]);
 
         $this->user = factory(User::class)->create([
-            'account_id' => $this->account->id
+            'account_id' => $this->account->id,
+            'email_verified_at' => now()
+        ]);
+
+        $this->paymentMethod = factory(PaymentMethod::class)->create([
+            'account_id' => $this->user->account_id,
+            'created_by' => $this->user->id
         ]);
     }
 
@@ -59,7 +66,7 @@ trait CreatesAccount
     public function createPaymentMethod()
     {
         return factory(PaymentMethod::class)->create([
-            'account_id' => $this->user->account_id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
     }
@@ -82,6 +89,23 @@ trait CreatesAccount
         ], $with));
     }
 
+    public function createContact($company, $with = [])
+    {
+        return factory(Contact::class)->create(array_merge([
+            'created_by' => $this->user->id,
+            'account_id' => $company->account_id,
+            'company_id' => $company->id
+        ], $with));
+    }
+
+    public function createCall($company, $with = [])
+    {
+        return factory(Call::class)->create(array_merge([
+            'account_id'      => $company->account_id,
+            'company_id'      => $company->id
+        ], $with));
+    }
+
     public function createPhoneNumber($company, $config, $with = [])
     {
         return factory(PhoneNumber::class)->create(array_merge([
@@ -91,59 +115,6 @@ trait CreatesAccount
             'phone_number_config_id' => $config->id,
             'swap_rules' => $this->makeSwapRules()
         ], $with));
-    }
-
-    public function createPhoneNumberPool($company, $config, $with = [])
-    {
-        $pool =  factory(PhoneNumberPool::class)->create(array_merge([
-            'created_by' => $this->user->id,
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_config_id' => $config->id
-        ], $with));
-
-        factory(PhoneNumber::class, 5)->create([
-            'created_by' => $this->user->id,
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_config_id' => $config->id,
-            'phone_number_pool_id'   => $pool->id
-        ]);
-
-        return $pool;
-    }
-
-    public function createTrackingEntity($company, $entityWith = [])
-    {
-        return factory(TrackingEntity::class)->create(array_merge([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id
-        ], $entityWith));
-    }
-
-    public function createTrackingSession($company, $phoneNumber, $pool, $with = [], $entityWith = [], $eventWith = [])
-    {
-        $entity = $this->createTrackingEntity($company, $entityWith);
-
-        $session = factory(TrackingSession::class)->create(array_merge([
-            'company_id'           => $company->id,
-            'phone_number_id'      => $phoneNumber->id,
-            'phone_number_pool_id' => $pool->id,
-            'tracking_entity_id'   => $entity->id
-        ], $with));
-
-        //  Add initial events
-        factory(TrackingSessionEvent::class)->create(array_merge([
-            'tracking_session_id' => $session->id,
-            'event_type'          => TrackingSessionEvent::SESSION_START,
-        ], $eventWith));
-
-        factory(TrackingSessionEvent::class)->create(array_merge([
-            'tracking_session_id' => $session->id,
-            'event_type'          => TrackingSessionEvent::PAGE_VIEW,
-        ], $eventWith));
-
-        return $session;
     }
 
     public function createCompanies()
@@ -181,43 +152,31 @@ trait CreatesAccount
             'phone_number_config_id' => $config->id
         ]);
 
-        factory(Call::class, 2)->create([
-            'account_id' => $phoneNumber->account_id,
-            'company_id' => $phoneNumber->company_id,
-            'phone_number_id' =>$phoneNumber->id
-        ])->each(function($call){
-            factory(CallRecording::class)->create([
-                'call_id' => $call->id
-            ]);
+        factory(Contact::class, 1)->create([
+            'account_id'      => $company->account_id,
+            'company_id'      => $company->id
+        ])->each(function($contact) use($phoneNumber){
+            factory(Call::class, 1)->create([
+                'contact_id' => $contact->id,
+                'account_id' => $phoneNumber->account_id,
+                'company_id' => $phoneNumber->company_id,
+                'phone_number_id' =>$phoneNumber->id
+            ])->each(function($call){
+                $path = '/to-recording/' . str_random(10) . '.mp3';
+                Storage::put($path, 'foobar');
+                factory(CallRecording::class)->create([
+                    'call_id' => $call->id,
+                    'path'     => $path
+                ]);
+                factory(CallRecording::class)->create([
+                    'call_id' => $call->id,
+                    'path'    => $path
+                ]);
+            });
         });
         
 
-        //  A number pool
-        $pool = factory(PhoneNumberPool::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id, 
-            'phone_number_config_id' => $config->id
-        ]);
-        
-        $past = now()->subMonths(1)->addDays(4);
-        $poolNumbers = factory(PhoneNumber::class, 2)->create([
-            'account_id' => $this->user->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id, 
-            'phone_number_config_id' => $pool->phone_number_config_id,
-            'phone_number_pool_id' => $pool->id,
-            'purchased_at'         => $past // Should be released
-        ]);
-        $poolNumbers->each(function($poolNumber){
-            factory(Call::class, mt_rand(1, 2))->create([
-                'account_id' => $poolNumber->account_id,
-                'company_id' => $poolNumber->company_id,
-                'phone_number_id' => $poolNumber->id
-            ]);
-        });
-
-        //  Blocked Numbers
+        //  Blocked Numbers (Company)
         factory(BlockedPhoneNumber::class, 2)->create([
             'account_id' => $this->account->id,
             'company_id' => $company->id,
@@ -229,8 +188,20 @@ trait CreatesAccount
             ]);
         });
 
+         //  Blocked Numbers (Account)
+         factory(AccountBlockedPhoneNumber::class, 2)->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id
+        ])->each(function($accountBlockedNumber) use($phoneNumber){
+            factory(AccountBlockedCall::class, 2)->create([
+                'account_blocked_phone_number_id' => $accountBlockedNumber->id,
+                'phone_number_id'                 => $phoneNumber->id,
+            ]);
+        });
+
         //  Report
         $report = factory(Report::class)->create([
+            'account_id' => $this->account->id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
@@ -245,10 +216,110 @@ trait CreatesAccount
             'audio_clip' => $audioClip,
             'phone_number_config' => $config,
             'phone_number' => $phoneNumber->first(),
-            'report' => $report,
-            'phone_number_pool' => $pool,
-            'phone_number_pool_numbers' => $poolNumbers
+            'report' => $report
         ];
+    }
+
+    public function populateUsage($companyCount = 2, $localNumberCount = 2, $tollFreeNumberCount = 2, $localCallsPerNumber = 10, $tollFreeCallsPerNumber = 10)
+    {
+        Storage::fake();
+        
+        //  Company
+        factory(Company::class, $companyCount)->create([
+            'account_id' => $this->user->account_id,
+            'created_by' => $this->user->id
+        ])->each(function($company) use($localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber){
+            //  Audio Clip
+            $audioClip  = factory(AudioClip::class)->create([
+                'account_id' => $company->account_id,
+                'company_id' => $company->id,
+                'created_by' => $this->user->id
+            ]);
+
+            Storage::put($audioClip->path, 'foobar');
+
+            //  Config
+            $config = factory(PhoneNumberConfig::class)->create([
+                'account_id' => $company->account_id,
+                'company_id' => $company->id,
+                'created_by' => $this->user->id,
+                'greeting_audio_clip_id' => $audioClip->id,
+            ]);
+
+            //  Add local numbers with calls
+            factory(PhoneNumber::class, $localNumberCount)->create([
+                'account_id' => $this->user->account_id,
+                'company_id' => $company->id,
+                'created_by' => $this->user->id, 
+                'phone_number_config_id' => $config->id,
+                'type'       => 'Local'
+            ])->each(function($phoneNumber) use($company, $localCallsPerNumber){
+                factory(Contact::class, $localCallsPerNumber)->create([
+                    'account_id'      => $company->account_id,
+                    'company_id'      => $company->id
+                ])->each(function($contact) use($phoneNumber){
+                    factory(Call::class, 1)->create([
+                        'contact_id'      => $contact->id,
+                        'account_id'      => $phoneNumber->account_id,
+                        'company_id'      => $phoneNumber->company_id,
+                        'phone_number_id' => $phoneNumber->id,
+                        'duration'        => mt_rand(0, 59),
+                        'type'            => 'Local',
+                        'created_at'      => now()->subMinutes(5)
+                    ])->each(function($call){
+                        $path = '/to-recording/' . str_random(10) . '.mp3';
+                        Storage::put($path, 'foobar');
+
+                        factory(CallRecording::class)->create([
+                            'call_id' => $call->id,
+                            'path'     => $path,
+                            'file_size' => 1024 * 1024 * 1024
+                        ]);
+
+                        factory(Transcription::class)->create([
+                            'call_id'  => $call->id
+                        ]);
+                    });
+                });
+            });
+
+            //  Add toll-free numbers with calls
+            factory(PhoneNumber::class, $tollFreeNumberCount)->create([
+                'account_id' => $this->user->account_id,
+                'company_id' => $company->id,
+                'created_by' => $this->user->id, 
+                'phone_number_config_id' => $config->id,
+                'type'       => 'Toll-Free'
+            ])->each(function($phoneNumber) use($company, $tollFreeCallsPerNumber){
+                factory(Contact::class, $tollFreeCallsPerNumber)->create([
+                    'account_id'      => $company->account_id,
+                    'company_id'      => $company->id
+                ])->each(function($contact) use($phoneNumber){
+                    factory(Call::class, 1)->create([
+                        'contact_id'      => $contact->id,
+                        'account_id'      => $phoneNumber->account_id,
+                        'company_id'      => $phoneNumber->company_id,
+                        'phone_number_id' => $phoneNumber->id,
+                        'duration'        => mt_rand(0, 59),
+                        'type'            => 'Toll-Free',
+                        'created_at'      => now()->subMinutes(5)
+                    ])->each(function($call){
+                        $path = '/to-recording/' . str_random(10) . '.mp3';
+                        Storage::put($path, 'foobar');
+
+                        factory(CallRecording::class)->create([
+                            'call_id' => $call->id,
+                            'path'     => $path,
+                            'file_size' => 1024 * 1024 * 1024
+                        ]);
+
+                        factory(Transcription::class)->create([
+                            'call_id'  => $call->id
+                        ]);
+                    });
+                });
+            });
+        });
     }
 
     public function makeSwapRules($with = [])

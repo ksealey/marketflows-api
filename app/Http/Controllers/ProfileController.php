@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
+use \App\Models\User;
+use \Carbon\Carbon;
 use Mail;
 
 class ProfileController extends Controller

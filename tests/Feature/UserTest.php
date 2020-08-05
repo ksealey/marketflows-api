@@ -98,10 +98,6 @@ class UserTest extends TestCase
             'id' => $response['id']
         ]);
 
-        $this->assertDatabaseMissing('user_companies', [
-            'user_id' => $response['id']
-        ]);
-
         Mail::assertSent(AddUserEmail::class);
     }
 
@@ -137,10 +133,6 @@ class UserTest extends TestCase
             'id' => $response['id']
         ]);
 
-        $this->assertDatabaseMissing('user_companies', [
-            'user_id' => $response['id']
-        ]);
-
         Mail::assertSent(AddUserEmail::class);
     }
 
@@ -164,8 +156,7 @@ class UserTest extends TestCase
             'last_name'  => $user->last_name,
             'email'      => $user->email,
             'timezone'   => $user->timezone,
-            'role'       => User::ROLE_REPORTING,
-            'companies' => json_encode([$company->id])
+            'role'       => User::ROLE_REPORTING
         ]);
 
         $response->assertStatus(201);
@@ -176,14 +167,10 @@ class UserTest extends TestCase
             'timezone'   => $user->timezone,
             'role'       => User::ROLE_REPORTING
         ]);
-
+        
         $this->assertDatabaseHas('users', [
-            'id' => $response['id']
-        ]);
-
-        $this->assertDatabaseHas('user_companies', [
-            'user_id'   => $response['id'],
-            'company_id' => $company->id            
+            'id' => $response['id'],
+            'account_id' => $this->account->id
         ]);
 
         Mail::assertSent(AddUserEmail::class);
@@ -224,11 +211,6 @@ class UserTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'id' => $response['id']
-        ]);
-
-        $this->assertDatabaseHas('user_companies', [
-            'user_id'   => $response['id'],
-            'company_id' => $company->id            
         ]);
 
         Mail::assertSent(AddUserEmail::class);
@@ -307,7 +289,7 @@ class UserTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
 
         $this->assertDatabaseMissing('users', [

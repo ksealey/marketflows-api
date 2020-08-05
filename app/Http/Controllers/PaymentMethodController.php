@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use \App\Models\PaymentMethod;
-use \App\Events\PaymentMethodEvent;
+use \App\Jobs\PayUnpaidStatementsJob;
 use Validator;
 use Exception;
 use DB;
@@ -63,8 +63,13 @@ class PaymentMethodController extends Controller
         $paymentMethod = PaymentMethod::createFromToken(
             $request->token, 
             $user, 
-            $request->primary_method
+            !!$request->primary_method 
         );
+
+        //  
+        //  If there are unpaid statements, add job
+        //
+        PayUnpaidStatementsJob::dispatch($paymentMethod);
 
         return response($paymentMethod, 201);
     }
@@ -126,10 +131,12 @@ class PaymentMethodController extends Controller
             ], 400);
         }
 
-        $paymentMethod->delete();
+        $paymentMethod->deleted_at = now();
+        $paymentMethod->deleted_by = $user->id;
+        $paymentMethod->save();
 
         return response([
-            'message' => 'Deleted.'        
+            'message' => 'Deleted'        
         ], 200);
     }
 

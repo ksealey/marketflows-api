@@ -5,11 +5,10 @@ namespace App\Policies;
 use App\Models\User;
 use App\Models\Company;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use App\Policies\Traits\HandlesCompanyResources;
 
 class CompanyPolicy
 {
-    use HandlesAuthorization, HandlesCompanyResources;
+    use HandlesAuthorization;
 
     public function list(User $user)
     {

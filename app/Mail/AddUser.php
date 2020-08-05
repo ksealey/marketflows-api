@@ -13,16 +13,18 @@ class AddUser extends Mailable
 
     public $creator;
     public $user;
+    public $tempPassword;
 
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct($creator, $user)
+    public function __construct($creator, $user, $tempPassword)
     {
-        $this->creator = $creator;
-        $this->user    = $user;
+        $this->creator      = $creator;
+        $this->user         = $user;
+        $this->tempPassword = $tempPassword;
     }
 
     /**
@@ -34,8 +36,9 @@ class AddUser extends Mailable
     {
         return $this->subject($this->creator->full_name. ' has added you to their account on ' . env('APP_NAME') . '!')
                     ->view('mail.add-user', [
-                        'creator' => $this->creator,
-                        'user'    => $this->user,
+                        'creator'       => $this->creator,
+                        'user'          => $this->user,
+                        'tempPassword'  => $this->tempPassword
                     ]);
     }
 }

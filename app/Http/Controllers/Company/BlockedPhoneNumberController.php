@@ -157,10 +157,12 @@ class BlockedPhoneNumberController extends Controller
      */
     public function delete(Request $request, Company $company, BlockedPhoneNumber $blockedPhoneNumber)
     {
-        $blockedPhoneNumber->delete();
+        $blockedPhoneNumber->deleted_at = now();
+        $blockedPhoneNumber->deleted_by = $request->user()->id;
+        $blockedPhoneNumber->save();
 
         return response([
-            'message' => 'deleted'
+            'message' => 'Deleted'
         ]);
     }
 

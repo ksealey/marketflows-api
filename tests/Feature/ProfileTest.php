@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Alert;
+use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\EmailVerification as EmailVerificationMail;
 use Mail;
 
