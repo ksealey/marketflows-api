@@ -73,6 +73,7 @@ class CompanyController extends Controller
             'name'      => 'bail|required|max:64',
             'industry'  => 'bail|required|max:64',
             'country'   => ['bail', 'required', new CountryRule()],
+            'ga_id'     => ['bail', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
             'tts_language'  => 'bail|in:' . implode(',', $languages),
             'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)]
         ];
@@ -93,6 +94,7 @@ class CompanyController extends Controller
             'name'              => $request->name,
             'industry'          => $request->industry,
             'country'           => $request->country,
+            'ga_id'             => $request->ga_id ?: null,
             'tts_voice'         => $request->tts_voice ?: $account->default_tts_voice,
             'tts_language'      => $request->tts_language ?: $account->default_tts_language,
             'created_by'        => $user->id,
@@ -134,6 +136,7 @@ class CompanyController extends Controller
             'name'          => 'min:1|max:64',
             'industry'      => 'min:1|max:64',
             'country'       => [new CountryRule()],
+            'ga_id'         => ['bail', 'nullable', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
             'tts_language'  => 'bail|in:' . implode(',', $languages),
             'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)]
         ];
@@ -151,6 +154,8 @@ class CompanyController extends Controller
             $company->industry = $request->industry;
         if( $request->filled('country') )
             $company->country = $request->country;
+        if( $request->has('ga_id') )
+            $company->ga_id = $request->ga_id ?: null;
         if( $request->filled('tts_voice') )
             $company->tts_voice = $request->tts_voice;
         if( $request->filled('tts_language') )

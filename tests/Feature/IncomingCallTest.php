@@ -580,7 +580,7 @@ class IncomingCallTest extends TestCase
     /**
      * Test call status change
      * 
-     * @group incoming-calls--
+     * @group incoming-calls
      */
     public function testCallStatusChange()
     {

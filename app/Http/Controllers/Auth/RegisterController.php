@@ -79,11 +79,16 @@ class RegisterController extends Controller
             Stripe::setApiKey(env('STRIPE_SK'));
             
             $customer = Customer::create([
-                'description' => $request->account_name,
-                'source'      => $request->payment_token
+                'description'    => $request->account_name,
+                'payment_method' => $request->payment_token
             ]);
-            
-            $card = $customer->sources->data[0];
+
+            $paymentMethods = \Stripe\PaymentMethod::all([
+                'customer' => $customer->id,
+                'type' => 'card',
+            ]);
+            $paymentMethod = $paymentMethods->data[0];
+            $card          = $paymentMethod->card;
 
             //  Create account
             $account = Account::create([
@@ -122,7 +127,7 @@ class RegisterController extends Controller
             PaymentMethod::create([
                 'account_id'     => $user->account_id,
                 'created_by'     => $user->id,
-                'external_id'    => $card->id,
+                'external_id'    => $paymentMethod->id,
                 'last_4'         => $card->last4,
                 'type'           => $card->funding,
                 'brand'          => ucfirst($card->brand),
@@ -205,5 +210,23 @@ class RegisterController extends Controller
         return response([
             'message' => 'Verified'
         ]);
+    }
+
+    public function emailAvailability(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'email' => 'required|email|max:128',
+        ]);
+
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400); 
+
+        $available = User::where('email', $request->email)->count() == 0;
+
+        return response([
+            'available' => $available
+        ]);  
     }
 }

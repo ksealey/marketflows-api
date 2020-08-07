@@ -37,6 +37,9 @@ Route::middleware(['rate_limit:30,1'])->prefix('auth')->group(function(){
 
     Route::post('/verify-email', 'Auth\RegisterController@verifyEmail')
          ->name('verify-email');
+
+    Route::get('/email-availability', 'Auth\RegisterController@emailAvailability')
+         ->name('email-availability');
 });
 
 /*
