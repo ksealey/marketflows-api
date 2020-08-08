@@ -73,7 +73,7 @@ class CompanyController extends Controller
             'name'      => 'bail|required|max:64',
             'industry'  => 'bail|required|max:64',
             'country'   => ['bail', 'required', new CountryRule()],
-            'ga_id'     => ['bail', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
+            'ga_id'     => ['bail', 'nullable', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
             'tts_language'  => 'bail|in:' . implode(',', $languages),
             'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)]
         ];
@@ -129,9 +129,8 @@ class CompanyController extends Controller
     {
         $config    = config('services.twilio.languages');
         $languages = array_keys($config);
-        $voiceKey  = $request->language && in_array($request->language, $languages) ?  : 'en-US';
+        $voiceKey  = $request->tts_language && in_array($request->tts_language, $languages) ? $request->tts_language : 'en-US';
         $voices    = array_keys($config[$voiceKey]['voices']); 
-
         $rules = [
             'name'          => 'min:1|max:64',
             'industry'      => 'min:1|max:64',

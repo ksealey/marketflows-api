@@ -39,7 +39,10 @@ class CompanyTest extends TestCase
         $response = $this->json('POST', route('create-company'), [
             'name'     => $company->name,
             'country'  => $company->country,
-            'industry' => $company->industry
+            'industry' => $company->industry,
+            'ga_id'    => $company->ga_id,
+            'tts_language'  => $company->tts_language,
+            'tts_voice'     => $company->tts_voice
         ]);
 
         $response->assertStatus(201);
@@ -47,6 +50,9 @@ class CompanyTest extends TestCase
             'name'     => $company->name,
             'country'  => $company->country,
             'industry' => $company->industry,
+            'ga_id'    => $company->ga_id,
+            'tts_language'  => $company->tts_language,
+            'tts_voice'     => $company->tts_voice,
             'created_by' => $this->user->id,
             'updated_by' => null
         ]);
@@ -56,6 +62,9 @@ class CompanyTest extends TestCase
             'name'     => $company->name,
             'country'  => $company->country,
             'industry' => $company->industry,
+            'ga_id'    => $company->ga_id,
+            'tts_language'  => $company->tts_language,
+            'tts_voice'     => $company->tts_voice,
             'created_by' => $this->user->id,
             'updated_by' => null
         ]);
@@ -340,9 +349,12 @@ class CompanyTest extends TestCase
         $response = $this->json('PUT', route('update-company', [
             'company' => $company->id
         ]), [
-            'name'     => $updateData->name,
-            'country'  => $updateData->country,
-            'industry' => $updateData->industry
+            'name'          => $updateData->name,
+            'country'       => $updateData->country,
+            'industry'      => $updateData->industry,
+            'ga_id'         => $updateData->ga_id,
+            'tts_language'  => $updateData->tts_language,
+            'tts_voice'     => $updateData->tts_voice,
         ]);
         $response->assertStatus(200);
         $response->assertJSON([
