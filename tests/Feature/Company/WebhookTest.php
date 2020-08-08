@@ -19,8 +19,22 @@ class WebhookTest extends TestCase
     public function testListing()
     {
         $company = $this->createCompany();
-        factory(Webhook::class, 10)->create([
-            'company_id' => $company->id
+        factory(Webhook::class, 3)->create([
+            'company_id' => $company->id,
+            'created_by' => $this->user->id,
+            'action'     => Webhook::ACTION_CALL_START
+        ]);
+        
+        factory(Webhook::class, 3)->create([
+            'company_id' => $company->id,
+            'created_by' => $this->user->id,
+            'action'     => Webhook::ACTION_CALL_UPDATED
+        ]);
+
+        factory(Webhook::class, 3)->create([
+            'company_id' => $company->id,
+            'created_by' => $this->user->id,
+            'action'     => Webhook::ACTION_CALL_END
         ]);
 
         $response = $this->json('GET', route('list-webhooks', [
@@ -29,68 +43,21 @@ class WebhookTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            "result_count" => 10,
-            "limit"        => 250,
-            "page"         => 1,
-            "total_pages"  => 1,
-            "next_page"    => null,
+            'result_count' => 9
         ]);
 
         $response->assertJSONStructure([
+            "result_count",
             "results" => [
-                [
-                    'company_id',
-                    'action',
-                    'method',
-                    'url',
-                    'params' => [
-
+                'call_start' => [
+                    [
+                        'company_id',
+                        'action',
+                        'method',
+                        'url',
+                        'created_by',
+                        'updated_by'
                     ]
-                ]
-            ]
-        ]);
-    }
-
-    /**
-     * Test listing with conditions
-     * 
-     * @group webhooks
-     */
-    public function testListingWithConditions()
-    {
-        $company = $this->createCompany();
-        $webhooks = factory(Webhook::class, 10)->create([
-            'company_id' => $company->id
-        ]);
-        $firstWebhook = $webhooks->first();
-
-        $response = $this->json('GET', route('list-webhooks', [
-            'company' => $company->id,
-            'conditions' => json_encode([
-                [
-                    'field'    =>  'webhooks.url',
-                    'operator' => 'EQUALS',
-                    'inputs'   => [ $firstWebhook->url ]
-                ]
-            ])
-        ]));
-
-        $response->assertStatus(200);
-        $response->assertJSON([
-            "result_count" => 1,
-            "limit"        => 250,
-            "page"         => 1,
-            "total_pages"  => 1,
-            "next_page"    => null,
-        ]);
-
-        $response->assertJSON([
-            "results" => [
-                [
-                    'company_id' => $company->id,
-                    'action'     => $firstWebhook->action,
-                    'method'     => $firstWebhook->method,
-                    'url'        => $firstWebhook->url
                 ]
             ]
         ]);
@@ -111,8 +78,7 @@ class WebhookTest extends TestCase
         ]), [
             'action'     => $webhook->action,
             'method'     => $webhook->method,
-            'url'        => $webhook->url,
-            'params'     => json_encode($webhook->params)
+            'url'        => $webhook->url        
         ]);
 
         $response->assertStatus(201);
@@ -121,7 +87,7 @@ class WebhookTest extends TestCase
             'action'     => $webhook->action,
             'method'     => $webhook->method,
             'url'        => $webhook->url,
-            'params'     => (array)$webhook->params
+            'created_by' => $this->user->id
         ]);
     }
 
@@ -134,7 +100,8 @@ class WebhookTest extends TestCase
     {
         $company = $this->createCompany();
         $webhook = factory(Webhook::class)->create([
-            'company_id' => $company->id
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
         ]);
 
         $response = $this->json('GET', route('read-webhook', [
@@ -148,7 +115,8 @@ class WebhookTest extends TestCase
             'action'     => $webhook->action,
             'method'     => $webhook->method,
             'url'        => $webhook->url,
-            'params'     => (array)$webhook->params
+            'created_by' => $this->user->id,
+            'updated_by' => null
         ]);
     }
 
@@ -161,7 +129,8 @@ class WebhookTest extends TestCase
     {
         $company = $this->createCompany();
         $webhook = factory(Webhook::class)->create([
-            'company_id' => $company->id
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
         ]);
 
         $updatedWebhook = factory(Webhook::class)->make();
@@ -172,8 +141,7 @@ class WebhookTest extends TestCase
         ]), [
             'action'     => $updatedWebhook->action,
             'method'     => $updatedWebhook->method,
-            'url'        => $updatedWebhook->url,
-            'params'     => json_encode($updatedWebhook->params)
+            'url'        => $updatedWebhook->url
         ]);
 
         $response->assertStatus(200);
@@ -182,7 +150,8 @@ class WebhookTest extends TestCase
             'action'     => $updatedWebhook->action,
             'method'     => $updatedWebhook->method,
             'url'        => $updatedWebhook->url,
-            'params'     => (array)$updatedWebhook->params
+            'created_by' => $this->user->id,
+            'updated_by' => $this->user->id        
         ]);
     }
 
@@ -195,7 +164,8 @@ class WebhookTest extends TestCase
     {
         $company = $this->createCompany();
         $webhook = factory(Webhook::class)->create([
-            'company_id' => $company->id
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
         ]);
 
         $updatedWebhook = factory(Webhook::class)->make();
@@ -211,7 +181,14 @@ class WebhookTest extends TestCase
         ]);
 
         $this->assertDatabaseMissing('webhooks', [
-            'id' => $webhook->id
+            'id' => $webhook->id,
+            'deleted_at' => null
         ]);
+
+        $this->assertDatabaseHas('webhooks', [
+            'id'         => $webhook->id,
+            'deleted_by' => $this->user->id
+        ]);
+
     }
 }

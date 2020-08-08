@@ -16,6 +16,7 @@ use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
+use \App\Models\Company\Webhook;
 use \App\Jobs\BatchDeleteAudioJob;
 use \App\Jobs\BatchDeletePhoneNumbersJob;
 use \App\Jobs\BatchDeleteCallRecordingsJob;
@@ -182,6 +183,11 @@ class User extends Authenticatable
      */
     public function deleteCompany(Company $company)
     {
+        Webhook::where('company_id', $company->id)->update([
+            'deleted_by' => $this->id,
+            'deleted_at' => now()
+        ]);
+        
         Call::where('company_id', $company->id)->update([
             'deleted_by' => $this->id,
             'deleted_at' => now()

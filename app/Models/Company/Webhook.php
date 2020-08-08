@@ -6,12 +6,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class Webhook extends Model
 {
+    use \Illuminate\Database\Eloquent\SoftDeletes;
+
     protected $fillable = [
         'company_id',
         'action',
         'method',
         'url',
-        'enabled_at'
+        'enabled_at',
+        'created_by'
+    ];
+
+    protected $hidden = [
+        'deleted_at',
+        'deleted_by'
     ];
 
     const ACTION_CALL_START   = 'call_start';
@@ -27,10 +35,5 @@ class Webhook extends Model
             self::ACTION_CALL_UPDATED,
             self::ACTION_CALL_END
         ];
-    }
-
-    public function getParamsAttribute($params)
-    {
-        return json_decode($params);
     }
 }

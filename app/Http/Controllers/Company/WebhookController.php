@@ -30,7 +30,8 @@ class WebhookController extends Controller
         }
 
         return response([
-            'results' => $grouped
+            'result_count' => count($webhooks),
+            'results'      => $grouped
         ]);
     }
 
@@ -63,7 +64,8 @@ class WebhookController extends Controller
             'action'        => $request->action,
             'method'        => $request->method,
             'url'           => $request->url,
-            'enabled_at'    => now()
+            'enabled_at'    => now(),
+            'created_by'    => $request->user()->id
         ]);
        
         return response($webhook, 201);
@@ -100,6 +102,7 @@ class WebhookController extends Controller
         if( $request->filled('enabled') )
             $webhook->enabled_at = $request->enabled ? now() : null;
 
+        $webhook->updated_by = $request->user()->id;
         $webhook->save();
 
         return response($webhook);
@@ -108,7 +111,9 @@ class WebhookController extends Controller
 
     public function delete(Request $request, Company $company, Webhook $webhook)
     {
-        $webhook->delete();
+        $webhook->deleted_by = $request->user()->id;
+        $webhook->deleted_at = now();
+        $webhook->save();
 
         return response([
             'message' => 'Deleted'
