@@ -11,13 +11,14 @@ class Webhook extends Model
         'action',
         'method',
         'url',
-        'params',
         'enabled_at'
     ];
 
-    const ACTION_CALL_START   = 'call.start';
-    const ACTION_CALL_UPDATED = 'call.updated';
-    const ACTION_CALL_END     = 'call.end';
+    const ACTION_CALL_START   = 'call_start';
+    const ACTION_CALL_UPDATED = 'call_update';
+    const ACTION_CALL_END     = 'call_end';
+
+    const ACTION_LIMIT = 3;
 
     static public function actions()
     {

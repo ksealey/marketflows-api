@@ -19,7 +19,6 @@ class CreateWebhooksTable extends Migration
             $table->string('action', 32);
             $table->string('method', 16);
             $table->string('url', 255);
-            $table->json('params')->nullable();
             $table->dateTime('enabled_at')->nullable();
             $table->timestamps();
 

@@ -18,15 +18,20 @@ class WebhookController extends Controller
 
     public function list(Request $request, Company $company)
     {
-        $query = Webhook::where('webhooks.company_id', $company->id);
+        $webhooks = Webhook::where('webhooks.company_id', $company->id)
+                           ->get();
 
-        return parent::results(
-            $request,
-            $query,
-            [],
-            self::$fields,
-            'webhooks.created_at'
-        );
+        $grouped = [];
+        foreach( $webhooks as $webhook ){
+            if( ! isset($grouped[$webhook->action]) )
+                $grouped[$webhook->action] = [];
+
+            $grouped[$webhook->action][] = $webhook;
+        }
+
+        return response([
+            'results' => $grouped
+        ]);
     }
 
     public function create(Request $request, Company $company)
@@ -34,8 +39,7 @@ class WebhookController extends Controller
         $rules = [
             'action'    => 'required|in:' . implode(',', Webhook::actions()),
             'method'    => 'required|in:' . implode(',', ['GET', 'POST']),
-            'url'       => 'required|url|max:255',
-            'params'    => 'json|max:512'
+            'url'       => 'required|url|max:255'
         ]; 
 
         $validator = Validator::make($request->input(), $rules);
@@ -44,12 +48,21 @@ class WebhookController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
 
+        $count = Webhook::where('company_id', $company->id)
+                        ->where('action', $request->action)
+                        ->count();
+
+        if( $count >= Webhook::ACTION_LIMIT ){
+            return response([
+                'error' => 'You have reached the limit (' . Webhook::ACTION_LIMIT . ') of webhooks that can be added for this action.',
+            ], 400);
+        }
+
         $webhook = Webhook::create([
             'company_id'    => $company->id,
             'action'        => $request->action,
             'method'        => $request->method,
             'url'           => $request->url,
-            'params'        => $request->params,
             'enabled_at'    => now()
         ]);
        
@@ -69,7 +82,6 @@ class WebhookController extends Controller
             'action'    => 'required|in:' . implode(',', Webhook::actions()),
             'method'    => 'required|in:' . implode(',', ['GET', 'POST']),
             'url'       => 'required|url|max:255',
-            'params'    => 'json|max:512',
             'enabled'   => 'boolean'
         ]; 
 
@@ -85,8 +97,6 @@ class WebhookController extends Controller
             $webhook->method = $request->method;
         if( $request->filled('url') )
             $webhook->url = $request->url;
-        if( $request->filled('params') )
-            $webhook->params = $request->params;
         if( $request->filled('enabled') )
             $webhook->enabled_at = $request->enabled ? now() : null;
 
