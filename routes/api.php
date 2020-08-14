@@ -461,6 +461,22 @@ Route::middleware(['auth:api', 'api'])->group(function(){
             |--------------------------------
             */
             Route::prefix('reports')->group(function(){
+                //
+                //  Canned reports
+                //
+                Route::prefix('canned')->group(function(){
+                    Route::get('/total-calls', 'Company\ReportController@totalCalls')
+                         ->middleware('can:list,\App\Models\Company\Report,company')
+                         ->name('report-total-calls');
+
+                    Route::get('/first-time-callers', 'Company\ReportController@firstTimeCallers')
+                         ->middleware('can:list,\App\Models\Company\Report,company')
+                         ->name('report-first-time-callers');
+                });
+
+                //  
+                //  Custom reports
+                //
                 Route::get('/', 'Company\ReportController@list')
                     ->middleware('can:list,\App\Models\Company\Report,company')
                     ->name('list-reports');

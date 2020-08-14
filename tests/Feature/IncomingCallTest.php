@@ -37,7 +37,8 @@ class IncomingCallTest extends TestCase
          
         $webhook = factory(Webhook::class)->create([
             'company_id' => $company->id,
-            'action'     => Webhook::ACTION_CALL_START
+            'action'     => Webhook::ACTION_CALL_START,
+            'created_by' => $this->user->id
         ]);
 
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
@@ -108,7 +109,8 @@ class IncomingCallTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml');
 
         $this->assertDatabaseHas('contacts', [
-            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+            'country_code' => PhoneNumber::countryCode($incomingCall->From),
+            'phone' =>  PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -167,7 +169,8 @@ class IncomingCallTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml');
         
         $this->assertDatabaseHas('contacts', [
-            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+            'country_code' => PhoneNumber::countryCode($incomingCall->From),
+            'phone' =>  PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -230,7 +233,8 @@ class IncomingCallTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml');
         
         $this->assertDatabaseHas('contacts', [
-            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+            'country_code' => PhoneNumber::countryCode($incomingCall->From),
+            'phone' =>  PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -291,7 +295,8 @@ class IncomingCallTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml');
         
         $this->assertDatabaseHas('contacts', [
-            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+            'country_code' => PhoneNumber::countryCode($incomingCall->From),
+            'phone' =>  PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -366,7 +371,8 @@ class IncomingCallTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml');
         
         $this->assertDatabaseHas('contacts', [
-            'phone' => preg_replace('/[^0-9]+/', '', $incomingCall->From)
+            'country_code' => PhoneNumber::countryCode($incomingCall->From),
+            'phone' => PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [

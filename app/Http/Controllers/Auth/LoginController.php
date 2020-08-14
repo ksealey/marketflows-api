@@ -34,7 +34,7 @@ class LoginController extends Controller
         $user = User::where('email', $request->email)->first();
         if( ! $user ){
             return response([
-                'error' => 'User does not exist'
+                'error' => 'User not found'
             ], 400);
         }
 
@@ -77,7 +77,7 @@ class LoginController extends Controller
                 $user->save();
 
                 return response([
-                    'error' => 'Invalid credentials'
+                    'error' => 'Password invalid'
                 ], 400);
             }
         }
