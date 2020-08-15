@@ -320,23 +320,40 @@ class ReportController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
         }
-            
         
         list($startDate, $endDate) = $this->reportDates($request, $company, 'calls');
-        $dbDateFormat = $this->getDBDateFormat($startDate, $endDate);
         
-        $user     = $request->user();
-        $callData = DB::table('calls')
+        
+        
+        $dateRangeSets = [ [$startDate, $endDate] ];
+        if( $request->vs_previous_period ){
+            $diff            = $startDate->diff($endDate);
+            $vsEndDate       = (clone $startDate)->subDays(1)->endOfDay();
+            $vsStartDate     = (clone $vsEndDate)->subDays($diff->days)->startOfDay();
+            $dateRangeSets[] = [$vsStartDate, $vsEndDate];
+        }
+
+        $user         = $request->user();
+        $dbDateFormat = $this->getDBDateFormat($startDate, $endDate);
+        foreach( $dateRangeSets as $dateRangeSet ){
+            list($_startDate, $_endDate) = $dateRangeSet;
+            $callData = DB::table('calls')
                     ->select(
                         DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC', '" . $user->timezone . "'), '" . $dbDateFormat . "') as group_key"),
                         DB::raw('COUNT(*) as count')
                     )
                      ->where('company_id', $company->id)
-                     ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $user->timezone . "')"), '>=', $startDate->startOfDay())
-                     ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $user->timezone . "')"), '<=', $endDate->endOfDay())
+                     ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $user->timezone . "')"), '>=', $_startDate->startOfDay())
+                     ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $user->timezone . "')"), '<=', $_endDate->endOfDay())
                      ->whereNull('deleted_at')
                      ->groupBy('group_key')
                      ->get();
+
+            $datasets[] = [
+                'label' => $_startDate->format('M j, Y') . ($_startDate->diff($_endDate)->days ? (' - ' . $_endDate->format('M j, Y')) : ''),
+                'data'  => $this->datasetData($callData, $_startDate, $_endDate)
+            ];
+        }
 
         return response([
             'kind'  => 'Report',
@@ -346,14 +363,8 @@ class ReportController extends Controller
             'data'  => [
                 'type'     => 'line',
                 'title'    => 'Calls',
-                'total'    => $this->total($callData),
-                'labels'   => $this->chartLabels($callData, $startDate, $endDate),
-                'datasets' => [
-                    [
-                        'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                        'data'  => $this->datasetData($callData, $startDate, $endDate)
-                    ]
-                ]
+                'labels'   => $this->chartLabels($startDate, $endDate),
+                'datasets' => $datasets
             ]
         ]);
     }
@@ -363,7 +374,7 @@ class ReportController extends Controller
         return array_sum(array_column($callData->toArray(), 'count'));
     }
 
-    protected function chartLabels($inputData, $startDate, $endDate)
+    protected function chartLabels($startDate, $endDate)
     {
         $labels             = [];
         $timeIncrement      = $this->getTimeIncrement($startDate, $endDate);
@@ -388,7 +399,7 @@ class ReportController extends Controller
         $days = $startDate->diff($endDate)->days;
 
         if( $days == 0 ){ //  Time
-            $format = '%Y-%m-%d %k';
+            $format = '%Y-%m-%d %k:00:00';
         }elseif( $days <= 60 ){ //   Days
             $format = '%Y-%m-%d';
         }elseif( $days <= 730 ){ //  Months
@@ -467,7 +478,7 @@ class ReportController extends Controller
         foreach($callData as $call){
             $data[$call->group_key] = $call->count;
         }
-
+        
         while( $dateIncrementor->format($comparisonFormat) <= $endDate->format($comparisonFormat) ){
             $dataset[] = [
                 'value' => $data[$dateIncrementor->format($comparisonFormat)] ?? 0
