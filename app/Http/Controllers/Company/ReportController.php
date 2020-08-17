@@ -322,9 +322,6 @@ class ReportController extends Controller
         }
         
         list($startDate, $endDate) = $this->reportDates($request, $company, 'calls');
-        
-        
-        
         $dateRangeSets = [ [$startDate, $endDate] ];
         if( $request->vs_previous_period ){
             $diff            = $startDate->diff($endDate);
@@ -333,25 +330,25 @@ class ReportController extends Controller
             $dateRangeSets[] = [$vsStartDate, $vsEndDate];
         }
 
-        $user         = $request->user();
         $dbDateFormat = $this->getDBDateFormat($startDate, $endDate);
         foreach( $dateRangeSets as $dateRangeSet ){
             list($_startDate, $_endDate) = $dateRangeSet;
-            $callData = DB::table('calls')
+            $query = DB::table('calls')
                     ->select(
-                        DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC', '" . $user->timezone . "'), '" . $dbDateFormat . "') as group_key"),
+                        DB::raw("DATE_FORMAT(created_at, '" . $dbDateFormat . "') as group_by"),
                         DB::raw('COUNT(*) as count')
                     )
                      ->where('company_id', $company->id)
-                     ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $user->timezone . "')"), '>=', $_startDate->startOfDay())
-                     ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $user->timezone . "')"), '<=', $_endDate->endOfDay())
+                     ->where('created_at', '>=', $_startDate->startOfDay())
+                     ->where('created_at', '<=', $_endDate->endOfDay())
                      ->whereNull('deleted_at')
-                     ->groupBy('group_key')
-                     ->get();
+                     ->groupBy('group_by');
 
+            $callData = $query->get();       
             $datasets[] = [
                 'label' => $_startDate->format('M j, Y') . ($_startDate->diff($_endDate)->days ? (' - ' . $_endDate->format('M j, Y')) : ''),
-                'data'  => $this->datasetData($callData, $_startDate, $_endDate)
+                'data'  => $this->lineDatasetData($callData, $_startDate, $_endDate),
+                'total' => $this->total($callData)
             ];
         }
 
@@ -364,14 +361,111 @@ class ReportController extends Controller
                 'type'     => 'line',
                 'title'    => 'Calls',
                 'labels'   => $this->chartLabels($startDate, $endDate),
-                'datasets' => $datasets
+                'datasets' => $datasets,
             ]
         ]);
     }
 
-    protected function total(iterable $callData)
+    /**
+     * Get the call source data
+     * 
+     * 
+     */
+    public function callSources(Request $request, Company $company)
     {
-        return array_sum(array_column($callData->toArray(), 'count'));
+        $validator = $this->reportValidator($request, [
+            'group_by' => 'required|in:source,medium,campaign,content'
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+        
+        list($startDate, $endDate) = $this->reportDates($request, $company, 'calls');
+        $dateRangeSets = [ [$startDate, $endDate] ];
+        if( $request->vs_previous_period ){
+            $diff            = $startDate->diff($endDate);
+            $vsEndDate       = (clone $startDate)->subDays(1)->endOfDay();
+            $vsStartDate     = (clone $vsEndDate)->subDays($diff->days)->startOfDay();
+            $dateRangeSets[] = [$vsStartDate, $vsEndDate];
+        }
+
+        $allData  = [];
+        $groupBy  = $request->group_by;
+        $groupKeys = [];
+        foreach( $dateRangeSets as $dateRangeSet ){
+            list($_startDate, $_endDate) = $dateRangeSet;
+
+            $callData = DB::table('calls')
+                            ->select(
+                                DB::raw($groupBy),
+                                DB::raw('COUNT(*) as count')
+                            )
+                            ->where('company_id', $company->id)
+                            ->where('created_at', '>=', $_startDate)
+                            ->where('created_at', '<=', $_endDate)
+                            ->whereNull('deleted_at')
+                            ->groupBy($groupBy)
+                            ->orderBy('count', 'DESC')
+                            ->get();
+
+            //  Add to list of sources
+            foreach( $callData as $data ){
+                $groupKeys[] = $data->$groupBy;
+            }
+
+            $allData[] = [
+                'data'  => $callData,
+                'dates' => $dateRangeSet
+            ];
+        }
+        $groupKeys = array_unique($groupKeys);
+        $labels    = [];
+        if( count($groupKeys) <= 10 ){
+            $labels = $groupKeys;
+        }else{
+            $labels = $groupKeys;
+            $labels = array_splice($labels, 0, 9);
+            $labels[] = 'Other';
+        }
+
+        //  Create datasets
+        $datasets = [];
+        foreach( $allData as $d ){   
+            list($_startDate, $_endDate) = $d['dates']; 
+            $datasets[] = [
+                'label' => $_startDate->format('M j, Y') . ($_startDate->diff($_endDate)->days ? (' - ' . $_endDate->format('M j, Y')) : ''),
+                'data'  => $this->barDatasetData($d['data'], $groupBy, $groupKeys),
+                'total' => $this->total($d['data'])
+            ];
+        }
+
+        return response([
+            'kind'  => 'Report',
+            'url'   => route('report-call-sources', [ 
+                'company' => $company->id
+            ]),
+            'data'  => [
+                'title'    => 'Call Sourcing',
+                'type'     => 'bar',
+                'labels'   => $labels,
+                'datasets' => $datasets,
+            ]
+        ]);
+    }
+
+
+
+
+
+
+
+
+    protected function total(iterable $inputData)
+    {
+        return array_sum(array_column($inputData->toArray(), 'count'));
     }
 
     protected function chartLabels($startDate, $endDate)
@@ -462,7 +556,7 @@ class ReportController extends Controller
         return $displayFormat;
     }
 
-    protected function datasetData(iterable $callData, $startDate, $endDate)
+    protected function lineDatasetData(iterable $callData, $startDate, $endDate)
     {
         $dataset = [];
         $diff    = $startDate->diff($endDate);
@@ -476,7 +570,7 @@ class ReportController extends Controller
 
         $data = [];
         foreach($callData as $call){
-            $data[$call->group_key] = $call->count;
+            $data[$call->group_by] = $call->count;
         }
         
         while( $dateIncrementor->format($comparisonFormat) <= $endDate->format($comparisonFormat) ){
@@ -489,16 +583,44 @@ class ReportController extends Controller
         return $dataset;
     }
 
-    protected function formattedData($data, $startDate, $endDate)
+    protected function barDatasetData(iterable $inputData, string $groupedBy, iterable $groupKeys)
     {
-        return [7, 22, 11];
+        $dataset = [];
+        $lookupMap = [];
+        foreach($inputData as $data){
+            $lookupMap[$data->$groupedBy] = $data->count;
+        }
+
+        $otherCount = 0;
+        $hasOthers  = false;
+        foreach($groupKeys as $idx => $groupKey){
+            $value = $lookupMap[$groupKey] ?? 0;
+            
+            if( $idx >= 9 ){
+                
+                $otherCount += $value;
+                $hasOthers = true;
+            }else{
+                $dataset[] = [
+                    'value' => $lookupMap[$groupKey] ?? 0
+                ];
+            }
+        }
+
+        if( $hasOthers ){
+            $dataset[] = [
+                'value' => $otherCount
+            ];
+        }
+ 
+        return $dataset;
     }
 
-    protected function reportValidator(Request $request)
+    protected function reportValidator(Request $request, $additionalRules = [])
     {
-        $rules = [
+        $rules = array_merge([
             'date_type'  => 'required|in:CUSTOM,YESTERDAY,TODAY,LAST_7_DAYS,LAST_30_DAYS,LAST_60_DAYS,LAST_90_DAYS,LAST_180_DAYS,ALL_TIME'
-        ];
+        ], $additionalRules);
 
         $validator = Validator::make($request->input(), $rules);
         $validator->sometimes('start_date', 'required|date', function($input){
@@ -513,55 +635,50 @@ class ReportController extends Controller
 
     protected function reportDates(Request $request, Company $company, string $module)
     {
-        $userTimezone = $request->user()->timezone;
-        $now = now();
-        $now->setTimeZone($userTimezone);
-
         switch( $request->date_type ){
             case 'CUSTOM':
-                $startDate = new Carbon($request->start_date, $userTimezone);
-                $endDate   = new Carbon($request->end_date, $userTimezone);
+                $startDate = (new Carbon($request->start_date));
+                $endDate   = (new Carbon($request->end_date));
             break;
 
             case 'YESTERDAY':
-                $startDate = $now->subDays(1)->startOfDay();
-                $endDate   = (clone $startDate)->endOfDay();
+                $startDate = now()->subDays(1);
+                $endDate   = (clone $startDate);
             break;
 
             case 'LAST_7_DAYS':
-                $endDate   = $now->subDays(1)->endOfDay();
-                $startDate = (clone $endDate)->startOfDay()->subDays(6);
+                $endDate   = now()->subDays(1);
+                $startDate = (clone $endDate)->subDays(6);
             break;
 
             case 'LAST_30_DAYS':
-                $endDate   = $now->subDays(1)->endOfDay();
-                $startDate = (clone $endDate)->startOfDay()->subDays(29);
+                $endDate   = now()->subDays(1);
+                $startDate = (clone $endDate)->subDays(29);
             break;
 
             case 'LAST_60_DAYS':
-                $endDate   = $now->subDays(1)->endOfDay();
-                $startDate = (clone $endDate)->startOfDay()->subDays(59);
+                $endDate   = now()->subDays(1);
+                $startDate = (clone $endDate)->subDays(59);
             break;
 
             case 'LAST_90_DAYS':
-                $endDate   = $now->subDays(1)->endOfDay();
-                $startDate = (clone $endDate)->startOfDay()->subDays(89);
+                $endDate   = now()->subDays(1)->endOfDay();
+                $startDate = (clone $endDate)->subDays(89);
             break;
 
             case 'LAST_180_DAYS':
-                $endDate   = $now->subDays(1)->endOfDay();
-                $startDate = (clone $endDate)->startOfDay()->subDays(179);
+                $endDate   = now()->subDays(1)->endOfDay();
+                $startDate = (clone $endDate)->subDays(179);
             break;
 
             case 'ALL_TIME':
-                $endDate     = $now->endOfDay();
+                $endDate     = now();
                 $firstRecord = DB::table($module)
                                   ->where('company_id', $company->id)
                                   ->orderBy('created_at', 'ASC')
                                   ->first();
                 if( $firstRecord ){
                     $startDate = new Carbon($firstRecord->created_at);
-                    $startDate->setTimeZone($userTimezone);
                     $startDate = $startDate->startOfDay();
                 }else{
                     $startDate = (clone $endDate)->startOfDay();
@@ -570,11 +687,11 @@ class ReportController extends Controller
             break;
 
             default: // TODAY
-                $startDate = $now->startOfDay();
-                $endDate   = (clone $startDate)->endOfDay();
+                $startDate = now();
+                $endDate   = (clone $startDate);
             break;
         }
 
-        return [$startDate, $endDate];
+        return [$startDate->startOfDay(), $endDate->endOfDay()];
     }
 }

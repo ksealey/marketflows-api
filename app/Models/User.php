@@ -32,8 +32,6 @@ class User extends Authenticatable
 
     const ROLE_ADMIN     = 'ADMIN';
     const ROLE_SYSTEM    = 'SYSTEM';
-    const ROLE_REPORTING = 'REPORTING';
-    const ROLE_CLIENT    = 'CLIENT';
 
     private $emailVerification;
 
@@ -84,9 +82,7 @@ class User extends Authenticatable
     {
         return [ 
             self::ROLE_ADMIN,
-            self::ROLE_SYSTEM,
-            self::ROLE_REPORTING,
-            self::ROLE_CLIENT
+            self::ROLE_SYSTEM
         ];
     }
 

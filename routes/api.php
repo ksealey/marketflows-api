@@ -469,9 +469,17 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                          ->middleware('can:list,\App\Models\Company\Report,company')
                          ->name('report-total-calls');
 
+                    Route::get('/call-sources', 'Company\ReportController@callSources')
+                         ->middleware('can:list,\App\Models\Company\Report,company')
+                         ->name('report-call-sources');
+
                     Route::get('/first-time-callers', 'Company\ReportController@firstTimeCallers')
                          ->middleware('can:list,\App\Models\Company\Report,company')
                          ->name('report-first-time-callers');
+
+                    
+
+                    
                 });
 
                 //  

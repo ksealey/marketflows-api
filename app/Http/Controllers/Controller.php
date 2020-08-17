@@ -12,9 +12,11 @@ use App\Models\User;
 use App\Rules\ConditionsRule;
 use App\Traits\AppliesConditions;
 use App\Jobs\ExportResultsJob;
+use Carbon\Carbon;
 use DateTime;
 use DateTimeZone;
 use Validator;
+use DB;
 
 class Controller extends BaseController
 {
@@ -45,27 +47,15 @@ class Controller extends BaseController
         $orderBy    = $request->order_by  ?: $rangeField;
         $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
 
-        if( $request->start_date || $request->end_date){
-            $userTZ = new DateTimeZone($user->timezone);
-            $utcTZ  = new DateTimeZone('UTC');
-
-            if( $request->start_date ){
-                $startDate = new DateTime($request->start_date . ' 00:00:00', $userTZ);
-                $startDate->setTimeZone($utcTZ);
-                $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'));
-            }
-
-            if( $request->end_date  ){
-                $endDate = new DateTime($request->end_date. ' 23:59:59', $userTZ);
-                $endDate->setTimeZone($utcTZ);
-                $query->where($rangeField, '<=', $endDate->format('Y-m-d H:i:s'));
-            }
+        list($startDate, $endDate) = $this->getReportDates($request);
+        if( $startDate && $endDate ){
+            $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'));
+            $query->where($rangeField, '<=', $endDate->format('Y-m-d H:i:s'));
         }
 
-        if( $request->conditions ){
+        if( $request->conditions )
             $query = $this->applyConditions($query,  json_decode($request->conditions));
-        }
-
+        
         $page  = intval($request->page)  ?: 1; 
         $limit = intval($request->limit) ?: 250;
 
@@ -139,5 +129,58 @@ class Controller extends BaseController
         return response([
             'message' => 'queued'
         ]);
+    }
+
+    protected function getReportDates(Request $request)
+    {
+        switch( $request->date_type ){
+            case 'CUSTOM':
+                $startDate = (new Carbon($request->start_date))->startOfDay();
+                $endDate   = (new Carbon($request->end_date))->endOfDay();
+            break;
+
+            case 'YESTERDAY':
+                $startDate = now()->subDays(1)->startOfDay();
+                $endDate   = (clone $startDate)->endOfDay();
+            break;
+
+            case 'LAST_7_DAYS':
+                $endDate   = now()->subDays(1)->endOfDay();
+                $startDate = (clone $endDate)->startOfDay()->subDays(6);
+            break;
+
+            case 'LAST_30_DAYS':
+                $endDate   = now()->subDays(1)->endOfDay();
+                $startDate = (clone $endDate)->startOfDay()->subDays(29);
+            break;
+
+            case 'LAST_60_DAYS':
+                $endDate   = now()->subDays(1)->endOfDay();
+                $startDate = (clone $endDate)->startOfDay()->subDays(59);
+            break;
+
+            case 'LAST_90_DAYS':
+                $endDate   = now()->subDays(1)->endOfDay();
+                $startDate = (clone $endDate)->startOfDay()->subDays(89);
+            break;
+
+            case 'LAST_180_DAYS':
+                $endDate   = now()->subDays(1)->endOfDay();
+                $startDate = (clone $endDate)->startOfDay()->subDays(179);
+            break;
+
+            case 'TODAY':
+                $startDate = now()->startOfDay();
+                $endDate   = (clone $startDate)->endOfDay();
+                
+            break;
+
+            default: // ALL_TIME
+                $startDate = null;
+                $endDate   = null;
+            break;
+        }
+
+        return [$startDate, $endDate];
     }
 }

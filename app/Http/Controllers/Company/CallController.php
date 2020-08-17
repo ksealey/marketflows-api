@@ -23,7 +23,6 @@ class CallController extends Controller
     public function list(Request $request, Company $company)
     {
         $fields = [
-            'caller_name',
             'contacts.first_name',
             'contacts.last_name',
             'contacts.phone',
@@ -54,7 +53,8 @@ class CallController extends Controller
                             AS recording_url'
                         ),
                         DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
-                        DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name')
+                        DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name'),
+                        DB::raw("TRIM(CONCAT('+', contacts.country_code, ' ',contacts.phone)) AS caller_number")
                     ])
                    ->where('calls.company_id', $company->id);
 
