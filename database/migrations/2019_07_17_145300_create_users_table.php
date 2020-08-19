@@ -17,7 +17,7 @@ class CreateUsersTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
             $table->string('role', 32);
-            $table->string('timezone', 64);
+            $table->string('timezone', 128);
             $table->string('first_name', 32);
             $table->string('last_name', 32);
             $table->string('email', 128);

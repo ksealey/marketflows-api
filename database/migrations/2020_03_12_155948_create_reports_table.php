@@ -19,15 +19,14 @@ class CreateReportsTable extends Migration
             $table->bigInteger('company_id')->unsigned();
             $table->string('name', 64);
             $table->string('module', 32);
-            $table->string('metric', 32)->nullable();
-            $table->string('metric_order', 8)->nullable();
-            $table->string('timezone', 64)->nullable();
-            $table->string('date_type', 32);
+            $table->string('type', 32); 
+            $table->string('group_by')->nullable(); // Only for "count" type
+            $table->string('date_type');
+            $table->integer('last_n_days')->unsigned()->nullable();
             $table->dateTime('start_date')->nullable();
             $table->dateTime('end_date')->nullable();
-            $table->string('comparisons', 64)->nullable();
-            $table->string('conditions', 2048)->nullable();
-            $table->boolean('is_system_report')->default(0);
+            $table->json('conditions')->nullable();
+
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();

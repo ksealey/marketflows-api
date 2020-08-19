@@ -10,7 +10,6 @@ use \App\Models\Company;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company\Report;
-use \App\Models\Company\ReportAutomation;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
@@ -201,17 +200,6 @@ class User extends Authenticatable
                     })->delete();
 
         BlockedPhoneNumber::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-
-        ReportAutomation::whereIn('report_id', function($q) use($company){
-                            $q->select('id')
-                                ->from('reports')
-                                ->where('reports.company_id', $company->id);
-                        })->delete();
-
-        Report::where('company_id', $company->id)->update([
             'deleted_by' => $this->id,
             'deleted_at' => now()
         ]);

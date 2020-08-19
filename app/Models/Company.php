@@ -9,7 +9,6 @@ use \App\Traits\PerformsExport;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company\Report;
-use \App\Models\Company\ReportAutomation;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;

@@ -18,7 +18,7 @@ class ConditionsRule implements Rule
         'EMPTY',
         'NOT_EMPTY',
         'LIKE',
-        'NOT_LIKE'
+        'NOT_LIKE',
     ];
 
     /**

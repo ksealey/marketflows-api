@@ -12,8 +12,6 @@ use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
-use \App\Models\Company\Report;
-use \App\Models\Company\ReportAutomation;
 use \App\Helpers\PhoneNumberManager;
 use \App\Jobs\BatchDeleteAudioJob;
 use \App\Jobs\BatchDeletePhoneNumbersJob;
@@ -390,7 +388,6 @@ class CompanyTest extends TestCase
         $company        = $data['company'];
         $audioClip      = $data['audio_clip'];
         $phoneNumber    = $data['phone_number'];
-        $report         = $data['report'];
 
         //    
         //  Perform delete
@@ -463,21 +460,6 @@ class CompanyTest extends TestCase
             'deleted_at'      => null
         ]);
 
-        //  Reports
-        $this->assertDatabaseHas('reports', [
-            'company_id' => $company->id,
-            'deleted_by' => $this->user->id
-        ]);
-        $this->assertDatabaseMissing('reports', [
-            'company_id' => $company->id,
-            'deleted_at' => null
-        ]);
-
-        //  Report Automations
-        $this->assertDatabaseMissing('report_automations', [
-            'report_id'  => $report->id
-        ]);
-
         //  Make sure the batch jobs to delete remote resources were dispatched
         Queue::assertPushed(BatchDeleteAudioJob::class, function ($job) use ($company) {
             return $job->company->id === $company->id && $job->user->id === $this->user->id;
@@ -501,7 +483,6 @@ class CompanyTest extends TestCase
         $company        = $data['company'];
         $audioClip      = $data['audio_clip'];
         $phoneNumber    = $data['phone_number'];
-        $report         = $data['report'];
 
         //
         //  Setup mock

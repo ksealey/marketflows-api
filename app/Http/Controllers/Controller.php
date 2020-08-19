@@ -11,6 +11,7 @@ use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Rules\ConditionsRule;
 use App\Traits\AppliesConditions;
+use App\Traits\Helpers\HandlesDateFilters;
 use App\Jobs\ExportResultsJob;
 use Carbon\Carbon;
 use DateTime;
@@ -20,35 +21,38 @@ use DB;
 
 class Controller extends BaseController
 {
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, AppliesConditions;
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HandlesDateFilters, AppliesConditions;
 
     public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc')
     {
-        $rules = array_merge([
+        $validator = $this->getDateFilterValidator($request->input(), array_merge([
             'limit'         => 'bail|numeric|min:1|max:250',
             'page'          => 'bail|numeric|min:1',
             'order_by'       => 'bail|in:' . $rangeField,
             'order_dir'      => 'bail|in:asc,desc',
             'conditions'     => ['bail','json', new ConditionsRule($fields)],
-            'start_date'     => 'bail|nullable|date_format:Y-m-d',
-            'end_date'       => 'bail|nullable|date_format:Y-m-d',
             'order_by'       => 'bail|in:' . implode(',', $fields)
-        ], $additionalRules);
+        ], $additionalRules));
 
-        $validator = Validator::make($request->input(), $rules);
         if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
         }
 
-        $user = $request->user();
+        $user     = $request->user();
+        $dateType = $request->date_type;
 
-        $orderBy    = $request->order_by  ?: $rangeField;
-        $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
+        if( $dateType === 'ALL_TIME' ){
+            $dates = null;
+        }elseif( $dateType === 'LAST_N_DAYS' ){
+            $dates = $this->getLastNDaysDates($request->last_n_days, $user->timezone);
+        }else{
+            $dates = $this->getDateFilterDates($dateType, $user->timezone, $request->start_date, $request->end_date);
+        }
 
-        list($startDate, $endDate) = $this->getReportDates($request);
-        if( $startDate && $endDate ){
+        if( $dates ){
+            list($startDate, $endDate) = $dates;
             $query->where($rangeField, '>=', $startDate->format('Y-m-d H:i:s'));
             $query->where($rangeField, '<=', $endDate->format('Y-m-d H:i:s'));
         }
@@ -56,8 +60,10 @@ class Controller extends BaseController
         if( $request->conditions )
             $query = $this->applyConditions($query,  json_decode($request->conditions));
         
-        $page  = intval($request->page)  ?: 1; 
-        $limit = intval($request->limit) ?: 250;
+        $page       = intval($request->page)  ?: 1; 
+        $limit      = intval($request->limit) ?: 250;
+        $orderBy    = $request->order_by  ?: $rangeField;
+        $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
 
         $resultCount = $query->count();
         $records     = $query->offset(( $page - 1 ) * $limit)
@@ -131,8 +137,12 @@ class Controller extends BaseController
         ]);
     }
 
-    protected function getReportDates(Request $request)
+    protected function getFilteringDates(Request $request)
     {
+        if( ! $request->start_date)
+        $timezone = $request->user()->timezone;
+        $dateType = $request->date_type;
+        
         switch( $request->date_type ){
             case 'CUSTOM':
                 $startDate = (new Carbon($request->start_date))->startOfDay();

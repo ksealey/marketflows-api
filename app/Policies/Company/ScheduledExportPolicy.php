@@ -4,10 +4,10 @@ namespace App\Policies\Company;
 
 use App\Models\User;
 use App\Models\Company;
-use App\Models\Company\PhoneNumber;
+use App\Models\Company\ScheduledExport;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class PhoneNumberPolicy
+class ScheduledExportPolicy
 {
     use HandlesAuthorization;
 
@@ -24,24 +24,24 @@ class PhoneNumberPolicy
             && $user->email_verified_at;
     }
 
-    public function read(User $user, PhoneNumber $phoneNumber, Company $company)
+    public function read(User $user, ScheduledExport $scheduledExport, Company $company)
     {
         return $user->canDoAction('read')
             && $user->canViewCompany($company)
-            && $phoneNumber->company_id === $company->id;
+            && $scheduledExport->company_id === $company->id;
     }
 
-    public function update(User $user, PhoneNumber $phoneNumber, Company $company)
+    public function update(User $user, ScheduledExport $scheduledExport, Company $company)
     {
         return $user->canDoAction('update')
             && $user->canViewCompany($company)
-            && $phoneNumber->company_id === $company->id;
+            && $scheduledExport->company_id === $company->id;
     }
 
-    public function delete(User $user, PhoneNumber $phoneNumber, Company $company)
+    public function delete(User $user, ScheduledExport $scheduledExport, Company $company)
     {
         return $user->canDoAction('delete')
             && $user->canViewCompany($company)
-            && $phoneNumber->company_id === $company->id;
+            && $scheduledExport->company_id === $company->id;
     }
 }

@@ -464,7 +464,7 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                 //
                 //  Canned reports
                 //
-                Route::prefix('canned')->group(function(){
+                Route::prefix('system')->group(function(){
                     Route::get('/total-calls', 'Company\ReportController@totalCalls')
                          ->middleware('can:list,\App\Models\Company\Report,company')
                          ->name('report-total-calls');
@@ -476,9 +476,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                     Route::get('/first-time-callers', 'Company\ReportController@firstTimeCallers')
                          ->middleware('can:list,\App\Models\Company\Report,company')
                          ->name('report-first-time-callers');
-
-                    
-
                     
                 });
 
@@ -508,21 +505,37 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                 Route::delete('/{report}', 'Company\ReportController@delete')
                     ->middleware('can:delete,report,company')
                     ->name('delete-report');
-
-                Route::get('/{report}/results', 'Company\ReportController@listResults')
-                    ->middleware('can:read,report,company')
-                    ->name('read-report-results');
-
-                Route::get('/{report}/charts', 'Company\ReportController@charts')
-                    ->middleware('can:read,report,company')
-                    ->name('read-report-chart');
-
-                Route::get('/{report}/export', 'Company\ReportController@exportReport')
-                    ->middleware('can:read,report,company')
-                    ->name('export-report');
             }); 
 
-             /*
+            /*
+            |------------------------------------
+            | Handle scheduled exports
+            |------------------------------------
+            */
+            Route::prefix('scheduled-exports')->group(function(){
+                Route::get('/', 'Company\ScheduledExportController@list')
+                     ->middleware('can:list,\App\Models\Company\ScheduledExport,company')
+                     ->name('list-scheduled-exports');
+
+                Route::post('/', 'Company\ScheduledExportController@create')
+                     ->middleware('can:create,\App\Models\Company\ScheduledExport,company')
+                     ->name('create-scheduled-export');
+
+                Route::get('/{scheduledExport}', 'Company\ScheduledExportController@read')
+                     ->middleware('can:read,scheduledExport,company')
+                     ->name('read-scheduled-export');
+
+                Route::put('/{scheduledExport}', 'Company\ScheduledExportController@update')
+                     ->middleware('can:update,scheduledExport,company')
+                     ->name('update-scheduled-export');
+
+                Route::delete('/{scheduledExport}', 'Company\ScheduledExportController@delete')
+                     ->middleware('can:delete,scheduledExport,company')
+                     ->name('delete-scheduled-export');
+
+            });
+
+            /*
             --------------------------------
             | Handle contacts
             |--------------------------------

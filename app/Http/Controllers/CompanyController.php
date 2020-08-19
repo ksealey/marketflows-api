@@ -7,14 +7,11 @@ use Illuminate\Http\Response;
 
 use \App\Models\User;
 use \App\Models\Company;
-use \App\Models\Company\Report;
-use \App\Models\Company\ReportAutomation;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
-
 use \App\Rules\CountryRule;
 
 use Validator;

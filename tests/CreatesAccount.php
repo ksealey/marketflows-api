@@ -12,7 +12,6 @@ use App\Models\Company;
 use App\Models\Company\Contact;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Report;
-use \App\Models\Company\ReportAutomation;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
@@ -204,11 +203,6 @@ trait CreatesAccount
             'account_id' => $this->account->id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
-        ]);
-
-        //  Report Automation
-        $automations = factory(ReportAutomation::class)->create([
-            'report_id'  => $report->id
         ]);
 
         return [

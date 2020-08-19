@@ -7,16 +7,14 @@ use Faker\Generator as Faker;
 
 $factory->define(\App\Models\Company\Report::class, function (Faker $faker) {
     return [
-        'name'          =>  $faker->realText(16),
-        'module'        => 'calls',
-        'metric'        => 'calls.source',
-        'metric_order'  => 'desc',
-        'timezone'      => $faker->timezone,
-        'date_type'     => 'CUSTOM',
-        'start_date'    => now()->subDays(10),
-        'end_date'      => now()->subDays(1),
-        'comparisons'   => null,
-        'conditions'    => null,
-       'is_system_report' => 0
+        'name'  => $faker->company,
+        'module'=> 'calls',
+        'type'  => 'count',
+        'group_by' => 'calls.source',
+        'date_type' => 'LAST_N_DAYS',
+        'last_n_days' => mt_rand(1, 730),
+        'start_date'  => null,
+        'end_date'    => null,
+        'conditions'  => null
     ];
 });
