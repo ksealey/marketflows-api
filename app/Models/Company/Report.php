@@ -10,6 +10,7 @@ use App\Traits\AppliesConditions;
 use \App\Traits\PerformsExport;
 use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
+use \PhpOffice\PhpSpreadsheet\Cell\DataType as ExcelDaTaype;
 use Spreadsheet;
 use Xlsx;
 use Worksheet;
@@ -25,6 +26,7 @@ class Report extends Model
     public $results;
     public $startDate;
     public $endDate;
+    public $writePath;
 
     protected $fillable = [
         'account_id',
@@ -53,6 +55,64 @@ class Report extends Model
         'kind'
     ];
 
+    static public $fields = [
+        'calls' => [
+            'calls.type'                => 'call_type',
+            'calls.category'            => 'call_category',
+            'calls.sub_category'        => 'call_sub_category',
+            'calls.source'              => 'call_source',
+            'calls.medium'              => 'call_medium',
+            'calls.content'             => 'call_content',
+            'calls.campaign'            => 'call_campaign',
+            'calls.recording_enabled'   => 'call_recording_enabled',
+            'calls.forwarded_to'        => 'call_forwareded_to',
+            'calls.duration'            => 'call_duration',
+            'calls.first_call'          => 'call_first_call',
+            'contacts.first_name'       => 'contact_first_name',
+            'contacts.last_name'        => 'contact_last_name',
+            'contacts.phone'            => 'contact_phone',
+            'contacts.city'             => 'contact_city',
+            'contacts.state'            => 'contact_state',
+        ]
+    ];
+
+    static public $fieldNames = [
+        'calls' => [
+            'call_type'                => 'Type',
+            'call_category'            => 'Category',
+            'call_sub_category'        => 'Sub-Category',
+            'call_source'              => 'Source',
+            'call_medium'              => 'Medium',
+            'call_content'             => 'Content',
+            'call_campaign'            => 'Campaign',
+            'call_recording_enabled'   => 'Recording Enabled',
+            'call_forwarded_to'        => 'Forwarded To Phone Number',
+            'call_duration'            => 'Call Duration',
+            'call_first_call'          => 'First Time Caller',
+            'contact_first_name'       => 'Caller First Name',
+            'contact_last_name'        => 'Caller Last Name',
+            'contact_phone'            => 'Caller Phone Number',
+            'contact_city'             => 'Caller City',
+            'contact_state'            => 'Caller State',
+        ]
+    ];
+
+    static public function groupByFields($module)
+    {
+        return self::$fields[$module] ?? [];
+    }
+
+    static public function fieldColumn($module, $field)
+    {
+        foreach( Report::$fields[$module] as $column => $alias ){
+            if( $field === $alias ){
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
     static public function exports() : array
     {
         return [
@@ -71,6 +131,13 @@ class Report extends Model
     static public function exportQuery($user, array $input)
     {
         return Report::where('reports.company_id', $input['company_id']);
+    }
+
+    public function __destruct()
+    {
+        if( $this->writePath ){
+            unlink($this->writePath);
+        }
     }
 
     public function company()
@@ -113,32 +180,19 @@ class Report extends Model
                    ->where($this->module . '.company_id', $this->company_id);
 
         if( $this->type === 'count' ){
+            $field = self::fieldColumn($this->module, $this->group_by);
             $query->select([
                 DB::raw('COUNT(*) AS count'),
-                DB::raw($this->group_by . ' AS group_by')
+                DB::raw($field . ' AS group_by')
             ])
-            ->groupBy($this->group_by);
+            ->groupBy($field);
         }elseif( $this->type == 'timeframe' ){
-            if( $this->module === 'calls' ){
-                $query->select([
-                    'calls.type',
-                    'calls.category',
-                    'calls.sub_category',
-                    'calls.source',
-                    'calls.medium',
-                    'calls.content',
-                    'calls.campaign',
-                    'calls.recording_enabled',
-                    'calls.forwarded_to',
-                    'calls.duration',
-                    'calls.first_call',
-                    'contacts.first_name',
-                    'contacts.last_name',
-                    'contacts.phone',
-                    'contacts.city',
-                    'contacts.state',
-                ]);
+            $fields  = Report::$fields[$this->module];
+            $selects = [];
+            foreach( $fields as $key => $field ){
+                $selects[] = $key . ' AS ' . $field;
             }
+            $query->select($selects);
         }
 
         if( $this->module === 'calls' ){
@@ -174,5 +228,81 @@ class Report extends Model
         $this->results = $query->get();
 
         return $this->results;
+    }
+
+    public function export($toFile = false)
+    {
+        $fileName    = preg_replace('/[^0-9A-z]+/', '-', $this->name) . '.xlsx';
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getProperties()
+                    ->setCreator(env('APP_NAME'))
+                    ->setLastModifiedBy('System')
+                    ->setTitle($this->name)
+                    ->setSubject($this->name);
+                    
+        $results = $this->results ?: $this->run();
+        $sheet   = $spreadsheet->getActiveSheet();
+        if( $this->type === 'count' ){
+            //  Bold title
+            $sheet->setCellValue('A1', $this->name . ' (' . $this->startDate->format('M j, Y') . '-' . $this->endDate->format('M j, Y')  . ')');
+            $sheet->getStyle("A1:B1")->getFont()->setBold(true);
+            $sheet->mergeCells("A1:B1");
+
+            //  Bold header cells
+            $header = Report::$fieldNames[$this->module][$this->group_by];
+            $sheet->setCellValue('A3', $header);
+            $sheet->setCellValue('B3', 'Total');
+            $sheet->getStyle("A3:B3")->getFont()->setBold(true);
+
+            //  Values
+            $row = 4;
+            foreach( $results as $idx => $result ){
+                $sheet->setCellValue('A' . $row, $result->group_by);
+                $sheet->setCellValue('B' . $row, $result->count); 
+
+                $row++;
+            }
+
+            //  Space out cells
+            $sheet->getColumnDimension('A')->setAutoSize(true);
+            $sheet->getColumnDimension('B')->setAutoSize(true);
+
+        }elseif( $this->type === 'timeframe' ){
+            //  Write bold headers
+            $col = 'A';
+            foreach( Report::$fieldNames[$this->module] as $name ){
+                $sheet->setCellValue($col . "1", $name);
+                $col++;
+            }
+            $sheet->getStyle("A1:" . $col . "1")->getFont()->setBold(true);
+
+            //  Write data
+            $row = 2;
+            foreach( $results as $result ){
+                $result = (array)$result;
+                $col    = 'A';
+                foreach( $result as $value){
+                    $sheet->setCellValueExplicit($col . $row, $value, ExcelDaTaype::TYPE_STRING);
+                    $col++;    
+                }
+                $row++;
+            }
+        }
+
+
+        $writer    = new Xlsx($spreadsheet);
+        if( $toFile ){
+            $this->writePath = storage_path('/' . str_random(40) . '.xlsx');
+            
+            $writer->save($this->writePath );
+        }else{
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="'.$fileName.'"');
+            header('Cache-Control: max-age=0');
+
+            $writer->save('php://output');
+        }
+
+        return $this;
     }
 }

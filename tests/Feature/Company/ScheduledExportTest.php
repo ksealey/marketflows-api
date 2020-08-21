@@ -164,7 +164,7 @@ class ScheduledExportTest extends TestCase
     /**
      * Test listing
      * 
-     * @group scheduled-exports--
+     * @group scheduled-exports
      */
     public function testList()
     {

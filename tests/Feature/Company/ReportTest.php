@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use \App\Models\Company\Contact;
 use \App\Models\Company\Report;
+use \App\Models\Company\ScheduledExport;
 use \App\Models\Company\Call;
 use \App\Jobs\ExportResultsJob;
 use \DateTimeZone;
@@ -214,13 +215,14 @@ class ReportTest extends TestCase
         $endDate   = now()->setTimeZone($this->user->timezone);
 
         $response = $this->json('GET', route('report-call-sources', [
-            'company' => $company->id,
-            'group_by' => 'source'
+            'company'  => $company->id,
+            'group_by' => 'call_source'
         ]), [
             'start_date' => $startDate->format('Y-m-d'),
             'end_date'   => $endDate->format('Y-m-d'),
             'date_type'  => 'CUSTOM'
         ]);
+
         $response->assertStatus(200);
         $response->assertJSON([
             'kind'  => 'Report',
@@ -240,7 +242,7 @@ class ReportTest extends TestCase
         //
         $response = $this->json('GET', route('report-call-sources', [
             'company' => $company->id,
-            'group_by' => 'source'
+            'group_by' => 'call_source'
         ]), [
             'start_date' => today()->setTimeZone($this->user->timezone)->subDays(12),
             'end_date'   => today()->setTimeZone($this->user->timezone),
@@ -318,7 +320,7 @@ class ReportTest extends TestCase
             'date_type' => 'LAST_N_DAYS',
             'last_n_days' => $days,
             'type'      => 'count',
-            'group_by'  => 'calls.source'
+            'group_by'  => 'call_source'
         ]);
         $response->assertStatus(201);
         $response->assertJSON([
@@ -329,7 +331,7 @@ class ReportTest extends TestCase
             "module"     => "calls",
             "type"       => "count",
             "date_type"  => "LAST_N_DAYS",
-            "group_by"   => "calls.source",
+            "group_by"   => "call_source",
             "last_n_days" => $days,
             "start_date" => null,
             "end_date"   => null,
@@ -353,7 +355,7 @@ class ReportTest extends TestCase
             'company_id' => $company->id,
             'created_by' => $this->user->id,
             'type'       => 'count',
-            'group_by'   => 'calls.source',
+            'group_by'   => 'call_source',
             'date_type'  => 'LAST_N_DAYS',
             'last_n_days'=> 7
         ]);
@@ -515,6 +517,10 @@ class ReportTest extends TestCase
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
+        $schedule = factory(ScheduledExport::class)->create([
+            'company_id' => $company->id,
+            'report_id'  => $report->id
+        ]);
 
         $response = $this->json('DELETE', route('delete-report', [
             'company' => $company->id,
@@ -529,5 +535,9 @@ class ReportTest extends TestCase
             'id' => $report->id,
             'deleted_at' => null
         ]);
+        $this->assertDatabaseMissing('scheduled_exports', [
+            'id' => $schedule->id
+        ]);
+
     }
 }

@@ -44,25 +44,6 @@ class ReportController extends Controller
         'contacts.state',
     ];
 
-    protected $groupByFields = [
-        'calls.type',
-        'calls.category',
-        'calls.sub_category',
-        'calls.source',
-        'calls.medium',
-        'calls.content',
-        'calls.campaign',
-        'calls.recording_enabled',
-        'calls.forwarded_to',
-        'calls.duration',
-        'calls.first_call',
-        'contacts.first_name',
-        'contacts.last_name',
-        'contacts.number',
-        'contacts.city',
-        'contacts.state',
-    ];
-
     /**
      * List reports
      * 
@@ -97,7 +78,7 @@ class ReportController extends Controller
             'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($this->conditionFields) ]
         ]);
 
-        $validator->sometimes('group_by', 'required|in:' . implode(',', $this->groupByFields), function($input){
+        $validator->sometimes('group_by', 'required|in:' . implode(',', Report::groupByFields($request->module)), function($input){
             return $input->type === 'count';
         });
 
@@ -150,14 +131,12 @@ class ReportController extends Controller
                         'total' => $this->total($report->results)
                     ];
                 }else{
-                    $pieces   = explode('.', $report->group_by);
-                    $groupBy  = end($pieces);
-                    $labels   = $this->countLabels($report->results, $groupBy);
-                    $groupKeys = array_column($report->results->toArray(), $groupBy);
+                    $labels   = $this->countLabels($report->results);
+                    $groupKeys = array_column($report->results->toArray(), 'group_by');
                     $datasets = [
                         [
                             'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                            'data'  => $this->barDatasetData($report->results, $groupBy, $groupKeys),
+                            'data'  => $this->barDatasetData($report->results, $groupKeys),
                             'total' => $this->total($report->results)
                         ]
                     ];
@@ -201,7 +180,7 @@ class ReportController extends Controller
         $validator->sometimes('last_n_days', 'required|numeric|min:1|max:730', function($input){
             return $input->date_type === 'LAST_N_DAYS';
         });
-        $validator->sometimes('group_by', 'required|in:' . implode(',', $this->groupByFields), function($input){
+        $validator->sometimes('group_by', 'required|in:' . implode(',', Report::groupByFields($request->module?:$report->module)), function($input){
             return $input->type === 'count';
         });
 
@@ -381,7 +360,7 @@ class ReportController extends Controller
     public function callSources(Request $request, Company $company)
     {
         $validator = $this->getDateFilterValidator($request->input(), [
-            'group_by' => 'required|in:source,medium,campaign,content'
+            'group_by' => 'required|in:call_source,call_medium,call_campaign,call_content'
         ]);
 
         if( $validator->fails() )
@@ -392,27 +371,27 @@ class ReportController extends Controller
         list($startDate, $endDate) = $this->reportDates($request, $company);
         
         $userTimezone = $request->user()->timezone;
-        $groupBy      = $request->group_by;
+        $groupBy      = Report::fieldColumn('calls', $request->group_by);
         $callData     = DB::table('calls')
                             ->select(
-                                DB::raw($groupBy),
+                                DB::raw($groupBy . ' AS group_by'),
                                 DB::raw('COUNT(*) as count')
                             )
                             ->where('company_id', $company->id)
                             ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $userTimezone . "')"), '>=', $startDate)
                             ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $userTimezone . "')"), '<=', $endDate)
                             ->whereNull('deleted_at')
-                            ->groupBy($groupBy)
+                            ->groupBy('group_by')
                             ->orderBy('count', 'DESC')
                             ->get();
 
         //  Create datasets
-        $labels    = $this->countLabels($callData, $groupBy);
-        $groupKeys = array_column($callData->toArray(), $groupBy);
+        $labels    = $this->countLabels($callData);
+        $groupKeys = array_column($callData->toArray(), 'group_by');
         $datasets = [
             [
                 'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                'data'  => $this->barDatasetData($callData, $groupBy, $groupKeys),
+                'data'  => $this->barDatasetData($callData, $groupKeys),
                 'total' => $this->total($callData)
             ]
         ];
@@ -457,9 +436,9 @@ class ReportController extends Controller
         return $labels;
     }
 
-    protected function countLabels($inputData, $groupBy)
+    protected function countLabels($inputData)
     {
-        $values = array_column($inputData->toArray(), $groupBy);
+        $values = array_column($inputData->toArray(), 'group_by');
         $labels = [];
         if( count($values) <= 10 ){
             $labels = $values;
@@ -566,12 +545,12 @@ class ReportController extends Controller
         return $dataset;
     }
 
-    protected function barDatasetData(iterable $inputData, string $groupedBy, iterable $groupKeys)
+    protected function barDatasetData(iterable $inputData, iterable $groupKeys)
     {
         $dataset = [];
         $lookupMap = [];
         foreach($inputData as $data){
-            $lookupMap[$data->$groupedBy] = $data->count;
+            $lookupMap[$data->group_by] = $data->count;
         }
 
         $otherCount = 0;
