@@ -7,6 +7,10 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use \App\Models\Company\Report;
 use \App\Models\Company\ScheduledExport;
+use \App\Jobs\ExecuteScheduledExportJob;
+use \App\Mail\ScheduledExport as ScheduledExportMail;
+use Queue;
+use Mail;
 
 class ScheduledExportTest extends TestCase
 {
@@ -205,6 +209,74 @@ class ScheduledExportTest extends TestCase
                     "delivery_email_addresses"
                 ]
             ]
+        ]);
+    }
+
+    /**
+     * Test that the scheduled report jobs are dispatched when called
+     * 
+     * @group scheduled-exports
+     */
+    public function testScheduledReportDispatched()
+    {
+        Queue::fake();
+
+        $company = $this->createCompany();
+        $report  = factory(Report::class)->create([
+            'account_id' => $this->account->id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id,
+        ]); 
+
+        $schedule = factory(ScheduledExport::class)->create([
+            'company_id' => $company->id,
+            'report_id' => $report->id,
+            'next_run_at' => now()->subMinutes(5)
+        ]);
+
+        \Artisan::call('push-scheduled-exports');
+
+        Queue::assertPushed(ExecuteScheduledExportJob::class, function($job) use($report){
+            return $job->scheduledExport->report_id === $report->id;
+        });
+
+        $this->assertDatabaseMissing('scheduled_exports', [
+            'id'        => $schedule->id,
+            'locked_at' => null
+        ]);
+    }
+
+    /**
+     * Test job sends email
+     * 
+     * @group scheduled-exports
+     */
+    public function testScheduledReportMailedDispatched()
+    {
+        Mail::fake();
+
+        $company = $this->createCompany();
+        $report  = factory(Report::class)->create([
+            'account_id' => $this->account->id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id,
+        ]); 
+
+        $schedule = factory(ScheduledExport::class)->create([
+            'company_id' => $company->id,
+            'report_id' => $report->id,
+            'next_run_at' => now()->subMinutes(5)
+        ]);
+
+        \Artisan::call('push-scheduled-exports');
+
+        Mail::assertSent(ScheduledExportMail::class, function($mail) use($report){
+            return $mail->report->id === $report->id;
+        }); 
+
+        $this->assertDatabaseHas('scheduled_exports', [
+            'id'        => $schedule->id,
+            'locked_at' => null
         ]);
     }
 }

@@ -292,7 +292,7 @@ class Report extends Model
 
         $writer    = new Xlsx($spreadsheet);
         if( $toFile ){
-            $this->writePath = storage_path('/' . str_random(40) . '.xlsx');
+            $this->writePath = storage_path(str_random(40) . '.xlsx');
             
             $writer->save($this->writePath );
         }else{

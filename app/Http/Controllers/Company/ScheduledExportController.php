@@ -63,6 +63,7 @@ class ScheduledExportController extends Controller
             'report_id'                 => $report->id,
             'day_of_week'               => $request->day_of_week,
             'hour_of_day'               => $request->hour_of_day,
+            'next_run_at'               => ScheduledExport::nextRunAt($request->day_of_week, $request->hour_of_day, $request->user()->timezone)->setTimeZone('UTC'),
             'delivery_method'           => $request->delivery_method,
             'delivery_email_addresses'  => $request->delivery_email_addresses,
         ]);
@@ -110,6 +111,15 @@ class ScheduledExportController extends Controller
         if( $request->filled('hour_of_day') ){
             $scheduledExport->hour_of_day = $request->hour_of_day;
         }
+
+        if( $request->filled('day_of_week') || $request->filled('hour_of_day') ){
+            $scheduledExport->next_run_at = ScheduledExport::nextRunAt(
+                $request->day_of_week ?: $scheduledExport->day_of_week, 
+                $request->hour_of_day ?: $scheduledExport->hour_of_day, 
+                $request->user()->timezone
+            )->setTimeZone('UTC');
+        }
+
         if( $request->filled('delivery_method') ){
             $scheduledExport->delivery_method = $request->delivery_method;
             if( $scheduledExport->delivery_method == 'email' ){

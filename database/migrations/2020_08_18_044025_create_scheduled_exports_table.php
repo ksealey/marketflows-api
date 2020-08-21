@@ -17,11 +17,12 @@ class CreateScheduledExportsTable extends Migration
             $table->id();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('report_id')->unsigned();
-            $table->smallInteger('day_of_week')->unsigned()->index();
-            $table->smallInteger('hour_of_day')->unsigned()->index();
+            $table->smallInteger('day_of_week')->unsigned();
+            $table->smallInteger('hour_of_day')->unsigned();
+            $table->dateTime('next_run_at')->index();
+            $table->dateTime('locked_at')->index()->nullable();
             $table->string('delivery_method', 32);
             $table->string('delivery_email_addresses', 1024)->nullable();
-            $table->dateTime('last_ran_at')->nullable();
             $table->timestamps();
 
             $table->foreign('company_id')->references('id')->on('companies');
