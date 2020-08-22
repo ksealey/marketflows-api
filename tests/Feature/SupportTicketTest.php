@@ -20,6 +20,41 @@ class SupportTicketTest extends TestCase
     use \Tests\CreatesAccount;
 
     /**
+     * Test list
+     * 
+     * @group support-tickets
+     */
+    public function testList()
+    {
+        factory(SupportTicket::class, 10)->create([
+            'created_by_user_id' => $this->user->id
+        ]);
+
+        $response = $this->json('GET', route('list-support-tickets', [
+            'date_type' => 'ALL_TIME'
+        ]));
+        $response->assertStatus(200);
+
+        $response->assertJSON([
+            "result_count"  => 10,
+            "limit"         => 250,
+            "page"          => 1,
+            "total_pages"   =>  1,
+            "next_page"     => null,
+        ]);
+
+        $response->assertJSONStructure([
+            "results" => [
+                [
+                    'subject',
+                    'description',
+                    'status'
+                ]
+            ]
+        ]);
+    }
+
+    /**
      * Test create
      * 
      * @group support-tickets

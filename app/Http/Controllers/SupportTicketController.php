@@ -16,9 +16,24 @@ use Exception;
 
 class SupportTicketController extends Controller
 {
+    public $fields = [
+        'support_tickets.subject',
+        'support_tickets.created_at',
+        'support_tickets.updated_at'
+    ];
+
     public function list(Request $request)
     {
-        
+        $query = SupportTicket::where('created_by_user_id', $request->user()->id);
+
+        //  Pass along to parent for listing
+        return parent::results(
+            $request,
+            $query,
+            [],
+            $this->fields,
+            'support_tickets.created_at'
+        );
     }
 
     public function create(Request $request)
