@@ -247,6 +247,33 @@ Route::middleware(['auth:api', 'api'])->group(function(){
     });
 
     /*
+    |----------------------------------------
+    | Handle support tickets
+    |----------------------------------------
+    */
+    Route::prefix('support-tickets')->group(function(){
+        Route::get('/', 'SupportTicketController@list')
+            ->middleware('can:list,\App\Models\SupportTicket')
+            ->name('list-support-tickets'); 
+
+        Route::post('/', 'SupportTicketController@create')
+            ->middleware('can:create,\App\Models\SupportTicket')
+            ->name('create-support-ticket');
+
+        Route::get('/{supportTicket}', 'SupportTicketController@read')
+            ->middleware('can:read,supportTicket')
+            ->name('read-support-ticket');
+
+        Route::post('/{supportTicket}/comments', 'SupportTicketController@createComment')
+            ->middleware('can:update,supportTicket')
+            ->name('create-support-ticket-comment');
+
+        Route::post('/{supportTicket}/attachments', 'SupportTicketController@createAttachment')
+            ->middleware('can:update,supportTicket')
+            ->name('create-support-ticket-attachment');
+    });
+
+    /*
     |---------------------------------------
     | Handle account blocked phone numbers
     |---------------------------------------

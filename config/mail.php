@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'driver' => env('MAIL_DRIVER', 'ses'),
+    'driver' => env('MAIL_MAILER', 'ses'),
 
     /*
     |--------------------------------------------------------------------------
@@ -57,7 +57,14 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'notifications@marketflows.io'),
-        'name' => env('MAIL_FROM_NAME', 'Market Flows'),
+        'name'    => env('MAIL_FROM_NAME', 'Market Flows'),
+    ],
+
+    'to' => [
+        'support'   => [
+            'address' => 'support@marketflows.io',
+            'name'    => 'Customer Support'
+        ]
     ],
 
     /*
