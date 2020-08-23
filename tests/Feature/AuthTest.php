@@ -55,7 +55,6 @@ class AuthTest extends TestCase
             ]
         ];
 
-        
         $this->mock(PaymentManager::class, function($mock) use($account, $paymentToken, $customer, $paymentMethods){
             $mock->shouldReceive('createCustomer')
                  ->once()
@@ -67,7 +66,6 @@ class AuthTest extends TestCase
                  ->with($customer->id)
                  ->andReturn($paymentMethods);
         });
-
 
         $response = $this->json('POST', route('auth-register'), array_merge($user->toArray(), ['payment_token' => $paymentToken]));
         $response->assertStatus(201);
@@ -132,7 +130,7 @@ class AuthTest extends TestCase
     }
 
     /**
-     * Test creating a duplicate account faile
+     * Test creating a duplicate account fails
      * 
      * @group auth
      */
