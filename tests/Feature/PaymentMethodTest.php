@@ -23,7 +23,7 @@ class PaymentMethodTest extends TestCase
     {
         Queue::fake();
 
-        Stripe::setApiKey(env('STRIPE_SK'));
+        Stripe::setApiKey(config('services.stripe.secret'));
         $customer = Customer::create([
             'description' => str_random(40),
             'source'      => 'tok_bypassPending'

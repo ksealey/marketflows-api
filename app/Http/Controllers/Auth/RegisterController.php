@@ -10,12 +10,10 @@ use App\Models\User;
 use App\Models\PaymentMethod;
 use App\Models\UserSettings;
 use App\Models\Auth\EmailVerification;
+use App\Helpers\PaymentManager;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use \App\Rules\CountryRule;
 use \Carbon\Carbon;
-use \Stripe\Stripe;
-use \Stripe\Customer;
-use \Stripe\Card;
 use Validator;
 use DB;
 use Exception;
@@ -24,6 +22,12 @@ use Log;
 
 class RegisterController extends Controller
 {
+    protected $paymentManager;
+
+    public function __construct(PaymentManager $paymentManager)
+    {
+        $this->paymentManager = $paymentManager;
+    }
     /**
      * Handle an incoming account registration
      * 
@@ -76,19 +80,14 @@ class RegisterController extends Controller
         DB::beginTransaction();
 
         try{
-            Stripe::setApiKey(config('services.stripe.secret'));
+            $customer = $this->paymentManager->createCustomer(
+                $request->account_name,
+                $request->payment_token
+            );
             
-            $customer = Customer::create([
-                'description'    => $request->account_name,
-                'payment_method' => $request->payment_token
-            ]);
-
-            $paymentMethods = \Stripe\PaymentMethod::all([
-                'customer' => $customer->id,
-                'type' => 'card',
-            ]);
-            $paymentMethod = $paymentMethods->data[0];
-            $card          = $paymentMethod->card;
+            $paymentMethods = $this->paymentManager->getPaymentMethods($customer->id);
+            $paymentMethod  = $paymentMethods->data[0];
+            $card           = $paymentMethod->card;
 
             //  Create account
             $account = Account::create([
@@ -137,13 +136,10 @@ class RegisterController extends Controller
 
             //  Add verification mail to queue
             Mail::to($user->email)
-                ->later(
-                    now(), 
-                    new UserEmailVerificationMail($user)
-                );
+                ->queue(new UserEmailVerificationMail($user));
         }catch(Exception $e){
             DB::rollBack();
-           
+            
             throw $e;
         }
 

@@ -5,13 +5,15 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Http\Response;
 use Twilio\Rest\Client as Twilio;
-use \Stripe\Stripe;
 use AWS;
 use App;
 
 class AppServiceProvider extends ServiceProvider
 {
     //protected $defer = true;
+    public $bindings = [
+        'Stripe'    => \Stripe\Stripe::class
+    ];
 
     /**
      * Register any application services.

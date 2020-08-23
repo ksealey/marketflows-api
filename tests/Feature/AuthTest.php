@@ -11,6 +11,10 @@ use App\Mail\Auth\PasswordReset as PasswordResetEmail;
 use App\Models\Account;
 use App\Models\User;
 use Faker\Generator as Faker;
+use \Stripe\Stripe;
+use \Stripe\Customer as StripeCustomer;
+use \Stripe\PaymentMethod as StripePaymentMethod;
+use App\Helpers\PaymentManager;
 use Mail;
 
 class AuthTest extends TestCase
@@ -30,8 +34,42 @@ class AuthTest extends TestCase
             'account_name' => $account->name,
             'password'     => 'Password1!'
         ]);
+        $paymentToken = 'tok_bypassPending';
+        $customer     = new \stdClass();
+        $customer->id = str_random(10);
 
-        $response = $this->json('POST', route('auth-register'), array_merge($user->toArray(), ['payment_token' => 'tok_bypassPending']));
+        $paymentMethod = (object)[
+            'id'   => str_random(10),
+            'card' => (object)[
+                'exp_year'  => now()->addYears(1)->format('Y'),
+                'exp_month' => now()->format('m'),
+                'last4'     => mt_rand(0001, 9999),
+                'funding'   => 'credit',
+                'brand'     => 'visa',
+            ]
+        ];
+
+        $paymentMethods = (object)[
+            'data' => [
+                $paymentMethod
+            ]
+        ];
+
+        
+        $this->mock(PaymentManager::class, function($mock) use($account, $paymentToken, $customer, $paymentMethods){
+            $mock->shouldReceive('createCustomer')
+                 ->once()
+                 ->with($account->name, $paymentToken)
+                 ->andReturn($customer);
+
+            $mock->shouldReceive('getPaymentMethods')
+                 ->once()
+                 ->with($customer->id)
+                 ->andReturn($paymentMethods);
+        });
+
+
+        $response = $this->json('POST', route('auth-register'), array_merge($user->toArray(), ['payment_token' => $paymentToken]));
         $response->assertStatus(201);
         $response->assertJSON([
             "user" => [
@@ -47,12 +85,22 @@ class AuthTest extends TestCase
             ],
             "first_login" => true
         ]);
+
         $account = $response['account'];
+
         $this->assertDatabaseHas('accounts', [
             'id' => $account['id']
         ]);
+
         $this->assertDatabaseHas('billing', [
-            'account_id' => $account['id']
+            'account_id'  => $account['id'],
+            'external_id' => $customer->id 
+        ]);
+
+        $this->assertDatabaseHas('payment_methods', [
+            'account_id' => $account['id'],
+            'created_by' => $response['user']['id'],
+            'external_id'=> $paymentMethod->id
         ]);
         
         Mail::assertQueued(EmailVerificationEmail::class);
