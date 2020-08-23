@@ -7,6 +7,9 @@
                 font-family: 'Roboto';
                 box-sizing: border-box;
             }
+            .word-breaks{
+                word-break: break-word;
+            }
             html,
             body{
                 position: relative;

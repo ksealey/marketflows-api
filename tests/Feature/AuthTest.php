@@ -284,12 +284,12 @@ class AuthTest extends TestCase
      */
     public function testPasswordResetSuccessfulFlow()
     {
+        Mail::fake();
+
         $account = factory(Account::class)->create();
         $user    = factory(User::class)->create([
             'account_id'     => $account->id
         ]);
-
-        Mail::fake();
 
         $response = $this->json('POST', route('auth-request-reset-password'), [
             'email' => $user->email
