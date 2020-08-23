@@ -7,7 +7,6 @@ use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Jobs\CreateBillingStatementJob;
 use \App\Jobs\BillAccountJob;
-use \App\Jobs\AccountSuspensionWarningJob;
 use \App\Jobs\ReleaseSuspendedAccountNumbersJob;
 
 /*
@@ -24,15 +23,6 @@ use \App\Jobs\ReleaseSuspendedAccountNumbersJob;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->describe('Display an inspiring quote');
-
-
-Artisan::command('accounts:suspension-warnings', function(){
-    $accounts = Account::where('suspension_warning_at', '<=', now())->get();
-
-    foreach( $accounts as $account ){
-        AccountSuspensionWarningJob::dispatch($account);
-    }
-});
 
 
 Artisan::command('accounts:release-suspended-numbers', function(){

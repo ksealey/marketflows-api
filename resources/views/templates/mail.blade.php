@@ -1,6 +1,8 @@
 <!DOCTYPE HTML>
-<html>
+<html lang="en">
     <head>
+        <title>@yield('title')</title>
+        <meta charset="UTF-8">
         <style>
             @import  url("https://fonts.googleapis.com/css?family=Roboto:300,400,700&display=swap");
             *{
@@ -8,7 +10,10 @@
                 box-sizing: border-box;
             }
             .word-breaks{
-                word-break: break-word;
+                word-break: break-all;
+            }
+            .bold{
+                font-weight: bold;
             }
             html,
             body{
@@ -82,7 +87,7 @@
         <div class="container">
             <div class="page">
                 <div class="logo">
-                    <img src="https://marketflows.s3.amazonaws.com/assets/images/logo.png"/>
+                    <img alt="MarketFlows logo" src="https://marketflows.s3.amazonaws.com/assets/images/logo.png"/>
                 </div>
                 @yield('content')
                 <div class="footer">

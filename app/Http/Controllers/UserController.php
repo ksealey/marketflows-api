@@ -75,7 +75,8 @@ class UserController extends Controller
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
                 'password_hash'             => bcrypt($tempPassword),
-                'auth_token'                => str_random(255)
+                'auth_token'                => str_random(255),
+                'email_verified_at'         => now() // No need for verification
             ]);
 
             UserSettings::create([

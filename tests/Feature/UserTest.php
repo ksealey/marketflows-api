@@ -98,6 +98,11 @@ class UserTest extends TestCase
             'id' => $response['id']
         ]);
 
+        $this->assertDatabaseMissing('users', [
+            'id' => $response['id'],
+            'email_verified_at' => null
+        ]);
+
         Mail::assertSent(AddUserEmail::class);
     }
 

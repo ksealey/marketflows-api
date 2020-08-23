@@ -14,6 +14,7 @@ class AddUser extends Mailable
     public $creator;
     public $user;
     public $tempPassword;
+    public $loginUrl;
 
     /**
      * Create a new message instance.
@@ -25,6 +26,7 @@ class AddUser extends Mailable
         $this->creator      = $creator;
         $this->user         = $user;
         $this->tempPassword = $tempPassword;
+        $this->loginUrl     = config('app.frontend_app_url') . '/login';
     }
 
     /**
@@ -34,11 +36,7 @@ class AddUser extends Mailable
      */
     public function build()
     {
-        return $this->subject($this->creator->full_name. ' has added you to their account on ' . env('APP_NAME') . '!')
-                    ->view('mail.add-user', [
-                        'creator'       => $this->creator,
-                        'user'          => $this->user,
-                        'tempPassword'  => $this->tempPassword
-                    ]);
+        return $this->subject($this->creator->full_name. ' has added you to their account')
+                    ->view('mail.add-user');
     }
 }

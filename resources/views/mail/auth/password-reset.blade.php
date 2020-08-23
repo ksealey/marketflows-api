@@ -1,5 +1,7 @@
 @extends('templates.mail')
 
+@section('title', 'Reset your password')
+
 @section('content')
     <div class="content">
         <p>
