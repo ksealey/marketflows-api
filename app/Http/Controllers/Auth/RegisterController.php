@@ -76,7 +76,7 @@ class RegisterController extends Controller
         DB::beginTransaction();
 
         try{
-            Stripe::setApiKey(env('STRIPE_SK'));
+            Stripe::setApiKey(config('services.stripe.secret'));
             
             $customer = Customer::create([
                 'description'    => $request->account_name,

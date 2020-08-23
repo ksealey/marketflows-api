@@ -113,7 +113,7 @@ class PaymentMethod extends Model
         $account = $user->account;
         $billing = $account->billing;
 
-        Stripe::setApiKey(env('STRIPE_SK'));
+        Stripe::setApiKey(config('services.stripe.secret'));
         
         $card = Customer::createSource(
             $billing->external_id,
@@ -156,7 +156,7 @@ class PaymentMethod extends Model
      */
     public function getRemoteResource()
     {
-        Stripe::setApiKey(env('STRIPE_SK'));
+        Stripe::setApiKey(config('services.stripe.secret'));
 
         if( ! $this->external_id )
             return null;
@@ -174,7 +174,7 @@ class PaymentMethod extends Model
      */
     public function delete()
     {
-        Stripe::setApiKey(env('STRIPE_SK'));
+        Stripe::setApiKey(config('services.stripe.secret'));
         
         //  Remove from remote resource
         if( $resource = $this->getRemoteResource() )

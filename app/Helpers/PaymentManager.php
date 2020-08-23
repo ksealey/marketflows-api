@@ -19,7 +19,7 @@ class PaymentManager
             return null;
 
         try{
-            Stripe::setApiKey(env('STRIPE_SK'));
+            Stripe::setApiKey(config('services.stripe.secret'));
 
             $stripeCharge = StripeCharge::create([
                 'customer'      => $paymentMethod->account->billing->external_id,
