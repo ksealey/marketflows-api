@@ -20,8 +20,7 @@ class PhoneNumberPolicy
     public function create(User $user, Company $company)
     {
         return $user->canDoAction('create')
-            && $user->canViewCompany($company)
-            && $user->email_verified_at;
+            && $user->canViewCompany($company);
     }
 
     public function read(User $user, PhoneNumber $phoneNumber, Company $company)

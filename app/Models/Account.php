@@ -123,19 +123,4 @@ class Account extends Model
         }
         return false;
     }
-
-    public function canPurchaseNumbers($count)
-    {
-        //  If the user has a valid payment method, they can buy as much as they want
-        if( ! $this->hasValidPaymentMethod() ){
-            //  Only allow up to 5 phone numbers, including deleted numbers
-            $currentNumberCount = PhoneNumber::withTrashed()
-                                            ->where('account_id', $this->id)
-                                            ->count();
-            if( ($count + $currentNumberCount) > self::MAX_DEMO_NUMBER_COUNT )
-                return false;
-        }
-        
-        return true;
-    } 
 }

@@ -12,9 +12,7 @@ use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use App\Rules\SwapRulesRule;
 use App\Rules\Company\BulkPhoneNumberRule;
-
 use App\Helpers\PhoneNumberManager;
-
 use Validator;
 use Exception;
 use App;
@@ -53,8 +51,7 @@ class PhoneNumberController extends Controller
                     ])
                     ->whereNull('phone_numbers.deleted_at')
                     ->where('phone_numbers.company_id', $company->id);
-        
-
+                    
         //  Pass along to parent for listing
         return parent::results(
             $request,
@@ -73,9 +70,9 @@ class PhoneNumberController extends Controller
     {
         $user    = $request->user(); 
         $account = $company->account; 
-        if( ! $account->canPurchaseNumbers(1) ){
+        if( ! $account->hasValidPaymentMethod() ){
             return response([
-                'error' => 'Unable to purchase additional numbers for this account - Verify a valid payment method has been added and try again.'
+                'error' => 'No valid payment method found. Add a valid payment method and try again.'
             ], 403);
         }
         
@@ -255,7 +252,7 @@ class PhoneNumberController extends Controller
     public function delete(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
         $this->numberManager
-                ->releaseNumber($phoneNumber);
+            ->releaseNumber($phoneNumber);
         
         $phoneNumber->deleted_by = $request->user()->id;
         $phoneNumber->deleted_at = now();

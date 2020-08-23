@@ -155,21 +155,6 @@ class PhoneNumber extends Model implements Exportable
         return $this->hasMany('\App\Models\Company\Call');
     }
 
-    static private function client()
-    {
-        $config = config('services.twilio');
-
-        return new TwilioClient($config['sid'], $config['token']);
-    }
-
-    static public function testClient()
-    {
-        $config = config('services.twilio');
-
-        return new TwilioClient($config['test_sid'], $config['test_token']);
-    }
-
-
     /**
      * Get the link
      * 

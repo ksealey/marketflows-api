@@ -47,6 +47,7 @@ class PhoneNumberTest extends TestCase
 
         $response = $this->json('GET', route('list-phone-numbers', [
             'company' => $company->id,
+            'date_type' => 'ALL_TIME'
         ]));
 
         $response->assertStatus(200);
@@ -117,7 +118,8 @@ class PhoneNumberTest extends TestCase
         $response = $this->json('GET', route('list-phone-numbers', [
             'company' => $company->id
         ]), [
-            'conditions' => json_encode($conditions)
+            'conditions' => json_encode($conditions),
+            'date_type'  => 'ALL_TIME'
         ]);
 
         $response->assertStatus(200);
@@ -163,6 +165,7 @@ class PhoneNumberTest extends TestCase
         $response = $this->json('GET', route('list-phone-numbers', [
             'company' => $company->id
         ]), [
+            'date_type'  => 'CUSTOM',
             'start_date' => $twoDaysAgo->format('Y-m-d'),
             'end_date'   => $twoDaysAgo->format('Y-m-d')
         ]);
@@ -307,6 +310,7 @@ class PhoneNumberTest extends TestCase
         $response = $this->json('GET', route('export-phone-numbers', [
             'company' => $company->id
         ]), [
+            'date_type'  => 'CUSTOM',
             'start_date' => $twoDaysAgo->format('Y-m-d'),
             'end_date'   => $twoDaysAgo->format('Y-m-d')
         ]);
@@ -444,80 +448,6 @@ class PhoneNumberTest extends TestCase
      | 
      */
 
-    /**
-     * Test user cannot create phone number when email not verified 
-     *
-     * @group phone-numbers
-     */
-    public function testUserCannotCreatePhoneNumberWhenEmailNotVerified()
-    {
-        $this->user->email_verified_at = null;
-        $this->user->save();
-
-        $company    = $this->createCompany();
-        $config     = $this->createConfig($company);
-        $numberData = factory(PhoneNumber::class)->make();
-        $areaCode   = '813'; 
-
-        $response = $this->json('POST', route('create-phone-number', [
-            'company' => $company->id
-        ]), [
-            'name'        => $numberData->name,
-            'category'    => $numberData->category,
-            'sub_category'=> $numberData->sub_category,
-            'type'        => $numberData->type,
-            'starts_with' => $numberData->starts_with,
-            'source'      => $numberData->source,
-            'medium'      => $numberData->medium,
-            'content'     => $numberData->content,
-            'campaign'    => $numberData->campaign,
-            'phone_number_config_id' => $config->id,
-            'swap_rules'  => json_encode($numberData->swap_rules)
-        ]);
-
-        $response->assertStatus(403);
-        $response->assertJSON([
-            'error' => 'Unauthorized'
-        ]);
-
-        $this->assertDatabaseMissing('phone_numbers', [
-            'company_id' => $company->id
-        ]);
-    }
-
-   /**
-     * Test user cannot update phone number when email not verified 
-     *
-     * @group phone-numbers
-     */
-    public function testUserCannotUpdatePhoneNumberWhenEmailNotVerified()
-    {
-        $this->user->email_verified_at = null;
-        $this->user->save();
-
-        $company    = $this->createCompany();
-        $config     = $this->createConfig($company);
-        $phoneNumber= $this->createPhoneNumber($company, $config);
-        $areaCode   = '813'; 
-        $newName    = str_random(10);
-
-        $response = $this->json('PUT', route('update-phone-number', [
-            'company'     => $company->id,
-            'phoneNumber' => $phoneNumber->id
-        ]), [
-            'name'        => $newName
-        ]);
-        $response->assertStatus(403);
-        $response->assertJSON([
-            'error' => 'Unauthorized'
-        ]);
-
-        $this->assertDatabaseMissing('phone_numbers', [
-            'company_id' => $company->id,
-            'name'       => $newName
-        ]);
-    }
-    
     /**
      * Test creating a local offline phone number
      * 
