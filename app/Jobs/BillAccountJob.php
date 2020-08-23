@@ -169,7 +169,7 @@ class BillAccountJob implements ShouldQueue
             $statement->save();
             
             Mail::to($user)
-                ->queue(new BillingReceipt($user, $payment));
+                ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
         }else{
             Mail::to($user)
                 ->queue(new PaymentMethodFailed($user, $paymentMethod, $statement));

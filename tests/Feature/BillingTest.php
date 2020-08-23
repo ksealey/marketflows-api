@@ -69,7 +69,7 @@ class BillingTest extends TestCase
      */
     public function testBillingJobWorks()
     {
-        Mail::fake();
+       Mail::fake();
 
         $companyCount = 5;
         for( $i = 0; $i < $companyCount; $i++ ){
