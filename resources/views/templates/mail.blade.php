@@ -2,7 +2,7 @@
 <html>
     <head>
         <style>
-            @import url("https://fonts.googleapis.com/css?family=Roboto:300,400,700&display=swap");
+            @import  url("https://fonts.googleapis.com/css?family=Roboto:300,400,700&display=swap");
             *{
                 font-family: 'Roboto';
                 box-sizing: border-box;
@@ -49,18 +49,19 @@
                 font-size: 22px;
             }
             .content{
-                margin: 10px 0 40px 0;
-                font-size: 15px;
+                padding: 20px 30px 20px 30px;
+                font-size: 14px;
             }
             .button{
+                font-size: 14px;
                 color: white;
-                background-color: #5B38D9;
+                background-color: #7878E8;
                 display: block;
                 margin: 40px auto;
-                padding: 15px;
+                padding: 10px 10px;
                 text-align: center;
-                width: 50%;
-                border-radius: 5px;
+                max-width: 50%;
+                border-radius: 2px;
             }
             a.button{
                 color: white;
@@ -73,17 +74,16 @@
                 font-size: 12px;
             }
         </style>
-        </style>
     </head>
     <body>
         <div class="container">
             <div class="page">
                 <div class="logo">
-                    <img src="https://marketflows.s3.amazonaws.com/assets/images/logo-full.png"/>
+                    <img src="https://marketflows.s3.amazonaws.com/assets/images/logo.png"/>
                 </div>
                 @yield('content')
                 <div class="footer">
-                    <b style="font-size: 13px">MarketFlows,</b><br/>PO Box 310384<br/>Tampa, FL 33680
+                    <b style="font-size: 13px">MarketFlows LLC</b><br/>PO Box 310384<br/>Tampa, FL 33680
                 </div>
             </div>
         </div>
