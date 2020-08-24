@@ -36,7 +36,7 @@ class CallRecording extends Model
      */
     public function getUrlAttribute()
     {
-        return rtrim(env('CDN_URL'), '/') 
+        return rtrim(config('app.cdn_url'), '/') 
                 . '/' 
                 . trim($this->path, '/');
     }

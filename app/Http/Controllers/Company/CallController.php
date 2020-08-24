@@ -47,7 +47,7 @@ class CallController extends Controller
                         DB::raw(
                             'CASE
                                 WHEN call_recordings.path IS NOT NULL
-                                    THEN CONCAT(\'' . env('CDN_URL') . '/' . '\', call_recordings.path)
+                                    THEN CONCAT(\'' . config('app.cdn_url') . '/' . '\', call_recordings.path)
                                 ELSE NULL
                             END
                             AS recording_url'

@@ -235,7 +235,7 @@ class Report extends Model
         $fileName    = preg_replace('/[^0-9A-z]+/', '-', $this->name) . '.xlsx';
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()
-                    ->setCreator(env('APP_NAME'))
+                    ->setCreator(config('app.name'))
                     ->setLastModifiedBy('System')
                     ->setTitle($this->name)
                     ->setSubject($this->name);

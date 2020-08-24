@@ -55,7 +55,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'MarketFlows'),
 
     /*
     |--------------------------------------------------------------------------
@@ -273,4 +273,6 @@ return [
         'Worksheet' => \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::class,
         'SpreadsheetSettings' => \PhpOffice\PhpSpreadsheet\Settings::class
     ],
+
+    'cdn_url' => env('CDN_URL')
 ];

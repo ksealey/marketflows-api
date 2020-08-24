@@ -51,7 +51,7 @@ class AudioClip extends Model
 
     public function getUrlAttribute()
     {
-        return trim(env('CDN_URL'), '/') . '/' . trim($this->path, '/');
+        return trim(config('app.cdn_url'), '/') . '/' . trim($this->path, '/');
     }
 
     public function company()

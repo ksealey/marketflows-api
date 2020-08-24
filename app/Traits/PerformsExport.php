@@ -18,7 +18,7 @@ trait PerformsExport
         $exports     = self::exports();
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()
-                    ->setCreator(env('APP_NAME'))
+                    ->setCreator(config('app.name'))
                     ->setLastModifiedBy('System')
                     ->setTitle($exportName)
                     ->setSubject($exportName);
@@ -72,7 +72,7 @@ trait PerformsExport
         $exports     = self::exports();
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()
-                    ->setCreator(env('APP_NAME'))
+                    ->setCreator(config('app.name'))
                     ->setLastModifiedBy('System')
                     ->setTitle($exportName)
                     ->setSubject($exportName);   
