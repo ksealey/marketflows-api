@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Queue;
@@ -11,13 +12,11 @@ use App\Jobs\BillAccountJob;
 use App\Models\BillingStatement;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
-use Tests\TestCase;
+use App\Models\Company\PhoneNumber;
 use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
 use Artisan;
 use Mail;
-use \Mockery;
-use \PaymentManager;
 
 class BillingTest extends TestCase
 {
@@ -181,9 +180,12 @@ class BillingTest extends TestCase
     {
         $billing = $this->billing;
 
-        $billing->billing_period_starts_at = now()->subDays(7);
-        $billing->billing_period_ends_at   = now()->subMinutes(2);
+        $billing->billing_period_starts_at = now()->subDays(7)->startOfDay();
+        $billing->billing_period_ends_at   = now()->endOfDay();
         $billing->save();
+
+        $billingPeriodStart = $billing->billing_period_starts_at;
+        $billingPeriodEnd   = $billing->billing_period_ends_at;
 
         // populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber)
         $companyCount           = 2;
@@ -194,39 +196,95 @@ class BillingTest extends TestCase
 
         $this->populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber);
         
-        $serviceQuantity  = $billing->quantity(Billing::ITEM_SERVICE);
+        $serviceQuantity  = $billing->quantity(Billing::ITEM_SERVICE, $billingPeriodStart, $billingPeriodEnd);
         $serviceTotal     = $billing->total(Billing::ITEM_SERVICE, $serviceQuantity);
         $this->assertEquals($serviceQuantity, 1);
         $this->assertEquals($serviceTotal, Billing::COST_SERVICE);
 
-        $localNumberQuantity    = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL);
+        $localNumberQuantity    = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL, $billingPeriodStart, $billingPeriodEnd);
         $localNumberTotal       = $billing->total(Billing::ITEM_NUMBERS_LOCAL, $localNumberQuantity);
         $this->assertEquals($localNumberQuantity, $companyCount * $localNumberCount);
         $this->assertEquals($localNumberTotal, 12 * Billing::COST_NUMBERS_LOCAL); // tier of 10
 
-        $tollFreeNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_TOLL_FREE);
+        $tollFreeNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
         $tollFreeNumberTotal    = $billing->total(Billing::ITEM_NUMBERS_TOLL_FREE, $tollFreeNumberQuantity);
         $this->assertEquals($tollFreeNumberQuantity, 2);
         $this->assertEquals($tollFreeNumberTotal, 2 * Billing::COST_NUMBERS_TOLL_FREE);
 
-        $localMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_LOCAL);
+        $localMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_LOCAL, $billingPeriodStart, $billingPeriodEnd);
         $localMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_LOCAL, $localMinutesQuantity);
         $this->assertEquals($localMinutesQuantity, $companyCount * $localNumberCount * $localCallsPerNumber);
         $this->assertEquals($localMinutesTotal, 0);
 
-        $tollFreeMinutesQuantity= $billing->quantity(Billing::ITEM_MINUTES_TOLL_FREE);
+        $tollFreeMinutesQuantity= $billing->quantity(Billing::ITEM_MINUTES_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
         $tollFreeMinutesTotal   = $billing->total(Billing::ITEM_MINUTES_TOLL_FREE, $tollFreeMinutesQuantity);
         $this->assertEquals($tollFreeMinutesQuantity, $companyCount * $tollFreeNumberCount * $tollFreeCallsPerNumber);
         $this->assertEquals($tollFreeMinutesTotal, ($companyCount * $tollFreeNumberCount * $tollFreeCallsPerNumber) * Billing::COST_MINUTES_TOLL_FREE);
 
-        $transMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION);
+        $transMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION, $billingPeriodStart, $billingPeriodEnd);
         $transMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $transMinutesQuantity);
         $this->assertEquals($transMinutesQuantity, $localMinutesQuantity + $tollFreeMinutesQuantity);
         $this->assertEquals($transMinutesTotal, ($localMinutesQuantity + $tollFreeMinutesQuantity) * Billing::COST_MINUTES_TRANSCRIPTION);
 
-        $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB);
+        $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB, $billingPeriodStart, $billingPeriodEnd);
         $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
         $this->assertEquals($storageQuantity, 240);
         $this->assertEquals($storageTotal, (240 - Billing::TIER_STORAGE_GB) * Billing::COST_STORAGE_GB);
+
+        $intialTotal = $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
+        $this->assertEquals($billing->currentTotal(), $intialTotal);
+        
+        $number = PhoneNumber::where('account_id', $this->account->id)
+                            ->where('type', 'Local')
+                            ->orderBy('created_at', 'DESC')
+                            ->first();
+
+        //  Delete a number out of the range and make sure it's not counted in total
+        $number->deleted_at = now()->subDays(8);
+        $number->save();
+
+        $newLocalNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL, $billingPeriodStart, $billingPeriodEnd);
+        $this->assertEquals($localNumberQuantity - 1, $newLocalNumberQuantity);
+        $this->assertEquals($billing->currentTotal(), $intialTotal - $billing->price(Billing::ITEM_NUMBERS_LOCAL));
+
+        //  Bring deleted number into range and make sure it's counted
+        $number->deleted_at = now()->subDays(1);
+        $number->save();
+
+        $newLocalNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL, $billingPeriodStart, $billingPeriodEnd);
+        $this->assertEquals($localNumberQuantity, $newLocalNumberQuantity);
+        $this->assertEquals($billing->currentTotal(), $intialTotal);
+
+        //  Undelete number and bring it past upper range
+        $number->deleted_at = null;
+        $number->created_at = now()->addDays(10);
+        $number->save();
+
+        $newLocalNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL, $billingPeriodStart, $billingPeriodEnd);
+        $this->assertEquals($localNumberQuantity - 1, $newLocalNumberQuantity);
+        $this->assertEquals($billing->currentTotal(), $intialTotal - $billing->price(Billing::ITEM_NUMBERS_LOCAL));
+    }
+
+    /**
+     * Test fetching current total
+     * 
+     * @group billing
+     */
+    public function testFetchingCurrentTotal()
+    {
+        $companyCount           = 2;
+        $localNumberCount       = 11;
+        $tollFreeNumberCount    = 1;
+        $localCallsPerNumber    = 10;
+        $tollFreeCallsPerNumber = 10;
+
+        $this->populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber);
+        
+        $response = $this->json('GET', route('current-statement'));
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'total' => $this->billing->currentTotal(),
+            'items' => []
+        ]);
     }
 }

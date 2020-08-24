@@ -55,25 +55,28 @@ class BillAccountJob implements ShouldQueue
             'billing_period_ends_at'   => $billing->billing_period_ends_at
         ]);
 
-        $serviceQuantity        = $billing->quantity(Billing::ITEM_SERVICE);
+        $billingPeriodStart     = new Carbon($billing->billing_period_starts_at);
+        $billingPeriodEnd       = new Carbon($billing->billing_period_ends_at);
+
+        $serviceQuantity        = $billing->quantity(Billing::ITEM_SERVICE, $billingPeriodStart, $billingPeriodEnd);
         $serviceTotal           = $billing->total(Billing::ITEM_SERVICE, $serviceQuantity);
 
-        $localNumberQuantity    = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL);
+        $localNumberQuantity    = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL, $billingPeriodStart, $billingPeriodEnd);
         $localNumberTotal       = $billing->total(Billing::ITEM_NUMBERS_LOCAL, $localNumberQuantity);
 
-        $tollFreeNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_TOLL_FREE);
+        $tollFreeNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
         $tollFreeNumberTotal    = $billing->total(Billing::ITEM_NUMBERS_TOLL_FREE, $tollFreeNumberQuantity);
 
-        $localMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_LOCAL);
+        $localMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_LOCAL, $billingPeriodStart, $billingPeriodEnd);
         $localMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_LOCAL, $localMinutesQuantity);
 
-        $tollFreeMinutesQuantity= $billing->quantity(Billing::ITEM_MINUTES_TOLL_FREE);
+        $tollFreeMinutesQuantity= $billing->quantity(Billing::ITEM_MINUTES_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
         $tollFreeMinutesTotal   = $billing->total(Billing::ITEM_MINUTES_TOLL_FREE, $tollFreeMinutesQuantity);
 
-        $transMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION);
+        $transMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION, $billingPeriodStart, $billingPeriodEnd);
         $transMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $transMinutesQuantity);
 
-        $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB);
+        $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB, $billingPeriodStart, $billingPeriodEnd);
         $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
         $items = [
             [

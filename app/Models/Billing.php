@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\PhoneNumber;
 use DB;
+use \Carbon\Carbon;
 
 class Billing extends Model
 {
@@ -78,7 +79,7 @@ class Billing extends Model
         }
     }
 
-    public function quantity($item)
+    public function quantity($item, $startDate, $endDate)
     {
         switch($item)
         {
@@ -94,14 +95,10 @@ class Billing extends Model
                 //
                 $query = DB::table('phone_numbers')
                             ->where('account_id', $this->account_id)
-                            ->where(function($query){
-                                $query->where(function($q){
-                                            $q->where('created_at', '>=', $this->billing_period_starts_at)
-                                              ->where('created_at', '<=', $this->billing_period_ends_at);
-                                        })
-                                        ->orWhere(function($q){
-                                            $q->whereNull('deleted_at');
-                                        });
+                            ->where('created_at', '<=', $endDate) // Upper bound
+                            ->where(function($query) use($startDate){ // Lower bound
+                                $query->whereNull('deleted_at') // Active
+                                      ->orWhere('deleted_at', '>=', $startDate); // or deleted after start date
                             });
 
                 $query->where('type', $item == self::ITEM_NUMBERS_LOCAL ? 'Local' : 'Toll-Free');
@@ -122,8 +119,8 @@ class Billing extends Model
                             ) as total_minutes')
                         ])
                         ->where('account_id', $this->account_id)
-                        ->where('created_at', '>=', $this->billing_period_starts_at)
-                        ->where('created_at', '<=', $this->billing_period_ends_at);
+                        ->where('created_at', '>=', $startDate)
+                        ->where('created_at', '<=', $endDate);
              
                 $query->where('type', $item == self::ITEM_MINUTES_LOCAL ? 'Local' : 'Toll-Free');
 
@@ -141,21 +138,19 @@ class Billing extends Model
                             ])
                             ->join('transcriptions', 'transcriptions.call_id', '=', 'calls.id')
                             ->where('account_id', $this->account_id)
-                            ->where('created_at', '>=', $this->billing_period_starts_at)
-                            ->where('created_at', '<=', $this->billing_period_ends_at);
+                            ->where('created_at', '>=', $startDate)
+                            ->where('created_at', '<=', $endDate);
 
                 return $query->first()->total_minutes ?: 0;
 
             case self::ITEM_STORAGE_GB:
                 $query = DB::table('calls')
                             ->select([
-                                DB::raw(
-                                    'SUM(call_recordings.file_size) as total_storage'
-                                )
+                                DB::raw('SUM(call_recordings.file_size) as total_storage')
                             ])
                             ->join('call_recordings', 'call_recordings.call_id', '=', 'calls.id')
                             ->where('calls.account_id', $this->account_id)
-                            ->where('calls.created_at', '<', $this->billing_period_ends_at);
+                            ->where('calls.created_at', '<', $endDate);
 
                 $sizeBytes = $query->first()->total_storage ?: 0;
                 $sizeGB    = $sizeBytes ? ceil($sizeBytes / 1024 / 1024 / 1024) : 0;
@@ -197,11 +192,8 @@ class Billing extends Model
         }
     }
 
-    public function total($item, $quantity = null)
+    public function total($item, $quantity)
     {
-        if( $quantity === null )
-            $quantity = $this->quantity($item);
-        
         switch($item)
         {
             case self::ITEM_SERVICE:
@@ -244,13 +236,16 @@ class Billing extends Model
 
     public function currentTotal()
     {
-        $serviceTotal           = $this->total(Billing::ITEM_SERVICE);
-        $localNumberTotal       = $this->total(Billing::ITEM_NUMBERS_LOCAL);
-        $tollFreeNumberTotal    = $this->total(Billing::ITEM_NUMBERS_TOLL_FREE);
-        $localMinutesTotal      = $this->total(Billing::ITEM_MINUTES_LOCAL);
-        $tollFreeMinutesTotal   = $this->total(Billing::ITEM_MINUTES_TOLL_FREE);
-        $transMinutesTotal      = $this->total(Billing::ITEM_MINUTES_TRANSCRIPTION);
-        $storageTotal           = $this->total(Billing::ITEM_STORAGE_GB);
+        $startDate = new Carbon($this->billing_period_starts_at);
+        $endDate   = new Carbon($this->billing_period_ends_at);
+
+        $serviceTotal           = $this->total(Billing::ITEM_SERVICE, $this->quantity(Billing::ITEM_SERVICE, $startDate, $endDate));
+        $localNumberTotal       = $this->total(Billing::ITEM_NUMBERS_LOCAL, $this->quantity(Billing::ITEM_NUMBERS_LOCAL, $startDate, $endDate));
+        $tollFreeNumberTotal    = $this->total(Billing::ITEM_NUMBERS_TOLL_FREE, $this->quantity(Billing::ITEM_NUMBERS_TOLL_FREE, $startDate, $endDate));
+        $localMinutesTotal      = $this->total(Billing::ITEM_MINUTES_LOCAL, $this->quantity(Billing::ITEM_MINUTES_LOCAL, $startDate, $endDate));
+        $tollFreeMinutesTotal   = $this->total(Billing::ITEM_MINUTES_TOLL_FREE, $this->quantity(Billing::ITEM_MINUTES_TOLL_FREE, $startDate, $endDate));
+        $transMinutesTotal      = $this->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $this->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION, $startDate, $endDate));
+        $storageTotal           = $this->total(Billing::ITEM_STORAGE_GB, $this->quantity(Billing::ITEM_STORAGE_GB, $startDate, $endDate));
 
         $statementTotal         = $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
 

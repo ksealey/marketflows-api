@@ -99,17 +99,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
     /*
     |--------------------------------
-    | Handle account billing
-    |--------------------------------
-    */
-    Route::prefix('billing')->group(function(){
-        Route::get('/', 'BillingController@read')
-             ->middleware('can:read,\App\Models\Billing')
-             ->name('read-billing');
-    });
-
-    /*
-    |--------------------------------
     | Handle users
     |--------------------------------
     */
@@ -159,44 +148,6 @@ Route::middleware(['auth:api', 'api'])->group(function(){
     });
 
     /*
-     |------------------------------
-     |  Handle widgets
-     |------------------------------
-     
-    Route::prefix('widgets')->group(function(){
-        Route::get('/top-call-sources', 'WidgetController@topCallSources')
-             ->middleware('can:read,\App\Models\Account')
-             ->name('widget-top-call-sources');
-
-        Route::get('/total-companies', 'WidgetController@totalCompanies')
-             ->middleware('can:read,\App\Models\Account')
-             ->name('widget-total-companies');
-
-        Route::get('/total-numbers', 'WidgetController@totalNumbers')
-             ->middleware('can:read,\App\Models\Account')
-             ->name('widget-total-numbers');
-
-        Route::get('/total-calls', 'WidgetController@totalCalls')
-             ->middleware('can:read,\App\Models\Account')
-             ->name('widget-total-calls');
-
-        Route::prefix('billing')->group(function(){
-            Route::get('/next-bill', 'WidgetController@billingNextBill')
-                 ->name('widget-billing-next-bill');
-
-            Route::prefix('current')->group(function(){
-                Route::get('/usage-balance-by-item', 'WidgetController@billingCurrentUsageBalanceByItem')
-                     ->name('widget-billing-current-usage-balance-by-item');
-                     
-                Route::get('/usage-balance-breakdown', 'WidgetController@billingCurrentUsageBalanceBreakdown')
-                     ->name('widget-billing-current-usage-balance-breakdown');;
-            });
-            
-        });
-    });
-    */
-
-    /*
     |----------------------------------------
     | Handle payment methods
     |----------------------------------------
@@ -240,6 +191,10 @@ Route::middleware(['auth:api', 'api'])->group(function(){
         Route::get('/export', 'BillingStatementController@export')
             ->middleware('can:list,\App\Models\BillingStatement')
             ->name('export-statements'); 
+
+        Route::get('/current', 'BillingStatementController@current')
+            ->middleware('can:list,\App\Models\BillingStatement')
+            ->name('current-statement'); 
 
         Route::get('/{billingStatement}', 'BillingStatementController@read')
              ->middleware('can:read,billingStatement')
