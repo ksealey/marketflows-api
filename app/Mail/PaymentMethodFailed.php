@@ -14,6 +14,7 @@ class PaymentMethodFailed extends Mailable
     public $user;
     public $paymentMethod;
     public $statement;
+    public $paymentMethodsUrl;
 
     /**
      * Create a new message instance.
@@ -22,9 +23,11 @@ class PaymentMethodFailed extends Mailable
      */
     public function __construct($user, $paymentMethod, $statement)
     {
-        $this->user = $user;
+        $this->user          = $user;
         $this->paymentMethod = $paymentMethod;
-        $this->statement = $statement;
+        $this->statement     = $statement;
+
+        $this->paymentMethodsUrl  = config('app.frontend_app_url') . '/billing/payment-methods';
     }
 
     /**
@@ -34,10 +37,7 @@ class PaymentMethodFailed extends Mailable
      */
     public function build()
     {
-        return $this->view('mail.payment-method-failed', [
-            'user' => $this->user,
-            'paymentMethod' => $this->paymentMethod,
-            'statement' => $this->statement
-        ]);
+        return $this->view('mail.payment-method-failed')
+                    ->subject('Payment failed');
     }
 }

@@ -75,9 +75,6 @@ class BillAccountJob implements ShouldQueue
 
         $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB);
         $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
-
-        $statementTotal         = $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
-
         $items = [
             [
                 'billing_statement_id' => $statement->id,
@@ -131,18 +128,13 @@ class BillAccountJob implements ShouldQueue
         ];
 
         foreach( $billing->account->services as $service ){
-            $serviceQuantity = $service->quantity();
-            $serviceTotal    = $service->total();
-
             $items[] = [
                 'billing_statement_id' => $statement->id,
                 'label'                => $service->label(),
-                'quantity'             => $serviceQuantity,
+                'quantity'             => $service->quantity(),
                 'price'                => $service->price(),
-                'total'                => $serviceTotal
+                'total'                => $service->total()
             ];
-
-            $statementTotal += $serviceTotal;
         }
 
         BillingStatementItem::insert($items);
@@ -153,7 +145,7 @@ class BillAccountJob implements ShouldQueue
         $account       = $billing->account;
         $paymentMethod = $account->primary_payment_method; 
         
-        $payment = $this->paymentManager->charge($paymentMethod, $statementTotal);
+        $payment = $this->paymentManager->charge($paymentMethod, $statement->total());
         $user    = User::find($paymentMethod->created_by);
 
         //

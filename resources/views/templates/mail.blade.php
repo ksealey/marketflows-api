@@ -91,7 +91,7 @@
                 </div>
                 @yield('content')
                 <div class="footer">
-                    <b style="font-size: 13px">MarketFlows LLC</b><br/>PO Box 310384<br/>Tampa, FL 33680
+                    <b style="font-size: 13px">MarketFlows, LLC</b><br/>PO Box 310384<br/>Tampa, FL 33680
                 </div>
             </div>
         </div>

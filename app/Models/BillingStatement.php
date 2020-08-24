@@ -25,31 +25,13 @@ class BillingStatement extends Model
         return $this->belongsTo('App\Models\Billing');
     }
 
+    public function payment()
+    {
+        return $this->belongsTo('App\Models\Payment');
+    }
+
     public function total()
     {
-        $billing = $this->billing;
-
-        $serviceQuantity        = $billing->quantity(Billing::ITEM_SERVICE);
-        $serviceTotal           = $billing->total(Billing::ITEM_SERVICE, $serviceQuantity);
-
-        $localNumberQuantity    = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL);
-        $localNumberTotal       = $billing->total(Billing::ITEM_NUMBERS_LOCAL, $localNumberQuantity);
-
-        $tollFreeNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_TOLL_FREE);
-        $tollFreeNumberTotal    = $billing->total(Billing::ITEM_NUMBERS_TOLL_FREE, $tollFreeNumberQuantity);
-
-        $localMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_LOCAL);
-        $localMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_LOCAL, $localMinutesQuantity);
-
-        $tollFreeMinutesQuantity= $billing->quantity(Billing::ITEM_MINUTES_TOLL_FREE);
-        $tollFreeMinutesTotal   = $billing->total(Billing::ITEM_MINUTES_TOLL_FREE, $tollFreeMinutesQuantity);
-
-        $transMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION);
-        $transMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $transMinutesQuantity);
-
-        $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB);
-        $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
-
-        return $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
+        return array_sum(array_column($this->items->toArray(), 'total'));
     }
 }

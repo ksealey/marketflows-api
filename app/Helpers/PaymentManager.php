@@ -58,24 +58,9 @@ class PaymentManager
             return null;
 
         try{
-            
-            $stripeCharge = StripeCharge::create([
-                'customer'      => $paymentMethod->account->billing->external_id,
-                'source'        => $paymentMethod->external_id,
-                'amount'        => $amount * 100,
-                'currency'      => 'usd',
-                'description'   => $description
-            ]);
+            $stripeCharge = $this->createCharge($paymentMethod, $amount, $description);
 
-            $paymentMethod->last_used_at = now();
-            $paymentMethod->error        = null;
-            $paymentMethod->save();
-
-            return Payment::create([
-                'payment_method_id' => $paymentMethod->id,
-                'external_id'       => $stripeCharge->id,
-                'total'             => $amount
-            ]);
+            return $this->createPayment($stripeCharge, $paymentMethod, $amount);
         }catch(\Stripe\Exception\RateLimitException $e){
             //  We hit a rate limit
             //  Wait a second and try again
@@ -83,11 +68,36 @@ class PaymentManager
 
             return $this->charge($paymentMethod, $amount, $description, $attempts + 1);
         }catch(Exception $e){
-            $paymentMethod->last_used_at = now();
-            $paymentMethod->error        = substr($e->getMessage(), 0, 255);
+            $paymentMethod->error = substr($e->getMessage(), 0, 255);
             $paymentMethod->save();
 
             return false;
         }
+    }
+
+    public function createCharge(PaymentMethod $paymentMethod, float $amount, string $description)
+    {
+        $charge = StripeCharge::create([
+            'customer'      => $paymentMethod->account->billing->external_id,
+            'source'        => $paymentMethod->external_id,
+            'amount'        => $amount * 100,
+            'currency'      => 'usd',
+            'description'   => $description
+        ]);
+
+        $paymentMethod->last_used_at = now();
+        $paymentMethod->error        = null;
+        $paymentMethod->save();
+
+        return $charge;
+    }
+
+    public function createPayment($stripeCharge, $paymentMethod, $amount)
+    {
+        return Payment::create([
+            'payment_method_id' => $paymentMethod->id,
+            'external_id'       => $stripeCharge->id,
+            'total'             => $amount
+        ]);
     }
 }

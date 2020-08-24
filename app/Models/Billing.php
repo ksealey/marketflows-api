@@ -241,4 +241,23 @@ class Billing extends Model
                 return 0;
         }
     }
+
+    public function currentTotal()
+    {
+        $serviceTotal           = $this->total(Billing::ITEM_SERVICE);
+        $localNumberTotal       = $this->total(Billing::ITEM_NUMBERS_LOCAL);
+        $tollFreeNumberTotal    = $this->total(Billing::ITEM_NUMBERS_TOLL_FREE);
+        $localMinutesTotal      = $this->total(Billing::ITEM_MINUTES_LOCAL);
+        $tollFreeMinutesTotal   = $this->total(Billing::ITEM_MINUTES_TOLL_FREE);
+        $transMinutesTotal      = $this->total(Billing::ITEM_MINUTES_TRANSCRIPTION);
+        $storageTotal           = $this->total(Billing::ITEM_STORAGE_GB);
+
+        $statementTotal         = $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
+
+        foreach( $this->account->services as $service ){
+            $statementTotal += $service->total();
+        }
+
+        return $statementTotal;
+    }
 }

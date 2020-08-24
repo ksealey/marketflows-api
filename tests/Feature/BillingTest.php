@@ -69,33 +69,57 @@ class BillingTest extends TestCase
      */
     public function testBillingJobWorks()
     {
-       Mail::fake();
+        Mail::fake();
 
         $companyCount = 5;
         for( $i = 0; $i < $companyCount; $i++ ){
             $company = $this->createCompany();
         }
-        $this->billing->billing_period_starts_at = now()->subDays(7);
-        $this->billing->billing_period_ends_at   = now()->subMinutes(2);
+
+        //  Set billing period
+        $this->billing->billing_period_starts_at = now()->subDays(7)->startOfDay();
+        $this->billing->billing_period_ends_at   = now()->endOfDay();
         $this->billing->save();
 
-        $payment = factory(Payment::class)->create([
-            'payment_method_id' => $this->account->primary_payment_method->id
-        ]);
+        //  Get payment method to use
+        $paymentMethod = $this->account->primary_payment_method;
+        $totalOwed     = $this->billing->currentTotal();
 
-        $this->mock('App\Helpers\PaymentManager', function($mock) use($payment){
-            $mock->shouldReceive('charge')
+        $this->partialMock('App\Helpers\PaymentManager', function($mock) use($paymentMethod, $totalOwed){
+            $charge = (object)[
+                'id'            => str_random(10),
+                'customer'      => $this->billing->external_id,
+                'source'        => $paymentMethod->external_id,
+                'amount'        => $totalOwed,
+                'currency'      => 'usd',
+                'description'   => 'MarketFlows, LLC'
+            ];
+
+            $mock->shouldReceive('createCharge')
                  ->once()
-                 ->andReturn($payment);
+                 ->with(PaymentMethod::class, $totalOwed, 'MarketFlows, LLC')
+                 ->andReturn($charge);
+
+            $mock->shouldReceive('createPayment')
+                 ->once()
+                 ->with($charge, PaymentMethod::class, $totalOwed)
+                 ->andReturn(factory(Payment::class)->create([
+                    'payment_method_id' => $paymentMethod->id,
+                    'external_id'       => $charge->id,
+                    'total'             => $totalOwed
+                 ]));
         });
+        
         BillAccountJob::dispatch($this->billing);
 
         //  
         //  Make sure a statement was created and paid
         //
         $statement = BillingStatement::where('billing_id', $this->billing->id)->first();
+
         $this->assertNotNull($statement);
-        $this->assertNotNull($statement->payment_id);
+        $this->assertEquals($statement->total(), $this->billing->currentTotal());
+        $this->assertEquals($statement->total(), $statement->payment->total);
 
         //
         //  Make sure the mail was sent
@@ -113,6 +137,10 @@ class BillingTest extends TestCase
     public function testBillingJobFailsGracefully()
     {
         Mail::fake();
+        $companyCount = 5;
+        for( $i = 0; $i < $companyCount; $i++ ){
+            $company = $this->createCompany();
+        }
 
         $this->paymentMethod->external_id = 'tok_chargeDeclined';
         $this->paymentMethod->save();
@@ -121,11 +149,7 @@ class BillingTest extends TestCase
         $this->billing->billing_period_ends_at   = now()->subMinutes(2);
         $this->billing->save();
 
-        $payment = factory(Payment::class)->create([
-            'payment_method_id' => $this->account->primary_payment_method->id
-        ]);
-
-        $this->mock('App\Helpers\PaymentManager', function($mock) use($payment){
+        $this->mock('App\Helpers\PaymentManager', function($mock){
             $mock->shouldReceive('charge')
                  ->once()
                  ->andReturn(false);
