@@ -65,6 +65,7 @@ class SupportTicketTest extends TestCase
 
         $ticket = factory(SupportTicket::class)->make();
         $response = $this->json('POST', route('create-support-ticket', [
+            'urgency'   => $ticket->urgency,
             'subject' => $ticket->subject,
             'description' => $ticket->description
         ]));
@@ -104,6 +105,7 @@ class SupportTicketTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
+            'urgency'     => $ticket->urgency,
             'subject'     => $ticket->subject,
             'description' => $ticket->description,
             'status'      => $ticket->status,
@@ -145,6 +147,7 @@ class SupportTicketTest extends TestCase
         Mail::assertQueued(SupportTicketCommentCreated::class, function($mail) use($agent){
             return $mail->user->id == $this->user->id && $mail->agent->id == $agent->id;
         });
+        
     }
 
     /**

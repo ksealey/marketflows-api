@@ -6,11 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class SupportTicket extends Model
 {
+
+    const URGENCY_LOW        = 'LOW';
+    const URGENCY_MEDIUM     = 'MEDIUM';
+    const URGENCY_HIGH       = 'HIGH'; 
+
     const STATUS_UNASSIGNED  = 'UNASSIGNED';
     const STATUS_IN_PROGRESS = 'IN_PROGRESS';
     const STATUS_CLOSED      = 'CLOSED';
 
     protected $fillable = [
+        'urgency',
         'subject',
         'description',
         'created_by_user_id',
@@ -33,5 +39,14 @@ class SupportTicket extends Model
     public function agent()
     {
         return $this->belongsTo('\App\Models\Agent');
+    }
+
+    public static function urgencies()
+    {
+        return [
+            SupportTicket::URGENCY_LOW,
+            SupportTicket::URGENCY_MEDIUM,
+            SupportTicket::URGENCY_HIGH
+        ];
     }
 }

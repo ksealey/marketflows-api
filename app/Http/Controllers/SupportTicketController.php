@@ -17,7 +17,9 @@ use Exception;
 class SupportTicketController extends Controller
 {
     public $fields = [
+        'support_tickets.urgency',
         'support_tickets.subject',
+        'support_tickets.status',
         'support_tickets.created_at',
         'support_tickets.updated_at'
     ];
@@ -39,6 +41,7 @@ class SupportTicketController extends Controller
     public function create(Request $request)
     {
         $validator = Validator::make($request->input(), [
+            'urgency'     => 'in:' . implode(',', SupportTicket::urgencies()),
             'subject'     => 'bail|required|max:255',
             'description' => 'bail|required|max:1024'
         ]);
@@ -53,6 +56,7 @@ class SupportTicketController extends Controller
 
         $supportTicket = SupportTicket::create([
             'created_by_user_id' => $user->id,
+            'urgency'            => $request->urgency,
             'subject'            => $request->subject,
             'description'        => $request->description,
             'status'             => SupportTicket::STATUS_UNASSIGNED
@@ -74,7 +78,6 @@ class SupportTicketController extends Controller
         
         return response($supportTicket);
     }
-
 
 
     public function createComment(Request $request, SupportTicket $supportTicket)
@@ -105,8 +108,6 @@ class SupportTicketController extends Controller
 
         return response($comment, 201);
     }
-
-
 
     public function createAttachment(Request $request, SupportTicket $supportTicket)
     {

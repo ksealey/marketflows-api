@@ -17,6 +17,7 @@ class CreateSupportTicketsTable extends Migration
             $table->id();
             $table->string('subject', 255);
             $table->string('description', 1024);
+            $table->string('urgency', 32);
             $table->bigInteger('created_by_user_id')->unsigned()->nullable();
             $table->bigInteger('created_by_agent_id')->unsigned()->nullable();
             $table->bigInteger('agent_id')->unsigned()->nullable();

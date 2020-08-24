@@ -38,6 +38,7 @@ class SupportTicketCommentCreated extends Mailable
      */
     public function build()
     {
-        return $this->view('mail.support-ticket-comment-created');
+        return $this->view('mail.support-ticket-comment-created')
+                    ->subject('Comment added to support ticket #' . $this->supportTicket->id);
     }
 }

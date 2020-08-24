@@ -34,6 +34,7 @@ class SupportTicketCreated extends Mailable
      */
     public function build()
     {
-        return $this->view('mail.support-ticket-created');
+        return $this->view('mail.support-ticket-created')
+                    ->subject('Support ticket #' . $this->supportTicket->id . ' created');
     }
 }
