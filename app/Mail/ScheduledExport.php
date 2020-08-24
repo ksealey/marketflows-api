@@ -32,6 +32,7 @@ class ScheduledExport extends Mailable
     public function build()
     {
         return $this->view('mail.scheduled-export')
-                    ->attach($this->report->writePath);;
+                    ->attach($this->report->writePath)
+                    ->subject('Scheduled export - ' . $this->report->name);
     }
 }
