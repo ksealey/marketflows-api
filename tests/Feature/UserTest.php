@@ -27,7 +27,9 @@ class UserTest extends TestCase
             'account_id' => $this->account->id,
         ]);
 
-        $response = $this->json('GET', route('list-users'));
+        $response = $this->json('GET', route('list-users'), [
+            'date_type' => 'ALL_TIME'
+        ]);
 
         $response->assertStatus(200);
         $response->assertJSON([
@@ -52,7 +54,8 @@ class UserTest extends TestCase
         ]);
 
         $response = $this->json('GET', route('list-users'), [
-            'exclude_self' => 1
+            'exclude_self' => 1,
+            'date_type' => 'ALL_TIME'
         ]);
 
         $response->assertStatus(200);
@@ -103,7 +106,7 @@ class UserTest extends TestCase
             'email_verified_at' => null
         ]);
 
-        Mail::assertSent(AddUserEmail::class);
+        Mail::assertQueued(AddUserEmail::class);
     }
 
     /**
@@ -138,91 +141,13 @@ class UserTest extends TestCase
             'id' => $response['id']
         ]);
 
-        Mail::assertSent(AddUserEmail::class);
+        Mail::assertQueued(AddUserEmail::class);
     }
 
-    /**
-     * Test adding a reporting user
-     * 
-     * @group users
-     */
-    public function testAddingReportingUser()
-    {
-        Mail::fake();
-
-        $user    = factory(User::class)->make(); 
-        $company = factory(Company::class)->create([
-            'account_id' => $this->user->account_id,
-            'created_by' => $this->user->id
-        ]);
-
-        $response = $this->json('POST', route('create-user') , [
-            'first_name' => $user->first_name,
-            'last_name'  => $user->last_name,
-            'email'      => $user->email,
-            'timezone'   => $user->timezone,
-            'role'       => User::ROLE_REPORTING
-        ]);
-
-        $response->assertStatus(201);
-        $response->assertJSON([
-            'first_name' => $user->first_name,
-            'last_name'  => $user->last_name,
-            'email'      => $user->email,
-            'timezone'   => $user->timezone,
-            'role'       => User::ROLE_REPORTING
-        ]);
-        
-        $this->assertDatabaseHas('users', [
-            'id' => $response['id'],
-            'account_id' => $this->account->id
-        ]);
-
-        Mail::assertSent(AddUserEmail::class);
-    }
+    
 
     /**
-     * Test adding a reporting user
-     * 
-     * @group users
-     */
-    public function testAddingClientUser()
-    {
-        Mail::fake();
-
-        $user    = factory(User::class)->make(); 
-        $company = factory(Company::class)->create([
-            'account_id' => $this->user->account_id,
-            'created_by' => $this->user->id
-        ]);
-
-        $response = $this->json('POST', route('create-user') , [
-            'first_name' => $user->first_name,
-            'last_name'  => $user->last_name,
-            'email'      => $user->email,
-            'timezone'   => $user->timezone,
-            'role'       => User::ROLE_CLIENT,
-            'companies' => json_encode([$company->id])
-        ]);
-
-        $response->assertStatus(201);
-        $response->assertJSON([
-            'first_name' => $user->first_name,
-            'last_name'  => $user->last_name,
-            'email'      => $user->email,
-            'timezone'   => $user->timezone,
-            'role'       => User::ROLE_CLIENT
-        ]);
-
-        $this->assertDatabaseHas('users', [
-            'id' => $response['id']
-        ]);
-
-        Mail::assertSent(AddUserEmail::class);
-    }
-
-    /**
-     * Test veiwing a user
+     * Test viewing a user
      * 
      * @group users
      */
@@ -274,7 +199,7 @@ class UserTest extends TestCase
             'role'       => $user->role
         ]);
 
-        Mail::assertSent(UserEmailVerificationMail::class);
+        Mail::assertQueued(UserEmailVerificationMail::class);
     }
 
     /**
@@ -313,52 +238,6 @@ class UserTest extends TestCase
         $this->user = factory(User::class)->create([
             'account_id' => $this->account->id,
             'role' => User::ROLE_SYSTEM
-        ]);
-
-        $otherUser = factory(User::class)->create([
-            'account_id' => $this->account->id
-        ]);
-
-        $response = $this->json('DELETE', route('delete-user', [
-            'user' => $otherUser->id
-        ]));
-
-        $response->assertStatus(403); //  Persmission denied
-    }
-
-    /**
-     * Test reporting users cannot delete other users
-     * 
-     * @group users
-     */
-    public function testReportingUsersCannotDeleteUsers()
-    {
-        $this->user = factory(User::class)->create([
-            'account_id' => $this->account->id,
-            'role' => User::ROLE_REPORTING
-        ]);
-
-        $otherUser = factory(User::class)->create([
-            'account_id' => $this->account->id
-        ]);
-
-        $response = $this->json('DELETE', route('delete-user', [
-            'user' => $otherUser->id
-        ]));
-
-        $response->assertStatus(403); //  Persmission denied
-    }
-
-    /**
-     * Test client users cannot delete other users
-     * 
-     * @group users
-     */
-    public function testClientUsersCannotDeleteUsers()
-    {
-        $this->user = factory(User::class)->create([
-            'account_id' => $this->account->id,
-            'role' => User::ROLE_CLIENT
         ]);
 
         $otherUser = factory(User::class)->create([

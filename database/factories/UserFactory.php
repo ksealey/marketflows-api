@@ -21,7 +21,6 @@ $factory->define(User::class, function (Faker $faker) {
         'first_name'            => $faker->firstName,
         'last_name'             => $faker->lastName,
         'email'                 => $faker->unique()->safeEmail,
-        'phone'                 =>  substr($faker->e164PhoneNumber, -10),
         'password_hash'         => '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
         'auth_token'            => str_random(128),
         'timezone'              => $faker->timezone,

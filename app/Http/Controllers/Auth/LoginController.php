@@ -39,68 +39,45 @@ class LoginController extends Controller
         }
 
         //  Block disabled users
-        if( $user->login_disabled ){
+        if( $user->login_disabled || $user->login_disabled_at ){
             return response([
                 'error' => 'Login disabled'
             ], 403);
         }
-
-        //  Block suspended accounts
-        if( $user->account->suspended_at ){
-            return response([
-                'error' => 'Account suspended'
-            ], 403);
-        }
-
-        if( $user->login_disabled_until && date('U', strtotime($user->login_disabled_until)) > date('U')){
-            $now           = new DateTime();
-            $disabledUntil = new DateTime($user->login_disabled_until);
-            $hours         = ceil(($disabledUntil->format('U') - $now->format('U')) / 3600);
-            
-            return response([
-                'error' => 'Account disabled for the next ' . $hours . ' hours - try again later'
-            ], 400);
-        }
         
-        if( ! password_verify( $request->password, $user->password_hash) ){
+        if( ! password_verify( $request->password, $user->password_hash ) ){
             $user->login_attempts++;
 
             //  If we have another failed attempt, lock for a longer period
-            if( $user->login_attempts > 3 ){
-                $user->login_disabled_until = date('Y-m-d H:i:s', strtotime('now +' . $user->login_attempts . ' hours'));
+            if( $user->login_attempts >= 4 ){
+                $user->login_disabled_at = now();
                 $user->save();
 
                 return response([
-                    'error' => 'Too many failed attempts - account disabled for ' . $user->login_attempts . ' hours',
-                ], 400);
-            }else{
-                $user->save();
-
-                return response([
-                    'error' => 'Password invalid'
+                    'error' => 'Your account has been disabled for too many failed login attempts - you must reset your password to regain access',
                 ], 400);
             }
+
+            $user->save();
+
+            return response([
+                'error' => 'Password invalid'
+            ], 400);
         }
 
         $firstLogin                      = ! $user->last_login_at ? true : false;
         $user->login_attempts            = 0;
-        $user->login_disabled_until      = null;
         $user->last_login_at             = now();
         $user->auth_token                = str_random(255);
         $user->password_reset_token      = null;
         $user->password_reset_expires_at = null;
         $user->save();
 
-        $account          = $user->account;
-        $account->in_demo = PaymentMethod::withTrashed()
-                                         ->where('account_id', $account->id)
-                                         ->count() ? false : true;
-
         return response([
-            'message'       => 'created',
+            'message'       => 'Authenticated',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
-            'account'       => $account,
+            'account'       => $user->account,
             'first_login'   => $firstLogin
         ], 200);
     }
@@ -132,10 +109,10 @@ class LoginController extends Controller
         $user->save();
 
         Mail::to($user)
-            ->later(now(), new PasswordResetEmail($user));
+            ->queue(new PasswordResetEmail($user));
 
         return response([
-            'message' => 'sent'
+            'message' => 'Sent'
         ]);
     }
 
@@ -168,12 +145,13 @@ class LoginController extends Controller
         $user = User::find($request->user_id);
         if( $user->password_reset_token !== $request->token ){
             return response([
-                'error' => 'invalid token'
+                'error' => 'Invalid token'
             ], 400);
         }
-        if( strtotime($user->password_reset_expires_at) <= strtotime('now') ){
+        
+        if( $user->password_reset_expires_at && strtotime($user->password_reset_expires_at) <= strtotime('now') ){
             return response([
-                'error' => 'token expired'
+                'error' => 'Token expired'
             ], 400);
         }
 
@@ -181,12 +159,12 @@ class LoginController extends Controller
         $user->password_reset_token      = null;
         $user->password_reset_expires_at = null;
         $user->login_attempts            = 0;
-        $user->login_disabled_until      = null;
+        $user->login_disabled_at         = null;
         $user->auth_token                = str_random(128);
         $user->save();
 
         return response([
-            'message'       => 'reset',
+            'message'       => 'Reset',
             'auth_token'    => $user->auth_token,
             'user'          => $user,
             'account'       => $user->account,
@@ -217,12 +195,12 @@ class LoginController extends Controller
         $user = User::find($request->user_id);
         if( $user->password_reset_token !== $request->token ){
             return response([
-                'error' => 'invalid token'
+                'error' => 'Invalid token'
             ], 400);
         }
         
         return response([
-            'message' => 'exists'
+            'message' => 'Exists'
         ]);
     }
 }

@@ -38,8 +38,6 @@ class RouteServiceProvider extends ServiceProvider
         $this->mapApiRoutes();
 
         $this->mapWebRoutes();
-
-        $this->mapOnlineRoutes();
     }
 
     /**
@@ -68,19 +66,5 @@ class RouteServiceProvider extends ServiceProvider
         Route::prefix('v1')
              ->namespace($this->namespace)
              ->group(base_path('routes/api.php'));
-    }
-
-    /**
-     * Define the "events" routes for the application.
-     *
-     * These routes are stateless, with high writes.
-     *
-     * @return void
-     */
-    protected function mapOnlineRoutes()
-    {
-        Route::prefix('v1/online')
-             ->namespace($this->namespace)
-             ->group(base_path('routes/online.php'));
     }
 }

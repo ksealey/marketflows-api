@@ -28,7 +28,8 @@ class UserPolicy
     public function update(User $user, User $otherUser)
     {
         return $user->role === User::ROLE_ADMIN 
-            && $user->account_id === $otherUser->account_id;
+            && $user->account_id === $otherUser->account_id
+            && $user->id != $otherUser->id;
     }
 
     public function delete(User $user, User $otherUser)

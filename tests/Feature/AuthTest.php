@@ -180,8 +180,11 @@ class AuthTest extends TestCase
     {
         $account = factory(Account::class)->create();
         $user    = factory(User::class)->create([
-            'account_id'    => $account->id,
-            'last_login_at' => now()
+            'account_id'     => $account->id,
+            'last_login_at'  => null,
+            'login_attempts' => 1,
+            'password_reset_token' => str_random(128),
+            'password_reset_expires_at' => now()->addDays(1)
         ]);
 
         $response = $this->json('POST', route('auth-login'), [
@@ -205,7 +208,15 @@ class AuthTest extends TestCase
                 'default_tts_voice' => $account->default_tts_voice,
                 'default_tts_language' => $account->default_tts_language
             ],
-            "first_login" => false
+            "first_login" => true
+        ]);
+
+        //  Make sure attempts were reset
+        $this->assertDatabaseHas('users', [
+            'id'                    => $user->id,
+            'login_attempts'        => 0,
+            'password_reset_token'  => null,
+            'password_reset_expires_at' => null
         ]);
     }
 
@@ -224,32 +235,31 @@ class AuthTest extends TestCase
         for( $i = 0; $i < 3; $i++){
             $response = $this->json('POST', route('auth-login'), [
                 'email'    => $user->email,
-                'password' => 'invalid password'
+                'password' => 'invalid_password'
             ]);
 
             $response->assertStatus(400);
             $response->assertJSON([
-                'error' => 'Invalid credentials'
+                'error' => 'Password invalid'
             ]);
         }
 
         $response = $this->json('POST', route('auth-login'), [
             'email'    => $user->email,
-            'password' => 'invalid password'
+            'password' => 'invalid_password'
         ]);
         $response->assertStatus(400);
         $response->assertJSON([
-            'error' => 'Too many failed attempts - account disabled for 4 hours',
+            'error' => 'Your account has been disabled for too many failed login attempts - you must reset your password to regain access'
         ]);
 
         $response = $this->json('POST', route('auth-login'), [
             'email'    => $user->email,
-            'password' => 'invalid password'
+            'password' => 'invalid_password'
         ]);
-
-        $response->assertStatus(400);
+        $response->assertStatus(403);
         $response->assertJSON([
-            'error' => 'Account disabled for the next 4 hours - try again later'
+            'error' => 'Login disabled'
         ]);
     }
 
@@ -298,7 +308,7 @@ class AuthTest extends TestCase
         $response->assertStatus(200);
 
         $response->assertJSON([
-            'message' => 'sent'
+            'message' => 'Sent'
         ]);
 
         Mail::assertQueued(PasswordResetEmail::class);

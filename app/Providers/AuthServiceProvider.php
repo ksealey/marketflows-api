@@ -78,7 +78,7 @@ class AuthServiceProvider extends ServiceProvider
     {
         $user = $token ? User::where('auth_token', $token)->first() : null;
 
-        return $user && ! $user->login_disabled_until ? $user : null;
+        return $user && ! $user->login_disabled && ! $user->login_disabled_at ? $user : null;
     }
 
     public function apiCredentialAuth($credentials)
@@ -97,6 +97,8 @@ class AuthServiceProvider extends ServiceProvider
         if( ! password_verify($secret, $apiCredentials->secret) )
             return null;
 
-        return User::find($apiCredentials->user_id);
+        $user = User::find($apiCredentials->user_id);
+        
+        return $user && ! $user->login_disabled && ! $user->login_disabled_at ? $user : null;
     }
 }

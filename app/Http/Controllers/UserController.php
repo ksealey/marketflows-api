@@ -66,7 +66,6 @@ class UserController extends Controller
 
         try{
             //  Create this user
-            $tempPassword = str_random(10);
             $user = User::create([
                 'account_id'                => $creator->account_id,
                 'role'                      => $request->role,
@@ -74,7 +73,8 @@ class UserController extends Controller
                 'first_name'                => $request->first_name,
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
-                'password_hash'             => bcrypt($tempPassword),
+                'password_reset_token'      => str_random(128), // To allow password reset
+                'password_hash'             => str_random(64), // Jibberish
                 'auth_token'                => str_random(255),
                 'email_verified_at'         => now() // No need for verification
             ]);
@@ -83,8 +83,8 @@ class UserController extends Controller
                 'user_id' => $user->id
             ]);
 
-            //  Send out email to user
-            Mail::to($user)->send(new AddUserEmail($creator, $user, $tempPassword));
+            Mail::to($user)
+                ->queue(new AddUserEmail($creator, $user));
         }catch(Exception $e){
             DB::rollBack();
 
@@ -103,7 +103,6 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $me    = $request->user();
         $rules = [
             'role'       => 'bail|in:' . implode(',', User::roles()),
             'timezone'   => 'bail|timezone',
@@ -118,7 +117,6 @@ class UserController extends Controller
                     $query->where('id', '!=', $user->id);
                 })
             ],
-            'phone' => 'bail|nullable|digits_between:10,13'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -139,12 +137,8 @@ class UserController extends Controller
             $user->email = $request->email;
             $user->email_verified_at = null;
 
-            Mail::to($user)->send(new UserEmailVerificationMail($user));
-        }
-
-        if( $request->has('phone') && $request->phone != $user->phone ){
-            $user->phone = preg_replace('/[^0-9]+/', '', $request->phone) ?: null;
-            $user->phone_verified_at = null;
+            Mail::to($user)
+                ->queue(new UserEmailVerificationMail($user));
         }
 
         if( $request->filled('login_disabled') )
@@ -154,8 +148,6 @@ class UserController extends Controller
 
         return response($user);
     }
-
-
 
     public function delete(Request $request, User $user)
     {
@@ -173,42 +165,6 @@ class UserController extends Controller
         return response([
             'message' => 'Deleted'
         ]);
-    }
-
-    public function changePassword(Request $request, User $user)
-    {
-        $rules = [
-            'password' => [
-                'bail',
-                'required',
-                'min:8',
-                'regex:/(?=.*[0-9])(?=.*[A-Z])/'
-            ]
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first(),
-            ], 400);
-        }
-
-        $user->password_hash        = bcrypt($request->password);
-        $user->login_attempts       = 0;
-        $user->login_disabled_until = null;
-        $user->auth_token           = str_random(255);
-        $user->save();
-
-        $response = [
-            'message' => 'success'
-        ];
-
-        if( $user->id === $request->user()->id ){
-            $response['user']       = $user;
-            $response['auth_token'] = $user->auth_token;
-        }
-
-        return response($response);
     }
 
     /**

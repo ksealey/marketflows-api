@@ -13,20 +13,22 @@ class AddUser extends Mailable
 
     public $creator;
     public $user;
-    public $tempPassword;
-    public $loginUrl;
+    public $resetUrl;
 
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct($creator, $user, $tempPassword)
+    public function __construct($creator, $user)
     {
         $this->creator      = $creator;
         $this->user         = $user;
-        $this->tempPassword = $tempPassword;
-        $this->loginUrl     = config('app.frontend_app_url') . '/login';
+        $this->resetUrl     = config('app.frontend_app_url')
+                            . '/reset-password?user_id='
+                            . $user->id 
+                            . '&token='
+                            . $user->password_reset_token;
     }
 
     /**

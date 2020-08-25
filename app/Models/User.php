@@ -42,15 +42,12 @@ class User extends Authenticatable
         'first_name',
         'last_name',
         'email',
-        'phone',
         'password_hash',
         'password_reset_token',
         'password_reset_expires_at',
         'auth_token',
         'email_verified_at',
-        'phone_verified_at',
         'last_login_at',
-        'login_disabled_until',
         'login_attempts',
         'created_at',
         'updated_at',
@@ -59,11 +56,9 @@ class User extends Authenticatable
 
     protected $hidden = [
         'password_hash',
-        'password_reset_token',
         'password_reset_expires_at',
         'auth_token',
         'last_login_at',
-        'login_disabled_until',
         'login_attempts',
         'deleted_at'
     ];
@@ -128,7 +123,7 @@ class User extends Authenticatable
 
     public function getStatusAttribute()
     {
-        if( $this->login_disabled_until || $this->login_disabled_until )
+        if( $this->login_disabled_at || $this->login_disabled )
             return 'Disabled';
 
         if( ! $this->last_login_at )
@@ -139,6 +134,9 @@ class User extends Authenticatable
 
     public function canDoAction($action)
     {
+        if( $this->login_disabled || $this->login_disabled_at )
+            return false;
+
         $action = strtolower($action);
         switch( $action ){
             case 'create':
@@ -160,6 +158,9 @@ class User extends Authenticatable
      */
     public function canViewCompany(Company $company)
     {
+        if( $this->login_disabled || $this->login_disabled_at )
+            return false;
+            
         return $company->account_id == $this->account_id;
     }
 
