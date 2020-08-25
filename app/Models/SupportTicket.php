@@ -31,6 +31,23 @@ class SupportTicket extends Model
         'deleted_at'
     ];
 
+    protected $appends = [
+        'kind',
+        'link'
+    ];
+
+    public function getLinkAttribute()
+    {
+        return route('read-support-ticket', [
+            'supportTicket' => $this->id
+        ]);
+    }
+
+    public function getKindAttribute()
+    {
+        return 'SupportTicket';
+    }
+
     public function comments()
     {
         return $this->hasMany('\App\Models\SupportTicketComment');

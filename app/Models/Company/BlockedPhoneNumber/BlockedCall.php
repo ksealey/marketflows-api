@@ -21,6 +21,10 @@ class BlockedCall extends Model
         'created_at'
     ];
 
+    protected $hidden = [
+        'deleted_at'
+    ];
+
     static public function exports() : array
     {
         return [

@@ -12,4 +12,19 @@ class SupportTicketComment extends Model
         'created_by_user_id',
         'created_by_agent_id'
     ];
+
+    protected $appends = [
+        'kind',
+        'link'
+    ];
+
+    public function getLinkAttribute()
+    {
+        return null;
+    }
+
+    public function getKindAttribute()
+    {
+        return 'SupportTicketComment';
+    }
 }

@@ -15,6 +15,23 @@ class BillingStatement extends Model
         'billing_period_ends_at'
     ];
 
+    protected $appends = [
+        'kind',
+        'link'
+    ];
+
+    public function getKindAttribute()
+    {
+        return 'BillingStatement';
+    }
+
+    public function getLinkAttribute()
+    {
+        return route('read-statement', [
+            'billingStatement' => $this->id
+        ]);
+    }
+
     public function items()
     {
         return $this->hasMany('App\Models\BillingStatementItem');

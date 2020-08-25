@@ -24,4 +24,20 @@ class APICredential extends Model
     protected $hidden = [
         'secret'
     ];
+
+    protected $appends = [
+        'kind',
+        'link'
+    ];
+
+    public function getKindAttribute()
+    {
+        return 'APICredential';
+    }
+
+    public function getLinkAttribute()
+    {
+        return null;
+    }
+
 }

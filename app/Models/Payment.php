@@ -12,8 +12,18 @@ class Payment extends Model
         'external_id'
     ];
 
+    protected $appends = [
+        'kind',
+        'link'
+    ];
+
     public function getKindAttribute()
     {
         return 'Payment';
+    }
+
+    public function getLinkAttribute()
+    {
+        return null;
     }
 }

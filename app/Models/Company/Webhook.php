@@ -22,6 +22,24 @@ class Webhook extends Model
         'deleted_by'
     ];
 
+    protected $appends = [
+        'kind',
+        'link'
+    ];
+
+    public function getKindAttribute()
+    {
+        return 'Webhook';
+    }
+
+    public function getLinkAttribute()
+    {
+        return route('read-webhook', [
+            'company' => $this->company_id,
+            'webhook' => $this->id
+        ]);
+    }
+
     const ACTION_CALL_START   = 'call_start';
     const ACTION_CALL_UPDATED = 'call_update';
     const ACTION_CALL_END     = 'call_end';

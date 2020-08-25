@@ -17,6 +17,25 @@ class ScheduledExport extends Model
         'locked_at'
     ];
 
+    protected $appends = [
+        'url',
+        'kind'
+    ];
+
+    /**
+     * Appends
+     * 
+     */
+    public function getUrlAttribute()
+    {
+        return null;
+    }
+   
+    public function getKindAttribute()
+    {
+        return 'ScheduledExport';
+    }
+
     public function getDeliveryEmailAddressesAttribute($emailString)
     {
         return explode(',', $emailString);

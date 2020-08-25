@@ -37,8 +37,6 @@ class PaymentMethod extends Model
     ];
 
     protected $hidden = [
-        'account_id',
-        'external_id',
         'external_id',
         'deleted_by',
         'deleted_at',

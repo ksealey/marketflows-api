@@ -25,6 +25,11 @@ class CallRecording extends Model
         'file_size'
     ];
 
+    protected $hidden = [
+        'deleted_at',
+        'deleted_by'
+    ];
+
     protected $appends = [
         'url',
         'kind'

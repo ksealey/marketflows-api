@@ -60,12 +60,15 @@ class User extends Authenticatable
         'auth_token',
         'last_login_at',
         'login_attempts',
-        'deleted_at'
+        'deleted_at',
+        'deleted_by'
     ];
  
     public $appends = [
         'full_name',
-        'status'
+        'status',
+        'kind',
+        'link'
     ];
 
     public $casts = [
@@ -100,6 +103,18 @@ class User extends Authenticatable
     {
         return User::select('users.*', DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local"))
                     ->where('account_id', $user->account_id);
+    }
+
+    public function getLinkAttribute()
+    {
+        return route('read-user', [
+            'user' => $this->id
+        ]);
+    }
+
+    public function getKindAttribute()
+    {
+        return 'User';
     }
 
     /**

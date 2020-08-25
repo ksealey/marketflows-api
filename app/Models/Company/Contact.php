@@ -28,7 +28,12 @@ class Contact extends Model
         'deleted_by'
     ];
 
-    public $appends = [
+    protected $hidden = [
+        'deleted_at',
+        'deleted_by'
+    ];
+
+    protected $appends = [
         'kind',
         'link'
     ];
