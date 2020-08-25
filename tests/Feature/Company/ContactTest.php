@@ -29,7 +29,8 @@ class ContactTest extends TestCase
         ]);
 
         $response = $this->json('GET', route('list-contacts', [
-            'company' => $company->id
+            'company' => $company->id,
+            'date_type' => 'ALL_TIME'
         ]));
 
         $response->assertStatus(200);
@@ -83,7 +84,8 @@ class ContactTest extends TestCase
             'company' => $company->id
         ]), [
             'start_date' => $twoDaysAgo->format('Y-m-d'),
-            'end_date'   => $twoDaysAgo->format('Y-m-d')
+            'end_date'   => $twoDaysAgo->format('Y-m-d'),
+            'date_type' => 'CUSTOM'
         ]);
 
         $response->assertStatus(200);
@@ -136,6 +138,7 @@ class ContactTest extends TestCase
         $response = $this->json('GET', route('list-contacts', [
             'company' => $company->id
         ]), [
+            'date_type' => 'ALL_TIME',
             'conditions' => json_encode([
                 [
                     'field' => 'contacts.first_name',

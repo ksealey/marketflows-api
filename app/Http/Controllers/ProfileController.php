@@ -72,7 +72,7 @@ class ProfileController extends Controller
         Mail::to($me)->send(new UserEmailVerificationMail($me));
 
         return response([
-            'message' => 'sent'
+            'message' => 'Sent'
         ]);
     }
 }

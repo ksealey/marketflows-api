@@ -70,7 +70,7 @@ class APICredentialTest extends TestCase
     /**
      * Test listing
      * 
-     * @group api-credentials-
+     * @group api-credentials
      */
     public function testListAPICredentials()
     {
@@ -78,7 +78,9 @@ class APICredentialTest extends TestCase
             'user_id'    => $this->user->id,
         ]);
 
-        $response = $this->json('GET', route('list-api-credentials'));
+        $response = $this->json('GET', route('list-api-credentials'), [
+            'date_type' => 'ALL_TIME'
+        ]);
         $response->assertStatus(200);
         $response->assertJSON([
             "result_count" => 5,

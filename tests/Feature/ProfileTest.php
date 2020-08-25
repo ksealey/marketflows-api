@@ -32,22 +32,26 @@ class MeTest extends TestCase
             'timezone'  => $this->user->timezone,
             'first_name'=> $this->user->first_name,
             'last_name' => $this->user->last_name,
-            'email'     => $this->user->email,
-            'phone'     => $this->user->phone
+            'email'     => $this->user->email
         ]);
     }
 
     /**
      * Test can update self
      * 
-     * @group me-
+     * @group me
      */
     public function testCanUpdateSelf()
     {
         Mail::fake();
 
         $user     = factory(User::class)->make();
-        $response = $this->json('PUT', route('update-me'), $user->toArray());
+        $response = $this->json('PUT', route('update-me'), [
+            'timezone'  => $user->timezone,
+            'first_name'=> $user->first_name,
+            'last_name' => $user->last_name,
+            'email'     => $user->email
+        ]);
         $response->assertStatus(200);
         $response->assertJSON([
             'id'        => $this->user->id,
@@ -56,8 +60,7 @@ class MeTest extends TestCase
             'timezone'  => $user->timezone,
             'first_name'=> $user->first_name,
             'last_name' => $user->last_name,
-            'email'     => $user->email,
-            'phone'     => $user->phone
+            'email'     => $user->email
         ]);
 
         Mail::assertSent(EmailVerificationMail::class);
@@ -74,7 +77,9 @@ class MeTest extends TestCase
         factory(Alert::class, $alertCount)->create([
             'user_id' => $this->user->id
         ]);
-        $response = $this->json('GET', route('list-alerts'));
+        $response = $this->json('GET', route('list-alerts'), [
+            'date_type' => 'ALL_TIME'
+        ]);
         $response->assertStatus(200);
         $response->assertJSONstructure([
             'results' => [
@@ -138,7 +143,9 @@ class MeTest extends TestCase
             'account_id'  => $this->account->id
         ]); 
         
-        $response  = $this->json('GET', route('list-alerts'), [], [ 
+        $response  = $this->json('GET', route('list-alerts'), [
+            'date_type' => 'ALL_TIME'
+        ], [ 
             'Authorization' => 'Bearer ' . $otherUser->auth_token
         ]);
         $response->assertStatus(200);
@@ -164,7 +171,9 @@ class MeTest extends TestCase
             'hidden_after' => now()->subMinutes(5)
         ]);
 
-        $response = $this->json('GET', route('list-alerts'));
+        $response = $this->json('GET', route('list-alerts'), [
+            'date_type' => 'ALL_TIME'
+        ]);
         $response->assertStatus(200);
         $response->assertJSONstructure([
             'results' => [
@@ -198,7 +207,7 @@ class MeTest extends TestCase
         $response = $this->json('POST', route('resend-verification-email'));
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'sent'
+            'message' => 'Sent'
         ]);
 
         Mail::assertSent(EmailVerificationMail::class);

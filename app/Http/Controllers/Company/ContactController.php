@@ -99,8 +99,8 @@ class ContactController extends Controller
             'first_name' => $request->first_name,
             'last_name'  => $request->last_name,
             'email'      => $request->email,
-            'country_code' => PhoneNumber::number($request->phone),
-            'phone'        => PhoneNumber::countryCode($request->phone),
+            'country_code' => PhoneNumber::countryCode($request->phone),
+            'phone'        => PhoneNumber::number($request->phone),
             'city'       => $request->city,
             'state'      => $request->state,
             'zip'        => $request->zip,
@@ -178,8 +178,10 @@ class ContactController extends Controller
             $contact->last_name = $request->last_name;
         if( $request->has('email') )
             $contact->email = $request->email;
-        if( $request->has('phone') )
-            $contact->phone = $request->phone;
+        if( $request->has('phone') ){
+            $contact->country_code = PhoneNumber::countryCode($request->phone);
+            $contact->phone        = PhoneNumber::number($request->phone);
+        }
         if( $request->has('city') )
             $contact->city = $request->city;
         if( $request->has('state') )

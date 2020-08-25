@@ -34,7 +34,9 @@ class BlockedPhoneNumberTest extends TestCase
 
         $response = $this->json('GET', route('list-company-blocked-phone-numbers', [
             'company' => $company->id
-        ]));
+        ]), [
+            'date_type' => 'ALL_TIME'
+        ]);
 
         $response->assertStatus(200);
         $response->assertJSON([
@@ -75,7 +77,8 @@ class BlockedPhoneNumberTest extends TestCase
                         $firstNumber->name
                     ]
                 ]
-            ])
+            ]),
+            'date_type' => 'ALL_TIME'
         ]));
         $response->assertStatus(200);
 
@@ -334,7 +337,7 @@ class BlockedPhoneNumberTest extends TestCase
     /**
      * Test fetching blocked calls for a blocked phone number
      * 
-     * @group blocked-phone-numbers-
+     * @group blocked-phone-numbers
      */
     public function testFetchBlockedCalls()
     {
@@ -366,7 +369,8 @@ class BlockedPhoneNumberTest extends TestCase
 
         $response = $this->json('GET', route('list-company-blocked-calls', [
             'company'            => $company->id,
-            'blockedPhoneNumber' => $blockedNumber->id
+            'blockedPhoneNumber' => $blockedNumber->id,
+            'date_type'          => 'ALL_TIME'
         ]));
 
         $response->assertStatus(200);

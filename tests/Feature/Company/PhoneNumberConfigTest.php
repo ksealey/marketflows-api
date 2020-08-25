@@ -140,7 +140,8 @@ class PhoneNumberConfigTest extends TestCase
             ]);
 
             $response = $this->json('GET', route('list-phone-number-configs', [
-                  'company' => $company->id
+                  'company' => $company->id,
+                  'date_type' => 'ALL_TIME'
             ]));
 
             $response->assertJSON([

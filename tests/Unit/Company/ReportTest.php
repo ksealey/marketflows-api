@@ -222,7 +222,7 @@ class ReportTest extends TestCase
     /**
      * Test exporting timeframe report
      * 
-     * @group reports--
+     * @group reports
      */
     public function testExportTimeframeReport()
     {

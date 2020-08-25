@@ -107,7 +107,9 @@ class CompanyTest extends TestCase
             'created_by' => $this->user->id,
         ]);
 
-        $response = $this->json('GET', route('list-companies'));
+        $response = $this->json('GET', route('list-companies'), [
+            'date_type' => 'ALL_TIME'
+        ]);
         $response->assertStatus(200);
         $response->assertJSON([
             "result_count" => 5,
@@ -153,7 +155,8 @@ class CompanyTest extends TestCase
         ];
 
         $response = $this->json('GET', route('list-companies'), [
-            'conditions' => json_encode($conditions)
+            'conditions' => json_encode($conditions),
+            'date_type'  => 'ALL_TIME'
         ]);
 
         $response->assertStatus(200);
@@ -198,7 +201,8 @@ class CompanyTest extends TestCase
         $twoDaysAgo->setTimeZone(new DateTimeZone($this->user->timezone));
         $response = $this->json('GET', route('list-companies'), [
             'start_date' => $twoDaysAgo->format('Y-m-d'),
-            'end_date'   => $twoDaysAgo->format('Y-m-d')
+            'end_date'   => $twoDaysAgo->format('Y-m-d'),
+            'date_type' => 'CUSTOM'
         ]);
 
         $response->assertStatus(200);

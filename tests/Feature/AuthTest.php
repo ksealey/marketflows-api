@@ -31,7 +31,6 @@ class AuthTest extends TestCase
 
         $account = factory(Account::class)->make();
         $user    = factory(User::class)->make([
-            'account_name' => $account->name,
             'password'     => 'Password1!'
         ]);
         $paymentToken = 'tok_bypassPending';
@@ -67,7 +66,15 @@ class AuthTest extends TestCase
                  ->andReturn($paymentMethods);
         });
 
-        $response = $this->json('POST', route('auth-register'), array_merge($user->toArray(), ['payment_token' => $paymentToken]));
+        $response = $this->json('POST', route('auth-register'), [
+            'payment_token' => $paymentToken,
+            'account_name'  => $account->name,
+            'first_name'    => $user->first_name,
+            'last_name'     => $user->last_name,
+            'email'         => $user->email,
+            'password'      => $user->password,
+            'timezone'      => $user->timezone
+        ]);
         $response->assertStatus(201);
         $response->assertJSON([
             "user" => [
@@ -120,7 +127,15 @@ class AuthTest extends TestCase
             'email'        => str_random(10) . '@' . config('app.spoof_email_domains')[0]
         ]);
 
-        $response = $this->json('POST', route('auth-register'), $user->toArray());
+        $response = $this->json('POST', route('auth-register'), [
+            'payment_token' => 'tok_bypassPending',
+            'account_name'  => $account->name,
+            'first_name'    => $user->first_name,
+            'last_name'     => $user->last_name,
+            'email'         => $user->email,
+            'password'      => $user->password,
+            'timezone'      => $user->timezone
+        ]);
         $response->assertStatus(400);
         $response->assertJSONStructure([
             'error'
@@ -139,13 +154,17 @@ class AuthTest extends TestCase
         $account = factory(Account::class)->create();
         $user    = factory(User::class)->create([
             'account_id' => $account->id
-        ])->toArray();
+        ]);
 
-        $response = $this->json('POST', route('auth-register'), array_merge($user, [
-            'account_name' => $account->name,
-            'plan'         => $account->plan,
-            'password'     => 'Password1!'
-        ]));
+        $response = $this->json('POST', route('auth-register'), [
+            'payment_token' => 'tok_bypassPending',
+            'account_name'  => $account->name,
+            'first_name'    => $user->first_name,
+            'last_name'     => $user->last_name,
+            'email'         => $user->email,
+            'password'      => $user->password,
+            'timezone'      => $user->timezone
+        ]);
         $response->assertStatus(400);
         $response->assertJSONStructure([
             'error'
@@ -167,7 +186,7 @@ class AuthTest extends TestCase
         ]);
         $response->assertStatus(400);
         $response->assertJSON([
-            'error' => 'User does not exist'
+            'error' => 'User not found'
         ]);
     }
     
@@ -327,7 +346,7 @@ class AuthTest extends TestCase
         ]);
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'exists'
+            'message' => 'Exists'
         ]);
 
         //  
@@ -341,7 +360,7 @@ class AuthTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'reset',
+            'message' => 'Reset',
             'user' => [
                 'id'            => $user->id,
                 'account_id'    => $user->account_id,
