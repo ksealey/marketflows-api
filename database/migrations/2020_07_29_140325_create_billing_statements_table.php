@@ -19,6 +19,7 @@ class CreateBillingStatementsTable extends Migration
             $table->dateTime('billing_period_starts_at');
             $table->dateTime('billing_period_ends_at');
             $table->bigInteger('payment_id')->unsigned()->nullable();
+            $table->dateTime('paid_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

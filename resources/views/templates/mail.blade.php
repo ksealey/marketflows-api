@@ -57,7 +57,7 @@
                 font-size: 22px;
             }
             .content{
-                padding: 20px 30px 20px 30px;
+                padding: 15px;
                 font-size: 14px;
             }
             .button{
@@ -81,6 +81,15 @@
                 padding: 10px 0;
                 font-size: 12px;
             }
+            .closing{
+                display: block;
+                margin-top: 50px;
+                font-size: 13px;
+            }
+            .closing-person{
+                display: block;
+                margin-top:4px;
+            }
         </style>
     </head>
     <body>
@@ -89,7 +98,9 @@
                 <div class="logo">
                     <img alt="MarketFlows logo" src="https://marketflows.s3.amazonaws.com/assets/images/logo.png"/>
                 </div>
-                @yield('content')
+                <div class="content">
+                    @yield('content')
+                </div>
                 <div class="footer">
                     <b style="font-size: 13px">MarketFlows, LLC</b><br/>PO Box 310384<br/>Tampa, FL 33680
                 </div>

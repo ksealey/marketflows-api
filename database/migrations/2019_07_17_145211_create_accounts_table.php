@@ -19,11 +19,11 @@ class CreateAccountsTable extends Migration
             $table->string('default_tts_voice', 32);
             $table->string('default_tts_language', 32);
             $table->dateTime('suspended_at')->nullable();
-            $table->dateTime('suspension_warning_at')->nullable();
             $table->string('suspension_message', 255)->nullable();
-            $table->smallInteger('suspension_code')->unsigned()->nullable();
+            $table->string('suspension_code', 32)->nullable();
             $table->timestamps();
             $table->softDeletes();
+            $table->bigInteger('deleted_by')->unsigned()->nullable();
         });
     }
             

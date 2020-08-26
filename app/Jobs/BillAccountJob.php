@@ -161,6 +161,7 @@ class BillAccountJob implements ShouldQueue
 
         if( $payment ){
             $statement->payment_id = $payment->id;
+            $statement->paid_at    = now();
             $statement->save();
             
             Mail::to($user)

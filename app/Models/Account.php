@@ -18,24 +18,19 @@ class Account extends Model
 {
     use SoftDeletes;
 
-    const SUSPENSION_CODE_NO_PAYMENT_METHOD                 = 1;
-    const SUSPENSION_CODE_TOO_MANY_FAILED_BILLING_ATTEMPTS  = 2;
-
-    const MAX_DEMO_NUMBER_COUNT = 2;
+    const SUSPENSION_CODE_OUSTANDING_BALANCE = 'OUSTANDING_BALANCE';
 
     protected $fillable = [
         'name',
         'default_tts_voice',
         'default_tts_language',
         'suspended_at',
-        'suspension_code',
-        'suspension_warning_at',
         'suspension_message',
     ];
 
     protected $hidden = [
+        'deleted_by',
         'suspension_code',
-        'suspension_warning_at',
         'deleted_at'
     ];
 
@@ -108,7 +103,6 @@ class Account extends Model
         $usage   = $this->currentUsage();
 
         return $storage['total']['cost'] + $usage['total']['cost'];
-
     }
 
     /**
@@ -122,5 +116,20 @@ class Account extends Model
                 return true;
         }
         return false;
+    }
+
+    public function unsuspend()
+    {
+        $billing = $this->billing;
+        $billing->next_suspension_warning_at = null;
+        $billing->suspension_warnings        = 0;
+        $billing->save();
+
+        $this->suspended_at       = null;
+        $this->suspension_message = null;
+        $this->suspension_code    = null;
+        $this->save();
+
+        return $this;
     }
 }

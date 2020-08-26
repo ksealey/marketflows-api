@@ -19,7 +19,8 @@ class CreateBillingTable extends Migration
             $table->dateTime('billing_period_starts_at');
             $table->dateTime('billing_period_ends_at');
             $table->dateTime('locked_at')->nullable();
-            $table->tinyInteger('warnings')->default(0);
+            $table->smallInteger('suspension_warnings')->unsigned()->default(0);
+            $table->dateTime('next_suspension_warning_at')->nullable();
             $table->string('external_id', 128);
             $table->softDeletes();
             $table->timestamps();

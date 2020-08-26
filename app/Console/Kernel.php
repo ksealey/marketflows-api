@@ -29,24 +29,15 @@ class Kernel extends ConsoleKernel
                   ->everyFiveMinutes()
                   ->onOneServer();
 
-
-        //  Send automated reports every 15 minutes
-        $schedule->command('reports:dispatch-automations')
-                 ->everyFifteenMinutes()
+        //  Push scheduled export jobs
+        $schedule->command('push-scheduled-exports')
+                 ->everyFiveMinutes()
                  ->onOneServer();
 
-       
-
-         // Send suspension warnings every 15 minutes
-         $schedule->command('accounts:suspension-warnings')
-                  ->everyFifteenMinutes()
-                  ->onOneServer();
-
-
-
-        $schedule->command('clear:password-resets')
-                 ->hourly()
-                 ->onOneServer();   
+        //  Push account suspension jobs
+        $schedule->command('send-account-suspension-warnings')
+                 ->everyFiveMinutes()
+                 ->onOneServer();
     }
 
     /**

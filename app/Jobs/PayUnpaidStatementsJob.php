@@ -8,6 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\PaymentMethod;
+use App\Models\Account;
 use App\Models\Billing;
 use App\Models\BillingStatement;
 use App\Models\User;
@@ -45,7 +46,7 @@ class PayUnpaidStatementsJob implements ShouldQueue
         $this->paymentManager = App::make('App\Helpers\PaymentManager');
 
         $paymentMethod = $this->paymentMethod;
-        $statements    = BillingStatement::whereNull('payment_id')
+        $statements    = BillingStatement::whereNull('paid_at')
                                          ->where('billing_id', DB::raw(
                                              '(SELECT id 
                                                 FROM billing 
@@ -61,19 +62,27 @@ class PayUnpaidStatementsJob implements ShouldQueue
         foreach( $statements as $statement ){
             $payment = $this->paymentManager->charge($paymentMethod, $statement->total());
             if( ! $payment ){
-                Mail::to($user)
-                    ->send(new PaymentMethodFailed($user, $paymentMethod, $statement));
-
+                if( $user ){
+                    Mail::to($user)
+                        ->send(new PaymentMethodFailed($user, $paymentMethod, $statement));
+                }
                 return;
             }
 
             $statement->payment_id = $payment->id;
+            $statement->paid_at    = now();
             $statement->save();
             
-            Mail::to($user)
-                ->send(new BillingReceipt($user, $payment));
+            if( $user ){
+                Mail::to($user)
+                    ->send(new BillingReceipt($user, $payment));
+            }
 
             sleep(2);
         }
+
+        $account = $paymentMethod->account;
+        if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE )
+            $account->unsuspend();
     }
 }

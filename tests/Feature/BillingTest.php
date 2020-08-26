@@ -119,6 +119,7 @@ class BillingTest extends TestCase
         $this->assertNotNull($statement);
         $this->assertEquals($statement->total(), $this->billing->currentTotal());
         $this->assertEquals($statement->total(), $statement->payment->total);
+        $this->assertNotNull($statement->paid_at);
 
         //
         //  Make sure the mail was sent
@@ -162,6 +163,7 @@ class BillingTest extends TestCase
         $statement = BillingStatement::where('billing_id', $this->billing->id)->first();
         $this->assertNotNull($statement);
         $this->assertNull($statement->payment_id);
+        $this->assertNull($statement->paid_at);
 
         //
         //  Make sure the payment failure mail was sent
