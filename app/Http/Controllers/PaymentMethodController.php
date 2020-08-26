@@ -48,7 +48,6 @@ class PaymentMethodController extends Controller
     {
         $rules = [ 
             'token'          => 'required',
-            'primary_method' => 'boolean'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -58,12 +57,10 @@ class PaymentMethodController extends Controller
             ], 400);
         }
 
-        $user = $request->user();
-
         $paymentMethod = PaymentMethod::createFromToken(
             $request->token, 
-            $user, 
-            !!$request->primary_method 
+            $request->user(), 
+            true 
         );
 
         //  
