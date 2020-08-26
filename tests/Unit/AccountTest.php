@@ -229,20 +229,4 @@ class AccountTest extends TestCase
             'deleted_at' => null
         ]);
     }
-
-
-    public function createBillableStatement($with = [])
-    {
-        $statement = factory(BillingStatement::class)->create(array_merge([
-            'billing_id' => $this->billing->id
-        ], $with));
-
-        for( $i = 0; $i < 4; $i++ ){
-            factory(BillingStatementItem::class)->create([
-                'billing_statement_id' => $statement->id
-            ]);
-        }
-
-        return $statement;
-    }
 }

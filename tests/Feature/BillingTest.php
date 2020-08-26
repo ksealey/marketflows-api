@@ -15,6 +15,8 @@ use App\Models\PaymentMethod;
 use App\Models\Company\PhoneNumber;
 use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
+use App\Mail\AccountUnsuspended;
+use App\Helpers\PaymentManager;
 use Artisan;
 use Mail;
 
@@ -288,5 +290,119 @@ class BillingTest extends TestCase
             'total' => $this->billing->currentTotal(),
             'items' => []
         ]);
+    }
+
+    /**
+     * Test paying a statement
+     * 
+     * @group billing
+     */
+    public function testPayStatement()
+    {
+        Mail::fake();
+
+        //  Suspend
+        $this->account->suspended_at        = now();
+        $this->account->suspension_code     = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->suspension_message  = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->save();
+
+        $this->billing->suspension_warnings = 3;
+        $this->billing->next_suspension_warning_at = now();
+        $this->billing->save();
+
+        $paymentMethod = $this->createPaymentMethod();
+
+        $payment = factory(Payment::class)->create([
+            'payment_method_id' => $paymentMethod->id,
+            'external_id'       => str_random(16),
+            'total'             => 100.50
+        ]);
+
+        $this->mock(PaymentManager::class, function($mock) use($payment){
+            $mock->shouldReceive('charge')
+                 ->once()
+                 ->andReturn($payment);
+        });
+
+        $statement = $this->createBillableStatement([
+            'billing_id'               => $this->billing->id,
+            'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
+            'billing_period_ends_at'   => now()->endOfDay()
+        ]);
+
+        $response = $this->json('POST', route('pay-statement', [
+            'billingStatement' => $statement->id,
+            'payment_method_id'=> $paymentMethod->id
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'message' => 'Paid'
+        ]);
+
+        //  Make sure statement is paid
+        $statement = BillingStatement::find($statement->id);
+        $this->assertEquals($statement->payment_id, $payment->id);
+        $this->assertNotNull($statement->paid_at);
+
+        //  Make sure receipt was sent
+        Mail::assertQueued(BillingReceipt::class, function($mail) use($statement){
+            return $mail->statement->id === $statement->id;
+        });
+
+        //  Make sure unsuspension mail was sent
+        Mail::assertQueued(AccountUnsuspended::class, function($mail){
+            return $mail->user->id === $this->user->id;
+        });
+
+        $account = Account::find($this->account->id);
+        $this->assertNull($account->suspended_at);
+        $this->assertNull($account->suspension_code);
+        $this->assertNull($account->suspension_message);
+
+        $billing = Billing::find($this->billing->id);
+        $this->assertEquals($billing->suspension_warnings, 0);
+        $this->assertNull($billing->next_suspension_warning_at);
+    }
+
+    /**
+     * Test paying a statement fails gracefully
+     * 
+     * @group billing--
+     */
+    public function testPayStatementFailsGracefully()
+    {
+        //  Suspend
+        $this->account->suspended_at        = now();
+        $this->account->suspension_code     = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->suspension_message  = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->save();
+
+        $this->billing->suspension_warnings = 3;
+        $this->billing->next_suspension_warning_at = now();
+        $this->billing->save();
+
+        $paymentMethod = $this->createPaymentMethod();
+
+        $this->mock(PaymentManager::class, function($mock){
+            $mock->shouldReceive('charge')
+                 ->once()
+                 ->andReturn(null);
+        });
+
+        $statement = $this->createBillableStatement([
+            'billing_id'               => $this->billing->id,
+            'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
+            'billing_period_ends_at'   => now()->endOfDay()
+        ]);
+
+        $response = $this->json('POST', route('pay-statement', [
+            'billingStatement' => $statement->id,
+            'payment_method_id'=> $paymentMethod->id
+        ]));
+
+        $response->assertStatus(400);
+        
     }
 }

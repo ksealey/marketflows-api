@@ -20,12 +20,6 @@ class SuspendedAccounts
             return response([
                 'error' => 'User disabled'
             ], 403);
-        
-        if($user->account->suspended_at){
-            return response([
-                'error' => 'Account suspended'
-            ], 403);
-        }
 
         return $next($request);
     }

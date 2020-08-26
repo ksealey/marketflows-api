@@ -6,6 +6,8 @@ use \App\Models\Account;
 use \App\Models\Billing;
 use \App\Models\User;
 use App\Models\PaymentMethod;
+use App\Models\BillingStatement;
+use App\Models\BillingStatementItem;
 use \App\Models\AccountBlockedPhoneNumber;
 use \App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
 use App\Models\Company;
@@ -314,6 +316,21 @@ trait CreatesAccount
                 });
             });
         });
+    }
+
+    public function createBillableStatement($with = [])
+    {
+        $statement = factory(BillingStatement::class)->create(array_merge([
+            'billing_id' => $this->billing->id
+        ], $with));
+
+        for( $i = 0; $i < 4; $i++ ){
+            factory(BillingStatementItem::class)->create([
+                'billing_statement_id' => $statement->id
+            ]);
+        }
+
+        return $statement;
     }
 
     public function makeSwapRules($with = [])

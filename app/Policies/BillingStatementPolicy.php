@@ -18,6 +18,12 @@ class BillingStatementPolicy
     public function read(User $user, BillingStatement $billingStatement)
     {
         return $user->role === User::ROLE_ADMIN
-            && $user->account_id === $billingStatement->account_id;
+            && $user->account_id === $billingStatement->billing->account_id;
+    }
+
+    public function update(User $user, BillingStatement $billingStatement)
+    {
+        return $user->role === User::ROLE_ADMIN
+            && $user->account_id === $billingStatement->billing->account_id;
     }
 }

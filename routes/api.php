@@ -199,6 +199,10 @@ Route::middleware(['auth:api', 'api'])->group(function(){
         Route::get('/{billingStatement}', 'BillingStatementController@read')
              ->middleware('can:read,billingStatement')
              ->name('read-statement');
+
+        Route::post('/{billingStatement}/pay', 'BillingStatementController@pay')
+             ->middleware('can:update,billingStatement')
+             ->name('pay-statement');
     });
 
     /*

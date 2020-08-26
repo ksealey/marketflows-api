@@ -41,7 +41,7 @@ class AuthServiceProvider extends ServiceProvider
                     '\\Policies\\', 
                     trim($modelClass, '\\')
                 ) . 'Policy';
-            
+
             return $path;
         });
 

@@ -9,6 +9,7 @@ use App\Models\Alert;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
+use App\Mail\AccountUnsuspended;
 use Mail;
 use Exception;
 use DB;
@@ -130,6 +131,8 @@ class Account extends Model
         $this->suspension_code    = null;
         $this->save();
 
-        return $this;
+        foreach( $this->admin_users as $user ){
+            Mail::to($user->email)->queue(new AccountUnsuspended($user));
+        }
     }
 }

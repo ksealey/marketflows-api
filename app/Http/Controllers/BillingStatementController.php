@@ -3,9 +3,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PaymentMethod;
+use App\Models\Account;
 use App\Models\Billing;
 use App\Models\BillingStatement;
+use App\Helpers\PaymentManager;
+use App\Mail\BillingReceipt;
 use DB;
+use App;
+use Mail;
 use \Carbon\Carbon;
 
 class BillingStatementController extends Controller
@@ -164,5 +169,57 @@ class BillingStatementController extends Controller
             $this->fields,
             'billing_statements.created_at'
         );
+    }
+
+    public function pay(Request $request, BillingStatement $billingStatement)
+    {
+        if( $billingStatement->paid_at ){
+            return response([
+                'error' => 'Billing statement paid'
+            ], 400);
+        }
+
+        $validator = validator($request->input(), [
+            'payment_method_id' => 'bail|required|exists:payment_methods,id'
+        ]);
+        
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $paymentMethod = PaymentMethod::find($request->payment_method_id);
+        $user          = $request->user();
+        if( $paymentMethod->account_id !== $user->account_id )
+            return response([
+                'error' => 'Payment method does not exist'
+            ], 400);
+
+        $paymentManager = App::make(PaymentManager::class);
+        $payment        = $paymentManager->charge($paymentMethod, $billingStatement->total());
+        if( ! $payment ){
+            return response([
+                'error' => 'Unable to process payment - please try another payment method'
+            ], 400);
+        }
+
+        //  Pay bill
+        $billingStatement->payment_id = $payment->id;
+        $billingStatement->paid_at    = now();
+        $billingStatement->save();
+
+        //  Unsuspend account if suspended
+        $account = $paymentMethod->account;
+        if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE )
+            $account->unsuspend();
+
+        //  Mail reciept
+        Mail::to($user)
+            ->queue(new BillingReceipt($user, $billingStatement, $paymentMethod, $payment));
+
+        return response([
+            'message' => 'Paid'
+        ]);
     }
 }
