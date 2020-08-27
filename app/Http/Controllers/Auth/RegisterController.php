@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Billing;
 use App\Models\User;
+use App\Models\Company\PhoneNumber;
 use App\Models\PaymentMethod;
 use App\Models\UserSettings;
 use App\Models\Auth\EmailVerification;
@@ -42,6 +43,7 @@ class RegisterController extends Controller
             'first_name'            => 'bail|required|min:2|max:32',
             'last_name'             => 'bail|required|min:2|max:32',
             'email'                 => 'bail|required|email|max:128|unique:users,email',
+            'phone'                 => ['bail','required', 'regex:/(.*)[0-9]{3}(.*)[0-9]{3}(.*)[0-9]{4}/'],
             'password' => [
                 'bail',
                 'required',
@@ -112,6 +114,7 @@ class RegisterController extends Controller
                 'first_name'                => $request->first_name,
                 'last_name'                 => $request->last_name,
                 'email'                     => $request->email,
+                'phone'                     => PhoneNumber::countryCode($request->phone) . PhoneNumber::number($request->phone),
                 'password_hash'             => bcrypt($request->password),
                 'auth_token'                => str_random(255),
                 'last_login_at'             => now()

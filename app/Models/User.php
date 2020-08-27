@@ -42,6 +42,7 @@ class User extends Authenticatable
         'first_name',
         'last_name',
         'email',
+        'phone',
         'password_hash',
         'password_reset_token',
         'password_reset_expires_at',

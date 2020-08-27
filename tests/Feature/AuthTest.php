@@ -72,6 +72,7 @@ class AuthTest extends TestCase
             'first_name'    => $user->first_name,
             'last_name'     => $user->last_name,
             'email'         => $user->email,
+            'phone'         => $user->phone,
             'password'      => $user->password,
             'timezone'      => $user->timezone
         ]);
@@ -81,7 +82,8 @@ class AuthTest extends TestCase
                 'role'          => $user->role,
                 'timezone'      => $user->timezone,
                 'first_name'    => $user->first_name,
-                'email'         => $user->email
+                'email'         => $user->email,
+                'phone'         => $user->phone
             ],
             "account" => [
                 'name' => $account->name,
@@ -133,6 +135,7 @@ class AuthTest extends TestCase
             'first_name'    => $user->first_name,
             'last_name'     => $user->last_name,
             'email'         => $user->email,
+            'phone'         => $user->phone,
             'password'      => $user->password,
             'timezone'      => $user->timezone
         ]);
@@ -162,6 +165,7 @@ class AuthTest extends TestCase
             'first_name'    => $user->first_name,
             'last_name'     => $user->last_name,
             'email'         => $user->email,
+            'phone'         => $user->phone,
             'password'      => $user->password,
             'timezone'      => $user->timezone
         ]);

@@ -21,6 +21,7 @@ class CreateUsersTable extends Migration
             $table->string('first_name', 32);
             $table->string('last_name', 32);
             $table->string('email', 128);
+            $table->string('phone', 16)->nullable();
             $table->string('password_hash', 128);
             $table->string('password_reset_token', 255)->nullable();
             $table->dateTime('password_reset_expires_at')->nullable();
