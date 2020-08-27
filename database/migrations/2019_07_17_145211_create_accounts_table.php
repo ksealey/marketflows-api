@@ -16,8 +16,8 @@ class CreateAccountsTable extends Migration
         Schema::create('accounts', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name', 64);
-            $table->string('default_tts_voice', 32);
-            $table->string('default_tts_language', 32);
+            $table->string('tts_voice', 32);
+            $table->string('tts_language', 32);
             $table->dateTime('suspended_at')->nullable();
             $table->string('suspension_message', 255)->nullable();
             $table->string('suspension_code', 32)->nullable();

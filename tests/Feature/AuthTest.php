@@ -87,8 +87,8 @@ class AuthTest extends TestCase
             ],
             "account" => [
                 'name' => $account->name,
-                'default_tts_voice' => $account->default_tts_voice,
-                'default_tts_language' => $account->default_tts_language
+                'tts_voice' => $account->tts_voice,
+                'tts_language' => $account->tts_language
             ],
             "first_login" => true
         ]);
@@ -228,8 +228,8 @@ class AuthTest extends TestCase
             ],
             "account" => [
                 'name' => $account->name,
-                'default_tts_voice' => $account->default_tts_voice,
-                'default_tts_language' => $account->default_tts_language
+                'tts_voice' => $account->tts_voice,
+                'tts_language' => $account->tts_language
             ],
             "first_login" => true
         ]);
@@ -375,8 +375,8 @@ class AuthTest extends TestCase
             ],
             'account' => [
                 'name' => $account->name,
-                'default_tts_voice' => $account->default_tts_voice,
-                'default_tts_language' => $account->default_tts_language
+                'tts_voice' => $account->tts_voice,
+                'tts_language' => $account->tts_language
             ],
             'first_login' => false
         ]);

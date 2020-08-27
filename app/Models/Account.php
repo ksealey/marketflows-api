@@ -23,8 +23,8 @@ class Account extends Model
 
     protected $fillable = [
         'name',
-        'default_tts_voice',
-        'default_tts_language',
+        'tts_voice',
+        'tts_language',
         'suspended_at',
         'suspension_message',
     ];

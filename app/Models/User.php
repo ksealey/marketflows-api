@@ -127,11 +127,6 @@ class User extends Authenticatable
         return $this->belongsTo('\App\Models\Account');
     }
 
-    public function settings()
-    {
-        $this->hasOne('\App\Models\UserSettings');
-    }
-
     public function getFullNameAttribute()
     {
         return  ucfirst(strtolower($this->first_name)) . ' ' . ucfirst(strtolower($this->last_name));

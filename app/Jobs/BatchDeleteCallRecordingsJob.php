@@ -53,8 +53,8 @@ class BatchDeleteCallRecordingsJob implements ShouldQueue
         //
         CallRecording::whereIn('call_id', function($q){
                         $q->select('id')
-                        ->from('calls')
-                        ->where('company_id', $this->company->id); 
+                          ->from('calls')
+                          ->where('company_id', $this->company->id); 
                     })
                     ->update([ 'deleted_at' => now() ]);  
 

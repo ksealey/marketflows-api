@@ -9,7 +9,6 @@ use App\Models\Billing;
 use App\Models\User;
 use App\Models\Company\PhoneNumber;
 use App\Models\PaymentMethod;
-use App\Models\UserSettings;
 use App\Models\Auth\EmailVerification;
 use App\Helpers\PaymentManager;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
@@ -93,9 +92,9 @@ class RegisterController extends Controller
 
             //  Create account
             $account = Account::create([
-                'name'                => $request->account_name,
-                'default_tts_voice'   => 'Joanna',
-                'default_tts_language'=> 'en-US',
+                'name'        => $request->account_name,
+                'tts_voice'   => 'Joanna',
+                'tts_language'=> 'en-US',
             ]);
 
             //  Setup billing for account
@@ -118,9 +117,6 @@ class RegisterController extends Controller
                 'password_hash'             => bcrypt($request->password),
                 'auth_token'                => str_random(255),
                 'last_login_at'             => now()
-            ]);
-            UserSettings::create([
-                'user_id' => $user->id
             ]);
 
             //  Add initial payment method

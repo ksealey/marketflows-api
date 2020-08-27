@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Account;
 use App\Models\PaymentMethod;
-use Illuminate\Validation\Rule;
+use App\Models\BillingStatement;
+use App\Models\Company;
+use App\Models\User;
 use DateTime;
 use Validator;
 use Exception;
@@ -24,8 +26,15 @@ class AccountController extends Controller
      */
     public function update(Request $request)
     {
+        $config    = config('services.twilio.languages');
+        $languages = array_keys($config);
+        $voiceKey  = $request->tts_language && in_array($request->tts_language, $languages) ? $request->tts_language : 'en-US';
+        $voices    = array_keys($config[$voiceKey]['voices']); 
+
         $rules = [
-            'name' => 'bail|min:1|max:64',
+            'name'          => 'bail|min:1|max:64',
+            'tts_language'  => 'bail|in:' . implode(',', $languages),
+            'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)]
         ];
 
         $validator = validator($request->all(), $rules);
@@ -40,6 +49,12 @@ class AccountController extends Controller
         if( $request->filled('name') )
             $account->name = $request->name;
 
+        if( $request->filled('tts_language') )
+            $account->tts_language = $request->tts_language;
+
+        if( $request->filled('tts_voice') )
+            $account->tts_voice = $request->tts_voice;
+        
         $account->save();
 
         return response($account);
@@ -51,50 +66,46 @@ class AccountController extends Controller
      */
     public function delete(Request $request)
     {
-        $validator = validator($request->rules(),[
-            'confirm_close' => 'required|boolean'
-        ]);
-
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
         if( ! $request->confirm_close ){
             return response([
                 'error' => 'You must confirm that you would like to close the account. Do this by setting confirm_close to 1.'
             ], 400);
         }
 
-        //  Make sure the account does not have a balance
-        $billing = $account->billing;
-        if( $billing->past_due_amount ){
+        //
+        //  Make sure there are no unpaid statements
+        //
+        $user       = $request->user();
+        $account    = $user->account;
+        $statements = BillingStatement::where('billing_id',  $account->billing->id)
+                                        ->whereNull('paid_at')
+                                        ->get();
+        if( count($statements) ){
             return response([
-                'error' => 'You cannot close an account with a past due amount.'
+                'error' => 'You must first pay all unpaid statements to close your account'
             ], 400);
         }
 
-        //  Delete Phone Numbers
-        
-        //  Delete Users
+        //  Remove companies and resources
+        $companies = Company::where('account_id', $account->id)->get();
+        foreach($companies as $company){
+            $user->deleteCompany($company);
+        }
 
-        //  Delete Billing
+        //  Remove all users
+        User::where('account_id', $account->id)
+            ->whereNull('deleted_at')
+            ->update([
+                'deleted_at' => now(),
+                'deleted_by' => $user->id
+            ]);
 
-        //  Delete Account
+        //  Remove account and billing
+        $account->delete();
+        $account->billing->delete();
 
-        //  
-        //  Delete more stuff...
-        //
-
-        //
-        //  Create closing statement
-        //
-
-        //
-        //  Pay closing statement
-        //
-
-         
+        return response([
+            'message' => 'Bye'
+        ]);
     }
 }

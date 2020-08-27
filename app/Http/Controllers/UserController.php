@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Models\User;
-use App\Models\UserSettings;
 use App\Models\Company;
 use App\Mail\AddUser as AddUserEmail;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
@@ -77,10 +76,6 @@ class UserController extends Controller
                 'password_hash'             => str_random(64), // Jibberish
                 'auth_token'                => str_random(255),
                 'email_verified_at'         => now() // No need for verification
-            ]);
-
-            UserSettings::create([
-                'user_id' => $user->id
             ]);
 
             Mail::to($user)
