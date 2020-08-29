@@ -9,7 +9,6 @@ use \App\Models\Company\Contact;
 use \App\Models\Company\Report;
 use \App\Models\Company\ScheduledExport;
 use \App\Models\Company\Call;
-use \App\Jobs\ExportResultsJob;
 use \DateTimeZone;
 use Queue;
 

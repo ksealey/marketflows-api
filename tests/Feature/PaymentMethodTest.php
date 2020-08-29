@@ -33,15 +33,14 @@ class PaymentMethodTest extends TestCase
         $this->billing->save();
 
         $response = $this->json('POST', route('create-payment-method'), [
-            'token' => 'tok_bypassPendingInternational',
-            'primary_method' => false
+            'token' => 'tok_bypassPendingInternational'
         ]);
 
         $response->assertStatus(201);
         $response->assertJSON([
             'type'           => 'credit',
             'brand'          => 'Visa',
-            'primary_method' => false,
+            'primary_method' => true,
             'kind'           => 'PaymentMethod',
             'created_by'     => $this->user->id
         ]);

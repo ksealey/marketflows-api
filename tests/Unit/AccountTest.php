@@ -13,7 +13,7 @@ use \App\Mail\SuspensionWarning7Days as SuspensionWarning7DaysMail;
 use \App\Mail\SuspensionWarning9Days as SuspensionWarning9DaysMail;
 use \App\Mail\SuspensionWarning10Days as SuspensionWarning10DaysMail;
 use \App\Jobs\ReleaseAccountNumbersJob;
-use \App\Helpers\PhoneNumberManager;
+use \App\Services\PhoneNumberService;
 use Artisan;
 use Mail;
 use Queue;
@@ -208,7 +208,7 @@ class AccountTest extends TestCase
             'billing_period_ends_at'   => $end
         ]);
 
-        $this->mock(PhoneNumberManager::class, function($mock){
+        $this->mock(PhoneNumberService::class, function($mock){
             $mock->shouldReceive('releaseNumber')
                  ->once();
         });

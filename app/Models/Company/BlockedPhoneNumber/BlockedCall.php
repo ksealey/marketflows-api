@@ -4,12 +4,10 @@ namespace App\Models\Company\BlockedPhoneNumber;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\PerformsExport;
-
 
 class BlockedCall extends Model
 {
-    use SoftDeletes, PerformsExport;
+    use SoftDeletes;
     
     public $timestamps = false;
 

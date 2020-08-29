@@ -6,12 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
-use \App\Traits\PerformsExport;
 use DB;
 
 class PhoneNumberConfig extends Model
 {
-    use SoftDeletes, PerformsExport;
+    use SoftDeletes;
 
     protected $fillable = [
         'account_id',

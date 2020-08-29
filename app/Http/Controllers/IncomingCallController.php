@@ -21,7 +21,7 @@ use App\Models\Company\Webhook;
 use App\Events\Company\CallEvent;
 use Twilio\TwiML\VoiceResponse;
 use Twilio\Rest\Client as Twilio;
-use \App\Helpers\PhoneNumberManager;
+use \App\Services\PhoneNumberService;
 use Validator;
 use Storage;
 use Exception;
@@ -29,13 +29,6 @@ use DB;
 
 class IncomingCallController extends Controller
 {
-    protected $numberManager;
-
-    public function __construct(PhoneNumberManager $numberManager)
-    {
-        $this->numberManager = $numberManager;
-    }
-
     /**
      * Entry point for all new incoming calls
      * 

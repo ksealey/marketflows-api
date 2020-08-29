@@ -86,9 +86,7 @@ class AuthTest extends TestCase
                 'phone'         => $user->phone
             ],
             "account" => [
-                'name' => $account->name,
-                'tts_voice' => $account->tts_voice,
-                'tts_language' => $account->tts_language
+                'name' => $account->name
             ],
             "first_login" => true
         ]);

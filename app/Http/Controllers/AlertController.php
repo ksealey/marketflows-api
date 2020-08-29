@@ -32,7 +32,7 @@ class AlertController extends Controller
                             $query->whereNull('hidden_after')
                                   ->orWhere('hidden_after', '>', now());
                       });
-
+                      
         return parent::results(
             $request,
             $query,

@@ -56,7 +56,7 @@ class BlockedCallController extends Controller
             $request,
             [],
             self::$fields,
-            'blocked_phone_numbers.created_at'
+            'blocked_calls.created_at'
         );
     }
 }

@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Contracts\Exportable;
-use \App\Traits\PerformsExport;
 use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company\Report;
@@ -23,7 +22,7 @@ use DB;
 
 class Company extends Model implements Exportable
 {
-    use SoftDeletes, PerformsExport;
+    use SoftDeletes;
 
     protected $table = 'companies'; 
 

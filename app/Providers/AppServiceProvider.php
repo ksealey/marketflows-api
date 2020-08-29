@@ -36,23 +36,19 @@ class AppServiceProvider extends ServiceProvider
         });
 
         //  Register Number Manager
-        $this->app->bind('App\Helpers\PhoneNumberManager', function($app){
+        $this->app->bind('App\Services\PhoneNumberService', function($app){
             $config = config('services.twilio');
             if( App::environment(['prod', 'production']) ){
                 $client = new Twilio($config['sid'], $config['token']);
             }else{
                 $client = new Twilio($config['test_sid'], $config['test_token']);
             }
-            return new \App\Helpers\PhoneNumberManager($client);
+            return new \App\Services\PhoneNumberService($client);
         });
 
         //  Register AWS
         $this->app->bind('App\Helpers\TextToSpeech', function($app){
             return new \App\Helpers\TextToSpeech(AWS::createClient('polly'));
-        });
-
-        $this->app->bind('App\Helpers\PaymentManager', function(){
-            return new \App\Helpers\PaymentManager();
         });
 
         $this->app->bind('Analytics', function(){

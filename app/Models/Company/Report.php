@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\ReportAutomation;
 use League\Flysystem\Adapter\Local;
 use App\Traits\AppliesConditions;
-use \App\Traits\PerformsExport;
 use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
 use \PhpOffice\PhpSpreadsheet\Cell\DataType as ExcelDaTaype;
@@ -21,7 +20,7 @@ use DateTimeZone;
 
 class Report extends Model
 {
-    use AppliesConditions, PerformsExport, HandlesDateFilters, SoftDeletes;
+    use AppliesConditions, HandlesDateFilters, SoftDeletes;
 
     public $results;
     public $startDate;

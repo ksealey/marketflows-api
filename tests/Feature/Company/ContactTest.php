@@ -6,7 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\Company\Contact;
-use App\Jobs\ExportResultsJob;
+use App\Services\ExportService;
 use Queue;
 
 class ContactTest extends TestCase
@@ -194,8 +194,13 @@ class ContactTest extends TestCase
      */
     public function testExportContacts()
     {
-        Queue::fake();
-        
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
+
         $company  = $this->createCompany();
         $contacts = factory(Contact::class, 10)->create([
             'account_id' => $company->account_id,
@@ -208,14 +213,7 @@ class ContactTest extends TestCase
         ]));
 
         $response->assertStatus(200);
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job){
-            return $job->model === Contact::class 
-                && $job->user->id === $this->user->id;
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -225,7 +223,12 @@ class ContactTest extends TestCase
      */
     public function testExportContactsWithConditions()
     {
-        Queue::fake();
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
         
         $company     = $this->createCompany();
         $contacts = factory(Contact::class, 10)->create([
@@ -250,16 +253,7 @@ class ContactTest extends TestCase
             'conditions' => json_encode($conditions)
         ]);
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job) use($conditions){
-            return $job->model === Contact::class 
-                && $job->user->id === $this->user->id
-                && json_decode($job->input['conditions'], true) == $conditions;
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -269,8 +263,12 @@ class ContactTest extends TestCase
      */
     public function testExportContactsWithDateRanges()
     {
-        Queue::fake();
-
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
         $twoDaysAgo = now()->subDays(2);
 
         $company    = $this->createCompany();
@@ -296,17 +294,7 @@ class ContactTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job) use($twoDaysAgo){
-            return $job->model === Contact::class 
-                && $job->user->id === $this->user->id
-                && $job->input['start_date'] == $twoDaysAgo->format('Y-m-d')
-                && $job->input['end_date'] == $twoDaysAgo->format('Y-m-d');
-        });
+        $response->assertSee($exportData);
     }
 
     /**

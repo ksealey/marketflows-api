@@ -4,11 +4,10 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use \App\Traits\PerformsExport;
 
 class Contact extends Model
 {
-    use SoftDeletes, PerformsExport;
+    use SoftDeletes;
     
     protected $fillable = [
         'uuid',

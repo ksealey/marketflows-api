@@ -9,8 +9,7 @@ use \App\Models\Company\Call;
 use \App\Traits\CanSwapNumbers;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Contracts\Exportable;
-use \App\Traits\PerformsExport;
-use \App\Helpers\PhoneNumberManager;
+use \App\Services\PhoneNumberService;
 
 use Twilio\Rest\Client as TwilioClient;
 use App;
@@ -20,7 +19,7 @@ use Carbon\Carbon;
 
 class PhoneNumber extends Model implements Exportable
 {
-    use SoftDeletes, CanSwapNumbers, PerformsExport;
+    use SoftDeletes, CanSwapNumbers;
 
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;
@@ -44,7 +43,7 @@ class PhoneNumber extends Model implements Exportable
         'OTHER'
     ];
     
-    private $numberManager;
+    private $numberService;
 
     protected $fillable = [
         'uuid',

@@ -12,7 +12,6 @@ use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use App\Rules\SwapRulesRule;
 use App\Rules\Company\BulkPhoneNumberRule;
-use App\Helpers\PhoneNumberManager;
 use Validator;
 use Exception;
 use App;
@@ -21,8 +20,6 @@ use DB;
 
 class PhoneNumberController extends Controller
 {
-    private $numberManager;
-
     static $fields = [
         'phone_numbers.name',
         'phone_numbers.number',
@@ -31,11 +28,6 @@ class PhoneNumberController extends Controller
         'phone_numbers.updated_at',
         'call_count'
     ];
-
-    public function __construct(PhoneNumberManager $numberManager)
-    {
-        $this->numberManager = $numberManager;
-    }
 
     /**
      * List phone numbers
@@ -114,7 +106,7 @@ class PhoneNumberController extends Controller
        
         
         $startsWith   = $request->type === 'Local' ? $request->starts_with : '';
-        $foundNumbers = $this->numberManager->listAvailable(
+        $foundNumbers = $this->numberService->listAvailable(
             $startsWith, 
             1, 
             $request->type, 
@@ -127,7 +119,7 @@ class PhoneNumberController extends Controller
             ], 400);
 
         try{
-            $purchasedPhone = $this->numberManager
+            $purchasedPhone = $this->numberService
                                     ->purchase($foundNumbers[0]->phoneNumber);
         }catch(Exception $e){
             Log::error($e->getTraceAsString());
@@ -251,7 +243,7 @@ class PhoneNumberController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        $this->numberManager
+        $this->numberService
             ->releaseNumber($phoneNumber);
         
         $phoneNumber->deleted_by = $request->user()->id;
@@ -283,7 +275,7 @@ class PhoneNumberController extends Controller
         }
 
         try{
-            $numbers = $this->numberManager->listAvailable(
+            $numbers = $this->numberService->listAvailable(
                 $request->starts_with, 
                 $request->count, 
                 $request->type,

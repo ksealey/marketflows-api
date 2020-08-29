@@ -1,5 +1,5 @@
 <?php
-namespace App\Helpers;
+namespace App\Services;
 
 use Twilio\Rest\Client as Twilio;
 use Exception;
@@ -7,7 +7,7 @@ use App;
 use App\Models\Company\PhoneNumber;
 use \Carbon\Carbon;
 
-class PhoneNumberManager
+class PhoneNumberService
 {
     public $client;
 

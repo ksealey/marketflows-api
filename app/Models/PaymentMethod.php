@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
 use \App\Models\Payment;
-use \App\Traits\PerformsExport;
 use \Stripe\Stripe;
 use \Stripe\Customer;
 use \Stripe\Card;
@@ -19,7 +18,7 @@ use App;
 
 class PaymentMethod extends Model
 {
-    use SoftDeletes, PerformsExport;
+    use SoftDeletes;
 
     protected $fillable = [
         'account_id',

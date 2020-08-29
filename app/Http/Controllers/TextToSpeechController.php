@@ -35,10 +35,14 @@ class TextToSpeechController extends Controller
             ], 400);
         }
 
-        $voice = $request->voice    ?? 'Joanna';
+        $voice = $request->voice ?? 'Joanna';
         
         return response( 
-            $this->tts->say($language, $voice, $request->text) 
+            $this->tts->say(
+                $language, 
+                $voice, 
+                $request->text
+            ) 
         );
     }
 }

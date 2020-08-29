@@ -10,7 +10,7 @@ use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\BlockedPhoneNumber;
 use App\Models\Company\BlockedPhoneNumber\BlockedCall;
-use App\Jobs\ExportResultsJob;
+use App\Services\ExportService;
 use Queue;
 use DateTimeZone;
 
@@ -213,30 +213,27 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testExportBlockedPhoneNumbers()
     {
-        Queue::fake();
-        
         $company = $this->createCompany();
         factory(BlockedPhoneNumber::class)->create([
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
+
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
         
         $response = $this->json('GET', route('export-company-blocked-phone-numbers', [
             'company' => $company->id
         ]));
         
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job){
-            return $job->model === BlockedPhoneNumber::class 
-                && $job->user->id === $this->user->id
-                && count($job->input);
-        });
+        $response->assertSee($exportData);
+            
     }
 
     /**
@@ -246,17 +243,20 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testExportBlockedPhoneNumbersWithConditions()
     {
-        Queue::fake();
-        
-        $company = $this->createCompany();
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
 
+        $company        = $this->createCompany();
         $blockedNumbers = factory(BlockedPhoneNumber::class)->create([
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
-
-        $conditions = [
+        $conditions     = [
             [
                 'field'    => 'blocked_phone_numbers.name',
                 'operator' => 'EQUALS',
@@ -271,17 +271,9 @@ class BlockedPhoneNumberTest extends TestCase
         ]), [
             'conditions' => json_encode($conditions)
         ]);
+
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job) use($conditions){
-            return $job->model === BlockedPhoneNumber::class 
-                && $job->user->id === $this->user->id
-                && json_decode($job->input['conditions'], true) == $conditions;
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -291,13 +283,15 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testExportBlockedPhoneNumbersWithDateRanges()
     {
-       
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
+
         $twoDaysAgo  = now()->subDays(2);
-
-        Queue::fake();
-        
-        $company = $this->createCompany();
-
+        $company     = $this->createCompany();
         $oldBlockedNumber = factory(BlockedPhoneNumber::class)->create([
             'account_id' => $company->account_id,
             'company_id' => $company->id,
@@ -321,17 +315,7 @@ class BlockedPhoneNumberTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job) use($twoDaysAgo){
-            return $job->model === BlockedPhoneNumber::class 
-                && $job->user->id === $this->user->id
-                && $job->input['start_date'] == $twoDaysAgo->format('Y-m-d')
-                && $job->input['end_date'] == $twoDaysAgo->format('Y-m-d');
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -391,7 +375,12 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testExportBlockedCalls()
     {
-        Queue::fake();
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
 
         $company = $this->createCompany();
 
@@ -425,13 +414,6 @@ class BlockedPhoneNumberTest extends TestCase
         ]));
 
         $response->assertStatus(200);
-        $response->assertJSON([
-            'message'=> 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job){
-            return $job->model === BlockedCall::class 
-                && $job->user->id === $this->user->id;
-        });
+        $response->assertSee($exportData);
     }
 }

@@ -12,11 +12,11 @@ use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
-use \App\Helpers\PhoneNumberManager;
+use \App\Services\PhoneNumberService;
 use \App\Jobs\BatchDeleteAudioJob;
 use \App\Jobs\BatchDeletePhoneNumbersJob;
 use \App\Jobs\BatchDeleteCallRecordingsJob;
-use \App\Jobs\ExportResultsJob;
+use \App\Services\ExportService;
 use Storage;
 use Queue;
 use DateTime;
@@ -181,7 +181,7 @@ class CompanyTest extends TestCase
     /**
      * Test listing companies with date ranges
      * 
-     * @group companies
+     * @group companies--
      */
     public function testListCompaniesWithDateRanges()
     {
@@ -231,25 +231,20 @@ class CompanyTest extends TestCase
      */
     public function testExportCompanies()
     {
-        Queue::fake();
-        
         $companies  = factory(Company::class, 2)->create([
             'account_id' => $this->account->id,
             'created_by' => $this->user->id,
         ]);
 
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
         $response = $this->json('GET', route('export-companies'));
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job){
-            return $job->model === Company::class 
-                && $job->user->id === $this->user->id
-                && count($job->input);
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -259,7 +254,12 @@ class CompanyTest extends TestCase
      */
     public function testExportCompaniesWithConditions()
     {
-        Queue::fake();
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
         
         $companies  = factory(Company::class, 2)->create([
             'account_id' => $this->account->id,
@@ -280,16 +280,7 @@ class CompanyTest extends TestCase
             'conditions' => json_encode($conditions)
         ]);
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job) use($conditions){
-            return $job->model === Company::class 
-                && $job->user->id === $this->user->id
-                && json_decode($job->input['conditions'], true) == $conditions;
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -299,7 +290,12 @@ class CompanyTest extends TestCase
      */
     public function testExportCompaniesWithDateRanges()
     {
-        Queue::fake();
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
 
         $twoDaysAgo  = now()->subDays(2);
         $oldCompany  = factory(Company::class)->create([
@@ -321,17 +317,7 @@ class CompanyTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job) use($twoDaysAgo){
-            return $job->model === Company::class 
-                && $job->user->id === $this->user->id
-                && $job->input['start_date'] == $twoDaysAgo->format('Y-m-d')
-                && $job->input['end_date'] == $twoDaysAgo->format('Y-m-d');
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -491,7 +477,7 @@ class CompanyTest extends TestCase
         //
         //  Setup mock
         //
-        $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
+        $this->mock(PhoneNumberService::class, function ($mock) use($phoneNumber){
             $mock->shouldReceive('releaseNumber')
                  ->once()
                  ->with(PhoneNumber::class);

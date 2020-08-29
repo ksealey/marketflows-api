@@ -5,12 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
-use App\Traits\PerformsExport;
 use DB;
 
 class AccountBlockedPhoneNumber extends Model
 {
-    use SoftDeletes, PerformsExport;
+    use SoftDeletes;
 
     protected $fillable = [
         'account_id',

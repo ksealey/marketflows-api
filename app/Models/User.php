@@ -19,7 +19,6 @@ use \App\Models\Company\Webhook;
 use \App\Jobs\BatchDeleteAudioJob;
 use \App\Jobs\BatchDeletePhoneNumbersJob;
 use \App\Jobs\BatchDeleteCallRecordingsJob;
-use \App\Traits\PerformsExport;
 use Mail;
 use DateTime;
 use Cache;
@@ -27,7 +26,7 @@ use DB;
 
 class User extends Authenticatable
 {
-    use SoftDeletes, PerformsExport;
+    use SoftDeletes;
 
     const ROLE_ADMIN     = 'ADMIN';
     const ROLE_SYSTEM    = 'SYSTEM';

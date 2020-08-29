@@ -8,7 +8,7 @@ use Faker\Generator as Faker;
 use App\Models\Account;
 use App\Models\User;
 use App\Helpers\TextToSpeech;
-use App\Helpers\PhoneNumberManager;
+use App\Services\PhoneNumberService;
 
 class TextToSpeechTest extends TestCase
 {

@@ -8,7 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Company\PhoneNumber;
-use App\Helpers\PhoneNumberManager;
+use App\Services\PhoneNumberService;
 use App\Models\User;
 use App\Models\Company;
 use App;
@@ -19,7 +19,7 @@ class BatchDeletePhoneNumbersJob implements ShouldQueue
 
     public $user;
     public $company;
-    public $numberManager;
+    public $numberService;
 
     /**
      * Create a new job instance.
@@ -39,7 +39,7 @@ class BatchDeletePhoneNumbersJob implements ShouldQueue
      */
     public function handle()
     {
-        $this->numberManager = App::make(PhoneNumberManager::class);
+        $this->numberService = App::make(PhoneNumberService::class);
         
         //
         //  Release remote number
@@ -47,7 +47,7 @@ class BatchDeletePhoneNumbersJob implements ShouldQueue
         PhoneNumber::where('company_id', $this->company->id)
                     ->get()
                     ->each(function($phoneNumber){
-                        $this->numberManager
+                        $this->numberService
                                 ->releaseNumber($phoneNumber);
                         usleep(250); // Limit to 4 requests per second
                     }); 

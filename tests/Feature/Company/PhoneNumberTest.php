@@ -11,8 +11,8 @@ use \App\Models\Account;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
-use \App\Helpers\PhoneNumberManager;
-use \App\Jobs\ExportResultsJob;
+use \App\Services\PhoneNumberService;
+use App\Services\ExportService;
 use DateTimeZone;
 use Queue;
 
@@ -201,8 +201,13 @@ class PhoneNumberTest extends TestCase
      */
     public function testExportPhoneNumbers()
     {
-        Queue::fake();
-        
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
+
         $company = $this->createCompany();
         $config  = $this->createConfig($company);
 
@@ -218,15 +223,7 @@ class PhoneNumberTest extends TestCase
         ]));
 
         $response->assertStatus(200);
-        
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job){
-            return $job->model === PhoneNumber::class 
-                && $job->user->id === $this->user->id;
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -236,8 +233,13 @@ class PhoneNumberTest extends TestCase
      */
     public function testExportPhoneNumbersWithConditions()
     {
-        Queue::fake();
-        
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
+
         $company     = $this->createCompany();
         $config      = $this->createConfig($company);
 
@@ -264,16 +266,7 @@ class PhoneNumberTest extends TestCase
             'conditions' => json_encode($conditions)
         ]);
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job) use($conditions){
-            return $job->model === PhoneNumber::class 
-                && $job->user->id === $this->user->id
-                && json_decode($job->input['conditions'], true) == $conditions;
-        });
+        $response->assertSee($exportData);
     }
 
     /**
@@ -283,7 +276,12 @@ class PhoneNumberTest extends TestCase
      */
     public function testExportPhoneNumbersWithDateRanges()
     {
-        Queue::fake();
+        $exportData  = bin2hex(random_bytes(200));
+        $this->mock(ExportService::class, function($mock) use($exportData){
+            $mock->shouldReceive('exportAsOutput')
+                 ->once()
+                 ->andReturn($exportData);
+        });
 
         $company     = $this->createCompany();
         $config      = $this->createConfig($company);
@@ -316,17 +314,7 @@ class PhoneNumberTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-
-        $response->assertJSON([
-            'message' => 'queued'
-        ]);
-
-        Queue::assertPushed(ExportResultsJob::class, function ($job) use($twoDaysAgo){
-            return $job->model === PhoneNumber::class 
-                && $job->user->id === $this->user->id
-                && $job->input['start_date'] == $twoDaysAgo->format('Y-m-d')
-                && $job->input['end_date'] == $twoDaysAgo->format('Y-m-d');
-        });
+        $response->assertSee($exportData);
     }
 
    
@@ -343,7 +331,7 @@ class PhoneNumberTest extends TestCase
         $type         = mt_rand(0,1) ? PhoneNumber::TYPE_LOCAL : PhoneNumber::TYPE_TOLL_FREE;
         $count        = mt_rand(1, 10);
 
-        $this->mock(PhoneNumberManager::class, function ($mock) use($count, $type, $company){
+        $this->mock(PhoneNumberService::class, function ($mock) use($count, $type, $company){
             $returnNumbers = factory('Tests\Models\TwilioPhoneNumber', $count)->make();
 
             $mock->shouldReceive('listAvailable')
@@ -380,7 +368,7 @@ class PhoneNumberTest extends TestCase
         $type         = mt_rand(0,1) ? PhoneNumber::TYPE_LOCAL : PhoneNumber::TYPE_TOLL_FREE;
         $count        = mt_rand(6, 10);
 
-        $this->mock(PhoneNumberManager::class, function ($mock) use($count, $type, $company){
+        $this->mock(PhoneNumberService::class, function ($mock) use($count, $type, $company){
             $returnNumbers = factory('Tests\Models\TwilioPhoneNumber', $count - 5)->make();
 
             $mock->shouldReceive('listAvailable')
@@ -417,7 +405,7 @@ class PhoneNumberTest extends TestCase
         $type         = mt_rand(0,1) ? PhoneNumber::TYPE_LOCAL : PhoneNumber::TYPE_TOLL_FREE;
         $count        = mt_rand(1, 10);
 
-        $this->mock(PhoneNumberManager::class, function ($mock) use($count, $type, $company){
+        $this->mock(PhoneNumberService::class, function ($mock) use($count, $type, $company){
             $mock->shouldReceive('listAvailable')
                  ->once()
                  ->with('813', $count, $type, $company->country)
@@ -462,7 +450,7 @@ class PhoneNumberTest extends TestCase
         
         $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
 
-        $this->mock(PhoneNumberManager::class, function ($mock) use($areaCode, $company, $twilioNumber){
+        $this->mock(PhoneNumberService::class, function ($mock) use($areaCode, $company, $twilioNumber){
             $mock->shouldReceive('listAvailable')
                  ->once()
                  ->with($areaCode, 1, PhoneNumber::TYPE_LOCAL, $company->country)
@@ -539,7 +527,7 @@ class PhoneNumberTest extends TestCase
 
         $numberData   = factory(PhoneNumber::class)->make();        
         $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
-        $this->mock(PhoneNumberManager::class, function ($mock) use($company, $twilioNumber){
+        $this->mock(PhoneNumberService::class, function ($mock) use($company, $twilioNumber){
             $mock->shouldReceive('listAvailable')
                  ->once()
                  ->with('', 1, PhoneNumber::TYPE_TOLL_FREE, $company->country)
@@ -622,7 +610,7 @@ class PhoneNumberTest extends TestCase
         
         $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
 
-        $this->mock(PhoneNumberManager::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
+        $this->mock(PhoneNumberService::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
             $mock->shouldReceive('listAvailable')
                  ->once()
                  ->with($areaCode, 1, $numberData->type, $company->country)
@@ -707,7 +695,7 @@ class PhoneNumberTest extends TestCase
         
         $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
 
-        $this->mock(PhoneNumberManager::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
+        $this->mock(PhoneNumberService::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
             $mock->shouldReceive('listAvailable')
                  ->once()
                  ->with($areaCode, 1, $numberData->type, $company->country)
@@ -792,7 +780,7 @@ class PhoneNumberTest extends TestCase
         
         $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
 
-        $this->mock(PhoneNumberManager::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
+        $this->mock(PhoneNumberService::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
             $mock->shouldReceive('listAvailable')
                  ->once()
                  ->with($areaCode, 1, $numberData->type, $company->country)
@@ -896,7 +884,7 @@ class PhoneNumberTest extends TestCase
             $areaCode   = ''; 
         
         $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
-        $this->mock(PhoneNumberManager::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
+        $this->mock(PhoneNumberService::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
             $mock->shouldReceive('listAvailable')
                  ->with($areaCode, 1, $numberData->type, $company->country)
                  ->times(count(PhoneNumber::OFFLINE_SUB_CATEGORIES))
@@ -1110,7 +1098,7 @@ class PhoneNumberTest extends TestCase
         $config      = $this->createConfig($company);
         $phoneNumber = $this->createPhoneNumber($company, $config); 
 
-        $this->mock(PhoneNumberManager::class, function ($mock) use($phoneNumber){
+        $this->mock(PhoneNumberService::class, function ($mock) use($phoneNumber){
             $mock->shouldReceive('releaseNumber')
                  ->once()
                  ->with(PhoneNumber::class);
@@ -1134,7 +1122,7 @@ class PhoneNumberTest extends TestCase
 
         $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
 
-        $mock = $this->partialMock(PhoneNumberManager::class);
+        $mock = $this->partialMock(PhoneNumberService::class);
         $mock->client = $this->partialMock(Twilio::class, function($mock) use($twilioNumber){
             $query = $this->mock('stdClass');
             $query->local = $this->mock('stdClass', function($m) use($twilioNumber){
