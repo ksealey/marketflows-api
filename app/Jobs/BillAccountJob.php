@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Models\Alert;
 use App\Models\Billing;
 use App\Models\BillingStatement;
 use App\Models\BillingStatementItem;
@@ -167,6 +168,14 @@ class BillAccountJob implements ShouldQueue
             Mail::to($user)
                 ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
         }else{
+            Alert::create([
+                'user_id'       => $user->id,  
+                'category'      => Alert::CATEGORY_PAYMENT,
+                'type'          => Alert::TYPE_DANGER,
+                'title'         => 'Payment method failed',
+                'message'       => 'Payment method ' . $paymentMethod->brand . ' ending in ' . $paymentMethod->last_4 . ' has failed. Please update your payment method to avoid any disruptions in service.',
+            ]);
+
             Mail::to($user)
                 ->queue(new PaymentMethodFailed($user, $paymentMethod, $statement));
         }

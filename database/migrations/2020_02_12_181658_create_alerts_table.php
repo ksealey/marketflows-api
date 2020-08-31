@@ -16,10 +16,10 @@ class CreateAlertsTable extends Migration
         Schema::create('alerts', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('user_id')->unsigned();
+            $table->string('category', 32);
             $table->string('type', 32);
             $table->string('title', 128)->nullable();
             $table->string('message', 255);
-            $table->string('icon', 16)->nullable();
             $table->string('url', 255)->nullable();
             $table->string('url_label', 64)->nullable();
             $table->dateTime('dismissed_at')->nullable();

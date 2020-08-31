@@ -6,6 +6,7 @@ use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Queue;
+use App\Models\Alert;
 use App\Models\Account;
 use App\Models\Billing;
 use App\Jobs\BillAccountJob;
@@ -311,6 +312,12 @@ class BillingTest extends TestCase
         $this->billing->next_suspension_warning_at = now();
         $this->billing->save();
 
+        //  Add alert
+        $alert = factory(Alert::class)->create([
+            'user_id'  => $this->user->id,
+            'category' => Alert::CATEGORY_PAYMENT
+        ]);
+
         $paymentMethod = $this->createPaymentMethod();
 
         $payment = factory(Payment::class)->create([
@@ -364,12 +371,20 @@ class BillingTest extends TestCase
         $billing = Billing::find($this->billing->id);
         $this->assertEquals($billing->suspension_warnings, 0);
         $this->assertNull($billing->next_suspension_warning_at);
+
+        //
+        //  Make sure the alert is now missing
+        //
+        $this->assertDatabaseMissing('alerts', [
+            'id' => $alert->id,
+            'deleted_at' => null
+        ]);
     }
 
     /**
      * Test paying a statement fails gracefully
      * 
-     * @group billing--
+     * @group billing
      */
     public function testPayStatementFailsGracefully()
     {

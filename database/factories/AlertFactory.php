@@ -4,10 +4,12 @@
 
 use App\Model;
 use Faker\Generator as Faker;
+use \App\Models\Alert;
 
-$factory->define(\App\Models\Alert::class, function (Faker $faker) {
+$factory->define(Alert::class, function (Faker $faker) {
     return [
-        'type' => \App\Models\Alert::TYPE_DEFAULT,
+        'type' => Alert::TYPE_DEFAULT,
+        'category' => Alert::CATEGORY_PAYMENT,
         'title' => $faker->realText(10),
         'message' => $faker->realText(150),
     ];

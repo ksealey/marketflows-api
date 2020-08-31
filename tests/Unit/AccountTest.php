@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use \App\Models\Alert;
 use \App\Models\Account;
 use \App\Models\Billing;
 use \App\Models\BillingStatement;
@@ -69,6 +70,12 @@ class AccountTest extends TestCase
             'id'                  => $this->billing->id,
             'suspension_warnings' => 1
         ]);
+
+        $this->assertDatabaseHas('alerts', [
+            'user_id'  => $this->user->id,
+            'category' => Alert::CATEGORY_PAYMENT,
+            'title'    => 'Pending account suspension',
+        ]);
     }
 
     /**
@@ -121,6 +128,12 @@ class AccountTest extends TestCase
         $this->assertNotNull($account->suspended_at);
         $this->assertNotNull($account->suspension_message);
         $this->assertEquals($account->suspension_code, Account::SUSPENSION_CODE_OUSTANDING_BALANCE);
+
+        $this->assertDatabaseHas('alerts', [
+            'user_id' => $this->user->id,
+            'category' => Alert::CATEGORY_PAYMENT,
+            'title'    => 'Account suspended - numbers pending release',
+        ]);
     }
 
     /**
@@ -166,6 +179,12 @@ class AccountTest extends TestCase
         $this->assertDatabaseHas('billing', [
             'id'                  => $this->billing->id,
             'suspension_warnings' => 3
+        ]);
+
+        $this->assertDatabaseHas('alerts', [
+            'user_id'  => $this->user->id,
+            'category' => Alert::CATEGORY_PAYMENT,
+            'title'    => 'Account suspended - numbers pending release tomorrow',
         ]);
     }
 
@@ -227,6 +246,12 @@ class AccountTest extends TestCase
         $this->assertDatabaseMissing('phone_numbers', [
             'id'         => $number->id,
             'deleted_at' => null
+        ]);
+
+        $this->assertDatabaseHas('alerts', [
+            'user_id'  => $this->user->id,
+            'category' => Alert::CATEGORY_PAYMENT,
+            'title'    => 'Account suspended - phone numbers released',
         ]);
     }
 }

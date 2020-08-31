@@ -10,20 +10,21 @@ class Alert extends Model
 {
     use SoftDeletes;
 
-    const TYPE_DEFAULT    = 'default';
-    const TYPE_ERROR      = 'error';
+    const TYPE_DEFAULT    = 'info';
+    const TYPE_DANGER     = 'error';
     const TYPE_WARNING    = 'warning';
     const TYPE_SUCCESS    = 'success';
     const TYPE_FILE       = 'file';
 
-    const ICON_FILE = 'file';
+    const CATEGORY_GENERAL = 'GENERAL';
+    const CATEGORY_PAYMENT = 'PAYMENT';
     
     protected $fillable = [
         'user_id',
+        'category',
         'type',
         'title',
         'message',
-        'icon',
         'url',
         'url_label',
         'hidden_after'

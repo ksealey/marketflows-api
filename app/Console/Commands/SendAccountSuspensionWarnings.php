@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Jobs;
+use \App\Models\Alert;
 use \App\Models\Account;
 use \App\Models\Billing;
 use \App\Mail\SuspensionWarning3Days as SuspensionWarning3DaysMail;
@@ -74,6 +75,15 @@ class SendAccountSuspensionWarnings extends Command
         $accountsPastDue = Account::whereIn('id', $accountIds)->get();
         foreach( $accountsPastDue as $account ){
             foreach($account->admin_users as $user){
+                Alert::create([
+                    'user_id'       => $user->id,  
+                    'category'      => Alert::CATEGORY_PAYMENT,
+                    'type'          => Alert::TYPE_DANGER,
+                    'title'         => 'Pending account suspension',
+                    'message'       => 'Your account is pending suspension for unpaid statements',
+                    'hidden_after'  => now()->addDays(4)
+                ]);
+
                 Mail::to($user->email)
                     ->queue(new SuspensionWarning3DaysMail($user, $account));
             } 
@@ -112,6 +122,15 @@ class SendAccountSuspensionWarnings extends Command
             $account->save();
 
             foreach($account->admin_users as $user){
+                Alert::create([
+                    'user_id'       => $user->id,  
+                    'type'          => Alert::TYPE_DANGER,
+                    'category'      => Alert::CATEGORY_PAYMENT,
+                    'title'         => 'Account suspended - numbers pending release',
+                    'message'       => 'Your account has been suspended for past due statements. You are no longer able to receive calls and your numbers are pending release in 3 days. To re-enable your account please pay all past due statements.',
+                    'hidden_after'  => now()->addDays(2)
+                ]);
+
                 //  Let the user know
                 Mail::to($user->email)
                     ->queue(new SuspensionWarning7DaysMail($user, $account));
@@ -145,6 +164,15 @@ class SendAccountSuspensionWarnings extends Command
         $accountsPastDue = Account::whereIn('id', $accountIds)->get();
         foreach( $accountsPastDue as $account ){
             foreach($account->admin_users as $user){
+                Alert::create([
+                    'user_id'       => $user->id,  
+                    'category'      => Alert::CATEGORY_PAYMENT,
+                    'type'          => Alert::TYPE_DANGER,
+                    'title'         => 'Account suspended - numbers pending release tomorrow',
+                    'message'       => 'Your account has been suspended for past due statements. You are no longer able to receive calls and your numbers are pending release in 24 hours. To re-enable your account please pay all past due statements.',
+                    'hidden_after'  => now()->addDays(2)
+                ]);
+
                 //  Let the user know
                 Mail::to($user->email)
                     ->queue(new SuspensionWarning9DaysMail($user, $account));
@@ -181,6 +209,15 @@ class SendAccountSuspensionWarnings extends Command
 
             foreach($account->admin_users as $user){
                 //  Let the user know
+                Alert::create([
+                    'user_id'       => $user->id,  
+                    'category'      => Alert::CATEGORY_PAYMENT,
+                    'type'          => Alert::TYPE_DANGER,
+                    'title'         => 'Account suspended - phone numbers released',
+                    'message'       => 'Your account has been suspended for past due statements. All phone numbers associated with your account has been released. To re-enable your account please pay all past due statements.',
+                    'hidden_after'  => now()->addDays(1)
+                ]);
+
                 Mail::to($user->email)
                     ->queue(new SuspensionWarning10DaysMail($user, $account));
             } 

@@ -131,8 +131,18 @@ class Account extends Model
         $this->suspension_code    = null;
         $this->save();
 
+        //  Remove alerts for users
+        Alert::where('category', Alert::CATEGORY_PAYMENT)
+                  ->whereIn('user_id', function($query){
+                        $query->select('id')
+                              ->from('users')
+                              ->where('account_id', $this->id);
+                    })
+                    ->delete();
+                    
         foreach( $this->admin_users as $user ){
-            Mail::to($user->email)->queue(new AccountUnsuspended($user));
+            Mail::to($user->email)
+                ->queue(new AccountUnsuspended($user));
         }
     }
 }
