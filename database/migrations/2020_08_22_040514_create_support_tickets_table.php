@@ -22,6 +22,8 @@ class CreateSupportTicketsTable extends Migration
             $table->bigInteger('created_by_agent_id')->unsigned()->nullable();
             $table->bigInteger('agent_id')->unsigned()->nullable();
             $table->string('status', 32);
+            $table->dateTime('closed_at')->nullable();
+            $table->string('closed_by', 64)->nullable();
             $table->timestamps();
             $table->softDeletes();
 

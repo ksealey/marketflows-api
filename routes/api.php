@@ -223,6 +223,10 @@ Route::middleware(['auth:api', 'api'])->group(function(){
             ->middleware('can:read,supportTicket')
             ->name('read-support-ticket');
 
+        Route::put('/{supportTicket}/close', 'SupportTicketController@close')
+            ->middleware('can:update,supportTicket')
+            ->name('close-support-ticket');
+
         Route::post('/{supportTicket}/comments', 'SupportTicketController@createComment')
             ->middleware('can:update,supportTicket')
             ->name('create-support-ticket-comment');
@@ -230,6 +234,8 @@ Route::middleware(['auth:api', 'api'])->group(function(){
         Route::post('/{supportTicket}/attachments', 'SupportTicketController@createAttachment')
             ->middleware('can:update,supportTicket')
             ->name('create-support-ticket-attachment');
+
+        
     });
 
     /*

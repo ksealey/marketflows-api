@@ -13,6 +13,7 @@ class SupportTicket extends Model
 
     const STATUS_UNASSIGNED  = 'UNASSIGNED';
     const STATUS_IN_PROGRESS = 'IN_PROGRESS';
+    const STATUS_PENDING_RESPONSE = 'PENDING_RESPONSE';
     const STATUS_CLOSED      = 'CLOSED';
 
     protected $fillable = [
@@ -22,7 +23,9 @@ class SupportTicket extends Model
         'created_by_user_id',
         'created_by_agent_id',
         'agent_id',
-        'status'
+        'status',
+        'closed_at',
+        'closed_by'
     ];
 
     protected $hidden = [
@@ -51,6 +54,11 @@ class SupportTicket extends Model
     public function comments()
     {
         return $this->hasMany('\App\Models\SupportTicketComment');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany('\App\Models\SupportTicketAttachment');
     }
 
     public function agent()

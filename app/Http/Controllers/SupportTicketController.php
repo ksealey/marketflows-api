@@ -26,7 +26,9 @@ class SupportTicketController extends Controller
 
     public function list(Request $request)
     {
-        $query = SupportTicket::where('created_by_user_id', $request->user()->id);
+        $query = SupportTicket::select(['support_tickets.*', DB::raw("TRIM(CONCAT(agents.first_name, ' ', agents.last_name)) as agent_name")])
+                                ->where('created_by_user_id', $request->user()->id)
+                                ->leftJoin('agents', 'agents.id', 'support_tickets.agent_id');
 
         //  Pass along to parent for listing
         return parent::results(
@@ -40,10 +42,11 @@ class SupportTicketController extends Controller
 
     public function create(Request $request)
     {
-        $validator = Validator::make($request->input(), [
+        $validator = Validator::make($request->all(), [
             'urgency'     => 'in:' . implode(',', SupportTicket::urgencies()),
             'subject'     => 'bail|required|max:255',
-            'description' => 'bail|required|max:1024'
+            'description' => 'bail|required|max:1024',
+            'file'        => 'bail|max:10485760|file',
         ]);
         
         if( $validator->fails() ){
@@ -54,20 +57,48 @@ class SupportTicketController extends Controller
 
         $user = $request->user();
 
-        $supportTicket = SupportTicket::create([
-            'created_by_user_id' => $user->id,
-            'urgency'            => $request->urgency,
-            'subject'            => $request->subject,
-            'description'        => $request->description,
-            'status'             => SupportTicket::STATUS_UNASSIGNED
-        ]);
+        DB::beginTransaction();
+
+        try{
+            $supportTicket = SupportTicket::create([
+                'created_by_user_id' => $user->id,
+                'urgency'            => $request->urgency,
+                'subject'            => $request->subject,
+                'description'        => $request->description,
+                'status'             => SupportTicket::STATUS_UNASSIGNED
+            ]);
+
+            if( $request->file ){
+                //  Upload file
+                $file     = $request->file;
+                $filePath = Storage::putFile('support_tickets/' . $supportTicket->id . '/attachments' , $file);
+
+                //  Log in database
+                $attachment = SupportTicketAttachment::create([
+                    'support_ticket_id'     => $supportTicket->id,
+                    'file_name'             => $file->getClientOriginalName(),
+                    'file_size'             => $file->getSize(),
+                    'file_mime_type'        => $file->getMimeType(),
+                    'path'                  => $filePath,
+                    'created_by_user_id'    => $request->user()->id
+                ]);
+
+                $supportTicket->attachments = [$attachment];
+            }else{
+                $supportTicket->attachments = [];
+            }
+        }catch(Exception $e){
+            DB::rollBack();
+
+            throw $e;
+        }
+
+        DB::commit();
 
         //  Mail to user and support
         Mail::to($user)
             ->cc(config('mail.to.support.address'))
             ->queue(new SupportTicketCreatedMail($user, $supportTicket));
-
-        $supportTicket->comments = [];
 
         return response($supportTicket, 201);
     }
@@ -77,6 +108,18 @@ class SupportTicketController extends Controller
         $supportTicket->comments = $supportTicket->comments;
         
         return response($supportTicket);
+    }
+
+    public function close(Request $request, SupportTicket $supportTicket)
+    {
+        $supportTicket->closed_at = now();
+        $supportTicket->closed_by = $request->user()->full_name;
+        $supportTicket->status    = SupportTicket::STATUS_CLOSED;
+        $supportTicket->save();
+
+        return response([
+            'message' => 'Closed'
+        ]);
     }
 
 

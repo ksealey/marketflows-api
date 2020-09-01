@@ -116,6 +116,33 @@ class SupportTicketTest extends TestCase
     }
 
     /**
+     * Test closing a support ticket
+     * 
+     * @group support-tickets
+     */
+    public function testClosingSupportTicket()
+    {
+        $ticket = factory(SupportTicket::class)->create([
+            'created_by_user_id' => $this->user->id
+        ]);
+
+        $response = $this->json('PUT', route('close-support-ticket', [
+            'supportTicket' => $ticket->id
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'message' => 'Closed'
+        ]);
+
+        $this->assertDatabaseHas('support_tickets', [
+            'id' => $ticket->id,
+            'closed_by' => $this->user->full_name,
+            'status'    => SupportTicket::STATUS_CLOSED
+        ]);
+    }
+
+    /**
      * Test create comment
      * 
      * @group support-tickets
