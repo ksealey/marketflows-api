@@ -32,6 +32,11 @@ class BillingStatement extends Model
         ]);
     }
 
+    public function getTotalAttribute()
+    {
+        return array_sum(array_column($this->items->toArray(), 'total'));
+    }
+
     public function items()
     {
         return $this->hasMany('App\Models\BillingStatementItem');
@@ -45,10 +50,5 @@ class BillingStatement extends Model
     public function payment()
     {
         return $this->belongsTo('App\Models\Payment');
-    }
-
-    public function total()
-    {
-        return array_sum(array_column($this->items->toArray(), 'total'));
     }
 }

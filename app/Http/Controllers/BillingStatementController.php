@@ -47,16 +47,8 @@ class BillingStatementController extends Controller
     
     public function read(Request $request, BillingStatement $billingStatement)
     {
-        $billingStatement->payment_method  = $billingStatement->payment_method;
-        if( $billingStatement->paid_at && ! $billingStatement->payment_method ){
-            $billingStatement->payment_method_last_4  = PaymentMethod::withTrashed()->find($billingStatement->payment_method_id)->last_4;
-        }
-        $billingStatement->statement_items = $billingStatement->statement_items;
-
-        $total = $billingStatement->total;
-        $billingStatement->total           = $total;
-        $billingStatement->total_formatted = number_format($total, 2);
-
+        $billingStatement->total = $billingStatement->total;
+        
         return response($billingStatement);
     }
 

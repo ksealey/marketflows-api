@@ -53,18 +53,27 @@ class BillingTest extends TestCase
             "next_page"    => null,
             "results"      => $statements
         ]);
+    }
 
-                
-        /*$response->assertJSONStructure([
-            "results" => [
-                [
-                    'id',
-                    'name',
-                    'country',
-                    'industry'
-                ]
-            ]
-        ]);*/
+    /**
+     * Test reading statements
+     * 
+     * @group billing
+     */
+    public function testReadStatement()
+    {
+        $statements = [];
+        $statement  = $this->createBillableStatement([
+            'billing_id'               => $this->billing->id,
+            'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
+            'billing_period_ends_at'   => now()->endOfDay()
+        ]);
+
+        $response = $this->json('GET', route('read-statement', [
+            'billingStatement' => $statement->id
+        ]));
+        $response->assertStatus(200);
+        $response->assertJSON($statement->toArray());
     }
 
     /**
