@@ -34,7 +34,15 @@ class BillingStatement extends Model
 
     public function getTotalAttribute()
     {
-        return array_sum(array_column($this->items->toArray(), 'total'));
+        $totals   = array_column($this->items->toArray(), 'total');
+        $totalSum = array_sum($totals);
+
+        return round($totalSum, 2);
+    }
+
+    public function getTotalFormattedAttribute()
+    {
+        return number_format($this->total, 2);
     }
 
     public function items()

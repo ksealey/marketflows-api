@@ -47,7 +47,14 @@ class BillingStatementController extends Controller
     
     public function read(Request $request, BillingStatement $billingStatement)
     {
-        $billingStatement->total = $billingStatement->total;
+        $billingStatement->total           = $billingStatement->total;
+        $billingStatement->total_formatted = $billingStatement->total_formatted;
+
+        if( $billingStatement->payment_id ){
+            $payment = $billingStatement->payment;
+            $payment->payment_method = $payment->payment_method;
+            $billingStatement->payment = $payment;
+        }
         
         return response($billingStatement);
     }
