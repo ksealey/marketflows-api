@@ -29,7 +29,11 @@ class BillingStatementController extends Controller
             '*',
             DB::raw('(SELECT ROUND(SUM(total), 2) from billing_statement_items where billing_statement_id = billing_statements.id) as total'),
             DB::raw('(SELECT CONVERT(FORMAT(ROUND(SUM(total), 2), 2), CHAR) from billing_statement_items where billing_statement_id = billing_statements.id) as total_formatted')
-        ])->where('account_id', $user->account_id);
+        ])->where('billing_id', function($query) use($user){
+            $query->select('id')
+                  ->from('billing')
+                  ->where('account_id', $user->account_id);
+        });
         
         return parent::results(
             $request,

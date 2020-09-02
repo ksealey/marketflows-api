@@ -19,7 +19,8 @@ class SupportTicketAttachment extends Model
 
     protected $appends = [
         'kind',
-        'link'
+        'link',
+        'url'
     ];
 
     public function getLinkAttribute()
@@ -30,5 +31,10 @@ class SupportTicketAttachment extends Model
     public function getKindAttribute()
     {
         return 'SupportTicketAttachment';
+    }
+
+    public function getUrlAttribute()
+    {
+        return trim(config('app.cdn_url'), '/') . '/' . trim($this->path, '/');
     }
 }

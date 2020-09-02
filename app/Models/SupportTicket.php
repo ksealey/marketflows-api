@@ -53,7 +53,8 @@ class SupportTicket extends Model
 
     public function comments()
     {
-        return $this->hasMany('\App\Models\SupportTicketComment');
+        return $this->hasMany('\App\Models\SupportTicketComment')
+                    ->orderBy('created_at', 'asc');
     }
 
     public function attachments()

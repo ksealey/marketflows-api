@@ -31,7 +31,7 @@ trait HandlesDateFilters
     public function getDateFilterValidator($input, $additionalRules = [])
     {
         $rules = array_merge([
-            'date_type' => 'bail|required|in:' . implode(',', $this->getDateFilterDateTypes()),
+            'date_type' => 'bail|in:' . implode(',', $this->getDateFilterDateTypes()),
         ], $additionalRules);
         
         $validator = Validator::make($input, $rules);

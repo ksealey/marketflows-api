@@ -37,8 +37,8 @@ class Controller extends BaseController
     public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc')
     {
         $validator = $this->getDateFilterValidator($request->input(), array_merge([
-            'limit'         => 'bail|numeric|min:1|max:250',
-            'page'          => 'bail|numeric|min:1',
+            'limit'          => 'bail|numeric|min:1|max:250',
+            'page'           => 'bail|numeric|min:1',
             'order_by'       => 'bail|in:' . $rangeField,
             'order_dir'      => 'bail|in:asc,desc',
             'conditions'     => ['bail','json', new ConditionsRule($fields)],
@@ -148,12 +148,14 @@ class Controller extends BaseController
 
     protected function getDates($request)
     {
-        if( $request->date_type === 'ALL_TIME' ){
+        $dateType = $request->date_type ?: 'ALL_TIME';
+
+        if( $dateType === 'ALL_TIME' ){
             $dates = null;
-        }elseif( $request->date_type === 'LAST_N_DAYS' ){
+        }elseif( $dateType === 'LAST_N_DAYS' ){
             $dates = $this->getLastNDaysDates($request->last_n_days, $request->user()->timezone);
         }else{
-            $dates = $this->getDateFilterDates($request->date_type, $request->user()->timezone, $request->start_date, $request->end_date);
+            $dates = $this->getDateFilterDates($dateType, $request->user()->timezone, $request->start_date, $request->end_date);
         }
         return $dates;
     }

@@ -155,6 +155,7 @@ class UserController extends Controller
         
         $user->deleted_at = now();
         $user->deleted_by = $me->id;
+        $user->email      = '__DELETED__' . $user->email . '__DELETED__';
         $user->save();
 
         return response([

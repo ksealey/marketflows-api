@@ -88,7 +88,8 @@ class ReportController extends Controller
             ], 400);
         }
 
-        $user = $request->user();
+        $user     = $request->user();
+        $dateType = $request->date_type ?: 'ALL_TIME';
         $report = Report::create([
             'account_id'    => $company->account_id,
             'company_id'    => $company->id,
@@ -96,11 +97,11 @@ class ReportController extends Controller
             'name'          => $request->name,
             'module'        => $request->module,
             'type'          => $request->type,
-            'date_type'     => $request->date_type,
+            'date_type'     => $dateType,
             'group_by'      => $request->type == 'count' ? $request->group_by : null,
-            'last_n_days'   => $request->date_type == 'LAST_N_DAYS' ? $request->last_n_days : null,
-            'start_date'    => $request->date_type == 'CUSTOM' ? $request->start_date : null,
-            'end_date'      => $request->date_type == 'CUSTOM' ? $request->end_date : null,
+            'last_n_days'   => $dateType == 'LAST_N_DAYS' ? $request->last_n_days : null,
+            'start_date'    => $dateType == 'CUSTOM' ? $request->start_date : null,
+            'end_date'      => $dateType == 'CUSTOM' ? $request->end_date : null,
             'conditions'    => $request->conditions
         ]);
 
@@ -581,7 +582,7 @@ class ReportController extends Controller
     protected function reportDates(Request $request, Company $company)
     {
         $timezone = $request->user()->timezone;
-        $dateType = $request->date_type;
+        $dateType = $request->date_type ?: 'ALL_TIME';
 
         if( $dateType === 'ALL_TIME' ){
             return $this->getAllTimeDates($company->created_at, $timezone);

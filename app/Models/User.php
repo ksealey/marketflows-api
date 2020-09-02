@@ -221,5 +221,7 @@ class User extends Authenticatable
         BatchDeletePhoneNumbersJob::dispatch($this, $company);
         BatchDeleteAudioJob::dispatch($this, $company);
         BatchDeleteCallRecordingsJob::dispatch($this, $company);
+
+        $company->delete();
     }
 }

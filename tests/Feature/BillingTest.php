@@ -26,6 +26,48 @@ class BillingTest extends TestCase
     use \Tests\CreatesAccount;
 
     /**
+     * Test listing statements
+     * 
+     * @group billing
+     */
+    public function testListingStatements()
+    {
+        $statements = [];
+        $count      = mt_rand(1, 3);
+        for( $i = 0; $i < $count; $i++){
+            $statements[] = $this->createBillableStatement([
+                'billing_id'               => $this->billing->id,
+                'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
+                'billing_period_ends_at'   => now()->endOfDay()
+            ])->toArray();
+        }
+
+        $response = $this->json('GET', route('list-statements'));
+        
+        $response->assertStatus(200);
+        $response->assertJSON([
+            "result_count" => $count,
+            "limit"        => 250,
+            "page"         => 1,
+            "total_pages"  => 1,
+            "next_page"    => null,
+            "results"      => $statements
+        ]);
+
+                
+        /*$response->assertJSONStructure([
+            "results" => [
+                [
+                    'id',
+                    'name',
+                    'country',
+                    'industry'
+                ]
+            ]
+        ]);*/
+    }
+
+    /**
      * Test that billing jobs are dispatched
      * 
      * @group billing
@@ -418,6 +460,5 @@ class BillingTest extends TestCase
         ]));
 
         $response->assertStatus(400);
-        
     }
 }

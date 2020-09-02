@@ -71,7 +71,11 @@ class SupportTicketController extends Controller
             if( $request->file ){
                 //  Upload file
                 $file     = $request->file;
-                $filePath = Storage::putFile('support_tickets/' . $supportTicket->id . '/attachments' , $file);
+                $filePath = Storage::putFile('support_tickets/' . $supportTicket->id . '/attachments' , $file, [
+                    'visibility'          => 'public',
+                    'ContentDisposition' => 'attachment; filename=' . $file->getClientOriginalName(),
+                    'ContentType'        => 'application/octet-stream'
+                ]);
 
                 //  Log in database
                 $attachment = SupportTicketAttachment::create([
@@ -105,21 +109,28 @@ class SupportTicketController extends Controller
 
     public function read(Request $request, SupportTicket $supportTicket)
     {
-        $supportTicket->comments = $supportTicket->comments;
+        $supportTicket->comments    = $supportTicket->comments;
+        $supportTicket->attachments = $supportTicket->attachments;
         
         return response($supportTicket);
     }
 
     public function close(Request $request, SupportTicket $supportTicket)
     {
+        if( $supportTicket->status == SupportTicket::STATUS_CLOSED ){
+            return response([
+                'error' => 'Ticket already closed'
+            ], 400);
+        }
         $supportTicket->closed_at = now();
         $supportTicket->closed_by = $request->user()->full_name;
         $supportTicket->status    = SupportTicket::STATUS_CLOSED;
         $supportTicket->save();
 
-        return response([
-            'message' => 'Closed'
-        ]);
+        $supportTicket->comments    = $supportTicket->comments;
+        $supportTicket->attachments = $supportTicket->attachments;
+
+        return response($supportTicket);
     }
 
 
@@ -169,7 +180,11 @@ class SupportTicketController extends Controller
         try{
             //  Upload file
             $file     = $request->file;
-            $filePath = Storage::putFile('support_tickets/' . $supportTicket->id . '/attachments' , $file);
+            $filePath = Storage::putFile('support_tickets/' . $supportTicket->id . '/attachments' , $file, [
+                'visibility'         => 'public',
+                'ContentDisposition' => 'attachment; filename=' . $file->getClientOriginalName(),
+                'ContentType'        => 'application/octet-stream'
+            ]);
 
             //  Log in database
             $attachment = SupportTicketAttachment::create([

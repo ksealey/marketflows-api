@@ -97,12 +97,16 @@ class AccountController extends Controller
             ->whereNull('deleted_at')
             ->update([
                 'deleted_at' => now(),
-                'deleted_by' => $user->id
+                'deleted_by' => $user->id,
+                'email'      => DB::raw("CONCAT('__DELETED__', email, '__DELETED__')")
             ]);
 
         //  Remove account and billing
-        $account->delete();
         $account->billing->delete();
+
+        $account->deleted_at = now();
+        $account->deleted_by = $user->id;
+        $account->save();
 
         return response([
             'message' => 'Bye'

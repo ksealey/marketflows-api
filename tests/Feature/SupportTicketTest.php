@@ -132,7 +132,9 @@ class SupportTicketTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            'message' => 'Closed'
+            'id' => $ticket->id,
+            'closed_by' => $this->user->full_name,
+            'status'    => SupportTicket::STATUS_CLOSED
         ]);
 
         $this->assertDatabaseHas('support_tickets', [
