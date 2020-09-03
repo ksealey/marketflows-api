@@ -61,7 +61,7 @@ class PayUnpaidStatementsJob implements ShouldQueue
         
         $account = $paymentMethod->account;
         foreach( $statements as $statement ){
-            $payment = $this->paymentManager->charge($paymentMethod, $statement->total());
+            $payment = $this->paymentManager->charge($paymentMethod, $statement->total);
             if( ! $payment ){
                 foreach( $account->admin_users as $user ){
                     Alert::create([
@@ -85,7 +85,7 @@ class PayUnpaidStatementsJob implements ShouldQueue
             
             foreach( $account->admin_users as $user ){
                 Mail::to($user)
-                    ->queue(new BillingReceipt($user, $payment));
+                    ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
             }
 
             sleep(2);

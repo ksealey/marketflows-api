@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use DB;
 
 class Payment extends Model
 {
@@ -17,6 +18,36 @@ class Payment extends Model
         'link'
     ];
 
+    static public function exports() : array
+    {
+        return [
+            'id'                    => 'Id',
+            'billing_statement_id'  => 'Billing Statement Id',
+            'total'                 => 'Total',
+            'created_at_local'      => 'Created'
+        ];
+    }
+
+    static public function exportFileName($user, array $input) : string
+    {
+        return 'Payments';
+    }
+
+    static public function exportQuery($user, array $input)
+    {
+        return Payment::select([
+            'payments.*',
+            DB::raw('CONVERT(FORMAT(ROUND(total, 2), 2), CHAR) AS total_formatted'),
+            DB::raw('billing_statements.id AS billing_statement_id'),
+            DB::raw("DATE_FORMAT(CONVERT_TZ(payments.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local") 
+        ])
+        ->where('payment_method_id', $input['payment_method_id'])
+        ->leftJoin('billing_statements', function($join){
+            $join->on('payments.id', '=', 'billing_statements.payment_id')
+                 ->whereNull('billing_statements.deleted_at');
+        });
+    }
+
     public function getKindAttribute()
     {
         return 'Payment';
@@ -25,5 +56,10 @@ class Payment extends Model
     public function getLinkAttribute()
     {
         return null;
+    }
+
+    public function payment_method()
+    {
+        return $this->belongsTo('\App\Models\PaymentMethod');
     }
 }

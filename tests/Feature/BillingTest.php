@@ -394,10 +394,8 @@ class BillingTest extends TestCase
             'payment_method_id'=> $paymentMethod->id
         ]));
 
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'message' => 'Paid'
-        ]);
+        $response->assertStatus(201);
+        $response->assertJSON($payment->toArray());
 
         //  Make sure statement is paid
         $statement = BillingStatement::find($statement->id);

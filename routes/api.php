@@ -176,6 +176,14 @@ Route::middleware(['auth:api', 'api'])->group(function(){
         Route::delete('/{paymentMethod}', 'PaymentMethodController@delete')
             ->middleware('can:delete,paymentMethod')
             ->name('delete-payment-method'); 
+
+        Route::get('/{paymentMethod}/payments', 'PaymentMethodController@listPayments')
+            ->middleware('can:read,paymentMethod')
+            ->name('list-payment-method-payments'); 
+
+        Route::get('/{paymentMethod}/payments/export', 'PaymentMethodController@exportPayments')
+            ->middleware('can:read,paymentMethod')
+            ->name('export-payment-method-payments');
     });
 
     /*

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use \App\Models\PaymentMethod;
 use \App\Jobs\PayUnpaidStatementsJob;
+use \App\Models\Payment;
 use Validator;
 use Exception;
 use DB;
@@ -16,9 +17,18 @@ class PaymentMethodController extends Controller
     public $fields = [
         'payment_methods.last_4',
         'payment_methods.brand',
+        'payment_methods.expiration',
         'payment_methods.created_at',
-        'payment_methods.created_at'
+        'payment_methods.last_used_at'
     ];
+
+    public $paymentFields = [
+        'payments.id',
+        'billing_statements.id',
+        'payments.total',
+        'payments.created_at'
+    ];
+
 
     /**
      * List Payment Methods
@@ -81,7 +91,7 @@ class PaymentMethodController extends Controller
      */
     public function read(Request $request, PaymentMethod $paymentMethod)
     {
-        $paymentMethod->errors = $paymentMethod->errors;
+        $paymentMethod->payments = $paymentMethod->payments;
         
         return response($paymentMethod);
     }
@@ -149,6 +159,44 @@ class PaymentMethodController extends Controller
             [],
             $this->fields,
             'payment_methods.created_at'
+        );
+    }
+
+    public function listPayments(Request $request, PaymentMethod $paymentMethod)
+    {
+        $query  = Payment::select([
+                            'payments.*',
+                            DB::raw('CONVERT(FORMAT(ROUND(total, 2), 2), CHAR) AS total_formatted'),
+                            DB::raw('billing_statements.id AS billing_statement_id')
+                        ])
+                        ->where('payment_method_id', $paymentMethod->id)
+                        ->leftJoin('billing_statements', function($join){
+                            $join->on('payments.id', '=', 'billing_statements.payment_id')
+                                 ->whereNull('billing_statements.deleted_at');
+                        });
+
+        //  Pass along to parent for listing
+        return parent::results(
+            $request,
+            $query,
+            [],
+            $this->paymentFields,
+            'payments.created_at'
+        );
+    }
+
+    public function exportPayments(Request $request, PaymentMethod $paymentMethod)
+    {
+        $request->merge([
+            'payment_method_id' => $paymentMethod->id
+        ]);
+        
+        return parent::exportResults(
+            Payment::class,
+            $request,
+            [],
+            $this->paymentFields,
+            'payments.created_at'
         );
     }
 }

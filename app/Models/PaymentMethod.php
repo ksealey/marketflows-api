@@ -62,7 +62,7 @@ class PaymentMethod extends Model
 
     static public function exportFileName($user, array $input) : string
     {
-        return 'Companies';
+        return 'Payment Methods';
     }
 
     static public function exportQuery($user, array $input)
@@ -80,6 +80,11 @@ class PaymentMethod extends Model
     public function account()
     {
         return $this->belongsTo('\App\Models\Account');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany('\App\Models\Payment');
     }
 
     /**

@@ -200,7 +200,7 @@ class BillingStatementController extends Controller
             ], 400);
 
         $paymentManager = App::make(PaymentManager::class);
-        $payment        = $paymentManager->charge($paymentMethod, $billingStatement->total());
+        $payment        = $paymentManager->charge($paymentMethod, $billingStatement->total);
         if( ! $payment ){
             return response([
                 'error' => 'Unable to process payment - please try another payment method'
@@ -221,8 +221,8 @@ class BillingStatementController extends Controller
         Mail::to($user)
             ->queue(new BillingReceipt($user, $billingStatement, $paymentMethod, $payment));
 
-        return response([
-            'message' => 'Paid'
-        ]);
+        $payment->payment_method = $paymentMethod;
+        
+        return response($payment, 201);
     }
 }

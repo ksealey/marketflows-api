@@ -149,7 +149,7 @@ class BillAccountJob implements ShouldQueue
         $account       = $billing->account;
         $paymentMethod = $account->primary_payment_method; 
         
-        $payment = $this->paymentManager->charge($paymentMethod, $statement->total());
+        $payment = $this->paymentManager->charge($paymentMethod, $statement->total);
         $user    = User::find($paymentMethod->created_by);
 
         //
