@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Company\PhoneNumber;
+use App\Models\BillingStatement;
 use DB;
 use \Carbon\Carbon;
 
@@ -21,6 +22,14 @@ class Billing extends Model
         'suspension_warnings',
         'next_suspension_warning_at',
         'external_id'
+    ];
+
+    protected $hidden = [
+        'locked_at',
+        'suspension_warnings',
+        'next_suspension_warning_at',
+        'external_id',
+        'deleted_at'
     ];
 
     public function account()
@@ -50,6 +59,22 @@ class Billing extends Model
     const COST_MINUTES_TOLL_FREE    = 0.07;
     const COST_MINUTES_TRANSCRIPTION= 0.03;
     const COST_STORAGE_GB           = 0.10;
+
+    public function getPastDueAttribute()
+    {
+        $result = DB::table('billing_statement_items')
+                          ->select(DB::raw('ROUND(SUM(total),2) AS past_due'))
+                          ->whereIn('billing_statement_id', function($query){
+                                $query->select('id')
+                                      ->from('billing_statements')
+                                      ->where('billing_id', $this->id)
+                                      ->whereNull('paid_at')
+                                      ->whereNull('deleted_at');
+                          })
+                          ->first();
+
+        return floatval($result->past_due);
+    }
 
     public function label($item)
     {

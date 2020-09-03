@@ -188,6 +188,21 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
     /*
     |----------------------------------------
+    | Handle billing
+    |----------------------------------------
+    */
+    Route::prefix('billing')->group(function(){
+        Route::get('/', 'BillingController@read')
+            ->middleware('can:read,\App\Models\Account')
+            ->name('read-billing'); 
+
+        Route::get('/current', 'BillingController@current')
+            ->middleware('can:read,\App\Models\Account')
+            ->name('current-billing'); 
+    });
+
+    /*
+    |----------------------------------------
     | Handle billing statements
     |----------------------------------------
     */

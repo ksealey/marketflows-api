@@ -322,29 +322,6 @@ class BillingTest extends TestCase
     }
 
     /**
-     * Test fetching current total
-     * 
-     * @group billing
-     */
-    public function testFetchingCurrentTotal()
-    {
-        $companyCount           = 2;
-        $localNumberCount       = 11;
-        $tollFreeNumberCount    = 1;
-        $localCallsPerNumber    = 10;
-        $tollFreeCallsPerNumber = 10;
-
-        $this->populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber);
-        
-        $response = $this->json('GET', route('current-statement'));
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'total' => $this->billing->currentTotal(),
-            'items' => []
-        ]);
-    }
-
-    /**
      * Test paying a statement
      * 
      * @group billing
@@ -467,5 +444,58 @@ class BillingTest extends TestCase
         ]));
 
         $response->assertStatus(400);
+    }
+
+    /**
+     * Test fetching current total
+     * 
+     * @group billing
+     */
+    public function testFetchingCurrentTotal()
+    {
+        $companyCount           = 2;
+        $localNumberCount       = 11;
+        $tollFreeNumberCount    = 1;
+        $localCallsPerNumber    = 10;
+        $tollFreeCallsPerNumber = 10;
+
+        $this->populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber);
+        
+        $response = $this->json('GET', route('current-billing'));
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'total' => $this->billing->currentTotal(),
+            'items' => []
+        ]);
+    }
+
+    /**
+     * Test fetching current billing
+     * 
+     * @group billing--
+     */
+    public function testFetchingBilling()
+    {
+        $loops      = mt_rand(1,4);
+        $statements = [];
+        $pastDue    = 0;
+        for( $i = 0; $i < $loops; $i++){
+            $statement = $this->createBillableStatement([
+                'billing_id'               => $this->billing->id,
+                'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
+                'billing_period_ends_at'   => now()->endOfDay()
+            ]);
+
+            $pastDue += $statement->total;
+        }
+
+        $response = $this->json('GET', route('read-billing'));
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'billing_period_starts_at' => $this->billing->billing_period_starts_at,
+            'billing_period_ends_at'   => $this->billing->billing_period_ends_at,
+            'past_due'                 => round($pastDue, 2)
+        ]);
+        
     }
 }
