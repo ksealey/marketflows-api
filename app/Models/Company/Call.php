@@ -15,6 +15,8 @@ class Call extends Model
         'phone_number_id',
         'contact_id',
         
+        'phone_number_name',
+        
         'type',
         'category',
         'sub_category',

@@ -181,6 +181,7 @@ class IncomingCallController extends Controller
             'company_id'                => $phoneNumber->company_id,
             'phone_number_id'           => $phoneNumber->id,
             'contact_id'                => $contact->id,
+            'phone_number_name'         => $phoneNumber->name,
             'type'                      => $phoneNumber->type,
             'category'                  => $phoneNumber->category,
             'sub_category'              => $phoneNumber->sub_category,

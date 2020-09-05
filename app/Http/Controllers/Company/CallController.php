@@ -38,8 +38,7 @@ class CallController extends Controller
             'calls.created_at'
         ];
 
-        $query = DB::table('calls')
-                   ->select([
+        $query = Call::select([
                         'calls.*', 
                         'phone_numbers.name AS phone_number_name',
                         'companies.id AS company_id',
@@ -64,13 +63,13 @@ class CallController extends Controller
 
         //  Join non-deleted numbers
         $query->leftJoin('phone_numbers', function($join){
-            $join->on('phone_numbers.id', 'calls.phone_number_id')
+            $join->on('calls.phone_number_id', 'phone_numbers.id')
                  ->whereNull('phone_numbers.deleted_at');
         });
 
         //  Join non-deleted companies
         $query->leftJoin('companies', function($join){
-            $join->on('companies.id', 'phone_numbers.company_id')
+            $join->on('calls.company_id', 'companies.id')
                  ->whereNull('companies.deleted_at');
         });
 

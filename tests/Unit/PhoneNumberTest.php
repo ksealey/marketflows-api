@@ -29,6 +29,7 @@ class PhoneNumberTest extends TestCase
             $this->createCall($company, [
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at' => now()->subDays(2),
             ]);
         }
@@ -37,6 +38,7 @@ class PhoneNumberTest extends TestCase
             $this->createCall($company, [
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at' => now()->subDays(4),
             ]);
         }

@@ -19,6 +19,8 @@ class CreateCallsTable extends Migration
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned();
             $table->bigInteger('contact_id')->unsigned();
+
+            $table->string('phone_number_name', 64);
             $table->string('type', 16);
             $table->string('category', 32)->nullable();
             $table->string('sub_category', 32)->nullable();

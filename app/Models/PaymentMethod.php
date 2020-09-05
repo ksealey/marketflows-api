@@ -124,14 +124,14 @@ class PaymentMethod extends Model
 
         //  If this is the new primary method, unset existing
         if( $primaryMethod ){
-            self::where('account_id', $user->account_id)
-                ->update([ 'primary_method' => false ]);
+            PaymentMethod::where('account_id', $user->account_id)
+                         ->update([ 'primary_method' => false ]);
         }
 
         $expiration = new DateTime($card->exp_year . '-' . $card->exp_month . '-01 00:00:00'); 
         $expiration->modify('last day of this month');
     
-        return self::create([
+        return PaymentMethod::create([
             'account_id'     => $user->account_id,
             'created_by'     => $user->id,
             'external_id'    => $card->id,

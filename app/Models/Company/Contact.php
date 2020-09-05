@@ -4,6 +4,7 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use \App\Models\Company\Call;
 
 class Contact extends Model
 {
@@ -44,6 +45,7 @@ class Contact extends Model
             'company_id'        => 'Company Id',
             'first_name'        => 'First Name',
             'last_name'         => 'Last Name',
+            'country_code'      => 'Country Code',
             'phone'             => 'Phone',
             'email'             => 'Email',
             'city'              => 'City',
@@ -75,6 +77,32 @@ class Contact extends Model
             'company' => $this->company_id,
             'contact' => $this->id
         ]);
+    }
+
+    public function getActivityAttribute()
+    {
+        $calls = Call::where('contact_id', $this->id)
+                     ->orderBy('created_at', 'ASC')
+                     ->get();
+
+        $activities = array_merge([
+            [
+                'kind'       => 'ActivityCreateContact',
+                'created_at' => $this->created_at
+            ],
+        ], $calls->toArray());
+
+        //
+        //  Order by create date, asc
+        //    
+        usort($activities, function($a, $b){
+            return $a['created_at'] <= $b['created_at'] ? -1 : 1;
+        });
+
+        return [
+            'items'      => $activities,
+            'call_count' => count($calls)
+        ];
     }
 
     public function e164PhoneFormat()

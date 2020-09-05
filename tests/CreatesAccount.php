@@ -161,7 +161,8 @@ trait CreatesAccount
                 'contact_id' => $contact->id,
                 'account_id' => $phoneNumber->account_id,
                 'company_id' => $phoneNumber->company_id,
-                'phone_number_id' =>$phoneNumber->id
+                'phone_number_id' =>$phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
             ])->each(function($call){
                 $path = '/to-recording/' . str_random(10) . '.mp3';
                 Storage::put($path, 'foobar');
@@ -259,6 +260,7 @@ trait CreatesAccount
                         'account_id'      => $phoneNumber->account_id,
                         'company_id'      => $phoneNumber->company_id,
                         'phone_number_id' => $phoneNumber->id,
+                        'phone_number_name' => $phoneNumber->name,
                         'duration'        => mt_rand(0, 59),
                         'type'            => 'Local',
                         'created_at'      => now()->subMinutes(5)
@@ -296,6 +298,7 @@ trait CreatesAccount
                         'account_id'      => $phoneNumber->account_id,
                         'company_id'      => $phoneNumber->company_id,
                         'phone_number_id' => $phoneNumber->id,
+                        'phone_number_name'=> $phoneNumber->name,
                         'duration'        => mt_rand(0, 59),
                         'type'            => 'Toll-Free',
                         'created_at'      => now()->subMinutes(5)

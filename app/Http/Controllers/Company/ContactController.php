@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\Company;
+use App\Models\Company\Call;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumber;
+use DB;
 
 class ContactController extends Controller
 {
@@ -21,7 +23,9 @@ class ContactController extends Controller
         'contacts.zip',
         'contacts.country',
         'contacts.created_at',
-        'contacts.updated_at'
+        'contacts.updated_at',
+        'contact_call_count.call_count',
+        'contact_last_call_at.last_call_at',
     ];
 
     /**
@@ -31,7 +35,14 @@ class ContactController extends Controller
     public function list(Request $request, Company $company)
     {
         //  Build Query
-        $query = Contact::where('company_id', $company->id);
+        $query = Contact::select([
+                            'contacts.*',
+                            'contact_call_count.call_count',
+                            'contact_last_call_at.last_call_at'
+                        ])
+                        ->leftJoin('contact_call_count', 'contact_call_count.contact_id', 'contacts.id')
+                        ->leftJoin('contact_last_call_at', 'contact_last_call_at.contact_id', 'contacts.id')
+                        ->where('contacts.company_id', $company->id);
 
         //  Pass along to parent for listing
         return parent::results(
@@ -117,6 +128,8 @@ class ContactController extends Controller
      */
     public function read(Request $request, Company $company, Contact $contact)
     {
+        $contact->activity = $contact->activity;
+
         return response($contact);
     }
 
@@ -130,12 +143,7 @@ class ContactController extends Controller
         $rules = [
             'first_name' => 'bail|max:32',
             'last_name'  => 'bail|max:32',
-            'email'      => 'bail|required_without:phone|email|max:128',
-            'phone'      => 'bail|required_without:email|digits_between:10,13',
-            'city'       => 'bail|max:64',
-            'state'      => 'bail|max:64',
-            'zip'        => 'bail|max:16',
-            'country'    => 'bail|max:64',
+            'email'      => 'bail|email|max:128'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -148,27 +156,16 @@ class ContactController extends Controller
         //
         //  Make sure no contact exists with this phone
         //
-        $query = Contact::where('company_id', $company->id);
-        if( $request->email && ! $request->phone ){
+        $query = Contact::where('company_id', $company->id)
+                        ->where('id', '!=', $contact->id);
+
+        if( $request->email )
             $query->where('email', $request->email);
-        }elseif( ! $request->email && $request->phone ){
-            $query->where('phone', $request->phone);
-        }elseif( $request->email && $request->phone ){
-            $query->where('email', $request->email)
-                    ->orWhere('phone', $request->phone);
-        }
-        
-        $otherContact = $query->where('id', '!=', $contact->id)
-                              ->first();
 
+        $otherContact = $query->first();
         if( $otherContact ){
-            $matchField = $otherContact->email === $request->email ? 'email' : '';
-            if( ! $matchField ){
-                $matchField = $otherContact->phone === $request->phone ? 'phone' : '';
-            }
-
             return response([
-                'error' => 'Duplicate exists matching field ' . $matchField
+                'error' => 'Duplicate exists matching field email'
             ], 400);
         }
 
@@ -178,22 +175,11 @@ class ContactController extends Controller
             $contact->last_name = $request->last_name;
         if( $request->has('email') )
             $contact->email = $request->email;
-        if( $request->has('phone') ){
-            $contact->country_code = PhoneNumber::countryCode($request->phone);
-            $contact->phone        = PhoneNumber::number($request->phone);
-        }
-        if( $request->has('city') )
-            $contact->city = $request->city;
-        if( $request->has('state') )
-            $contact->state = $request->state;
-        if( $request->has('zip') )
-            $contact->zip = $request->zip;
-        if( $request->has('country') )
-            $contact->country = $request->country;
 
         $contact->updated_by = $request->user()->id;
-        
         $contact->save();
+
+        $contact->activity = $contact->activity;
 
         return response($contact);
     }
@@ -207,6 +193,8 @@ class ContactController extends Controller
         $contact->deleted_by = $request->user()->id;
         $contact->deleted_at = now();
         $contact->save();
+
+        Call::where('contact_id', $contact->id)->delete();
 
         return response([
             'message' => 'Deleted'

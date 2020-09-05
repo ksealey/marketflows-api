@@ -505,6 +505,44 @@ class ContactTest extends TestCase
     }
 
     /**
+     * Test updating a contact with old email and phone
+     * 
+     * @group contacts
+     */
+    public function testUpdateContactWithOldEmailAndPhone()
+    {
+        $company = $this->createCompany();
+        $contact = factory(Contact::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+        $updateData = factory(Contact::class)->make();
+        $body       = [
+            'first_name' => $updateData->first_name,
+            'last_name' => $updateData->last_name,
+            'email' => $contact->email,
+            'phone' => $contact->phone,
+            'city' => $updateData->city,
+            'state' => $updateData->state,
+            'zip' => $updateData->zip,
+        ];
+
+        $response = $this->json('PUT', route('update-contact', [
+            'company' => $company->id,
+            'contact' => $contact->id
+        ]), $body);
+
+        $response->assertStatus(200);
+        $response->assertJSON($body);
+
+        $this->assertDatabaseHas('contacts', [
+            'id'         => $contact->id,
+            'updated_by' => $this->user->id
+        ]);
+    }
+
+    /**
      * Test updating a contact fails when contact matching email exists
      * 
      * @group contacts

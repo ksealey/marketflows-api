@@ -39,6 +39,7 @@ class ReportTest extends TestCase
                 'company_id'      => $contact->company_id,
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at'      => now()->subDays(2)
             ]);
 
@@ -47,6 +48,7 @@ class ReportTest extends TestCase
                 'company_id'      => $contact->company_id,
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at'      => now()->subDays(3)
             ]);
 
@@ -56,6 +58,7 @@ class ReportTest extends TestCase
                 'company_id'      => $contact->company_id,
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at'      => now()->subDays(9)
             ]);
 
@@ -64,6 +67,7 @@ class ReportTest extends TestCase
                 'company_id'      => $contact->company_id,
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at'      => now()->subDays(10)
             ]);
         });
@@ -181,6 +185,7 @@ class ReportTest extends TestCase
                 'company_id'      => $contact->company_id,
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at'      => now()->subDays(2)
             ]);
 
@@ -189,6 +194,7 @@ class ReportTest extends TestCase
                 'company_id'      => $contact->company_id,
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at'      => now()->subDays(3)
             ]);
 
@@ -198,6 +204,7 @@ class ReportTest extends TestCase
                 'company_id'      => $contact->company_id,
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at'      => now()->subDays(9)
             ]);
 
@@ -206,6 +213,7 @@ class ReportTest extends TestCase
                 'company_id'      => $contact->company_id,
                 'contact_id'      => $contact->id,
                 'phone_number_id' => $phoneNumber->id,
+                'phone_number_name' => $phoneNumber->name,
                 'created_at'      => now()->subDays(10)
             ]);
         });

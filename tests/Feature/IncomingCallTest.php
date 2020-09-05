@@ -58,6 +58,7 @@ class IncomingCallTest extends TestCase
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
             'phone_number_id'       => $phoneNumber->id,
+            'phone_number_name'     => $phoneNumber->name,
             'type'                  => $phoneNumber->type,
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
@@ -117,6 +118,7 @@ class IncomingCallTest extends TestCase
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
             'phone_number_id'       => $phoneNumber->id,
+            'phone_number_name'     => $phoneNumber->name,
             'type'                  => $phoneNumber->type,
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
@@ -177,6 +179,7 @@ class IncomingCallTest extends TestCase
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
             'phone_number_id'       => $phoneNumber->id,
+            'phone_number_name'     => $phoneNumber->name,
             'type'                  => $phoneNumber->type,
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
@@ -241,6 +244,7 @@ class IncomingCallTest extends TestCase
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
             'phone_number_id'       => $phoneNumber->id,
+            'phone_number_name'     => $phoneNumber->name,
             'type'                  => $phoneNumber->type,
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
@@ -303,6 +307,7 @@ class IncomingCallTest extends TestCase
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
             'phone_number_id'       => $phoneNumber->id,
+            'phone_number_name'     => $phoneNumber->name,
             'type'                  => $phoneNumber->type,
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
@@ -379,6 +384,7 @@ class IncomingCallTest extends TestCase
             'account_id'            => $this->account->id,
             'company_id'            => $company->id,
             'phone_number_id'       => $phoneNumber->id,
+            'phone_number_name'     => $phoneNumber->name,
             'type'                  => $phoneNumber->type,
             'category'              => $phoneNumber->category,
             'sub_category'          => $phoneNumber->sub_category,
@@ -602,9 +608,10 @@ class IncomingCallTest extends TestCase
         ]);
         $contact     = $this->createContact($company);
         $call        = $this->createCall($company, [
-            'phone_number_id' => $phoneNumber->id,
-            'contact_id'      => $contact->id,
-            'external_id'     => $incomingCall->CallSid
+            'phone_number_id'   => $phoneNumber->id,
+            'phone_number_name' => $phoneNumber->name,
+            'contact_id'        => $contact->id,
+            'external_id'       => $incomingCall->CallSid
         ]);
 
         $response = $this->json('POST', route('incoming-call-status-changed', $incomingCall->toArray()));
