@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use DB;
+use Storage;
 
 class CallController extends Controller
 {
@@ -45,11 +46,19 @@ class CallController extends Controller
                         'companies.name AS company_name',
                         DB::raw(
                             'CASE
-                                WHEN call_recordings.path IS NOT NULL
-                                    THEN CONCAT(\'' . config('app.cdn_url') . '/' . '\', call_recordings.path)
+                                WHEN call_recordings.path IS NOT NULL AND call_recordings.deleted_at IS NULL
+                                    THEN CONCAT(\'' . config('app.cdn_url') . '/' . '\', TRIM(BOTH \'\/\' FROM call_recordings.path))
                                 ELSE NULL
                             END
                             AS recording_url'
+                        ),
+                        DB::raw(
+                            "CASE
+                                WHEN call_recordings.path IS NOT NULL AND call_recordings.deleted_at IS NULL
+                                    THEN 'audio/mp3'
+                                ELSE NULL
+                            END
+                            AS recording_mimetype"
                         ),
                         DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
                         DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name'),
@@ -93,13 +102,61 @@ class CallController extends Controller
      * 
      * @param Request $request 
      * @param Company $company
-     * @param PhoneNumber $phoneNumber
      * @param Call $call
      * 
      * @return Response
      */
     public function read(Request $request, Company $company, Call $call)
     {
+        $call->recording = $call->recording;
+
         return response($call);
+    }
+
+    /**
+     * Read a call recording
+     * 
+     * @param Request $request 
+     * @param Company $company
+     * @param Call $call
+     * 
+     * @return Response
+     */
+    public function readRecording(Request $request, Company $company, Call $call)
+    {
+        return response($call->recording);
+    }
+
+    /**
+     * Delete a call recording
+     * 
+     * @param Request $request 
+     * @param Company $company
+     * @param Call $call
+     * 
+     * @return Response
+     */
+    public function deleteRecording(Request $request, Company $company, Call $call)
+    {
+        $recording = $call->recording;
+        if( ! $recording ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
+        $recording->delete();
+
+        try{
+            Storage::delete($recording->path);
+        }catch(\Exception $e){
+            return response([
+                'error' => 'Unable to delete recording'
+            ], 400);
+        }
+
+        return response([
+            'message' => 'Deleted'
+        ]);
     }
 }

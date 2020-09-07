@@ -73,6 +73,11 @@ class Call extends Model
     {
         return $this->belongsTo('\App\Models\Company\PhoneNumber');
     }
+
+    public function recording()
+    {
+        return $this->hasOne('\App\Models\Company\CallRecording');
+    }
     
     public function getLinkAttribute()
     {

@@ -589,12 +589,20 @@ Route::middleware(['auth:api', 'api'])->group(function(){
             */
             Route::prefix('calls')->group(function(){
                 Route::get('/', 'Company\CallController@list')
-                    ->middleware('can:read,company')
+                    ->middleware('can:list,\App\Models\Company\Call,company')
                     ->name('list-calls');
 
                 Route::get('/{call}', 'Company\CallController@read')
                     ->middleware('can:read,call,company')
                     ->name('read-call');
+
+                Route::get('/{call}/recording', 'Company\CallController@readRecording')
+                    ->middleware('can:read,call,company')
+                    ->name('read-call-recording');
+
+                Route::delete('/{call}/recording', 'Company\CallController@deleteRecording')
+                    ->middleware('can:delete,call,company')
+                    ->name('delete-call-recording');
             });
 
             /*

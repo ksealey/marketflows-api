@@ -32,7 +32,8 @@ class CallRecording extends Model
 
     protected $appends = [
         'url',
-        'kind'
+        'kind',
+        'mimetype'
     ];
 
     /**
@@ -49,6 +50,11 @@ class CallRecording extends Model
     public function getKindAttribute()
     {
         return 'CallRecording';
+    }
+
+    public function getMimeTypeAttribute()
+    {
+        return 'audio/mpeg';
     }
 
     static public function moveRecording($url, $recordingSid, $recordingDuration, $call)

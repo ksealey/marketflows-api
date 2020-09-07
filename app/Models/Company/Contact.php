@@ -5,6 +5,7 @@ namespace App\Models\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\Company\Call;
+use \App\Models\Company\CallRecording;
 
 class Contact extends Model
 {
@@ -84,6 +85,27 @@ class Contact extends Model
         $calls = Call::where('contact_id', $this->id)
                      ->orderBy('created_at', 'ASC')
                      ->get();
+
+        //
+        //  Attach recordings
+        //
+        $recordingMap = [];
+        if( count($calls) ){
+            $callIds        = array_column($calls->toArray(), 'id');
+            CallRecording::whereIn('call_id', $callIds)
+                                           ->get()
+                                           ->each(function($recording) use(&$recordingMap){
+                                                $recording->link = route('read-call-recording', [
+                                                    'company' => $this->company_id,
+                                                    'call'    => $recording->call_id
+                                                ]);
+                                                $recordingMap[$recording->call_id] = $recording;
+                                           });
+        }
+
+        foreach( $calls as $call ){
+            $call->recording = $recordingMap[$call->id] ?? null;
+        }
 
         $activities = array_merge([
             [

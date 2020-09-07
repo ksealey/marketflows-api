@@ -12,16 +12,24 @@ class CallPolicy
 {
     use HandlesAuthorization;
 
-    public function list(User $user)
+    public function list(User $user, Company $company)
     {
-        return $this->userCanViewCompany($user)
-            && $user->canDoAction('calls.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company);
     }
 
-    public function read(User $user, Call $call)
+
+    public function read(User $user, Call $call, Company $company)
     {
-        return $this->resourceBelongsToCompany($call->company_id)
-            && $this->userCanViewCompany($user) 
-            && $user->canDoAction('calls.read');
+        return $user->canDoAction('read')
+            && $user->canViewCompany($company)
+            && $company->id === $call->company_id;
+    }
+
+    public function delete(User $user, Call $call, Company $company)
+    {
+        return $user->canDoAction('delete')
+            && $user->canViewCompany($company)
+            && $company->id === $call->company_id;
     }
 }
