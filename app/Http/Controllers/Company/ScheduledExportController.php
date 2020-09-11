@@ -15,7 +15,6 @@ class ScheduledExportController extends Controller
     static $fields = [
         'scheduled_exports.created_at',
         'scheduled_exports.updated_at',
-        'scheduled_exports.last_ran_at',
         'scheduled_exports.delivery_method'
     ];
 
@@ -36,9 +35,10 @@ class ScheduledExportController extends Controller
     {
         $validator = Validator::make($request->input(), [
             'report_id'         => 'bail|required|numeric',
-            'day_of_week'       => 'bail|required|in:1,2,3,4,5,6,7',
+            'day_of_week'       => 'bail|required|in:0,1,2,3,4,5,6',
             'hour_of_day'       => 'bail|required|numeric|min:0|max:23',
             'delivery_method'   => 'bail|required|in:email',
+            'timezone'          => 'bail|timezone'
         ]);
 
         $validator->sometimes('delivery_email_addresses', ['bail', 'required', 'string', new EmailListRule()], function($input){
@@ -63,7 +63,7 @@ class ScheduledExportController extends Controller
             'report_id'                 => $report->id,
             'day_of_week'               => $request->day_of_week,
             'hour_of_day'               => $request->hour_of_day,
-            'next_run_at'               => ScheduledExport::nextRunAt($request->day_of_week, $request->hour_of_day, $request->user()->timezone)->setTimeZone('UTC'),
+            'timezone'                  => $request->timezone ?: $request->user()->timezone, 
             'delivery_method'           => $request->delivery_method,
             'delivery_email_addresses'  => $request->delivery_email_addresses,
         ]);
@@ -80,9 +80,10 @@ class ScheduledExportController extends Controller
     {
         $validator = Validator::make($request->input(), [
             'report_id'         => 'bail|numeric',
-            'day_of_week'       => 'bail|in:1,2,3,4,5,6,7',
+            'day_of_week'       => 'bail|in:0,1,2,3,4,5,6',
             'hour_of_day'       => 'bail|numeric|min:0|max:23',
             'delivery_method'   => 'bail|in:email',
+            'timezone'          => 'bail|timezone'
         ]);
 
         $validator->sometimes('delivery_email_addresses', ['bail', 'required', 'string', new EmailListRule()], function($input){
@@ -112,12 +113,8 @@ class ScheduledExportController extends Controller
             $scheduledExport->hour_of_day = $request->hour_of_day;
         }
 
-        if( $request->filled('day_of_week') || $request->filled('hour_of_day') ){
-            $scheduledExport->next_run_at = ScheduledExport::nextRunAt(
-                $request->day_of_week ?: $scheduledExport->day_of_week, 
-                $request->hour_of_day ?: $scheduledExport->hour_of_day, 
-                $request->user()->timezone
-            )->setTimeZone('UTC');
+        if( $request->filled('timezone') ){
+            $scheduledExport->timezone = $request->timezone;
         }
 
         if( $request->filled('delivery_method') ){

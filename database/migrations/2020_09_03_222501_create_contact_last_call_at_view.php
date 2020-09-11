@@ -14,6 +14,7 @@ class CreateContactLastCallAtView extends Migration
      */
     public function up()
     {
+        DB::statement("DROP VIEW IF EXISTS contact_last_call_at");
         DB::statement("CREATE VIEW contact_last_call_at AS
                             SELECT contact_id, MAX(created_at) as last_call_at
                                 FROM calls

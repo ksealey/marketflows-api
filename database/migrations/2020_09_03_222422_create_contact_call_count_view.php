@@ -13,6 +13,7 @@ class CreateContactCallCountView extends Migration
      */
     public function up()
     {
+        DB::statement("DROP VIEW IF EXISTS contact_call_count");
         DB::statement("CREATE VIEW contact_call_count AS
                         SELECT id as contact_id, 
                         (SELECT COUNT(*) FROM calls WHERE contact_id = contacts.id) as call_count

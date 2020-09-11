@@ -44,9 +44,5 @@ class ExecuteScheduledExportJob implements ShouldQueue
                 Mail::to($email)->send(new ScheduledExportMail($report));
             }
         }
-
-        $schedule->next_run_at = (new Carbon($schedule->next_run_at))->addDays(7);
-        $schedule->locked_at   = null;
-        $schedule->save();
     }
 }

@@ -146,10 +146,12 @@ class CompanyTest extends TestCase
 
         $conditions = [
             [
-                'field'    => 'companies.name',
-                'operator' => 'EQUALS',
-                'inputs'   => [
-                    $firstCompany->name
+                [
+                    'field'    => 'companies.name',
+                    'operator' => 'EQUALS',
+                    'inputs'   => [
+                        $firstCompany->name
+                    ]
                 ]
             ]
         ];
@@ -268,10 +270,12 @@ class CompanyTest extends TestCase
 
         $conditions = [
             [
-                'field'    => 'companies.name',
-                'operator' => 'EQUALS',
-                'inputs'   => [
-                    $companies->first()->name
+                [
+                    'field'    => 'companies.name',
+                    'operator' => 'EQUALS',
+                    'inputs'   => [
+                        $companies->first()->name
+                    ]
                 ]
             ]
         ];

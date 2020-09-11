@@ -21,6 +21,8 @@ class ReportController extends Controller
 
     static $fields = [
         'reports.name',
+        'reports.module',
+        'reports.type',
         'reports.created_at',
         'reports.updated_at'
     ];
@@ -78,7 +80,7 @@ class ReportController extends Controller
             'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($this->conditionFields) ]
         ]);
 
-        $validator->sometimes('group_by', 'required|in:' . implode(',', Report::groupByFields($request->module)), function($input){
+        $validator->sometimes('group_by', 'required|in:' . implode(',', $this->conditionFields), function($input){
             return $input->type === 'count';
         });
 
@@ -118,39 +120,39 @@ class ReportController extends Controller
     public function read(Request $request, Company $company, Report $report)
     {
         if( $request->with_data ){
-                $report->run();
+            $report->run();
 
-                $startDate = clone $report->startDate;
-                $endDate   = clone $report->endDate;
-                $datasets = [];
+            $startDate = clone $report->startDate;
+            $endDate   = clone $report->endDate;
+            $datasets = [];
 
-                if( $report->type === 'timeframe' ){
-                    $labels     = $this->timeframeLabels($startDate, $endDate);
-                    $datasets[] = [
-                        'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                        'data'  => $this->lineDatasetData($report->results, $startDate, $endDate),
-                        'total' => $this->total($report->results)
-                    ];
-                }else{
-                    $labels   = $this->countLabels($report->results);
-                    $groupKeys = array_column($report->results->toArray(), 'group_by');
-                    $datasets = [
-                        [
-                            'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                            'data'  => $this->barDatasetData($report->results, $groupKeys),
-                            'total' => $this->total($report->results)
-                        ]
-                    ];
-                }
-
-                $data = [
-                    'type'     => $report->type,
-                    'title'    => $report->name,
-                    'labels'   => $labels,
-                    'datasets' => $datasets,
+            if( $report->type === 'timeframe' ){
+                $labels     = $this->timeframeLabels($startDate, $endDate);
+                $datasets[] = [
+                    'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
+                    'data'  => $this->lineDatasetData($report->results, $startDate, $endDate),
+                    'total' => $this->total($report->results)
                 ];
+            }else{
+                $labels   = $this->countLabels($report->results);
+                $groupKeys = array_column($report->results->toArray(), 'group_by');
+                $datasets = [
+                    [
+                        'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
+                        'data'  => $this->barDatasetData($report->results, $groupKeys),
+                        'total' => $this->total($report->results)
+                    ]
+                ];
+            }
 
-                $report->data = $data;
+            $data = [
+                'type'     => $report->type,
+                'title'    => $report->name,
+                'labels'   => $labels,
+                'datasets' => $datasets,
+            ];
+
+            $report->data = $data;
         }
 
         return response($report);
@@ -181,7 +183,7 @@ class ReportController extends Controller
         $validator->sometimes('last_n_days', 'required|numeric|min:1|max:730', function($input){
             return $input->date_type === 'LAST_N_DAYS';
         });
-        $validator->sometimes('group_by', 'required|in:' . implode(',', Report::groupByFields($request->module?:$report->module)), function($input){
+        $validator->sometimes('group_by', 'required|in:' . implode(',', $this->conditionFields), function($input){
             return $input->type === 'count';
         });
 
@@ -241,6 +243,42 @@ class ReportController extends Controller
         }
 
         $report->save();
+
+        if( $request->with_data ){
+            $report->run();
+
+            $startDate = clone $report->startDate;
+            $endDate   = clone $report->endDate;
+            $datasets = [];
+
+            if( $report->type === 'timeframe' ){
+                $labels     = $this->timeframeLabels($startDate, $endDate);
+                $datasets[] = [
+                    'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
+                    'data'  => $this->lineDatasetData($report->results, $startDate, $endDate),
+                    'total' => $this->total($report->results)
+                ];
+            }else{
+                $labels   = $this->countLabels($report->results);
+                $groupKeys = array_column($report->results->toArray(), 'group_by');
+                $datasets = [
+                    [
+                        'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
+                        'data'  => $this->barDatasetData($report->results, $groupKeys),
+                        'total' => $this->total($report->results)
+                    ]
+                ];
+            }
+
+            $data = [
+                'type'     => $report->type,
+                'title'    => $report->name,
+                'labels'   => $labels,
+                'datasets' => $datasets,
+            ];
+
+            $report->data = $data;
+        }
 
         return response($report);
     }
@@ -361,7 +399,7 @@ class ReportController extends Controller
     public function callSources(Request $request, Company $company)
     {
         $validator = $this->getDateFilterValidator($request->input(), [
-            'group_by' => 'required|in:call_source,call_medium,call_campaign,call_content'
+            'group_by' => 'required|in:' . implode(',', $this->conditionFields)
         ]);
 
         if( $validator->fails() )

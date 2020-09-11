@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use \App\Models\Company\ScheduledExport;
 use \App\Jobs\ExecuteScheduledExportJob;
+use DB;
 
 class PushScheduledExports extends Command
 {
@@ -39,26 +40,11 @@ class PushScheduledExports extends Command
      */
     public function handle()
     {
-        //
-        //  Lock so no other server can get them
-        //
-        $now = now();
-        ScheduledExport::where('next_run_at', '<=', $now)
-                        ->whereNull('locked_at')
-                        ->limit(1000)
-                        ->update([
-                            'locked_at' => $now
-                        ]);
-
-        //
-        //  Get list
-        //
-        $exports = ScheduledExport::where('locked_at', $now)
-                                    ->get();
-
-        foreach( $exports as $export ){
-            ExecuteScheduledExportJob::dispatch($export);
-        }
+        ScheduledExport::where(DB::raw("DATE_FORMAT(CONVERT_TZ(NOW(), 'UTC', timezone), '%w|%k')"), DB::raw("CONCAT(day_of_week, '|', hour_of_day)"))
+                        ->get()
+                        ->each(function($export){
+                            ExecuteScheduledExportJob::dispatch($export);
+                        });
 
         return 0;
     }

@@ -19,8 +19,7 @@ class CreateScheduledExportsTable extends Migration
             $table->bigInteger('report_id')->unsigned();
             $table->smallInteger('day_of_week')->unsigned();
             $table->smallInteger('hour_of_day')->unsigned();
-            $table->dateTime('next_run_at')->index();
-            $table->dateTime('locked_at')->index()->nullable();
+            $table->string('timezone', 128);
             $table->string('delivery_method', 32);
             $table->string('delivery_email_addresses', 1024)->nullable();
             $table->timestamps();

@@ -54,7 +54,7 @@ class Report extends Model
         'kind'
     ];
 
-    static public $fields = [
+    static public $fieldAliases = [
         'calls' => [
             'calls.type'                => 'call_type',
             'calls.category'            => 'call_category',
@@ -64,7 +64,7 @@ class Report extends Model
             'calls.content'             => 'call_content',
             'calls.campaign'            => 'call_campaign',
             'calls.recording_enabled'   => 'call_recording_enabled',
-            'calls.forwarded_to'        => 'call_forwareded_to',
+            'calls.forwarded_to'        => 'call_forwarded_to',
             'calls.duration'            => 'call_duration',
             'calls.first_call'          => 'call_first_call',
             'contacts.first_name'       => 'contact_first_name',
@@ -75,7 +75,7 @@ class Report extends Model
         ]
     ];
 
-    static public $fieldNames = [
+    static public $fieldLabels = [
         'calls' => [
             'call_type'                => 'Type',
             'call_category'            => 'Category',
@@ -95,11 +95,6 @@ class Report extends Model
             'contact_state'            => 'Caller State',
         ]
     ];
-
-    static public function groupByFields($module)
-    {
-        return self::$fields[$module] ?? [];
-    }
 
     static public function fieldColumn($module, $field)
     {
@@ -179,17 +174,16 @@ class Report extends Model
                    ->where($this->module . '.company_id', $this->company_id);
 
         if( $this->type === 'count' ){
-            $field = self::fieldColumn($this->module, $this->group_by);
             $query->select([
                 DB::raw('COUNT(*) AS count'),
-                DB::raw($field . ' AS group_by')
+                DB::raw($this->group_by . ' AS group_by')
             ])
-            ->groupBy($field);
+            ->groupBy('group_by');
         }elseif( $this->type == 'timeframe' ){
-            $fields  = Report::$fields[$this->module];
-            $selects = [];
-            foreach( $fields as $key => $field ){
-                $selects[] = $key . ' AS ' . $field;
+            $aliases  = Report::fieldAliases($this->module);
+            $selects  = [];
+            foreach( $aliases as $key => $alias ){
+                $selects[] = $key . ' AS ' . $alias;
             }
             $query->select($selects);
         }
@@ -248,7 +242,7 @@ class Report extends Model
             $sheet->mergeCells("A1:B1");
 
             //  Bold header cells
-            $header = Report::$fieldNames[$this->module][$this->group_by];
+            $header = $this->fieldLabel($this->module, Report::fieldAlias($this->module, $this->group_by));
             $sheet->setCellValue('A3', $header);
             $sheet->setCellValue('B3', 'Total');
             $sheet->getStyle("A3:B3")->getFont()->setBold(true);
@@ -303,5 +297,20 @@ class Report extends Model
         }
 
         return $this;
+    }
+
+    static public function fieldLabel($module, $fieldAlias)
+    {
+        return Report::$fieldLabels[$module][$fieldAlias];
+    }
+
+    static public function fieldAliases($module)
+    {
+        return Report::$fieldAliases[$module];
+    }
+
+    static public function fieldAlias($module, $column)
+    {
+        return Report::$fieldAliases[$module][$column];
     }
 }

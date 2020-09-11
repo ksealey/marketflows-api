@@ -31,7 +31,7 @@ class Kernel extends ConsoleKernel
 
         //  Push scheduled export jobs
         $schedule->command('push-scheduled-exports')
-                 ->everyFiveMinutes()
+                 ->hourly()
                  ->onOneServer();
 
         //  Push account suspension jobs

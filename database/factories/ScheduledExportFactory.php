@@ -7,9 +7,9 @@ use Faker\Generator as Faker;
 use App\Models\Company\ScheduledExport;
 $factory->define(ScheduledExport::class, function (Faker $faker) {
     return [
-        'day_of_week'               => mt_rand(1,7),
+        'day_of_week'               => mt_rand(0,6),
         'hour_of_day'               => mt_rand(0, 23),
-        'next_run_at'               => now(),
+        'timezone'                  => $faker->timezone,
         'delivery_method'           => 'email',
         'delivery_email_addresses'  => $faker->email . ',' . $faker->email
     ];

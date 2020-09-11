@@ -11,10 +11,11 @@ use \App\Jobs\ExecuteScheduledExportJob;
 use \App\Mail\ScheduledExport as ScheduledExportMail;
 use Queue;
 use Mail;
+use Artisan;
 
 class ScheduledExportTest extends TestCase
 {
-    use \Tests\CreatesAccount;
+    use \Tests\CreatesAccount, WithFaker;
 
     /**
      * Test creating scheduled exports
@@ -37,6 +38,7 @@ class ScheduledExportTest extends TestCase
             'report_id'   => $report->id,
             'day_of_week' => $schedule->day_of_week,
             'hour_of_day' => $schedule->hour_of_day,
+            'timezone'        => $schedule->timezone,
             'delivery_method' => $schedule->delivery_method,
             'delivery_email_addresses' => implode(',', $schedule->delivery_email_addresses)
         ]);
@@ -72,7 +74,7 @@ class ScheduledExportTest extends TestCase
         ]);
 
         $response = $this->json('GET', route('read-scheduled-export', [
-            'company' => $company->id,
+            'company'         => $company->id,
             'scheduledExport' => $schedule->id
         ]));
 
@@ -82,6 +84,7 @@ class ScheduledExportTest extends TestCase
             "report_id"     => $report->id,
             "day_of_week"   => $schedule->day_of_week,
             "hour_of_day"   => $schedule->hour_of_day,
+            "timezone"        =>  $schedule->timezone,
             "delivery_method" => $schedule->delivery_method,
             "delivery_email_addresses" => $schedule->delivery_email_addresses
         ]);
@@ -120,6 +123,7 @@ class ScheduledExportTest extends TestCase
             'report_id'   => $report2->id,
             'day_of_week' => $scheduleUpdate->day_of_week,
             'hour_of_day' => $scheduleUpdate->hour_of_day,
+            'timezone'        => $scheduleUpdate->timezone,
             'delivery_method' => $scheduleUpdate->delivery_method,
             'delivery_email_addresses' => implode(',', $scheduleUpdate->delivery_email_addresses)
         ]);
@@ -130,6 +134,7 @@ class ScheduledExportTest extends TestCase
             "report_id"     => $report2->id,
             "day_of_week"   => $scheduleUpdate->day_of_week,
             "hour_of_day"   => $scheduleUpdate->hour_of_day,
+            "timezone"        =>  $scheduleUpdate->timezone,
             "delivery_method" => $scheduleUpdate->delivery_method,
             "delivery_email_addresses" => $scheduleUpdate->delivery_email_addresses
         ]);
@@ -162,6 +167,10 @@ class ScheduledExportTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'message' => 'Deleted'
+        ]);
+
+        $this->assertDatabaseMissing('scheduled_exports', [
+            'id' => $schedule->id
         ]);
     }
 
@@ -205,6 +214,7 @@ class ScheduledExportTest extends TestCase
                     "report_id",
                     "day_of_week",
                     "hour_of_day",
+                    "timezone",
                     "delivery_method",
                     "delivery_email_addresses"
                 ]
@@ -221,6 +231,12 @@ class ScheduledExportTest extends TestCase
     {
         Queue::fake();
 
+        $timezone = $this->faker()->timezone;
+        ScheduledExport::where('timezone', $timezone)
+                      ->where('day_of_week', now()->setTimeZone($timezone)->format('w'))
+                      ->where('hour_of_day', now()->setTimeZone($timezone)->format('G'))
+                      ->delete();
+
         $company = $this->createCompany();
         $report  = factory(Report::class)->create([
             'account_id' => $this->account->id,
@@ -229,21 +245,19 @@ class ScheduledExportTest extends TestCase
         ]); 
 
         $schedule = factory(ScheduledExport::class)->create([
-            'company_id' => $company->id,
-            'report_id' => $report->id,
-            'next_run_at' => now()->subMinutes(5)
+            'company_id'  => $company->id,
+            'report_id'   => $report->id,
+            'timezone'    => $timezone,
+            'day_of_week' => now()->setTimeZone($timezone)->format('w'),
+            'hour_of_day' => now()->setTimeZone($timezone)->format('G')
         ]);
 
-        \Artisan::call('push-scheduled-exports');
+        Artisan::call('push-scheduled-exports');
 
-        Queue::assertPushed(ExecuteScheduledExportJob::class, function($job) use($report){
-            return $job->scheduledExport->report_id === $report->id;
+        Queue::assertPushed(ExecuteScheduledExportJob::class, function($job) use($report, $schedule){
+            return $job->scheduledExport->id == $schedule->id 
+                && $job->scheduledExport->report_id === $report->id;
         });
-
-        $this->assertDatabaseMissing('scheduled_exports', [
-            'id'        => $schedule->id,
-            'locked_at' => null
-        ]);
     }
 
     /**
@@ -255,6 +269,12 @@ class ScheduledExportTest extends TestCase
     {
         Mail::fake();
 
+        $timezone = $this->faker()->timezone;
+        ScheduledExport::where('timezone', $timezone)
+                      ->where('day_of_week', now()->setTimeZone($timezone)->format('w'))
+                      ->where('hour_of_day', now()->setTimeZone($timezone)->format('G'))
+                      ->delete();
+
         $company = $this->createCompany();
         $report  = factory(Report::class)->create([
             'account_id' => $this->account->id,
@@ -263,20 +283,17 @@ class ScheduledExportTest extends TestCase
         ]); 
 
         $schedule = factory(ScheduledExport::class)->create([
-            'company_id' => $company->id,
-            'report_id' => $report->id,
-            'next_run_at' => now()->subMinutes(5)
+            'company_id'  => $company->id,
+            'report_id'   => $report->id,
+            'timezone'    => $timezone,
+            'day_of_week' => now()->setTimeZone($timezone)->format('w'),
+            'hour_of_day' => now()->setTimeZone($timezone)->format('G')
         ]);
 
-        \Artisan::call('push-scheduled-exports');
+        Artisan::call('push-scheduled-exports');
 
         Mail::assertSent(ScheduledExportMail::class, function($mail) use($report){
             return $mail->report->id === $report->id;
-        }); 
-
-        $this->assertDatabaseHas('scheduled_exports', [
-            'id'        => $schedule->id,
-            'locked_at' => null
-        ]);
+        });
     }
 }
