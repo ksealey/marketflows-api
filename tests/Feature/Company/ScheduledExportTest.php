@@ -216,7 +216,11 @@ class ScheduledExportTest extends TestCase
                     "hour_of_day",
                     "timezone",
                     "delivery_method",
-                    "delivery_email_addresses"
+                    "delivery_email_addresses",
+                    "created_at",
+                    "updated_at",
+                    "last_export_at",
+                    "report_name"
                 ]
             ]
         ]);
@@ -287,7 +291,8 @@ class ScheduledExportTest extends TestCase
             'report_id'   => $report->id,
             'timezone'    => $timezone,
             'day_of_week' => now()->setTimeZone($timezone)->format('w'),
-            'hour_of_day' => now()->setTimeZone($timezone)->format('G')
+            'hour_of_day' => now()->setTimeZone($timezone)->format('G'),
+            'last_export_at' => null
         ]);
 
         Artisan::call('push-scheduled-exports');
@@ -295,5 +300,10 @@ class ScheduledExportTest extends TestCase
         Mail::assertSent(ScheduledExportMail::class, function($mail) use($report){
             return $mail->report->id === $report->id;
         });
+
+        $this->assertDatabaseMissing('scheduled_exports', [
+            'id'             => $schedule->id,
+            'last_export_at' => null
+        ]);
     }
 }

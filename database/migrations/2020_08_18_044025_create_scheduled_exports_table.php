@@ -22,6 +22,7 @@ class CreateScheduledExportsTable extends Migration
             $table->string('timezone', 128);
             $table->string('delivery_method', 32);
             $table->string('delivery_email_addresses', 1024)->nullable();
+            $table->dateTime('last_export_at')->nullable()->index();
             $table->timestamps();
 
             $table->foreign('company_id')->references('id')->on('companies');

@@ -13,14 +13,24 @@ use Validator;
 class ScheduledExportController extends Controller
 {
     static $fields = [
+        'scheduled_exports.day_of_week',
+        'scheduled_exports.hour_of_day',
+        'scheduled_exports.delivery_method',
+        'scheduled_exports.hour_of_day',
+        'scheduled_exports.last_export_at',
         'scheduled_exports.created_at',
         'scheduled_exports.updated_at',
-        'scheduled_exports.delivery_method'
+        'reports.name'
     ];
 
     public function list(Request $request, Company $company)
     {
-        $query = ScheduledExport::where('scheduled_exports.company_id', $company->id);
+        $query = ScheduledExport::select([
+                                    'scheduled_exports.*',
+                                    'reports.name as report_name',
+                                ])
+                                ->where('scheduled_exports.company_id', $company->id)
+                                ->leftJoin('reports', 'reports.id', 'scheduled_exports.report_id');
 
         return parent::results(
             $request,
@@ -33,7 +43,7 @@ class ScheduledExportController extends Controller
 
     public function create(Request $request, Company $company)
     {
-        $validator = Validator::make($request->input(), [
+        $validator = validator($request->input(), [
             'report_id'         => 'bail|required|numeric',
             'day_of_week'       => 'bail|required|in:0,1,2,3,4,5,6',
             'hour_of_day'       => 'bail|required|numeric|min:0|max:23',
@@ -73,12 +83,14 @@ class ScheduledExportController extends Controller
 
     public function read(Request $request, Company $company, ScheduledExport $scheduledExport)
     {
+        $scheduledExport->report = $scheduledExport->report;
+        
         return response($scheduledExport);
     }
 
     public function update(Request $request, Company $company, ScheduledExport $scheduledExport)
     {
-        $validator = Validator::make($request->input(), [
+        $validator = validator($request->input(), [
             'report_id'         => 'bail|numeric',
             'day_of_week'       => 'bail|in:0,1,2,3,4,5,6',
             'hour_of_day'       => 'bail|numeric|min:0|max:23',

@@ -14,6 +14,7 @@ class ScheduledExport extends Model
         'timezone',
         'delivery_method',
         'delivery_email_addresses',
+        'last_export_at'
     ];
 
     protected $appends = [

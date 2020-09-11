@@ -34,7 +34,7 @@ class Controller extends BaseController
         $this->numberService = $numberService;
     }
 
-    public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', $orderDir = 'desc')
+    public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', callable $formatter = null)
     {
         $validator = $this->getDateFilterValidator($request->input(), array_merge([
             'limit'          => 'bail|numeric|min:1|max:250',
@@ -66,7 +66,7 @@ class Controller extends BaseController
         $page       = intval($request->page)  ?: 1; 
         $limit      = intval($request->limit) ?: 250;
         $orderBy    = $request->order_by  ?: $rangeField;
-        $orderDir   = strtoupper($request->order_dir) ?: $orderDir;
+        $orderDir   = strtoupper($request->order_dir) ?: 'desc';
 
         $resultCount = $query->count();
         $records     = $query->offset(( $page - 1 ) * $limit)
@@ -77,6 +77,10 @@ class Controller extends BaseController
         if( $resultCount > ($page * $limit) )
             $nextPage = $page + 1;
        
+        if( $formatter ){
+            $records = $formatter($records);
+        }
+
         return response([
             'results'              => $records,
             'result_count'         => $resultCount,

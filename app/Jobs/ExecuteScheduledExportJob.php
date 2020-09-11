@@ -44,5 +44,8 @@ class ExecuteScheduledExportJob implements ShouldQueue
                 Mail::to($email)->send(new ScheduledExportMail($report));
             }
         }
+
+        $schedule->last_export_at = now();
+        $schedule->save();
     }
 }
