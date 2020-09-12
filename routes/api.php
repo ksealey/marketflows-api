@@ -536,6 +536,10 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                      ->middleware('can:create,\App\Models\Company\ScheduledExport,company')
                      ->name('create-scheduled-export');
 
+                Route::get('/export', 'Company\ScheduledExportController@export')
+                     ->middleware('can:list,\App\Models\Company\ScheduledExport,company')
+                     ->name('export-scheduled-export');
+
                 Route::get('/{scheduledExport}', 'Company\ScheduledExportController@read')
                      ->middleware('can:read,scheduledExport,company')
                      ->name('read-scheduled-export');

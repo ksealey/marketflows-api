@@ -149,4 +149,28 @@ class ScheduledExportController extends Controller
             'message' => 'Deleted'
         ]);
     }
+
+    /**
+     * Export list of scheduled exports
+     * 
+     * @param Request $request
+     * @param Company $company
+     * 
+     * @return Response
+     */
+    public function export(Request $request, Company $company)
+    {
+        $request->merge([
+            'company_id'   => $company->id,
+            'company_name' => $company->name
+        ]);
+        
+        return parent::exportResults(
+            ScheduledExport::class,
+            $request,
+            [],
+            self::$fields,
+            'scheduled_exports.created_at'
+        );
+    }   
 }
