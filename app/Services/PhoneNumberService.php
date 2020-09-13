@@ -11,9 +11,9 @@ class PhoneNumberService
 {
     public $client;
 
-    public function __construct(Twilio $client)
+    public function __construct()
     {
-        $this->client = $client;
+        $this->client = App::make(Twilio::class);
     }
 
     public function listAvailable($contains = '' , $limit = 20, $type, $country = 'US')
@@ -45,17 +45,20 @@ class PhoneNumberService
 
     public function purchase(string $number)
     {
-        return $this->client->incomingPhoneNumbers
-                      ->create([
+        $inProduction = App::environment('prod', 'production');
+
+        return $this->client
+                    ->incomingPhoneNumbers
+                    ->create([
                             'phoneNumber'           => $number,
-                            'voiceUrl'              => route('incoming-call'),
-                            'voiceMethod'           => 'POST',
-                            'statusCallback'        => route('incoming-call-status-changed'),
-                            'statusCallbackMethod'  => 'POST',
-                            //'smsUrl'                => route('incoming-sms'),
-                           // 'smsMethod'             => 'POST',
-                            //'mmsUrl'                => route('incoming-mms'),
-                           // 'mmsMethod'             => 'POST',
+                            'voiceUrl'              => $inProduction ? route('incoming-call') : '',
+                            'voiceMethod'           => $inProduction ? 'POST' : '',
+                            'statusCallback'        => $inProduction ? route('incoming-call-status-changed') : '',
+                            'statusCallbackMethod'  => $inProduction ? 'POST' :'',
+                            'smsUrl'                => $inProduction ? route('incoming-sms') : '',
+                            'smsMethod'             => $inProduction ? 'POST' : '',
+                            'mmsUrl'                => $inProduction ? route('incoming-mms') : '',
+                            'mmsMethod'             => $inProduction ? 'POST' : '',
                             'voiceCallerIdLookup'   => true
                       ]);
         

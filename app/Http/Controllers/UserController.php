@@ -75,7 +75,6 @@ class UserController extends Controller
                 'password_reset_token'      => str_random(128), // To allow password reset
                 'password_hash'             => str_random(64), // Jibberish
                 'auth_token'                => str_random(255),
-                'email_verified_at'         => now() // No need for verification
             ]);
 
             Mail::to($user)

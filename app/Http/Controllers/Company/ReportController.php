@@ -410,7 +410,7 @@ class ReportController extends Controller
         list($startDate, $endDate) = $this->reportDates($request, $company);
         
         $userTimezone = $request->user()->timezone;
-        $groupBy      = Report::fieldColumn('calls', $request->group_by);
+        $groupBy      = $request->group_by;
         $callData     = DB::table('calls')
                             ->select(
                                 DB::raw($groupBy . ' AS group_by'),
@@ -571,6 +571,7 @@ class ReportController extends Controller
 
         $data = [];
         foreach($callData as $call){
+            var_dump($call); exit;
             $data[$call->group_by] = $call->count;
         }
         

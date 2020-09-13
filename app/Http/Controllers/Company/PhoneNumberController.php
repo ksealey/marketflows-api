@@ -120,7 +120,7 @@ class PhoneNumberController extends Controller
 
         try{
             $purchasedPhone = $this->numberService
-                                    ->purchase($foundNumbers[0]->phoneNumber);
+                                   ->purchase($foundNumbers[0]->phoneNumber);
         }catch(Exception $e){
             Log::error($e->getTraceAsString());
 

@@ -12,6 +12,22 @@ use Storage;
 
 class CallController extends Controller
 {
+    protected $fields = [
+        'contacts.first_name',
+        'contacts.last_name',
+        'contacts.phone',
+        'phone_numbers.name',
+        'calls.category',
+        'calls.sub_category',
+        'calls.status',
+        'calls.source',
+        'calls.medium',
+        'calls.content',
+        'calls.campaign',
+        'calls.forwarded_to',
+        'calls.created_at'
+    ];
+
     /**
      * List calls for a phone number
      * 
@@ -23,22 +39,6 @@ class CallController extends Controller
      */
     public function list(Request $request, Company $company)
     {
-        $fields = [
-            'contacts.first_name',
-            'contacts.last_name',
-            'contacts.phone',
-            'phone_numbers.name',
-            'calls.category',
-            'calls.sub_category',
-            'calls.status',
-            'calls.source',
-            'calls.medium',
-            'calls.content',
-            'calls.campaign',
-            'calls.forwarded_to',
-            'calls.created_at'
-        ];
-
         $query = Call::select([
                         'calls.*', 
                         'phone_numbers.name AS phone_number_name',
@@ -66,6 +66,10 @@ class CallController extends Controller
                     ])
                    ->where('calls.company_id', $company->id);
 
+        if( $request->phone_number_id ){
+            $query->where('phone_number_id', $request->phone_number_id);
+        }
+
         $query->leftJoin('call_recordings', function($join){
             $join->on('call_recordings.call_id', 'calls.id');
         });
@@ -91,8 +95,8 @@ class CallController extends Controller
         return parent::results(
             $request,
             $query,
-            [],
-            $fields,
+            ['phone_number_id' => 'numeric'],
+            $this->fields,
             'calls.created_at'
         );
     }
@@ -159,4 +163,24 @@ class CallController extends Controller
             'message' => 'Deleted'
         ]);
     }
+
+    /**
+     * Export calls
+     * 
+     */
+    public function export(Request $request, Company $company)
+    {
+        $request->merge([
+            'company_id'   => $company->id,
+            'company_name' => $company->name
+        ]);
+        
+        return parent::exportResults(
+            Call::class,
+            $request,
+            [],
+            $this->fields,
+            'calls.created_at'
+        );
+    }   
 }

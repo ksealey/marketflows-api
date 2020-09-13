@@ -5,12 +5,15 @@ use Spreadsheet;
 use Xlsx;
 use Worksheet;
 use SpreadsheetSettings;
-use DB;
-use DateTime;
-use DateTimeZone;
+use Carbon\Carbon;
 
 class ExportService
 {
+    public $dateColumns = [
+        'created_at',
+        'updated_at'
+    ];
+
     protected function export($user, $input, $query, $exports, $fileName)
     {
         $spreadsheet = new Spreadsheet();
@@ -49,6 +52,11 @@ class ExportService
                 foreach($data as $prop => $value){
                     $header = $exports[$prop] ?? null;
                     if( $header ){
+                        if( $value && in_array($prop, $this->dateColumns ) ){
+                            $date = new Carbon($value);
+                            $date->setTimeZone($user->timezone);
+                            $value = $date->format('Y-m-d g:ia');
+                        }
                         $sheet->setCellValue($headerToColumnMap[$header] . $row, $value);
                     }
                 }

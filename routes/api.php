@@ -596,6 +596,10 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                     ->middleware('can:list,\App\Models\Company\Call,company')
                     ->name('list-calls');
 
+                Route::get('/export', 'Company\CallController@export')
+                    ->middleware('can:list,\App\Models\Company\Call,company')
+                    ->name('list-calls');
+
                 Route::get('/{call}', 'Company\CallController@read')
                     ->middleware('can:read,call,company')
                     ->name('read-call');
@@ -682,12 +686,12 @@ Route::middleware('twilio.webhooks')->group(function(){
 
     /*
     |--------------------------------
-    | Handle incoming sms
+    | Handle incoming sms and mms
     |--------------------------------
     */
-    Route::post('incoming-sms', 'IncomingSMSController@handleSms')
-            ->name('incoming-sms');
+    Route::post('incoming-sms', 'IncomingSMSController@handleSMS')
+         ->name('incoming-sms');
 
-    Route::post('incoming-sms', 'IncomingSMSController@handleMms')
+    Route::post('incoming-mms', 'IncomingSMSController@handleMMS')
             ->name('incoming-mms');
 });

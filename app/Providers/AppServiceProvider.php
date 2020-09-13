@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Http\Response;
 use Twilio\Rest\Client as Twilio;
+use App\Services\PhoneNumberService;
 use AWS;
 use App;
 
@@ -23,27 +24,15 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         //  Register Twilio
-        $this->app->bind('Twilio', function($app){
+        $this->app->bind(Twilio::class, function($app){
             $config = config('services.twilio');
             
-            if( App::environment(['prod', 'production']) ){
-                $client = new Twilio($config['sid'], $config['token']);
-            }else{
-                $client = new Twilio($config['test_sid'], $config['test_token']);
-            }
-
-            return $client;
+            return new Twilio($config['sid'], $config['token']);
         });
 
         //  Register Number Manager
-        $this->app->bind('App\Services\PhoneNumberService', function($app){
-            $config = config('services.twilio');
-            if( App::environment(['prod', 'production']) ){
-                $client = new Twilio($config['sid'], $config['token']);
-            }else{
-                $client = new Twilio($config['test_sid'], $config['test_token']);
-            }
-            return new \App\Services\PhoneNumberService($client);
+        $this->app->bind(PhoneNumberService::class, function($app){
+            return new PhoneNumberService();
         });
 
         //  Register AWS

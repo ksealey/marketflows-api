@@ -85,7 +85,7 @@ class SwapRulesRule implements Rule
             }
 
             foreach($inclusionRuleGroup->rules as $ruleIndex => $rule){
-                if( ! $this->isValidRule($rule) ){
+                if( ! $this->isValidRule($rule, true) ){
                     $this->message = 'Invalid inclusion rule found. Group Index: ' . $groupIndex. ', Rule index: ' . $ruleIndex . ' - see documentation for format';
 
                     return false;
@@ -110,7 +110,7 @@ class SwapRulesRule implements Rule
                 }
     
                 foreach($exclusionRuleGroup->rules as $ruleIndex => $rule){
-                    if( ! $this->isValidRule($rule, true) ){
+                    if( ! $this->isValidRule($rule, false) ){
                         $this->message = 'Invalid exclusion rule found. Group Index: ' . $groupIndex. ', Rule index: ' . $ruleIndex . ' - see documentation for format';
     
                         return false;
@@ -186,15 +186,13 @@ class SwapRulesRule implements Rule
         return $this->message;
     }
 
-    public function isValidRule($rule, $isExclusionRule = false)
+    public function isValidRule($rule, $allowAll = true)
     {
         if( empty($rule->type) || ! is_string($rule->type) )
             return false;
 
-        if( ! $isExclusionRule ){
-            if( $rule->type === 'ALL' )
+        if( $allowAll && $rule->type === 'ALL' )
                 return true;
-        } 
 
         //  Validate for types that do not need inputs
         if( in_array($rule->type, ['DIRECT', 'ORGANIC', 'PAID', 'SEARCH', 'REFERRAL']) )
@@ -209,24 +207,21 @@ class SwapRulesRule implements Rule
             return false;
 
         //  Check operator
-        if( empty($rule->operator) || ! is_string($rule->operator) )
+        if( empty($rule->operator) || ! is_string($rule->operator) || ! in_array($rule->operator, $this->operators) )
             return false;
-            
+         
+        //  No input requirements
         if( in_array($rule->operator, ['EMPTY', 'NOT_EMPTY']) ) // Validate operators that do not need values
             return true;
-
-        if( ! in_array($rule->operator, $this->operators) )
-            return false;
 
         //  Check input values
         if( empty($rule->inputs) || ! is_array($rule->inputs) )
             return false;
 
         foreach( $rule->inputs as $input ){
-            if( ! is_string($input) || ! $input )
+            if( ! is_string($input) && ! is_numeric($input) )
                 return false;
         }
-
 
         //  parameters should also have a field
         if( $rule->type == 'LANDING_PARAM' && (empty($rule->field) || ! is_string($rule->field) ))

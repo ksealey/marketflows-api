@@ -11,7 +11,7 @@ class Alert extends Model
     use SoftDeletes;
 
     const TYPE_DEFAULT    = 'info';
-    const TYPE_DANGER     = 'error';
+    const TYPE_DANGER     = 'danger';
     const TYPE_WARNING    = 'warning';
     const TYPE_SUCCESS    = 'success';
     const TYPE_FILE       = 'file';
