@@ -78,6 +78,13 @@ class BillingStatementController extends Controller
             ], 400);
         }
 
+
+        if( $billingStatement->billing->locked_at ){
+            return response([
+                'error' => 'Cannot complete payment at this time - Please try again later'
+            ], 400);
+        }
+
         $validator = validator($request->input(), [
             'payment_method_id' => 'bail|required|exists:payment_methods,id'
         ]);

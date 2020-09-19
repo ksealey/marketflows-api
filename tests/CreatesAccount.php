@@ -271,7 +271,7 @@ trait CreatesAccount
                         factory(CallRecording::class)->create([
                             'call_id' => $call->id,
                             'path'     => $path,
-                            'file_size' => 1024 * 1024 * 1024
+                            'file_size' => 1024 * 1024 * 10
                         ]);
 
                         factory(Transcription::class)->create([
@@ -309,7 +309,7 @@ trait CreatesAccount
                         factory(CallRecording::class)->create([
                             'call_id' => $call->id,
                             'path'     => $path,
-                            'file_size' => 1024 * 1024 * 1024
+                            'file_size' => 1024 * 1024 * 10
                         ]);
 
                         factory(Transcription::class)->create([

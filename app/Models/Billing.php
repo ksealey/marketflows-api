@@ -50,7 +50,7 @@ class Billing extends Model
     const TIER_MINUTES_LOCAL            = 500;
     const TIER_MINUTES_TOLL_FREE        = 0;
     const TIER_MINUTES_TRANSCRIPTION    = 0;
-    const TIER_STORAGE_GB               = 10;
+    const TIER_STORAGE_GB               = 1;
 
     const COST_SERVICE              = 39.99;
     const COST_NUMBERS_LOCAL        = 2.50;
@@ -180,7 +180,7 @@ class Billing extends Model
                             ->where('calls.created_at', '<', $endDate);
 
                 $sizeBytes = $query->first()->total_storage ?: 0;
-                $sizeGB    = $sizeBytes ? ceil($sizeBytes / 1024 / 1024 / 1024) : 0;
+                $sizeGB    = $sizeBytes ? round($sizeBytes / 1024 / 1024 / 1024, 2, PHP_ROUND_HALF_UP) : 0;
 
                 return $sizeGB;
 
@@ -263,23 +263,140 @@ class Billing extends Model
 
     public function currentTotal()
     {
-        $startDate = new Carbon($this->billing_period_starts_at);
-        $endDate   = new Carbon($this->billing_period_ends_at);
+        return $this->current()['total'];
+    }
 
-        $serviceTotal           = $this->total(Billing::ITEM_SERVICE, $this->quantity(Billing::ITEM_SERVICE, $startDate, $endDate));
-        $localNumberTotal       = $this->total(Billing::ITEM_NUMBERS_LOCAL, $this->quantity(Billing::ITEM_NUMBERS_LOCAL, $startDate, $endDate));
-        $tollFreeNumberTotal    = $this->total(Billing::ITEM_NUMBERS_TOLL_FREE, $this->quantity(Billing::ITEM_NUMBERS_TOLL_FREE, $startDate, $endDate));
-        $localMinutesTotal      = $this->total(Billing::ITEM_MINUTES_LOCAL, $this->quantity(Billing::ITEM_MINUTES_LOCAL, $startDate, $endDate));
-        $tollFreeMinutesTotal   = $this->total(Billing::ITEM_MINUTES_TOLL_FREE, $this->quantity(Billing::ITEM_MINUTES_TOLL_FREE, $startDate, $endDate));
-        $transMinutesTotal      = $this->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $this->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION, $startDate, $endDate));
-        $storageTotal           = $this->total(Billing::ITEM_STORAGE_GB, $this->quantity(Billing::ITEM_STORAGE_GB, $startDate, $endDate));
+    public function current()
+    {
+        $total   = 0;
 
-        $statementTotal         = $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
+        $billingPeriodStart     = new Carbon($this->billing_period_starts_at);
+        $billingPeriodEnd       = new Carbon($this->billing_period_ends_at);
+ 
+        $serviceQuantity        = $this->quantity(Billing::ITEM_SERVICE, $billingPeriodStart, $billingPeriodEnd);
+        $servicePrice           = $this->price(Billing::ITEM_SERVICE);
+        $serviceTotal           = $this->total(Billing::ITEM_SERVICE, $serviceQuantity);
 
+        $localNumberQuantity    = $this->quantity(Billing::ITEM_NUMBERS_LOCAL, $billingPeriodStart, $billingPeriodEnd);
+        $localNumberPrice       = $this->price(Billing::ITEM_NUMBERS_LOCAL);
+        $localNumberTotal       = $this->total(Billing::ITEM_NUMBERS_LOCAL, $localNumberQuantity);
+
+        $tollFreeNumberQuantity = $this->quantity(Billing::ITEM_NUMBERS_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
+        $tollFreeNumberPrice    = $this->price(Billing::ITEM_NUMBERS_TOLL_FREE);
+        $tollFreeNumberTotal    = $this->total(Billing::ITEM_NUMBERS_TOLL_FREE, $tollFreeNumberQuantity);
+
+        $localMinutesQuantity   = $this->quantity(Billing::ITEM_MINUTES_LOCAL, $billingPeriodStart, $billingPeriodEnd);
+        $localMinutesPrice      = $this->price(Billing::ITEM_MINUTES_LOCAL);
+        $localMinutesTotal      = $this->total(Billing::ITEM_MINUTES_LOCAL, $localMinutesQuantity);
+
+        $tollFreeMinutesQuantity= $this->quantity(Billing::ITEM_MINUTES_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
+        $tollFreeMinutesPrice   = $this->price(Billing::ITEM_MINUTES_TOLL_FREE);
+        $tollFreeMinutesTotal   = $this->total(Billing::ITEM_MINUTES_TOLL_FREE, $tollFreeMinutesQuantity);
+
+        $transMinutesQuantity   = $this->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION, $billingPeriodStart, $billingPeriodEnd);
+        $transMinutesPrice      = $this->price(Billing::ITEM_MINUTES_TRANSCRIPTION);
+        $transMinutesTotal      = $this->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $transMinutesQuantity);
+
+        $storageQuantity        = $this->quantity(Billing::ITEM_STORAGE_GB, $billingPeriodStart, $billingPeriodEnd);
+        $storagePrice           = $this->price(Billing::ITEM_STORAGE_GB);
+        $storageTotal           = $this->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
+
+        $total = (
+            $serviceTotal + 
+            $localNumberTotal + 
+            $tollFreeNumberTotal + 
+            $localMinutesTotal + 
+            $tollFreeMinutesTotal + 
+            $transMinutesTotal + 
+            $storageTotal
+        );
+
+        $items = [
+            [
+                'type'                 => 'STANDARD',
+                'label'                => $this->label(Billing::ITEM_SERVICE),
+                'quantity'             => $serviceQuantity,
+                'price'                => $servicePrice,
+                'price_formatted'      => number_format($servicePrice, 2),
+                'total'                => $serviceTotal,
+                'total_formatted'      => number_format($serviceTotal, 2)
+            ],
+            [
+                'type'                 => 'STANDARD',
+                'label'                => $this->label(Billing::ITEM_NUMBERS_LOCAL),
+                'quantity'             => $localNumberQuantity,
+                'price'                => $localNumberPrice,
+                'price_formatted'      => number_format($localNumberPrice, 2),
+                'total'                => $localNumberTotal,
+                'total_formatted'      => number_format($localNumberTotal, 2)
+            ],
+            [
+                'type'                 => 'STANDARD',
+                'label'                => $this->label(Billing::ITEM_NUMBERS_TOLL_FREE),
+                'quantity'             => $tollFreeNumberQuantity,
+                'price'                => $tollFreeNumberPrice,
+                'price_formatted'      => number_format($tollFreeNumberPrice, 2),
+                'total'                => $tollFreeNumberTotal,
+                'total_formatted'      => number_format($tollFreeNumberTotal, 2)
+            ],
+            [
+                'type'                 => 'STANDARD',
+                'label'                => $this->label(Billing::ITEM_MINUTES_LOCAL),
+                'quantity'             => $localMinutesQuantity,
+                'price'                => $localMinutesPrice,
+                'price_formatted'      => number_format($localMinutesPrice, 2),
+                'total'                => $localMinutesTotal,
+                'total_formatted'      => number_format($localMinutesTotal, 2)
+            ],
+            [
+                'type'                 => 'STANDARD',
+                'label'                => $this->label(Billing::ITEM_MINUTES_TOLL_FREE),
+                'quantity'             => $tollFreeMinutesQuantity,
+                'price'                => $tollFreeMinutesPrice,
+                'price_formatted'      => number_format($tollFreeMinutesPrice, 2),
+                'total'                => $tollFreeMinutesTotal,
+                'total_formatted'      => number_format($tollFreeMinutesTotal, 2)
+            ],
+            [
+                'type'                 => 'STANDARD',
+                'label'                => $this->label(Billing::ITEM_MINUTES_TRANSCRIPTION),
+                'quantity'             => $transMinutesQuantity,
+                'price'                => $transMinutesPrice,
+                'price_formatted'      => number_format($transMinutesPrice, 2),
+                'total'                => $transMinutesTotal,
+                'total_formatted'      => number_format($transMinutesTotal, 2)
+            ],
+            [
+                'type'                 => 'STANDARD',
+                'label'                => $this->label(Billing::ITEM_STORAGE_GB),
+                'quantity'             => $storageQuantity,
+                'price'                => $storagePrice,
+                'price_formatted'      => number_format($storagePrice, 2),
+                'total'                => $storageTotal,
+                'total_formatted'      => number_format($storageTotal, 2)
+            ],
+        ];
+        
         foreach( $this->account->services as $service ){
-            $statementTotal += $service->total();
+            $_serviceTotal = $service->total();
+            $_servicePrice = $service->price();
+            $items[] = [
+                'type'                 => 'SERVICE',
+                'label'                => $service->label(),
+                'quantity'             => $service->quantity(),
+                'price'                => $_servicePrice,
+                'price_formatted'      => number_format($_servicePrice, 2),
+                'total'                => $_serviceTotal,
+                'total_formatted'      => number_format($_serviceTotal, 2)
+            ];
+
+            $total += $_serviceTotal;
         }
 
-        return $statementTotal;
+        return [
+            'items'           => $items,
+            'total'           => $total,
+            'total_formatted' => number_format($total, 2)
+        ];
     }
 }

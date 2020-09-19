@@ -6,14 +6,14 @@ use Illuminate\Console\Command;
 use App\Models\Billing;
 use App\Jobs\BillAccountJob;
 
-class BillAccounts extends Command
+class PushBillAccounts extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'bill-accounts';
+    protected $signature = 'push-bill-accounts';
 
     /**
      * The console command description.
@@ -44,7 +44,7 @@ class BillAccounts extends Command
         //
         $toBill = Billing::where('billing_period_ends_at', '<=', now())
                          ->whereNull('locked_at')
-                         ->limit(100)
+                         ->limit(200)
                          ->get();
 
         Billing::whereIn('id', array_column($toBill->toArray(), 'id'))

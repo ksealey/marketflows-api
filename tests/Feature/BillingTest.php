@@ -14,6 +14,7 @@ use App\Models\BillingStatement;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Company\PhoneNumber;
+use App\Models\Company\CallRecording;
 use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
 use App\Mail\AccountUnsuspended;
@@ -89,7 +90,7 @@ class BillingTest extends TestCase
 
         Queue::fake();
 
-        Artisan::call('bill-accounts');
+        Artisan::call('push-bill-accounts');
 
         Queue::assertPushed(BillAccountJob::class, function($job){
             return $job->billing->id == $this->billing->id;
@@ -110,7 +111,7 @@ class BillingTest extends TestCase
 
         Queue::fake();
 
-        Artisan::call('bill-accounts');
+        Artisan::call('push-bill-accounts');
 
         Queue::assertNotPushed(BillAccountJob::class);
     }
@@ -171,8 +172,8 @@ class BillingTest extends TestCase
         $statement = BillingStatement::where('billing_id', $this->billing->id)->first();
 
         $this->assertNotNull($statement);
-        $this->assertEquals($statement->total(), $this->billing->currentTotal());
-        $this->assertEquals($statement->total(), $statement->payment->total);
+        $this->assertEquals($statement->total, $this->billing->currentTotal());
+        $this->assertEquals($statement->total, $statement->payment->total);
         $this->assertNotNull($statement->paid_at);
 
         //
@@ -284,8 +285,8 @@ class BillingTest extends TestCase
 
         $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB, $billingPeriodStart, $billingPeriodEnd);
         $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
-        $this->assertEquals($storageQuantity, 240);
-        $this->assertEquals($storageTotal, (240 - Billing::TIER_STORAGE_GB) * Billing::COST_STORAGE_GB);
+        $this->assertEquals($storageQuantity, 2.34);
+        $this->assertEquals($storageTotal, round((2.34 - Billing::TIER_STORAGE_GB) * Billing::COST_STORAGE_GB, 2));
 
         $intialTotal = $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
         $this->assertEquals($billing->currentTotal(), $intialTotal);
@@ -372,7 +373,7 @@ class BillingTest extends TestCase
         ]));
 
         $response->assertStatus(201);
-        $response->assertJSON($payment->toArray());
+        $response->assertJSON(Payment::find($payment->id)->toArray());
 
         //  Make sure statement is paid
         $statement = BillingStatement::find($statement->id);
@@ -408,22 +409,44 @@ class BillingTest extends TestCase
     }
 
     /**
+     * Test paying a statement fails when billing is locked
+     * 
+     * @group billing
+     */
+    public function testPayStatementFailsWhenBillingLocked()
+    {
+        $this->billing->locked_at = now();
+        $this->billing->save();
+
+        $paymentMethod = $this->createPaymentMethod();
+
+        $this->mock(PaymentManager::class, function($mock){
+            $mock->shouldNotReceive('charge');
+        });
+
+        $statement = $this->createBillableStatement([
+            'billing_id'               => $this->billing->id,
+            'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
+            'billing_period_ends_at'   => now()->endOfDay()
+        ]);
+
+        $response = $this->json('POST', route('pay-statement', [
+            'billingStatement' => $statement->id,
+            'payment_method_id'=> $paymentMethod->id
+        ]));
+        $response->assertJSON([
+            'error' => 'Cannot complete payment at this time - Please try again later'
+        ]);
+        $response->assertStatus(400);
+    }
+
+    /**
      * Test paying a statement fails gracefully
      * 
      * @group billing
      */
     public function testPayStatementFailsGracefully()
     {
-        //  Suspend
-        $this->account->suspended_at        = now();
-        $this->account->suspension_code     = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
-        $this->account->suspension_message  = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
-        $this->account->save();
-
-        $this->billing->suspension_warnings = 3;
-        $this->billing->next_suspension_warning_at = now();
-        $this->billing->save();
-
         $paymentMethod = $this->createPaymentMethod();
 
         $this->mock(PaymentManager::class, function($mock){
@@ -453,11 +476,16 @@ class BillingTest extends TestCase
      */
     public function testFetchingCurrentTotal()
     {
+        CallRecording::where('id', '>', 0)->forceDelete();
+         
         $companyCount           = 2;
-        $localNumberCount       = 11;
-        $tollFreeNumberCount    = 1;
-        $localCallsPerNumber    = 10;
-        $tollFreeCallsPerNumber = 10;
+        $localNumberCount       = 11; // 22/12 ($30)
+        $tollFreeNumberCount    = 1; // 2/2 ($8)
+        $localCallsPerNumber    = 10; // 220/0 ($0)
+        $tollFreeCallsPerNumber = 10;// 20/20 ($1.40) 
+        // Transcriptions 240/240 ($7.20)
+        //  Storage 2400MB(2.34G)/2400MB(1.34G) (0.13)
+
 
         $this->populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber);
         
@@ -472,7 +500,7 @@ class BillingTest extends TestCase
     /**
      * Test fetching current billing
      * 
-     * @group billing--
+     * @group billing
      */
     public function testFetchingBilling()
     {

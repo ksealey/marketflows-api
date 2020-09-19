@@ -45,21 +45,24 @@ class PayUnpaidStatementsJob implements ShouldQueue
     public function handle()
     {
         $this->paymentManager = App::make('App\Helpers\PaymentManager');
-
+       
         $paymentMethod = $this->paymentMethod;
-        $statements    = BillingStatement::whereNull('paid_at')
-                                         ->where('billing_id', DB::raw(
-                                             '(SELECT id 
-                                                FROM billing 
-                                                WHERE account_id = ' . $paymentMethod->account_id
-                                            . ')'
-                                         ))
-                                         ->get();
+        $account       = $paymentMethod->account;
+        $billing       = $account->billing;
+
+        if( $billing->locked_at ) return;
+        
+        $statements = BillingStatement::whereNull('paid_at')
+                                      ->where('billing_id', $billing->id)
+                                      ->get();
 
         if( ! count($statements) )
             return;
+
+        //  Lock billing until we're done
+        $billing->locked_at = now();
+        $billing->save();
         
-        $account = $paymentMethod->account;
         foreach( $statements as $statement ){
             $payment = $this->paymentManager->charge($paymentMethod, $statement->total);
             if( ! $payment ){
@@ -90,6 +93,9 @@ class PayUnpaidStatementsJob implements ShouldQueue
 
             sleep(2);
         }
+
+        $billing->locked_at = null;
+        $billing->save();
         
         if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE )
             $account->unsuspend();
