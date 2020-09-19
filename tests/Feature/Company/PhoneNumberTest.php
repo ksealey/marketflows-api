@@ -107,10 +107,12 @@ class PhoneNumberTest extends TestCase
 
         $conditions = [
             [
-                'field'    => 'phone_numbers.name',
-                'operator' => 'EQUALS',
-                'inputs'   => [
-                    $firstNumber->name
+                [
+                    'field'    => 'phone_numbers.name',
+                    'operator' => 'EQUALS',
+                    'inputs'   => [
+                        $firstNumber->name
+                    ]
                 ]
             ]
         ];
@@ -252,10 +254,12 @@ class PhoneNumberTest extends TestCase
 
         $conditions = [
             [
-                'field'    => 'phone_numbers.name',
-                'operator' => 'EQUALS',
-                'inputs'   => [
-                    $phoneNumbers->first()->name
+                [
+                    'field'    => 'phone_numbers.name',
+                    'operator' => 'EQUALS',
+                    'inputs'   => [
+                        $phoneNumbers->first()->name
+                    ]
                 ]
             ]
         ];
