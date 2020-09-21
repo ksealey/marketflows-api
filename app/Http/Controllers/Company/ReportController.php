@@ -349,13 +349,14 @@ class ReportController extends Controller
         }
         
         list($startDate, $endDate) = $this->reportDates($request, $company);
-        $dateRangeSets = [ [$startDate, $endDate] ];
+        $dateRangeSets = [];
         if( $request->vs_previous_period ){
             $dateRangeSets[] = $this->getPreviousDateFilterPeriod($startDate, $endDate);
         }
 
-        $dbDateFormat = $this->getDBDateFormat($startDate, $endDate);
-        $userTimezone = $request->user()->timezone;
+        $dateRangeSets[] = [$startDate, $endDate];
+        $dbDateFormat    = $this->getDBDateFormat($startDate, $endDate);
+        $userTimezone    = $request->user()->timezone;
         foreach( $dateRangeSets as $dateRangeSet ){
             list($_startDate, $_endDate) = $dateRangeSet;
             $query = DB::table('calls')
