@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-
 use \App\Models\User;
 use \App\Models\Company;
 use \App\Models\Company\AudioClip;
@@ -13,13 +12,22 @@ use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Rules\CountryRule;
-
 use Validator;
 use Exception;
 use DB;
 
 class CompanyController extends Controller
 {
+    protected $fields = [
+        'companies.id',
+        'companies.name',
+        'companies.industry',
+        'companies.country',
+        'companies.ga_id',
+        'companies.created_at',
+        'companies.updated_at'
+    ];
+
     /**
      * List all companies
      * 
@@ -29,15 +37,6 @@ class CompanyController extends Controller
      */
     public function list(Request $request)
     {
-        $fields = [
-            'companies.id',
-            'companies.name',
-            'companies.industry',
-            'companies.country',
-            'companies.created_at',
-            'companies.updated_at'
-        ];
-
         $user  = $request->user();
         $query = Company::select([
             'companies.*'
@@ -47,7 +46,7 @@ class CompanyController extends Controller
             $request,
             $query,
             [],
-            $fields,
+            $this->fields,
             'companies.created_at'
         );
     }
@@ -194,20 +193,11 @@ class CompanyController extends Controller
      */
     public function export(Request $request)
     {
-        $fields = [
-            'companies.id',
-            'companies.name',
-            'companies.industry',
-            'companies.country',
-            'companies.created_at',
-            'companies.updated_at'
-        ];
-
         return parent::exportResults(
             Company::class,
             $request,
             [],
-            $fields,
+            $this->fields,
             'companies.created_at'
         );
     }

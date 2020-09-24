@@ -53,11 +53,12 @@ class Company extends Model implements Exportable
     static public function exports() : array
     {
         return [
-            'id'        => 'Id',
-            'name'      => 'Name',
-            'industry'  => 'Industry',
-            'country'   => 'Country',
-            'created_at_local'=> 'Created'
+            'id'                => 'Id',
+            'name'              => 'Name',
+            'industry'          => 'Industry',
+            'country'           => 'Country',
+            'ga_id'             => 'Google Analytics Id',
+            'created_at_local'  => 'Created'
         ];
     }
 
@@ -69,10 +70,10 @@ class Company extends Model implements Exportable
     static public function exportQuery($user, array $input)
     {
         $query = Company::select([
-                            'companies.*', 
-                            DB::raw("DATE_FORMAT(CONVERT_TZ(companies.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local") 
-                        ])
-                        ->where('companies.account_id', $user->account_id);
+                    'companies.*', 
+                    DB::raw("DATE_FORMAT(CONVERT_TZ(companies.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local") 
+                ])
+                ->where('companies.account_id', $user->account_id);
 
         return $query;
     }

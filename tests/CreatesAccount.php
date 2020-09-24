@@ -370,4 +370,88 @@ trait CreatesAccount
     {
         return parent::json($method, $route, $body, $headers);
     }
+
+    public function createConditions(array $fields, $asString = false)
+    {
+        $conditionGroups = [];
+
+        foreach( $fields as $key => $field ){
+            $rand           = mt_rand(1, 10);
+            $inputs         = [];
+            switch($rand)
+            {
+                case 1:
+                    $operator = 'EQUALS';
+                    $inputs   = [
+                        str_random(mt_rand(1, 64))
+                    ];
+                break;
+
+                case 2:
+                    $operator = 'NOT_EQUALS';
+                    $inputs   = [
+                        str_random(mt_rand(1, 64))
+                    ];
+                break;
+
+                case 3:
+                    $operator = 'IN';
+                    $inputs   = [
+                        str_random(mt_rand(1, 64)),
+                        str_random(mt_rand(1, 64)),
+                        str_random(mt_rand(1, 64)),
+                    ];
+                break;
+
+                case 4:
+                    $operator = 'NOT_IN';
+                    $inputs   = [
+                        str_random(mt_rand(1, 64)),
+                        str_random(mt_rand(1, 64)),
+                        str_random(mt_rand(1, 64)),
+                    ];
+                break;
+
+                case 5:
+                    $operator = 'EMPTY';
+                break;
+
+                case 6:
+                    $operator = 'NOT_EMPTY';
+                break;
+                    
+                case 7:
+                    $operator = 'LIKE';
+                    $inputs   = [
+                        str_random(mt_rand(1, 64))
+                    ];
+                break;
+
+                case 8:
+                    $operator = 'NOT_LIKE';
+                    $inputs   = [
+                        str_random(mt_rand(1, 64))
+                    ];
+                break;
+
+                case 9:
+                    $operator = 'IS_TRUE';
+                break;
+
+                case 10:
+                    $operator = 'IS_FALSE';
+                break;
+            }
+            $conditionGroups[] = [
+                [
+                    'field'    => $field,
+                    'operator' => $operator,
+                    'inputs'   => $inputs
+                ]
+            ];
+        }
+
+
+        return $asString ? json_encode($conditionGroups) : $conditionGroups;
+    }
 }

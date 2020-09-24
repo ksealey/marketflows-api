@@ -40,6 +40,20 @@ class Alert extends Model
         'deleted_at'
     ];
 
+    public static function accessibleFields()
+    {
+        return [
+            'alerts.id',
+            'alerts.category',
+            'alerts.type',
+            'alerts.title',
+            'alerts.message',
+            'alerts.url',
+            'alerts.url_label',
+            'alerts.created_at'
+        ];
+    }
+
     /**
      * Appends
      * 

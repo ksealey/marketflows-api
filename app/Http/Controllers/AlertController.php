@@ -16,17 +16,6 @@ class AlertController extends Controller
      */
     public function list(Request $request)
     {
-        $fields = [
-            'alerts.id',
-            'alerts.type',
-            'alerts.title',
-            'alerts.message',
-            'alerts.url',
-            'alerts.url_label',
-            'alerts.icon',
-            'alerts.created_at'
-        ];
-
         $query = Alert::where('user_id', $request->user()->id)
                       ->where(function($query){
                             $query->whereNull('hidden_after')
@@ -37,7 +26,7 @@ class AlertController extends Controller
             $request,
             $query,
             [],
-            $fields,
+            Alert::accessibleFields(),
             'alerts.created_at'
         );
     }

@@ -22,7 +22,6 @@ class CreateAlertsTable extends Migration
             $table->string('message', 255);
             $table->string('url', 255)->nullable();
             $table->string('url_label', 64)->nullable();
-            $table->dateTime('dismissed_at')->nullable();
             $table->dateTime('hidden_after')->nullable();
             $table->timestamps();
             $table->softDeletes();
