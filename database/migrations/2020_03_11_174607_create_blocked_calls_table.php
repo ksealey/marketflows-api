@@ -15,10 +15,13 @@ class CreateBlockedCallsTable extends Migration
     {
         Schema::create('blocked_calls', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('blocked_phone_number_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned();
             $table->dateTime('created_at', 6)->index();
             $table->softDeletes();
+
+            $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
             $table->foreign('blocked_phone_number_id')->references('id')->on('blocked_phone_numbers');
         });

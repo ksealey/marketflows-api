@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Company\BlockedPhoneNumber;
 use App\Models\Company\PhoneNumber;
+use App\Models\BlockedPhoneNumber;
+use App\Models\BlockedCall;
+use App\Rules\BlockedPhoneNumbersRule;
 use Validator;
+use DB;
 
 class BlockedPhoneNumberController extends Controller
 {
@@ -15,19 +19,18 @@ class BlockedPhoneNumberController extends Controller
      */
     public function list(Request $request)
     {
-        $user  = $request->user();
-        $query = BlockedPhoneNumber::where('account_id', $user->account_id);
-        
-        if( $request->search )
-            $query->where(function($query) use($request){
-                $query->where('name', 'like', '%' . $request->search . '%')
-                      ->orWhere('number', 'like', '%' . $request->search . '%');
-            });
+        $query = BlockedPhoneNumber::select([
+                                        'blocked_phone_numbers.*', 
+                                        DB::raw('(SELECT count(*) FROM blocked_calls WHERE blocked_calls.blocked_phone_number_id = blocked_phone_numbers.id) AS call_count')
+                                    ])
+                                    ->where('blocked_phone_numbers.account_id', $request->user()->id);
 
         return parent::results(
             $request,
             $query,
-            ['order_by'  => 'in:name,number,created_at,updated_at']
+            [],
+            BlockedPhoneNumber::accessibleFields(),
+            'blocked_phone_numbers.created_at'
         );
     }
 
@@ -40,8 +43,12 @@ class BlockedPhoneNumberController extends Controller
         $user = $request->user();
 
         $validator = Validator::make($request->input(), [
-            'number'        => 'bail|required|numeric|digits_between:10,13',
-            'name'          => 'bail|required|max:64',
+            'numbers' => [
+                'bail', 
+                'required', 
+                'json', 
+                new BlockedPhoneNumbersRule()
+            ]
         ]);
 
         if( $validator->fails() ){
@@ -49,17 +56,51 @@ class BlockedPhoneNumberController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
         }
+        
+        $blockedNumbers   = BlockedPhoneNumber::where('account_id', $user->account_id)->get();
+        $existingBlockedNumbers  = [];
+        foreach( $blockedNumbers as $existingBlockedNumber ){
+            $existingBlockedNumbers[] = $existingBlockedNumber->country_code . $existingBlockedNumber->number;
+        }
 
-        $number = BlockedPhoneNumber::create([
-            'account_id'    => $user->account_id,
-            'company_id'    => null,
-            'user_id'       => $user->id,
-            'name'          => $request->name,
-            'country_code'  => PhoneNumber::countryCode($request->number),
-            'number'        => PhoneNumber::number($request->number),
-        ]);
+        $wholeNumbers = [];
+        $inserts      = [];
+        $numbers      = json_decode($request->numbers, true);
+        $createdAt    = now();
 
-        return response($number, 201);
+        foreach($numbers as $number){
+            //  Check for uniqueness in set, but be forgiving
+            $wholeNumber = $number['number'];
+            if( in_array($wholeNumber, $wholeNumbers) )
+                continue;
+
+            //  Check for uniqueness in existing records, still be forgiving
+            if( in_array($wholeNumber, $existingBlockedNumbers) )
+                continue;
+
+            $wholeNumbers[]         = $wholeNumber;
+            $number['country_code'] = PhoneNumber::countryCode($wholeNumber) ?: null;
+            $number['number']       = PhoneNumber::number($wholeNumber);
+            $number['account_id']   = $user->account_id;
+            $number['created_at']   = $createdAt;
+            $number['created_by']   = $user->id;
+
+            $inserts[]              = $number;
+        }
+
+        if( ! count($inserts) ){
+            return response([
+                'error' => 'All blocked numbers provided already exist'
+            ], 400);
+        }
+
+        BlockedPhoneNumber::insert($inserts);
+
+        $blockedNumbers = BlockedPhoneNumber::where('account_id', $user->account_id)
+                                            ->where('created_at', $createdAt)
+                                            ->get();
+
+        return response($blockedNumbers);
     }
 
     /**
@@ -68,7 +109,7 @@ class BlockedPhoneNumberController extends Controller
      */
     public function read(Request $request, BlockedPhoneNumber $blockedPhoneNumber)
     {
-        $blockedPhoneNumber->calls;
+        $blockedPhoneNumber->call_count;
 
         return response($blockedPhoneNumber);
     }
@@ -80,7 +121,7 @@ class BlockedPhoneNumberController extends Controller
     public function update(Request $request, BlockedPhoneNumber $blockedPhoneNumber)
     {
         $validator = Validator::make($request->input(), [
-            'name' => 'bail|required|max:64',
+            'name' => 'bail|max:64',
         ]);
 
         if( $validator->fails() ){
@@ -89,9 +130,13 @@ class BlockedPhoneNumberController extends Controller
             ], 400);
         }
 
-        $blockedPhoneNumber->name = $request->name;
+        if( $request->filled('name') && $request->name !== $blockedPhoneNumber->name ){
+            $blockedPhoneNumber->name = $request->name;
+            $blockedPhoneNumber->updated_by = $request->user()->id;
+            $blockedPhoneNumber->save();
+        }
 
-        $blockedPhoneNumber->save();
+        $blockedPhoneNumber->call_count;
 
         return response($blockedPhoneNumber);
     }
@@ -102,14 +147,31 @@ class BlockedPhoneNumberController extends Controller
      */
     public function delete(Request $request, BlockedPhoneNumber $blockedPhoneNumber)
     {
-        $user = $request->user();
-        
         $blockedPhoneNumber->deleted_at = now();
-        $blockedPhoneNumber->deleted_by = $user->id;
+        $blockedPhoneNumber->deleted_by = $request->user()->id;
         $blockedPhoneNumber->save();
 
         return response([
-            'message' => 'Deleted.'
+            'message' => 'Deleted'
         ]);
+    }
+
+    /**
+     * Export results
+     * 
+     */
+    public function export(Request $request)
+    {
+        $request->merge([
+            'account_id'   => $request->user()->account_id,
+        ]);
+
+        return parent::exportResults(
+            BlockedPhoneNumber::class,
+            $request,
+            [],
+            BlockedPhoneNumber::accessibleFields(),
+            'blocked_phone_numbers.created_at'
+        );
     }
 }

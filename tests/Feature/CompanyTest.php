@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
-use \App\Models\Company\BlockedPhoneNumber;
-use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use \App\Models\Company;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\PhoneNumber;

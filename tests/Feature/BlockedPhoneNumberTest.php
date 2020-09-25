@@ -5,11 +5,10 @@ namespace Tests\Feature\Company;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
-use App\Models\Company;
+use App\Models\BlockedPhoneNumber;
+use App\Models\BlockedCall;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
-use App\Models\Company\BlockedPhoneNumber;
-use App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use App\Services\ExportService;
 use Queue;
 use DateTimeZone;
@@ -25,18 +24,12 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testListBlockedPhoneNumbers()
     {
-        $company        = $this->createCompany();
         $blockedNumbers = factory(BlockedPhoneNumber::class, mt_rand(1,4))->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
 
-        $response = $this->json('GET', route('list-company-blocked-phone-numbers', [
-            'company' => $company->id
-        ]), [
-            'date_type' => 'ALL_TIME'
-        ]);
+        $response = $this->json('GET', route('list-blocked-phone-numbers'));
 
         $response->assertStatus(200);
         $response->assertJSON([
@@ -52,36 +45,59 @@ class BlockedPhoneNumberTest extends TestCase
     }
 
     /**
+     * Test listing blocked phone numbers with all conditions
+     * 
+     * @group blocked-phone-numbers
+     */
+    public function testListBlockedPhoneNumbersWithAllConditions()
+    {
+        $blockedNumbers = factory(BlockedPhoneNumber::class, mt_rand(1,4))->create([
+            'account_id' => $this->account->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $conditions = $this->createConditions(BlockedPhoneNumber::accessibleFields(), true);
+        $response = $this->json('GET', route('list-blocked-phone-numbers', [
+            'conditions' => $conditions
+        ]));
+
+        $response->assertJSON([
+            "limit"        => 250,
+            "next_page"    => null,
+            "results"      => [],
+        ]);
+
+        $response->assertStatus(200);
+    }
+
+    /**
      * Test listing blocked phone numbers with conditions
      * 
      * @group blocked-phone-numbers
      */
-    public function testListBlockedPhoneNumbersWithConditions()
+    public function testListBlockedPhoneNumbersWithCondition()
     {
-        $company        = $this->createCompany();
         $blockedNumbers = factory(BlockedPhoneNumber::class, mt_rand(1,4))->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
 
         $firstNumber = $blockedNumbers->first();
 
-        $response = $this->json('GET', route('list-company-blocked-phone-numbers', [
-            'company' => $company->id,
+        $response = $this->json('GET', route('list-blocked-phone-numbers', [
             'conditions' => json_encode([
                 [
-                    'field'    => 'blocked_phone_numbers.name',
-                    'operator' => 'EQUALS',
-                    'inputs'   => [
-                        $firstNumber->name
+                    [
+                        'field'    => 'blocked_phone_numbers.name',
+                        'operator' => 'EQUALS',
+                        'inputs'   => [
+                            $firstNumber->name
+                        ]
                     ]
                 ]
             ]),
-            'date_type' => 'ALL_TIME'
         ]));
-        $response->assertStatus(200);
-
+        
         $response->assertJSON([
             "result_count" => 1,
             "limit"        => 250,
@@ -95,6 +111,8 @@ class BlockedPhoneNumberTest extends TestCase
                 ]
             ],
         ]);
+
+        $response->assertStatus(200);
     }
 
     /**
@@ -104,12 +122,9 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testCreateBlockedPhoneNumbers()
     {
-        $company       = $this->createCompany();
         $blockedNumber = factory(BlockedPhoneNumber::class)->make();
 
-        $response = $this->json('POST', route('create-company-blocked-phone-number', [
-            'company' => $company->id
-        ]), [
+        $response = $this->json('POST', route('create-blocked-phone-number'), [
             'numbers' => json_encode([
                 [
                     'name' => 'Num 1',
@@ -143,17 +158,14 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testUpdateBlockedPhoneNumbers()
     {
-        $company       = $this->createCompany();
         $blockedNumber = factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
 
         $updatedNumber = factory(BlockedPhoneNumber::class)->make();
 
-        $response = $this->json('PUT', route('update-company-blocked-phone-number', [
-            'company'            => $company->id,
+        $response = $this->json('PUT', route('update-blocked-phone-number', [
             'blockedPhoneNumber' => $blockedNumber->id
         ]), [
            'name' =>  $updatedNumber->name
@@ -182,17 +194,14 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testDeleteBlockedPhoneNumbers()
     {
-        $company       = $this->createCompany();
         $blockedNumber = factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
 
         $updatedNumber = factory(BlockedPhoneNumber::class)->make();
 
-        $response = $this->json('DELETE', route('update-company-blocked-phone-number', [
-            'company'            => $company->id,
+        $response = $this->json('DELETE', route('update-blocked-phone-number', [
             'blockedPhoneNumber' => $blockedNumber->id
         ]));
 
@@ -201,7 +210,7 @@ class BlockedPhoneNumberTest extends TestCase
         ]);
 
         $this->assertDatabaseMissing('blocked_phone_numbers', [
-            'id' => $blockedNumber->id,
+            'id'         => $blockedNumber->id,
             'deleted_at' => null
         ]);
     }
@@ -213,10 +222,8 @@ class BlockedPhoneNumberTest extends TestCase
      */
     public function testExportBlockedPhoneNumbers()
     {
-        $company = $this->createCompany();
         factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
 
@@ -227,9 +234,7 @@ class BlockedPhoneNumberTest extends TestCase
                  ->andReturn($exportData);
         });
         
-        $response = $this->json('GET', route('export-company-blocked-phone-numbers', [
-            'company' => $company->id
-        ]));
+        $response = $this->json('GET', route('export-blocked-phone-numbers'));
         
         $response->assertStatus(200);
         $response->assertSee($exportData);
@@ -250,25 +255,23 @@ class BlockedPhoneNumberTest extends TestCase
                  ->andReturn($exportData);
         });
 
-        $company        = $this->createCompany();
         $blockedNumbers = factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
         $conditions     = [
             [
-                'field'    => 'blocked_phone_numbers.name',
-                'operator' => 'EQUALS',
-                'inputs'   => [
-                    $blockedNumbers->first()->name
+                [
+                    'field'    => 'blocked_phone_numbers.name',
+                    'operator' => 'EQUALS',
+                    'inputs'   => [
+                        $blockedNumbers->first()->name
+                    ]
                 ]
             ]
         ];
 
-        $response = $this->json('GET', route('export-company-blocked-phone-numbers', [
-            'company' => $company->id
-        ]), [
+        $response = $this->json('GET', route('export-blocked-phone-numbers'), [
             'conditions' => json_encode($conditions)
         ]);
 
@@ -291,25 +294,20 @@ class BlockedPhoneNumberTest extends TestCase
         });
 
         $twoDaysAgo  = now()->subDays(2);
-        $company     = $this->createCompany();
         $oldBlockedNumber = factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id,
             'created_at' => $twoDaysAgo,
             'updated_at' => $twoDaysAgo
         ]);
 
         factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
         
         $twoDaysAgo->setTimeZone(new DateTimeZone($this->user->timezone));
-        $response = $this->json('GET', route('export-company-blocked-phone-numbers', [
-            'company' => $company->id
-        ]), [
+        $response = $this->json('GET', route('export-blocked-phone-numbers'), [
             'start_date' => $twoDaysAgo->format('Y-m-d'),
             'end_date'   => $twoDaysAgo->format('Y-m-d')
         ]);
@@ -341,20 +339,18 @@ class BlockedPhoneNumberTest extends TestCase
         ]);
 
         $blockedNumber = factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id' => $this->account->id,
             'created_by' => $this->user->id
         ]);
 
         $blockedCalls = factory(BlockedCall::class, 5)->create([
+            'account_id'              => $this->account->id,
             'blocked_phone_number_id' => $blockedNumber->id,
             'phone_number_id'         => $myNumber->id
         ]);
 
-        $response = $this->json('GET', route('list-company-blocked-calls', [
-            'company'            => $company->id,
-            'blockedPhoneNumber' => $blockedNumber->id,
-            'date_type'          => 'ALL_TIME'
+        $response = $this->json('GET', route('list-blocked-calls', [
+            'blockedPhoneNumber' => $blockedNumber->id
         ]));
 
         $response->assertStatus(200);
@@ -366,54 +362,5 @@ class BlockedPhoneNumberTest extends TestCase
             "next_page"    => null,
             'results'      => []
         ]);
-    }
-
-    /**
-     * Test exporting blocked calls for a blocked phone number
-     * 
-     * @group blocked-phone-numbers
-     */
-    public function testExportBlockedCalls()
-    {
-        $exportData  = bin2hex(random_bytes(200));
-        $this->mock(ExportService::class, function($mock) use($exportData){
-            $mock->shouldReceive('exportAsOutput')
-                 ->once()
-                 ->andReturn($exportData);
-        });
-
-        $company = $this->createCompany();
-
-        $config = factory(PhoneNumberConfig::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id
-        ]);
-
-        $myNumber = factory(PhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id,
-            'phone_number_config_id' => $config->id
-        ]);
-
-        $blockedNumber = factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id
-        ]);
-
-        $blockedCalls = factory(BlockedCall::class, 5)->create([
-            'blocked_phone_number_id' => $blockedNumber->id,
-            'phone_number_id'         => $myNumber->id
-        ]);
-
-        $response = $this->json('GET', route('export-company-blocked-calls', [
-            'company'            => $company->id,
-            'blockedPhoneNumber' => $blockedNumber->id
-        ]));
-
-        $response->assertStatus(200);
-        $response->assertSee($exportData);
     }
 }

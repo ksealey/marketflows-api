@@ -7,14 +7,12 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\Account;
-use App\Models\AccountBlockedPhoneNumber;
-use App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\AudioClip;
-use App\Models\Company\BlockedPhoneNumber;
-use App\Models\Company\BlockedPhoneNumber\BlockedCall;
+use App\Models\BlockedPhoneNumber;
+use App\Models\BlockedPhoneNumber\BlockedCall;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
 use App\Models\Company\Webhook;
@@ -89,11 +87,8 @@ class IncomingCallController extends Controller
         //
         $callerCountryCode = PhoneNumber::countryCode($request->From);
         $callerNumber      = PhoneNumber::number($request->From);
-
-        //  Company level
-        $query = BlockedPhoneNumber::where('company_id', $phoneNumber->company_id)
-                                    ->where('number', $callerNumber);
-        
+        $query             = BlockedPhoneNumber::where('account_id', $phoneNumber->account_id)
+                                               ->where('number', $callerNumber);
         if( $callerCountryCode )
             $query->where('country_code', $callerCountryCode);
         
@@ -101,30 +96,10 @@ class IncomingCallController extends Controller
 
         if( $blockedPhoneNumber ){
             BlockedCall::create([
-               'blocked_phone_number_id' => $blockedPhoneNumber->id,
-               'phone_number_id'         => $phoneNumber->id,
-               'created_at'              => now()
-            ]);
-
-            $response->reject();
-
-            return Response::xmlResponse($response);
-        }
-
-        //
-        //  Account level number block
-        //
-        $query = AccountBlockedPhoneNumber::where('account_id', $phoneNumber->account_id)
-                                           ->where('number', $callerNumber);
-        if( $callerCountryCode )
-            $query->where('country_code', $callerCountryCode);
-
-        $accountBlockedPhoneNumber = $query->first();
-        if( $accountBlockedPhoneNumber ){
-            AccountBlockedCall::create([
-               'account_blocked_phone_number_id' => $accountBlockedPhoneNumber->id,
-               'phone_number_id'                 => $phoneNumber->id,
-               'created_at'                      => now()
+                'account_id'              => $phoneNumber->account_id,
+                'blocked_phone_number_id' => $blockedPhoneNumber->id,
+                'phone_number_id'         => $phoneNumber->id,
+                'created_at'              => now()
             ]);
 
             $response->reject();

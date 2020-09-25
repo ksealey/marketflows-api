@@ -6,9 +6,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
-use \App\Models\AccountBlockedPhoneNumber;
+use \App\Models\BlockedPhoneNumber;
 use \App\Models\Company\PhoneNumber;
-use \App\Models\Company\BlockedPhoneNumber;
 use \App\Models\Company\Call;
 use \App\Events\Company\CallEvent;
 use \App\Models\Company\Webhook;
@@ -495,11 +494,11 @@ class IncomingCallTest extends TestCase
     }
 
     /**
-     * Test blocked calls at company level are rejected
+     * Test blocked calls are rejected
      * 
      * @group incoming-calls
      */
-    public function testCompanyBlockedPhoneNumbersRejectCalls()
+    public function testBlockedPhoneNumbersRejectCalls()
     {
         $company     = $this->createCompany();
         $audioClip   = $this->createAudioClip($company);
@@ -518,11 +517,10 @@ class IncomingCallTest extends TestCase
  
          // Add block
          $blockedNumber = factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
+            'account_id'  => $company->account_id,
             'country_code'=> PhoneNumber::countryCode($incomingCall->From),
-            'number'     => PhoneNumber::number($incomingCall->From),
-            'created_by' => $this->user->id
+            'number'      => PhoneNumber::number($incomingCall->From),
+            'created_by'  => $this->user->id
          ]);
  
          //  Then make sure it's rejected
@@ -542,53 +540,7 @@ class IncomingCallTest extends TestCase
          ]);
     }
 
-    /**
-     * Test blocked calls at account level are rejected
-     * 
-     * @group incoming-calls
-     */
-    public function testAccountBlockedPhoneNumbersRejectCalls()
-    {
-        $company     = $this->createCompany();
-        $audioClip   = $this->createAudioClip($company);
-        $config      = $this->createConfig($company);
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
-        ]);
-
-         //  Make sure it works at first
-         $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-         $response->assertStatus(200);
-         $response->assertHeader('Content-Type', 'application/xml');
-         $response->assertDontSee('<Response><Reject/></Response>', false);
- 
-         // Add account number block
-         $blockedNumber = factory(AccountBlockedPhoneNumber::class)->create([
-            'account_id'   => $company->account_id,
-            'created_by'   => $this->user->id,
-            'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'number'       => PhoneNumber::number($incomingCall->From)
-         ]);
- 
-         //  Then make sure it's rejected
-         Event::fake();
-
-         $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-         $response->assertStatus(200);
-         $response->assertHeader('Content-Type', 'application/xml');
-         $response->assertSee('<Response><Reject/></Response>', false);
-
-         Event::assertNotDispatched(CallEvent::class);
-
-         // And make sure the blocked call is logged
-         $this->assertDatabaseHas('account_blocked_calls', [
-            'account_blocked_phone_number_id' => $blockedNumber->id,
-            'phone_number_id'                 => $phoneNumber->id,
-         ]);
-    }
-
+   
     /**
      * Test call status change
      * 

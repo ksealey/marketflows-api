@@ -8,9 +8,9 @@ use \App\Models\User;
 use App\Models\PaymentMethod;
 use App\Models\BillingStatement;
 use App\Models\BillingStatementItem;
-use \App\Models\AccountBlockedPhoneNumber;
-use \App\Models\AccountBlockedPhoneNumber\AccountBlockedCall;
 use App\Models\Company;
+use \App\Models\BlockedPhoneNumber;
+use \App\Models\BlockedCall;
 use App\Models\Company\Contact;
 use \App\Models\Company\AudioClip;
 use \App\Models\Company\Report;
@@ -19,8 +19,6 @@ use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
 use App\Models\Company\Transcription;
-use \App\Models\Company\BlockedPhoneNumber;
-use \App\Models\Company\BlockedPhoneNumber\BlockedCall;
 use Storage;
 
 trait CreatesAccount
@@ -189,18 +187,7 @@ trait CreatesAccount
                 'phone_number_id'         => $phoneNumber->id,
             ]);
         });
-
-         //  Blocked Numbers (Account)
-         factory(AccountBlockedPhoneNumber::class, 2)->create([
-            'account_id' => $this->account->id,
-            'created_by' => $this->user->id
-        ])->each(function($accountBlockedNumber) use($phoneNumber){
-            factory(AccountBlockedCall::class, 2)->create([
-                'account_blocked_phone_number_id' => $accountBlockedNumber->id,
-                'phone_number_id'                 => $phoneNumber->id,
-            ]);
-        });
-
+        
         //  Report
         $report = factory(Report::class)->create([
             'account_id' => $this->account->id,
