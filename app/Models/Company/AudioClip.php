@@ -36,6 +36,16 @@ class AudioClip extends Model
         'url'
     ];
 
+    static public function accessibleFields()
+    {
+        return [
+            'audio_clips.id',
+            'audio_clips.name',
+            'audio_clips.created_at',
+            'audio_clips.updated_at'
+        ];
+    }
+
     public function getLinkAttribute()
     {
         return route('read-audio-clip', [

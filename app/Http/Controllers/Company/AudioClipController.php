@@ -34,7 +34,7 @@ class AudioClipController extends Controller
             $request,
             $query,
             [],
-            $fields,
+            AudioClip::accessibleFields(),
             'audio_clips.created_at'
         );
     }

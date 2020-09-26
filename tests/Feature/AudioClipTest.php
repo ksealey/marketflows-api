@@ -17,6 +17,118 @@ class AudioClipTest extends TestCase
     use \Tests\CreatesAccount;
     
     /**
+     * Test listing audio clips
+     * 
+     * @group audio-clips
+     */
+    public function testList()
+    {
+        $company   = $this->createCompany();
+        $audioClip = factory(AudioClip::class, 10)->create([
+            'account_id' => $this->account->id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $response = $this->json('GET', route('list-audio-clips', [
+            'company'   => $company->id,
+        ]));
+
+        $response->assertJSON([
+            "results"       => [
+                [
+                    
+                ]
+            ],
+            "result_count"  => 10,
+            "limit"         => 250,
+            "page"          => 1,
+            "total_pages"   => 1,
+            "next_page"     => null
+        ]);
+        $response->assertStatus(200);
+    }
+
+     /**
+     * Test listing audio clips with all conditions
+     * 
+     * @group audio-clips
+     */
+    public function testListWithAllConditions()
+    {
+        $company    = $this->createCompany();
+        $audioClips = factory(AudioClip::class, 10)->create([
+            'account_id' => $this->account->id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $response = $this->json('GET', route('list-audio-clips', [
+            'company'    => $company->id,
+            'conditions' => $this->createConditions(AudioClip::accessibleFields(), true)
+        ]));
+
+        $response->assertJSON([
+            "results"       => [
+                [
+                    
+                ]
+            ],
+            "result_count"  => 10,
+            "limit"         => 250,
+            "page"          => 1,
+            "total_pages"   => 1,
+            "next_page"     => null
+        ]);
+        $response->assertStatus(200);
+    }
+
+    /**
+     * Test listing audio clips with condition
+     * 
+     * @group audio-clips
+     */
+    public function testListWithCondition()
+    {
+        $company    = $this->createCompany();
+        $audioClips = factory(AudioClip::class, 10)->create([
+            'account_id' => $this->account->id,
+            'company_id' => $company->id,
+            'created_by' => $this->user->id
+        ]);
+        $firstRecord = $audioClips->first();
+
+        $response = $this->json('GET', route('list-audio-clips', [
+            'company'    => $company->id,
+            'conditions' => json_encode([
+                [
+                    [
+                        'field' => 'audio_clips.id',
+                        'operator' => 'EQUALS',
+                        'inputs' => [
+                            $firstRecord->id
+                        ]
+                    ]
+                ]
+            ])
+        ]));
+
+        $response->assertJSON([
+            "results"       => [
+                [
+                    'id' => $firstRecord->id
+                ]
+            ],
+            "result_count"  => 1,
+            "limit"         => 250,
+            "page"          => 1,
+            "total_pages"   => 1,
+            "next_page"     => null
+        ]);
+        $response->assertStatus(200);
+    }
+
+    /**
      * Test creating an audio clip
      * 
      * @group audio-clips
