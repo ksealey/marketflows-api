@@ -71,7 +71,8 @@ class CallController extends Controller
         }
 
         $query->leftJoin('call_recordings', function($join){
-            $join->on('call_recordings.call_id', 'calls.id');
+            $join->on('call_recordings.call_id', 'calls.id')
+                 ->whereNull('call_recordings.deleted_at');
         });
 
         //  Join non-deleted numbers

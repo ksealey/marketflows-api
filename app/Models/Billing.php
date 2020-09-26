@@ -145,6 +145,7 @@ class Billing extends Model
                                 END
                             ) as total_minutes')
                         ])
+                        ->whereNull('calls.deleted_at')
                         ->where('account_id', $this->account_id)
                         ->where('created_at', '>=', $startDate)
                         ->where('created_at', '<=', $endDate);
@@ -164,6 +165,7 @@ class Billing extends Model
                                 ) as total_minutes')
                             ])
                             ->join('transcriptions', 'transcriptions.call_id', '=', 'calls.id')
+                            ->whereNull('calls.deleted_at')
                             ->where('account_id', $this->account_id)
                             ->where('created_at', '>=', $startDate)
                             ->where('created_at', '<=', $endDate);
@@ -175,7 +177,11 @@ class Billing extends Model
                             ->select([
                                 DB::raw('SUM(call_recordings.file_size) as total_storage')
                             ])
-                            ->join('call_recordings', 'call_recordings.call_id', '=', 'calls.id')
+                            ->join('call_recordings', function($join){
+                                $join->on('call_recordings.call_id', '=', 'calls.id')
+                                     ->whereNull('call_recordings.deleted_at');
+                            })
+                            ->whereNull('calls.deleted_at')
                             ->where('calls.account_id', $this->account_id)
                             ->where('calls.created_at', '<', $endDate);
 

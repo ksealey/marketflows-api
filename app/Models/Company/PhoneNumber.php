@@ -131,7 +131,10 @@ class PhoneNumber extends Model implements Exportable
                                 DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
                                 DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
                           ])
-                          ->leftJoin('calls', 'calls.phone_number_id', 'phone_numbers.id')
+                          ->leftJoin('calls', function($join){
+                             $join->on('calls.phone_number_id', '=', 'phone_numbers.id')
+                                  ->whereNull('calls.deleted_at');
+                          })
                           ->where('phone_numbers.company_id', $input['company_id']);
     }
 

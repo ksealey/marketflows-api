@@ -123,13 +123,14 @@ class Call extends Model
         }
 
         $query->leftJoin('call_recordings', function($join){
-            $join->on('call_recordings.call_id', 'calls.id');
+            $join->on('call_recordings.call_id', 'calls.id')
+                 ->whereNull('call_recordings.deleted_at');
         });
 
         //  Join non-deleted numbers
         $query->leftJoin('phone_numbers', function($join){
-        $join->on('calls.phone_number_id', 'phone_numbers.id')
-            ->whereNull('phone_numbers.deleted_at');
+            $join->on('calls.phone_number_id', 'phone_numbers.id')
+                ->whereNull('phone_numbers.deleted_at');
         });
 
         //  Join non-deleted companies
