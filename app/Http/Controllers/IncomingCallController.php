@@ -12,7 +12,7 @@ use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\AudioClip;
 use App\Models\BlockedPhoneNumber;
-use App\Models\BlockedPhoneNumber\BlockedCall;
+use App\Models\BlockedCall;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
 use App\Models\Company\Webhook;
