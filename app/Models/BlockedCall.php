@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use DB;
 
 class BlockedCall extends Model
 {
@@ -45,7 +46,7 @@ class BlockedCall extends Model
             'phone_number'                  => 'Dialed Number',
             'blocked_phone_number_number'   => 'Blocked Country Code',
             'blocked_phone_number_number'   => 'Blocked Phone Number',
-            'created_at'                    => 'Call Date'
+            'created_at_local'              => 'Created'
         ];
     }
 
@@ -63,6 +64,7 @@ class BlockedCall extends Model
                                 'phone_numbers.name AS phone_number_name',
                                 'blocked_phone_numbers.number AS blocked_phone_number_number',
                                 'blocked_phone_numbers.country_code AS blocked_phone_number_country_code',
+                                DB::raw("DATE_FORMAT(CONVERT_TZ(companies.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local") 
                             ])
                             ->where('blocked_calls.account_id', $input['account_id'])
                             ->leftJoin('phone_numbers', 'phone_numbers.id', 'blocked_calls.phone_number_id')

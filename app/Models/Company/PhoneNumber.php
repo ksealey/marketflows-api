@@ -113,9 +113,8 @@ class PhoneNumber extends Model implements Exportable
             'campaign'          => 'Campaign',
             'content'           => 'Content',
             'call_count'        => 'Calls',
-            'last_call_at'      => 'Last Call Date',
-            'created_at'        => 'Created',
-            
+            'last_call_at_local' => 'Last Call Date',
+            'created_at_local'  => 'Created',
         ];
     }
 
@@ -129,7 +128,8 @@ class PhoneNumber extends Model implements Exportable
         return PhoneNumber::select([
                                 'phone_numbers.*',
                                 DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
-                                DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
+                                DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local"),
+                                DB::raw("DATE_FORMAT(CONVERT_TZ((SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id), 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS last_call_at_local")
                           ])
                           ->leftJoin('calls', function($join){
                              $join->on('calls.phone_number_id', '=', 'phone_numbers.id')

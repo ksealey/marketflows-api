@@ -113,7 +113,7 @@ class Report extends Model
             'id'                => 'Id',
             'company_id'        => 'Company Id',
             'name'              => 'Name',
-            'created_at'        => 'Created'
+            'created_at_local'  => 'Created'
         ];
     }
 
@@ -124,7 +124,11 @@ class Report extends Model
 
     static public function exportQuery($user, array $input)
     {
-        return Report::where('reports.company_id', $input['company_id']);
+        return Report::select([
+                        'reports.*',
+                        DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                    ])
+                     ->where('reports.company_id', $input['company_id']);
     }
 
     public function __destruct()

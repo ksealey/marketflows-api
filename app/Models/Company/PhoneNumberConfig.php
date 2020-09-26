@@ -75,7 +75,7 @@ class PhoneNumberConfig extends Model
             'id'                => 'Id',
             'name'              => 'Name',
             'forward_to_number' => 'Forwarding Number',
-            'created_at'        => 'Created'
+            'created_at_local'  => 'Created'
         ];
     }
 
@@ -86,7 +86,11 @@ class PhoneNumberConfig extends Model
 
     static public function exportQuery($user, array $input)
     {
-        return PhoneNumberConfig::where('company_id', $input['company_id']);
+        return PhoneNumberConfig::select([
+                                    'phone_number_configs.*',
+                                    DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                                ])
+                                ->where('company_id', $input['company_id']);
     }
 
 

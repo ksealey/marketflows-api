@@ -80,7 +80,7 @@ class Call extends Model
             'recording_enabled' => 'Recording Enabled',
             'forwarded_to'      => 'Forwarded to Number',
             'first_call'        => 'First Call',
-            'created_at'        => 'Created',
+            'created_at_local'  => 'Created',
         ];
     }
 
@@ -114,7 +114,8 @@ class Call extends Model
                     ),
                     DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
                     DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name'),
-                    DB::raw("contacts.phone AS caller_number")
+                    DB::raw("contacts.phone AS caller_number"),
+                    DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
                 ])
                 ->where('calls.company_id', $input['company_id']);
 

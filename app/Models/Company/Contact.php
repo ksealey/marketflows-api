@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
+use DB;
 
 class Contact extends Model
 {
@@ -53,7 +54,7 @@ class Contact extends Model
             'state'             => 'State',
             'zip'               => 'Zip',
             'country'           => 'Country',
-            'created_at'        => 'Created',
+            'created_at_local'  => 'Created',
         ];
     }
 
@@ -64,7 +65,11 @@ class Contact extends Model
 
     static public function exportQuery($user, array $input)
     {
-        return Contact::where('contacts.company_id', $input['company_id']);
+        return Contact::select([
+                            'contacts.*',
+                            DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                        ])
+                        ->where('contacts.company_id', $input['company_id']);
     }
 
     public function getKindAttribute()

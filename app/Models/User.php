@@ -101,7 +101,10 @@ class User extends Authenticatable
 
     static public function exportQuery($user, array $input)
     {
-        return User::select('users.*', DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local"))
+        return User::select([
+                        'users.*', 
+                        DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                    ])
                     ->where('account_id', $user->account_id);
     }
 
