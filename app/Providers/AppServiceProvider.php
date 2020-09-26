@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Http\Response;
 use Twilio\Rest\Client as Twilio;
 use App\Services\PhoneNumberService;
+use App\Services\ReportService;
 use AWS;
 use App;
 
@@ -33,6 +34,11 @@ class AppServiceProvider extends ServiceProvider
         //  Register Number Manager
         $this->app->bind(PhoneNumberService::class, function($app){
             return new PhoneNumberService();
+        });
+
+        //  Register report service
+        $this->app->bind(ReportService::class, function($app){
+            return new ReportService();
         });
 
         //  Register AWS

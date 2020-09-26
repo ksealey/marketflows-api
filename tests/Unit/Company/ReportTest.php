@@ -221,7 +221,7 @@ class ReportTest extends TestCase
             'company_id' => $company->id,
             'created_by' => $this->user->id,
             'type'       => 'count', 
-            'group_by'   => 'call_source',
+            'group_by'   => 'calls.source',
             'date_type'  => 'ALL_TIME'
         ]);
 

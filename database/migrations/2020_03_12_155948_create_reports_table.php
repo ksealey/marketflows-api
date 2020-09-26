@@ -26,6 +26,7 @@ class CreateReportsTable extends Migration
             $table->dateTime('start_date')->nullable();
             $table->dateTime('end_date')->nullable();
             $table->json('conditions')->nullable();
+            $table->boolean('vs_previous_period')->default(0);
 
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();

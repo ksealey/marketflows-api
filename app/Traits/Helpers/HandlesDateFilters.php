@@ -122,6 +122,74 @@ trait HandlesDateFilters
         return $this->_prepDates($vsStartDate, $vsEndDate);
     }
 
+    protected function getDBDateFormat($startDate, $endDate)
+    {
+        $days = $startDate->diff($endDate)->days;
+
+        if( $days == 0 ){ //  Time
+            $format = '%Y-%m-%d %k:00:00';
+        }elseif( $days <= 60 ){ //   Days
+            $format = '%Y-%m-%d';
+        }elseif( $days <= 730 ){ //  Months
+            $format = '%Y-%m';
+        }else{ //  Years
+            $format = '%Y';
+        }
+
+        return $format;
+    }
+
+    protected function getComparisonFormat($startDate, $endDate)
+    {
+        $days = $startDate->diff($endDate)->days;
+
+        if( $days == 0 ){ //  Time
+            $format = 'Y-m-d H:00:00';
+        }elseif( $days <= 60 ){ //   Days
+            $format = 'Y-m-d';
+        }elseif( $days <= 730 ){ //  Months
+            $format = 'Y-m';
+        }else{ //  Years
+            $format = 'Y';
+        }
+
+        return $format;
+    }
+
+    protected function getTimeIncrement($startDate, $endDate)
+    {
+        $diff = $startDate->diff($endDate);
+
+        if( $diff->days == 0 ){ //  Time
+            $timeIncrement = 'hour';
+        }elseif( $diff->days <= 60 ){ //   Days
+            $timeIncrement = 'day';
+        }elseif( $diff->days <= 730 ){ //  Months
+            $timeIncrement = 'month';
+        }else{ //  Years
+            $timeIncrement = 'year';
+        }
+
+        return $timeIncrement;
+    }
+
+    protected function getDisplayFormat($startDate, $endDate)
+    {
+        $diff = $startDate->diff($endDate);
+
+        if( $diff->days == 0 ){ //  Time
+            $displayFormat = 'g:ia';
+        }elseif( $diff->days <= 60 ){ //   Days
+            $displayFormat = 'M j, Y';
+        }elseif( $diff->days <= 730 ){ //  Months
+            $displayFormat = 'M, Y';
+        }else{ //  Years
+            $displayFormat = 'Y';
+        }
+
+        return $displayFormat;
+    }
+
     private function _prepDates($startDate, $endDate)
     {
         $startDate = $startDate->startOfDay();

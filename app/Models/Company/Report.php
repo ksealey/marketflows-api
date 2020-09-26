@@ -10,6 +10,7 @@ use App\Traits\AppliesConditions;
 use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
 use \PhpOffice\PhpSpreadsheet\Cell\DataType as ExcelDaTaype;
+use App\Services\ReportService;
 use Spreadsheet;
 use Xlsx;
 use Worksheet;
@@ -17,6 +18,7 @@ use SpreadsheetSettings;
 use DB;
 use DateTime;
 use DateTimeZone;
+use App;
 
 class Report extends Model
 {
@@ -26,6 +28,7 @@ class Report extends Model
     public $startDate;
     public $endDate;
     public $writePath;
+    public $reportService;
 
     protected $fillable = [
         'account_id',
@@ -42,6 +45,8 @@ class Report extends Model
         'start_date',
         'end_date',
         'conditions',
+        'link',
+        'vs_previous_period'
     ];
 
     protected $hidden = [
@@ -53,59 +58,6 @@ class Report extends Model
         'link',
         'kind'
     ];
-
-    static public $fieldAliases = [
-        'calls' => [
-            'calls.type'                => 'call_type',
-            'calls.category'            => 'call_category',
-            'calls.sub_category'        => 'call_sub_category',
-            'calls.source'              => 'call_source',
-            'calls.medium'              => 'call_medium',
-            'calls.content'             => 'call_content',
-            'calls.campaign'            => 'call_campaign',
-            'calls.recording_enabled'   => 'call_recording_enabled',
-            'calls.forwarded_to'        => 'call_forwarded_to',
-            'calls.duration'            => 'call_duration',
-            'calls.first_call'          => 'call_first_call',
-            'contacts.first_name'       => 'contact_first_name',
-            'contacts.last_name'        => 'contact_last_name',
-            'contacts.phone'            => 'contact_phone',
-            'contacts.city'             => 'contact_city',
-            'contacts.state'            => 'contact_state',
-        ]
-    ];
-
-    static public $fieldLabels = [
-        'calls' => [
-            'call_type'                => 'Type',
-            'call_category'            => 'Category',
-            'call_sub_category'        => 'Sub-Category',
-            'call_source'              => 'Source',
-            'call_medium'              => 'Medium',
-            'call_content'             => 'Content',
-            'call_campaign'            => 'Campaign',
-            'call_recording_enabled'   => 'Recording Enabled',
-            'call_forwarded_to'        => 'Forwarded To Phone Number',
-            'call_duration'            => 'Call Duration',
-            'call_first_call'          => 'First Time Caller',
-            'contact_first_name'       => 'Caller First Name',
-            'contact_last_name'        => 'Caller Last Name',
-            'contact_phone'            => 'Caller Phone Number',
-            'contact_city'             => 'Caller City',
-            'contact_state'            => 'Caller State',
-        ]
-    ];
-
-    static public function fieldColumn($module, $field)
-    {
-        foreach( Report::$fields[$module] as $column => $alias ){
-            if( $field === $alias ){
-                return $column;
-            }
-        }
-
-        return null;
-    }
 
     static public function exports() : array
     {
@@ -152,8 +104,14 @@ class Report extends Model
         return User::find($this->created_by);
     }
 
-    public function getLinkAttribute()
+    public function getLinkAttribute($link)
     {
+        if( ! empty($this->link) ) 
+            return $this->link;
+
+        if( $link )
+            return $link;
+
         return route('read-report', [
             'company' => $this->company_id,
             'report'  => $this->id
@@ -173,35 +131,16 @@ class Report extends Model
     }
 
     public function run()
-    {
-        $query = DB::table($this->module)
-                   ->where($this->module . '.company_id', $this->company_id);
+    {   
+        $this->reportService = App::make(ReportService::class);
 
-        if( $this->type === 'count' ){
-            $query->select([
-                DB::raw('COUNT(*) AS count'),
-                DB::raw($this->group_by . ' AS group_by')
-            ])
-            ->groupBy('group_by');
-        }elseif( $this->type == 'timeframe' ){
-            $aliases  = Report::fieldAliases($this->module);
-            $selects  = [];
-            foreach( $aliases as $key => $alias ){
-                $selects[] = $key . ' AS ' . $alias;
-            }
-            $query->select($selects);
-        }
-
-        if( $this->module === 'calls' ){
-            //  Add joining tables  
-            $query->leftJoin('contacts', 'contacts.id', '=', 'calls.contact_id');
-            $query->leftJoin('phone_numbers', 'phone_numbers.id', '=', 'calls.phone_number_id');
-        }
-
-        //  Add date ranges
         $timezone = $this->user->timezone;
         $dateType = $this->date_type;
+        $datasets = [];
 
+        //
+        //  Get dates
+        //
         if( $dateType === 'ALL_TIME' ){
             $dates = $this->getAllTimeDates($this->company->created_at, $timezone);
         }elseif($dateType === 'LAST_N_DAYS' ){
@@ -212,19 +151,88 @@ class Report extends Model
 
         list($startDate, $endDate) = $dates;
 
-        $this->startDate = $startDate;
-        $this->endDate   = $endDate;
+        $dateRangeSets   = [];
+        $dateRangeSets[] = [$startDate, $endDate];
+        if( $this->vs_previous_period ){
+            $dateRangeSets[] = $this->getPreviousDateFilterPeriod($startDate, $endDate);
+        }
         
-        $query->where($this->module . ".created_at", '>=', $startDate)
-              ->where($this->module . ".created_at", '<=', $endDate);
+        foreach( $dateRangeSets as $dateRangeSet ){
+            list($_startDate, $_endDate) = $dateRangeSet;
 
-        //  Add conditions
-        if( $this->conditions )
-            $query = $this->applyConditions($query, $this->conditions);
+            //
+            //  Set table and initial filters
+            //
+            $query = DB::table($this->module)
+                        ->where($this->module . '.company_id', $this->company_id)
+                        ->where(DB::raw("CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "')"), '>=', $_startDate)
+                        ->where(DB::raw("CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "')"), '<=', $_endDate)
+                        ->whereNull($this->module . '.deleted_at');
 
-        $this->results = $query->get();
+            //
+            //  Add selects
+            //
+            $dbDateFormat    = $this->getDBDateFormat($_startDate, $_endDate);
+            if( $this->type === 'count' ){
+                list($table, $column) =  explode('.', $this->group_by);
 
-        return $this->results;
+                $groupBy        = $this->group_by;
+                $groupByType    = $this->reportService->fieldType($this->module, $this->group_by);
+            }elseif( $this->type === 'timeframe' ){
+                $groupBy        = "(DATE_FORMAT(CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "'), '" . $dbDateFormat . "'))";
+                $groupByType    = "datetime";
+            }
+            
+            $query->select([
+                DB::raw("COUNT(*) AS count"),
+                DB::raw($groupBy . " AS group_by"),
+                DB::raw("'" . $groupByType . "'". " AS group_by_type")
+            ])
+            ->groupBy('group_by');
+
+            //
+            //  Add conditions
+            //
+            if( $this->conditions )
+                $query = $this->applyConditions($query, $this->conditions);
+
+            //
+            //  Add joining tables 
+            //
+            if( $this->module === 'calls' ){
+                $query->leftJoin('contacts', 'contacts.id', '=', 'calls.contact_id');
+                $query->leftJoin('phone_numbers', 'phone_numbers.id', '=', 'calls.phone_number_id');
+            }
+
+            $callData = $query->get();  
+            $data       = [];
+            if( $this->type === 'count' ){
+                $groupKeys = array_column($callData->toArray(), 'group_by');
+                $data      = $this->reportService->barDatasetData($callData, $groupKeys);
+            }elseif( $this->type === 'timeframe' ){
+                $data = $this->reportService->lineDatasetData($callData, $_startDate, $_endDate);
+            }   
+
+            $datasets[] = [
+                'label' => $_startDate->format('M j, Y') . ($_startDate->diff($_endDate)->days ? (' - ' . $_endDate->format('M j, Y')) : ''),
+                'data'  => $data,
+                'total' => $this->reportService->total($callData)
+            ];
+        }
+
+        $labels = [];
+        if( $this->type === 'count' ){
+            $labels = $this->reportService->countLabels($callData);
+        }elseif( $this->type === 'timeframe' ){
+            $labels = $this->reportService->timeframeLabels($startDate, $endDate);
+        } 
+
+        return [
+            'type'     => $this->type,
+            'title'    => $this->name,
+            'labels'   => $labels,
+            'datasets' => $datasets,
+        ];
     }
 
     public function export($toFile = false)
@@ -246,7 +254,7 @@ class Report extends Model
             $sheet->mergeCells("A1:B1");
 
             //  Bold header cells
-            $header = $this->fieldLabel($this->module, Report::fieldAlias($this->module, $this->group_by));
+            $header = $this->fieldLabel($this->module, $this->reportService->fieldAlias($this->module, $this->group_by));
             $sheet->setCellValue('A3', $header);
             $sheet->setCellValue('B3', 'Total');
             $sheet->getStyle("A3:B3")->getFont()->setBold(true);
@@ -267,7 +275,7 @@ class Report extends Model
         }elseif( $this->type === 'timeframe' ){
             //  Write bold headers
             $col = 'A';
-            foreach( Report::$fieldNames[$this->module] as $name ){
+            foreach( $this->reportService->fieldAliases($this->module) as $name ){
                 $sheet->setCellValue($col . "1", $name);
                 $col++;
             }
@@ -301,20 +309,5 @@ class Report extends Model
         }
 
         return $this;
-    }
-
-    static public function fieldLabel($module, $fieldAlias)
-    {
-        return Report::$fieldLabels[$module][$fieldAlias];
-    }
-
-    static public function fieldAliases($module)
-    {
-        return Report::$fieldAliases[$module];
-    }
-
-    static public function fieldAlias($module, $column)
-    {
-        return Report::$fieldAliases[$module][$column];
     }
 }

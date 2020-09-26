@@ -35,12 +35,12 @@ class ReportTest extends TestCase
         ])->each(function($contact) use($phoneNumber){
             //  Create two in date range
             factory(Call::class)->create([
-                'account_id'      => $contact->account_id,
-                'company_id'      => $contact->company_id,
-                'contact_id'      => $contact->id,
-                'phone_number_id' => $phoneNumber->id,
+                'account_id'        => $contact->account_id,
+                'company_id'        => $contact->company_id,
+                'contact_id'        => $contact->id,
+                'phone_number_id'   => $phoneNumber->id,
                 'phone_number_name' => $phoneNumber->name,
-                'created_at'      => now()->subDays(2)
+                'created_at'        => now()->subDays(2)
             ]);
 
             factory(Call::class)->create([
@@ -119,11 +119,11 @@ class ReportTest extends TestCase
                 'title'    => 'Calls',
                 'datasets' => [
                     [
-                        'total' => 16
+                        'total' => 0
                     ],
                     [
-                        'total' => 0
-                    ]
+                        'total' => 16
+                    ],
                 ]
             ]
         ]);
@@ -146,10 +146,10 @@ class ReportTest extends TestCase
                 'title'    => 'Calls',
                 'datasets' => [
                     [
-                        'total' => 16
+                        'total' => 0
                     ],
                     [
-                        'total' => 0
+                        'total' => 16
                     ]
                 ]
             ]
@@ -223,7 +223,7 @@ class ReportTest extends TestCase
 
         $response = $this->json('GET', route('report-call-sources', [
             'company'  => $company->id,
-            'group_by' => 'call_source'
+            'group_by' => 'calls.source'
         ]), [
             'start_date' => $startDate->format('Y-m-d'),
             'end_date'   => $endDate->format('Y-m-d'),
@@ -249,7 +249,7 @@ class ReportTest extends TestCase
         //
         $response = $this->json('GET', route('report-call-sources', [
             'company' => $company->id,
-            'group_by' => 'call_source'
+            'group_by' => 'calls.source'
         ]), [
             'start_date' => today()->setTimeZone($this->user->timezone)->subDays(12),
             'end_date'   => today()->setTimeZone($this->user->timezone),
@@ -286,11 +286,11 @@ class ReportTest extends TestCase
         $response = $this->json('POST', route('create-report', [
             'company' => $company->id
         ]), [
-            'name'      => 'Report 1',
-            'module'    => 'calls',
-            'date_type' => 'LAST_N_DAYS',
+            'name'        => 'Report 1',
+            'module'      => 'calls',
+            'date_type'   => 'LAST_N_DAYS',
             'last_n_days' => $days,
-            'type'      => 'timeframe',
+            'type'        => 'timeframe',
         ]);
         $response->assertStatus(201);
         $response->assertJSON([
@@ -327,7 +327,7 @@ class ReportTest extends TestCase
             'date_type' => 'LAST_N_DAYS',
             'last_n_days' => $days,
             'type'      => 'count',
-            'group_by'  => 'call_source'
+            'group_by'  => 'calls.source'
         ]);
         $response->assertStatus(201);
         $response->assertJSON([
@@ -338,7 +338,7 @@ class ReportTest extends TestCase
             "module"     => "calls",
             "type"       => "count",
             "date_type"  => "LAST_N_DAYS",
-            "group_by"   => "call_source",
+            "group_by"   => "calls.source",
             "last_n_days" => $days,
             "start_date" => null,
             "end_date"   => null,
@@ -362,7 +362,7 @@ class ReportTest extends TestCase
             'company_id' => $company->id,
             'created_by' => $this->user->id,
             'type'       => 'count',
-            'group_by'   => 'call_source',
+            'group_by'   => 'calls.source',
             'date_type'  => 'LAST_N_DAYS',
             'last_n_days'=> 7
         ]);
@@ -402,11 +402,11 @@ class ReportTest extends TestCase
     }  
     
     /**
-     * Test reading a timeline report
+     * Test reading a timeframe report
      * 
-     * @group reports
+     * @group reports--
      */
-    public function testReadTimelineReport()
+    public function testReadTimeFrameReport()
     {
         $this->user->timezone = 'America/New_York';
         $this->user->save();
@@ -415,7 +415,8 @@ class ReportTest extends TestCase
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
-            'type'       => 'timeline',
+            'type'       => 'timeframe',
+            'group_by'   => null,
             'date_type'  => 'LAST_N_DAYS',
             'last_n_days'=> 7
         ]);

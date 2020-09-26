@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Company\Report;
 use App\Models\Company\ScheduledExport;
 use App\Rules\ConditionsRule;
+use App\Services\ReportService;
 use DB;
 use Validator;
 use DateTime;
@@ -45,6 +46,13 @@ class ReportController extends Controller
         'contacts.city',
         'contacts.state',
     ];
+
+    public $reportService;
+
+    public function __construct(ReportService $reportService)
+    {
+        $this->reportService = $reportService;
+    }
 
     /**
      * List reports
@@ -92,7 +100,7 @@ class ReportController extends Controller
 
         $user     = $request->user();
         $dateType = $request->date_type ?: 'ALL_TIME';
-        $report = Report::create([
+        $report   = Report::create([
             'account_id'    => $company->account_id,
             'company_id'    => $company->id,
             'created_by'    => $user->id,
@@ -120,39 +128,7 @@ class ReportController extends Controller
     public function read(Request $request, Company $company, Report $report)
     {
         if( $request->with_data ){
-            $report->run();
-
-            $startDate = clone $report->startDate;
-            $endDate   = clone $report->endDate;
-            $datasets = [];
-
-            if( $report->type === 'timeframe' ){
-                $labels     = $this->timeframeLabels($startDate, $endDate);
-                $datasets[] = [
-                    'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                    'data'  => $this->lineDatasetData($report->results, $startDate, $endDate),
-                    'total' => $this->total($report->results)
-                ];
-            }else{
-                $labels   = $this->countLabels($report->results);
-                $groupKeys = array_column($report->results->toArray(), 'group_by');
-                $datasets = [
-                    [
-                        'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                        'data'  => $this->barDatasetData($report->results, $groupKeys),
-                        'total' => $this->total($report->results)
-                    ]
-                ];
-            }
-
-            $data = [
-                'type'     => $report->type,
-                'title'    => $report->name,
-                'labels'   => $labels,
-                'datasets' => $datasets,
-            ];
-
-            $report->data = $data;
+            $report->data = $report->run();
         }
 
         return response($report);
@@ -245,39 +221,7 @@ class ReportController extends Controller
         $report->save();
 
         if( $request->with_data ){
-            $report->run();
-
-            $startDate = clone $report->startDate;
-            $endDate   = clone $report->endDate;
-            $datasets = [];
-
-            if( $report->type === 'timeframe' ){
-                $labels     = $this->timeframeLabels($startDate, $endDate);
-                $datasets[] = [
-                    'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                    'data'  => $this->lineDatasetData($report->results, $startDate, $endDate),
-                    'total' => $this->total($report->results)
-                ];
-            }else{
-                $labels   = $this->countLabels($report->results);
-                $groupKeys = array_column($report->results->toArray(), 'group_by');
-                $datasets = [
-                    [
-                        'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                        'data'  => $this->barDatasetData($report->results, $groupKeys),
-                        'total' => $this->total($report->results)
-                    ]
-                ];
-            }
-
-            $data = [
-                'type'     => $report->type,
-                'title'    => $report->name,
-                'labels'   => $labels,
-                'datasets' => $datasets,
-            ];
-
-            $report->data = $data;
+            $report->data = $report->run();
         }
 
         return response($report);
@@ -347,49 +291,31 @@ class ReportController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
         }
-        
-        list($startDate, $endDate) = $this->reportDates($request, $company);
-        $dateRangeSets = [];
-        if( $request->vs_previous_period ){
-            $dateRangeSets[] = $this->getPreviousDateFilterPeriod($startDate, $endDate);
-        }
 
-        $dateRangeSets[] = [$startDate, $endDate];
-        $dbDateFormat    = $this->getDBDateFormat($startDate, $endDate);
-        $userTimezone    = $request->user()->timezone;
-        foreach( $dateRangeSets as $dateRangeSet ){
-            list($_startDate, $_endDate) = $dateRangeSet;
-            $query = DB::table('calls')
-                    ->select(
-                        DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC', '" . $userTimezone . "'), '" . $dbDateFormat . "') as group_by"),
-                        DB::raw('COUNT(*) as count')
-                    )
-                     ->where('company_id', $company->id)
-                     ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $userTimezone . "')"), '>=', $_startDate)
-                     ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $userTimezone . "')"), '<=', $_endDate)
-                     ->whereNull('deleted_at')
-                     ->groupBy('group_by');
-
-            $callData = $query->get();       
-            $datasets[] = [
-                'label' => $_startDate->format('M j, Y') . ($_startDate->diff($_endDate)->days ? (' - ' . $_endDate->format('M j, Y')) : ''),
-                'data'  => $this->lineDatasetData($callData, $_startDate, $_endDate),
-                'total' => $this->total($callData)
-            ];
-        }
-
-        return response([
-            'kind'  => 'Report',
-            'url'   => route('report-total-calls', [ 
+        $user   = $request->user();
+        $report = new Report();
+        $report->fill([
+            'account_id'            => $company->account_id,
+            'company_id'            => $company->id,
+            'created_by'            => $user->id,
+            'name'                  => 'Calls',
+            'module'                => 'calls',
+            'type'                  => 'timeframe',
+            'date_type'             => $request->date_type,
+            'group_by'              => null,
+            'last_n_days'           => $request->date_type == 'LAST_N_DAYS' ? $request->last_n_days : null,
+            'start_date'            => $request->date_type == 'CUSTOM' ? $request->start_date : null,
+            'end_date'              => $request->date_type == 'CUSTOM' ? $request->end_date : null,
+            'conditions'            => $request->conditions,
+            'vs_previous_period'    => $request->vs_previous_period ?: 0,
+            'link'                  => route('report-total-calls', [
                 'company' => $company->id
-            ]),
-            'data'  => [
-                'type'     => 'timeframe',
-                'title'    => 'Calls',
-                'labels'   => $this->timeframeLabels($startDate, $endDate),
-                'datasets' => $datasets,
-            ]
+            ])
         ]);
+       
+        $report->data = $report->run();
+
+        return response($report);
     }
 
     /**
@@ -403,221 +329,38 @@ class ReportController extends Controller
             'group_by' => 'required|in:' . implode(',', $this->conditionFields)
         ]);
 
-        if( $validator->fails() )
+        if( $validator->fails() ){
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
-        
-        list($startDate, $endDate) = $this->reportDates($request, $company);
-        
-        $userTimezone = $request->user()->timezone;
-        $groupBy      = $request->group_by;
-        $callData     = DB::table('calls')
-                            ->select(
-                                DB::raw($groupBy . ' AS group_by'),
-                                DB::raw('COUNT(*) as count')
-                            )
-                            ->where('company_id', $company->id)
-                            ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $userTimezone . "')"), '>=', $startDate)
-                            ->where(DB::raw("CONVERT_TZ(created_at, 'UTC', '" . $userTimezone . "')"), '<=', $endDate)
-                            ->whereNull('deleted_at')
-                            ->groupBy('group_by')
-                            ->orderBy('count', 'DESC')
-                            ->get();
+        }
 
-        //  Create datasets
-        $labels    = $this->countLabels($callData);
-        $groupKeys = array_column($callData->toArray(), 'group_by');
-        $datasets = [
-            [
-                'label' => $startDate->format('M j, Y') . ($startDate->diff($endDate)->days ? (' - ' . $endDate->format('M j, Y')) : ''),
-                'data'  => $this->barDatasetData($callData, $groupKeys),
-                'total' => $this->total($callData)
-            ]
-        ];
-
-        return response([
-            'kind'  => 'Report',
-            'url'   => route('report-call-sources', [ 
+        $user   = $request->user();
+        $report = new Report();
+        $report->fill([
+            'account_id'            => $company->account_id,
+            'company_id'            => $company->id,
+            'created_by'            => $user->id,
+            'name'                  => 'Call Sourcing',
+            'module'                => 'calls',
+            'type'                  => 'count',
+            'date_type'             => $request->date_type,
+            'group_by'              => $request->group_by,
+            'last_n_days'           => $request->date_type == 'LAST_N_DAYS' ? $request->last_n_days : null,
+            'start_date'            => $request->date_type == 'CUSTOM' ? $request->start_date : null,
+            'end_date'              => $request->date_type == 'CUSTOM' ? $request->end_date : null,
+            'conditions'            => $request->conditions,
+            'vs_previous_period'    => 0,
+            'link'                  => route('report-call-sources', [
                 'company' => $company->id
-            ]),
-            'data'  => [
-                'title'    => 'Call Sourcing',
-                'type'     => 'count',
-                'labels'   => $labels,
-                'datasets' => $datasets,
-            ]
+            ])
         ]);
-    }
-
-
-    protected function total(iterable $inputData)
-    {
-        return array_sum(array_column($inputData->toArray(), 'count'));
-    }
-
-    protected function timeframeLabels($startDate, $endDate)
-    {
-        $labels             = [];
-        $timeIncrement      = $this->getTimeIncrement($startDate, $endDate);
-        $comparisonFormat   = $this->getDateFormat($startDate, $endDate);
-        $displayFormat      = $this->getDisplayFormat($startDate, $endDate);
-
-        $diff               = $startDate->diff($endDate);
        
-        $dateIncrementor = clone $startDate;
-        $end             = clone $endDate;
-        while( $dateIncrementor->format($comparisonFormat) <= $end->format($comparisonFormat) ){
-            $labels[] = $dateIncrementor->format($displayFormat);
+        $report->data = $report->run();
 
-            $dateIncrementor->modify('+1 ' . $timeIncrement);
-        }
-
-        return $labels;
+        return response($report);
     }
-
-    protected function countLabels($inputData)
-    {
-        $values = array_column($inputData->toArray(), 'group_by');
-        $labels = [];
-        if( count($values) <= 10 ){
-            $labels = $values;
-        }else{
-            $labels = $values;
-            $labels = array_splice($labels, 0, 9);
-            $labels[] = 'Other';
-        }
-        return $labels;
-    }
-
-    protected function getDBDateFormat($startDate, $endDate)
-    {
-        $days = $startDate->diff($endDate)->days;
-
-        if( $days == 0 ){ //  Time
-            $format = '%Y-%m-%d %k:00:00';
-        }elseif( $days <= 60 ){ //   Days
-            $format = '%Y-%m-%d';
-        }elseif( $days <= 730 ){ //  Months
-            $format = '%Y-%m';
-        }else{ //  Years
-            $format = '%Y';
-        }
-
-        return $format;
-    }
-
-    protected function getDateFormat($startDate, $endDate)
-    {
-        $days = $startDate->diff($endDate)->days;
-
-        if( $days == 0 ){ //  Time
-            $format = 'Y-m-d H:00:00';
-        }elseif( $days <= 60 ){ //   Days
-            $format = 'Y-m-d';
-        }elseif( $days <= 730 ){ //  Months
-            $format = 'Y-m';
-        }else{ //  Years
-            $format = 'Y';
-        }
-
-        return $format;
-    }
-
-    protected function getTimeIncrement($startDate, $endDate)
-    {
-        $diff = $startDate->diff($endDate);
-
-        if( $diff->days == 0 ){ //  Time
-            $timeIncrement = 'hour';
-        }elseif( $diff->days <= 60 ){ //   Days
-            $timeIncrement = 'day';
-        }elseif( $diff->days <= 730 ){ //  Months
-            $timeIncrement = 'month';
-        }else{ //  Years
-            $timeIncrement = 'year';
-        }
-
-        return $timeIncrement;
-    }
-
-    protected function getDisplayFormat($startDate, $endDate)
-    {
-        $diff = $startDate->diff($endDate);
-
-        if( $diff->days == 0 ){ //  Time
-            $displayFormat = 'g:ia';
-        }elseif( $diff->days <= 60 ){ //   Days
-            $displayFormat = 'M j, Y';
-        }elseif( $diff->days <= 730 ){ //  Months
-            $displayFormat = 'M, Y';
-        }else{ //  Years
-            $displayFormat = 'Y';
-        }
-
-        return $displayFormat;
-    }
-
-    protected function lineDatasetData(iterable $callData, $startDate, $endDate)
-    {
-        $dataset = [];
-        $diff    = $startDate->diff($endDate);
-       
-        $timeIncrement      = $this->getTimeIncrement($startDate, $endDate);
-        $comparisonFormat   = $this->getDateFormat($startDate, $endDate);
-        $displayFormat      = $this->getDisplayFormat($startDate, $endDate);
-
-        $dateIncrementor = clone $startDate;
-        $end             = clone $endDate;
-
-        $data = [];
-        foreach($callData as $call){
-            var_dump($call); exit;
-            $data[$call->group_by] = $call->count;
-        }
-        
-        while( $dateIncrementor->format($comparisonFormat) <= $endDate->format($comparisonFormat) ){
-            $dataset[] = [
-                'value' => $data[$dateIncrementor->format($comparisonFormat)] ?? 0
-            ];
-            $dateIncrementor->modify('+1 ' . $timeIncrement);
-        }
-
-        return $dataset;
-    }
-
-    protected function barDatasetData(iterable $inputData, iterable $groupKeys)
-    {
-        $dataset = [];
-        $lookupMap = [];
-        foreach($inputData as $data){
-            $lookupMap[$data->group_by] = $data->count;
-        }
-
-        $otherCount = 0;
-        $hasOthers  = false;
-        foreach($groupKeys as $idx => $groupKey){
-            $value = $lookupMap[$groupKey] ?? 0;
-            
-            if( $idx >= 9 ){
-                
-                $otherCount += $value;
-                $hasOthers = true;
-            }else{
-                $dataset[] = [
-                    'value' => $lookupMap[$groupKey] ?? 0
-                ];
-            }
-        }
-
-        if( $hasOthers ){
-            $dataset[] = [
-                'value' => $otherCount
-            ];
-        }
- 
-        return $dataset;
-    }
+    
 
     protected function reportDates(Request $request, Company $company)
     {
