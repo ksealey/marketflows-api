@@ -91,6 +91,11 @@ class ConditionsRule implements Rule
                         return false;
                     }
 
+                    if( count($condition->inputs) > 20 ){
+                        $this->message = 'Condition in group ' . $groupIdx . ' at index ' . $idx . ' cannot have more than 20 inputs.';
+                        return false;
+                    }
+
                     if( ! is_array($condition->inputs) ){
                         $this->message = 'Condition in group ' . $groupIdx . ' at index ' . $idx . ' inputs property must be an array.';
                         return false;
