@@ -11,12 +11,12 @@ class ConditionsRule implements Rule
     protected $conditionFields = [];
 
     protected $operators = [
+        'EMPTY',
+        'NOT_EMPTY',
         'EQUALS',
         'NOT_EQUALS',
         'IN',
         'NOT_IN',
-        'EMPTY',
-        'NOT_EMPTY',
         'LIKE',
         'NOT_LIKE',
         'IS_TRUE',
@@ -48,8 +48,8 @@ class ConditionsRule implements Rule
             return false;
         }
 
-        if( count($conditionGroups) > 10 ){
-            $this->message = 'A maximum of 10 condition groups are allowed.';
+        if( count($conditionGroups) > 20 ){
+            $this->message = 'A maximum of 20 condition groups are allowed.';
             return false;
         }
 
@@ -59,8 +59,8 @@ class ConditionsRule implements Rule
                 return false;
             }
     
-            if( count($conditionGroup) > 10 ){
-                $this->message = 'A maximum of 10 conditions per group are allowed.';
+            if( count($conditionGroup) > 20 ){
+                $this->message = 'A maximum of 20 conditions per group are allowed.';
                 return false;
             }
 
@@ -107,8 +107,8 @@ class ConditionsRule implements Rule
                             return false;
                         }
 
-                        if( strlen($input) > 64 ){
-                            $this->message = 'Condition in group ' . $groupIdx . ' at index ' . $idx . ' inputs cannot contain more than 64 characters.';
+                        if( strlen($input) > 255 ){
+                            $this->message = 'Condition in group ' . $groupIdx . ' at index ' . $idx . ' inputs cannot contain more than 255 characters.';
                             return false;
                         }
                     }

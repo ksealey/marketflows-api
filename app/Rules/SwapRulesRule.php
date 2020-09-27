@@ -62,9 +62,8 @@ class SwapRulesRule implements Rule
                 return false;
             }
 
-            $targetData = preg_replace('/[^0-9]+/', '', $target);
-            if( strlen($targetData) < 10 || strlen($targetData) > 13 ){
-                $this->message = 'Swap rule target invalid';
+            if( ! preg_match('[0-9]{10,13}', $targetData) ){
+                $this->message = 'Swap rule target invalid - It must only contain digits and be between 10 and characters';
 
                 return false;
             }
@@ -73,6 +72,12 @@ class SwapRulesRule implements Rule
         //  Make sure there is at least 1 inclusion rule and it's valid
         if( empty($swapRules->inclusion_rules) || !is_array($swapRules->inclusion_rules) ){
             $this->message = 'Swap rules must contain at least 1 inclusion rule - see documentation for format';
+
+            return false;
+        }
+
+        if( count($swapRules->inclusion_rules) > 20 ){
+            $this->message = 'A maximum of 20 inclusion rules are allowed';
 
             return false;
         }
@@ -95,10 +100,15 @@ class SwapRulesRule implements Rule
 
         //  When exclusion rules are provided, make sure that they're valid
         if( ! empty($swapRules->exclusion_rules) ){
-
             if( ! is_array($swapRules->exclusion_rules) ){
                 $this->message = 'Swap rule exclusion rules must be a list of rules.  Group Index: ' . $groupIndex . ' - see documentation for format';
             
+                return false;
+            }
+
+            if( count($swapRules->exclusion_rules) > 20 ){
+                $this->message = 'A maximum of 20 exclusion rules are allowed';
+    
                 return false;
             }
 
@@ -132,6 +142,12 @@ class SwapRulesRule implements Rule
             return false;
         }
 
+        if( count($swapRules->device_types) > 20 ){
+            $this->message = 'A maximum of 20 device types are allowed';
+
+            return false;
+        }
+
         foreach($swapRules->device_types as $idx => $deviceType){
             if( ! is_string($deviceType) ){
                 $this->message = 'Swap rule device types must be strings - Index: ' . $idx . '.';
@@ -156,6 +172,12 @@ class SwapRulesRule implements Rule
         if( ! is_array($swapRules->browser_types) ){
             $this->message = 'Swap rule browser types must be an array of browser strings';
                 
+            return false;
+        }
+
+        if( count($swapRules->browser_types) > 20 ){
+            $this->message = 'A maximum of 20 browser types are allowed';
+
             return false;
         }
 
@@ -218,7 +240,14 @@ class SwapRulesRule implements Rule
         if( empty($rule->inputs) || ! is_array($rule->inputs) )
             return false;
 
+        //  Make sure there are not too many inputs for rule
+        if( count($rule->inputs) > 20 )
+            return false;
+
         foreach( $rule->inputs as $input ){
+            if( strlen($input) > 255 )
+                return false;
+
             if( ! is_string($input) && ! is_numeric($input) )
                 return false;
         }
