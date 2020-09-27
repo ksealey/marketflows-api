@@ -85,7 +85,8 @@ class ReportController extends Controller
             'name'          => 'bail|required|max:64',
             'module'        => 'bail|required|in:calls',
             'type'          => 'bail|required|in:timeframe,count',
-            'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($this->conditionFields) ]
+            'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($this->conditionFields) ],
+            'vs_previous_period' => 'bail|boolean'
         ]);
 
         $validator->sometimes('group_by', 'required|in:' . implode(',', $this->conditionFields), function($input){
@@ -112,7 +113,8 @@ class ReportController extends Controller
             'last_n_days'   => $dateType == 'LAST_N_DAYS' ? $request->last_n_days : null,
             'start_date'    => $dateType == 'CUSTOM' ? $request->start_date : null,
             'end_date'      => $dateType == 'CUSTOM' ? $request->end_date : null,
-            'conditions'    => $request->conditions
+            'conditions'    => $request->conditions,
+            'vs_previous_period' => $request->vs_previous_period ?: 0
         ]);
 
         return response($report, 201);
@@ -205,13 +207,21 @@ class ReportController extends Controller
             $report->conditions = $request->conditions;
         }
 
-        if( $report->type !== 'count' ){
+        if( $request->filled('vs_previous_period') ){
+            $report->vs_previous_period = $request->vs_previous_period;
+        }
+
+        if( $report->type === 'count' ){
+            $report->vs_previous_period = 0;
+        }
+
+        if( $report->type === 'timeframe' ){
             $report->group_by = null;
         }
 
         if( $report->date_type !== 'CUSTOM' ){
             $report->start_date = null;
-            $report->end_date = null;
+            $report->end_date   = null;
         }
 
         if( $report->date_type !== 'LAST_N_DAYS' ){

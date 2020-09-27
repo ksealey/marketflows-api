@@ -73,17 +73,20 @@ class ReportTest extends TestCase
             'company_id' => $company->id,
             'created_by' => $this->user->id,
             'date_type'  => 'LAST_N_DAYS',
-            'last_n_days' => 7
+            'last_n_days' => 7,
+            'type'        => 'count',
+            'group_by'    => 'calls.source'
         ]);
 
         $results = $report->run();
-        $this->assertEquals(count($results), 8);
+        $this->assertEquals(count($results['labels']), 8);
+        $this->assertEquals(count($results['datasets'][0]['data']), 8);
 
         $report->last_n_days = 10;
-        $report->save();
+        $results             = $report->run();
 
-        $results = $report->run();
-        $this->assertEquals(count($results), 16);
+        $this->assertEquals(count($results['labels']), 10); // Maxes out at 10
+        $this->assertEquals(count($results['datasets'][0]['data']), 10); // Maxes out at 10
     }
 
     /**
@@ -148,17 +151,19 @@ class ReportTest extends TestCase
             'created_by' => $this->user->id,
             'type'       => 'timeframe', 
             'date_type'  => 'LAST_N_DAYS',
+            'group_by'   => null,
             'last_n_days' => 7
         ]);
 
         $results = $report->run();
-        $this->assertEquals(count($results), 8);
+        $this->assertEquals(count($results['labels']), 7); // 1 per day
+        $this->assertEquals(count($results['datasets'][0]['data']), 7); // 1 per day
 
         $report->last_n_days = 10;
-        $report->save();
+        $results             = $report->run();
 
-        $results = $report->run();
-        $this->assertEquals(count($results), 16);
+        $this->assertEquals(count($results['labels']), 10); // 1 per day
+        $this->assertEquals(count($results['datasets'][0]['data']), 10); // 1 per day
     }
 
     /**

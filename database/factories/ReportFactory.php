@@ -15,6 +15,7 @@ $factory->define(\App\Models\Company\Report::class, function (Faker $faker) {
         'last_n_days' => mt_rand(1, 730),
         'start_date'  => null,
         'end_date'    => null,
-        'conditions'  => null
+        'conditions'  => null,
+        'vs_previous_period' => 0
     ];
 });

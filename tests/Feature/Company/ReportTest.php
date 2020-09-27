@@ -83,7 +83,7 @@ class ReportTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'kind'  => 'Report',
-            'url'   => route('report-total-calls', [ 
+            'link'  => route('report-total-calls', [ 
                 'company' => $company->id
             ]),
             'data'  => [
@@ -111,7 +111,7 @@ class ReportTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'kind'  => 'Report',
-            'url'   => route('report-total-calls', [ 
+            'link'   => route('report-total-calls', [ 
                 'company' => $company->id
             ]),
             'data'  => [
@@ -119,11 +119,11 @@ class ReportTest extends TestCase
                 'title'    => 'Calls',
                 'datasets' => [
                     [
-                        'total' => 0
-                    ],
-                    [
                         'total' => 16
                     ],
+                    [
+                        'total' => 0
+                    ]
                 ]
             ]
         ]);
@@ -138,7 +138,7 @@ class ReportTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'kind'  => 'Report',
-            'url'   => route('report-total-calls', [ 
+            'link'   => route('report-total-calls', [ 
                 'company' => $company->id
             ]),
             'data'  => [
@@ -146,10 +146,10 @@ class ReportTest extends TestCase
                 'title'    => 'Calls',
                 'datasets' => [
                     [
-                        'total' => 0
+                        'total' => 16
                     ],
                     [
-                        'total' => 16
+                        'total' => 0
                     ]
                 ]
             ]
@@ -233,7 +233,7 @@ class ReportTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'kind'  => 'Report',
-            'url'   => route('report-call-sources', [ 
+            'link'   => route('report-call-sources', [ 
                 'company' => $company->id
             ]),
             'data'  => [
@@ -259,7 +259,7 @@ class ReportTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'kind'  => 'Report',
-            'url'   => route('report-call-sources', [ 
+            'link'   => route('report-call-sources', [ 
                 'company' => $company->id
             ]),
             'data'  => [
@@ -404,7 +404,7 @@ class ReportTest extends TestCase
     /**
      * Test reading a timeframe report
      * 
-     * @group reports--
+     * @group reports
      */
     public function testReadTimeFrameReport()
     {

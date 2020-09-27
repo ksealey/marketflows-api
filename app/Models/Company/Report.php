@@ -9,7 +9,7 @@ use League\Flysystem\Adapter\Local;
 use App\Traits\AppliesConditions;
 use App\Traits\Helpers\HandlesDateFilters;
 use App\Models\User;
-use \PhpOffice\PhpSpreadsheet\Cell\DataType as ExcelDaTaype;
+use \PhpOffice\PhpSpreadsheet\Cell\DataType as ExcelDataType;
 use App\Services\ReportService;
 use Spreadsheet;
 use Xlsx;
@@ -19,6 +19,7 @@ use DB;
 use DateTime;
 use DateTimeZone;
 use App;
+use \Carbon\Carbon;
 
 class Report extends Model
 {
@@ -99,8 +100,10 @@ class Report extends Model
      * Attributes
      * 
      */
-    public function getUserAttribute()
+    public function getUserAttribute($user)
     {
+        if( $user ) return $user;
+
         return User::find($this->created_by);
     }
 
@@ -130,7 +133,7 @@ class Report extends Model
         return json_decode($conditions);
     }
 
-    public function run()
+    public function run($condense = true)
     {   
         $this->reportService = App::make(ReportService::class);
 
@@ -208,7 +211,7 @@ class Report extends Model
             $data       = [];
             if( $this->type === 'count' ){
                 $groupKeys = array_column($callData->toArray(), 'group_by');
-                $data      = $this->reportService->barDatasetData($callData, $groupKeys);
+                $data      = $this->reportService->barDatasetData($callData, $groupKeys, $condense);
             }elseif( $this->type === 'timeframe' ){
                 $data = $this->reportService->lineDatasetData($callData, $_startDate, $_endDate);
             }   
@@ -222,7 +225,7 @@ class Report extends Model
 
         $labels = [];
         if( $this->type === 'count' ){
-            $labels = $this->reportService->countLabels($callData);
+            $labels = $this->reportService->countLabels($callData, $condense);
         }elseif( $this->type === 'timeframe' ){
             $labels = $this->reportService->timeframeLabels($startDate, $endDate);
         } 
@@ -235,8 +238,61 @@ class Report extends Model
         ];
     }
 
+    public function runDetailed()
+    {   
+        $this->reportService = App::make(ReportService::class);
+
+        $timezone = $this->user->timezone;
+        $dateType = $this->date_type;
+
+        //
+        //  Get dates
+        //
+        if( $dateType === 'ALL_TIME' ){
+            $dates = $this->getAllTimeDates($this->company->created_at, $timezone);
+        }elseif($dateType === 'LAST_N_DAYS' ){
+            $dates = $this->getLastNDaysDates($this->last_n_days, $timezone);
+        }else{
+            $dates = $this->getDateFilterDates($dateType, $timezone, $this->start_date, $this->end_date);
+        }
+
+        list($_startDate, $_endDate) = $dates;
+
+        //
+        //  Set table and initial filters
+        //
+        $aliases = [];
+        foreach($this->reportService->fieldAliases($this->module) as $key => $alias){
+            $aliases[] = $key . ' AS ' . $alias;
+        }
+        $query = DB::table($this->module)
+                    ->select($aliases)
+                    ->where($this->module . '.company_id', $this->company_id)
+                    ->where(DB::raw("CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "')"), '>=', $_startDate)
+                    ->where(DB::raw("CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "')"), '<=', $_endDate)
+                    ->whereNull($this->module . '.deleted_at');
+
+        //
+        //  Add conditions
+        //
+        if( $this->conditions )
+            $query = $this->applyConditions($query, $this->conditions);
+
+        //
+        //  Add joining tables 
+        //
+        if( $this->module === 'calls' ){
+            $query->leftJoin('contacts', 'contacts.id', '=', 'calls.contact_id');
+            $query->leftJoin('phone_numbers', 'phone_numbers.id', '=', 'calls.phone_number_id');
+        }
+
+        return $query->get(); 
+    }
+
     public function export($toFile = false)
     {
+        $this->reportService = App::make(ReportService::class);
+
         $fileName    = preg_replace('/[^0-9A-z]+/', '-', $this->name) . '.xlsx';
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()
@@ -245,25 +301,49 @@ class Report extends Model
                     ->setTitle($this->name)
                     ->setSubject($this->name);
                     
-        $results = $this->results ?: $this->run();
         $sheet   = $spreadsheet->getActiveSheet();
+
+        list($startDate, $endDate) = $this->getReportDates();
+
         if( $this->type === 'count' ){
+            /**
+             * --------------
+             * M j, Y - M j, Y
+             * --------------
+             * 
+             * -------------------
+             * FIELD_LABEL | TOTAL
+             * -------------------
+             * -           | -
+             * -------------------
+             * -           | -  
+             * -------------------
+             */
+            $results = $this->run(false);
+
             //  Bold title
-            $sheet->setCellValue('A1', $this->name . ' (' . $this->startDate->format('M j, Y') . '-' . $this->endDate->format('M j, Y')  . ')');
+            $sheet->setCellValue('A1', $this->name . ' (' . $startDate->format('M j, Y') . '-' . $endDate->format('M j, Y')  . ')');
             $sheet->getStyle("A1:B1")->getFont()->setBold(true);
             $sheet->mergeCells("A1:B1");
 
             //  Bold header cells
-            $header = $this->fieldLabel($this->module, $this->reportService->fieldAlias($this->module, $this->group_by));
+            $alias  = $this->reportService->fieldAlias($this->module, $this->group_by);
+            $header = $this->reportService->fieldLabel($this->module, $alias);
+            
             $sheet->setCellValue('A3', $header);
             $sheet->setCellValue('B3', 'Total');
             $sheet->getStyle("A3:B3")->getFont()->setBold(true);
 
             //  Values
             $row = 4;
-            foreach( $results as $idx => $result ){
-                $sheet->setCellValue('A' . $row, $result->group_by);
-                $sheet->setCellValue('B' . $row, $result->count); 
+            $labels = $results['labels'];
+            $totals = array_map(function($dataPiece){
+                return $dataPiece['value'];
+            }, $results['datasets'][0]['data']);
+
+            foreach( $labels as $idx => $label ){
+                $sheet->setCellValue('A' . $row, $label);
+                $sheet->setCellValue('B' . $row, $totals[$idx]); 
 
                 $row++;
             }
@@ -271,35 +351,64 @@ class Report extends Model
             //  Space out cells
             $sheet->getColumnDimension('A')->setAutoSize(true);
             $sheet->getColumnDimension('B')->setAutoSize(true);
-
         }elseif( $this->type === 'timeframe' ){
-            //  Write bold headers
-            $col = 'A';
-            foreach( $this->reportService->fieldAliases($this->module) as $name ){
+            /**
+             * -------------------
+             * HEADERS
+             * -------------------
+             * -           | -  
+             * -------------------
+             * -           | -  
+             * -------------------
+             */
+            $user    = $this->user;
+            $results = $this->runDetailed();
+            $col     = 'A';
+            $lastCol = 'A';
+
+            //  Write bold headers 
+            foreach( $this->reportService->fieldAliases($this->module) as $alias ){
+                $lastCol = $col;
+                $name = $this->reportService->fieldLabel($this->module, $alias);
                 $sheet->setCellValue($col . "1", $name);
                 $col++;
             }
-            $sheet->getStyle("A1:" . $col . "1")->getFont()->setBold(true);
+            $sheet->getStyle("A1:" . $lastCol . "1")->getFont()->setBold(true);
 
             //  Write data
             $row = 2;
-            foreach( $results as $result ){
-                $result = (array)$result;
-                $col    = 'A';
-                foreach( $result as $value){
-                    $sheet->setCellValueExplicit($col . $row, $value, ExcelDaTaype::TYPE_STRING);
-                    $col++;    
+            if( count($results) ){
+                foreach( $results as $result ){
+                    $result = (array)$result;
+                    $col    = 'A';
+                    foreach( $result as $prop => $value ){
+                        if( $format = $this->reportService->dateField($this->module, $prop) ){
+                            $value = (new Carbon($value))->setTimeZone($user->timezone)->format($format);
+                        }
+                        if( $this->reportService->booleanField($this->module, $prop) ){
+                            $value = $value ? 'Yes' : 'No';
+                        }
+                        $sheet->setCellValueExplicit($col . $row, $value, ExcelDataType::TYPE_STRING);
+                        $col++;    
+                    }
+                    $row++;
                 }
-                $row++;
+            }
+
+            //  Resize columns
+            $resizeCol = 'A';
+            while( $resizeCol !== $col ){
+                $sheet->getColumnDimension($resizeCol)->setAutoSize(true);
+                $resizeCol++;
             }
         }
 
 
-        $writer    = new Xlsx($spreadsheet);
+        $writer = new Xlsx($spreadsheet);
         if( $toFile ){
             $this->writePath = storage_path(str_random(40) . '.xlsx');
             
-            $writer->save($this->writePath );
+            $writer->save($this->writePath);
         }else{
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             header('Content-Disposition: attachment;filename="'.$fileName.'"');
@@ -309,5 +418,19 @@ class Report extends Model
         }
 
         return $this;
+    }
+
+    public function getReportDates()
+    {
+        $timezone = $this->user->timezone;
+        $dateType = $this->date_type;
+
+        if( $dateType === 'ALL_TIME' ){
+            return $this->getAllTimeDates($this->company->created_at, $timezone);
+        }elseif($dateType === 'LAST_N_DAYS' ){
+            return $this->getLastNDaysDates($this->last_n_days, $timezone);
+        }else{
+            return $this->getDateFilterDates($dateType, $timezone, $this->start_date, $this->end_date);
+        }
     }
 }

@@ -24,6 +24,7 @@ class ReportService
             'contacts.phone'            => 'contact_phone',
             'contacts.city'             => 'contact_city',
             'contacts.state'            => 'contact_state',
+            'calls.created_at'          => 'call_date',
         ]
     ];
 
@@ -40,6 +41,7 @@ class ReportService
             'call_forwarded_to'        => 'Forwarded To Phone Number',
             'call_duration'            => 'Call Duration',
             'call_first_call'          => 'First Time Caller',
+            'call_date'                => 'Call Date',
             'contact_first_name'       => 'Caller First Name',
             'contact_last_name'        => 'Caller Last Name',
             'contact_phone'            => 'Caller Phone Number',
@@ -48,7 +50,7 @@ class ReportService
         ]
     ];
 
-    public $fieldType = [
+    public $fieldTypes = [
         'calls' => [
             'calls.type'                => 'string',
             'calls.category'            => 'string',
@@ -66,6 +68,19 @@ class ReportService
             'contacts.phone'            => 'string',
             'contacts.city'             => 'string',
             'contacts.state'            => 'string',
+        ]
+    ];
+
+    public $dateFields = [
+        'calls' => [
+            'call_date' => 'M j, Y g:ia'
+        ]
+    ];
+
+    public $booleanFields = [
+        'calls' => [
+            'call_recording_enabled',
+            'call_first_call'
         ]
     ];
 
@@ -96,12 +111,23 @@ class ReportService
         return $dataset;
     }
 
-    public function barDatasetData(iterable $inputData, iterable $groupKeys)
+    public function barDatasetData(iterable $inputData, iterable $groupKeys, $condense = true)
     {
-        $dataset = [];
+        $dataset   = [];
         $lookupMap = [];
         foreach($inputData as $data){
             $lookupMap[$data->group_by] = $data->count;
+        }
+
+        if( ! $condense ){
+            foreach($groupKeys as $idx => $groupKey){
+                $value     = $lookupMap[$groupKey] ?? 0;
+                $dataset[] = [
+                    'value' => $lookupMap[$groupKey] ?? 0
+                ];
+            }
+
+            return $dataset;
         }
 
         $otherCount = 0;
@@ -110,9 +136,8 @@ class ReportService
             $value = $lookupMap[$groupKey] ?? 0;
             
             if( $idx >= 9 ){
-                
                 $otherCount += $value;
-                $hasOthers = true;
+                $hasOthers  = true;
             }else{
                 $dataset[] = [
                     'value' => $lookupMap[$groupKey] ?? 0
@@ -129,7 +154,7 @@ class ReportService
         return $dataset;
     }
 
-    public function countLabels($inputData)
+    public function countLabels($inputData, $condense = false)
     {
         $values = array_map(function($input){
             if( $input->group_by_type === 'integer' ){
@@ -142,14 +167,15 @@ class ReportService
         }, $inputData->toArray());
 
         $labels = [];
-        
-        if( count($values) <= 10 ){
+
+        if( ! $condense || count($values) <= 10 ){
             $labels = $values;
         }else{
-            $labels = $values;
-            $labels = array_splice($labels, 0, 9);
+            $labels   = $values;
+            $labels   = array_splice($labels, 0, 9);
             $labels[] = 'Other';
         }
+
         return $labels;
     }
 
@@ -203,6 +229,21 @@ class ReportService
 
     public function fieldType($module, $field)
     {
-        return $this->fieldType[$module][$field] ?? null;
+        return $this->fieldTypes[$module][$field] ?? null;
+    }
+
+    public function fieldLabel($module, $fieldAlias)
+    {
+        return $this->fieldLabels[$module][$fieldAlias];
+    }
+
+    public function dateField($module, $fieldAlias)
+    {
+        return $this->dateFields[$module][$fieldAlias] ?? null;
+    }
+
+    public function booleanField($module, $fieldAlias)
+    {
+        return in_array($fieldAlias, $this->booleanFields[$module]);
     }
 }
