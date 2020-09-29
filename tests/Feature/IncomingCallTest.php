@@ -11,6 +11,7 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
 use \App\Events\Company\CallEvent;
 use \App\Models\Company\Webhook;
+use App\Jobs\ProcessCallRecordingJob;
 
 class IncomingCallTest extends TestCase
 {
@@ -18,20 +19,31 @@ class IncomingCallTest extends TestCase
     /**
      * Test handling an incoming call with no options
      * 
-     * @group incoming-calls
+     * @group incoming-calls--
      */
     public function testValidIncomingCallWithNoOptions()
     {
         Event::fake();
+
         $company     = $this->createCompany();
         $config      = $this->createConfig($company, [
-            'recording_enabled'      => false,
+            'greeting_enabled'       => 0,
             'greeting_message'       => null,
             'greeting_audio_clip_id' => null,
+
             'keypress_enabled'       => 0,
+            'keypress_key'           => null,
+            'keypress_message_type'  => null,
+            'keypress_message'       => null,
+            'keypress_audio_clip_id' => null,
+
+            'whisper_enabled'        => 0,
             'whisper_message'        => null,
-            'keypress_key'           => 1
+
+            'recording_enabled'      => 0,
+            'transcription_enabled'  => 0
         ]);
+
         $phoneNumber = $this->createPhoneNumber($company, $config);
          
         $webhook = factory(Webhook::class)->create([
@@ -50,7 +62,7 @@ class IncomingCallTest extends TestCase
 
         $this->assertDatabaseHas('contacts', [
             'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'phone' => PhoneNumber::number($incomingCall->From)
+            'number' => PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -110,7 +122,7 @@ class IncomingCallTest extends TestCase
 
         $this->assertDatabaseHas('contacts', [
             'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'phone' =>  PhoneNumber::number($incomingCall->From)
+            'number' =>  PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -171,7 +183,7 @@ class IncomingCallTest extends TestCase
         
         $this->assertDatabaseHas('contacts', [
             'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'phone' =>  PhoneNumber::number($incomingCall->From)
+            'number' =>  PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -236,7 +248,7 @@ class IncomingCallTest extends TestCase
         
         $this->assertDatabaseHas('contacts', [
             'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'phone' =>  PhoneNumber::number($incomingCall->From)
+            'number' =>  PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -299,7 +311,7 @@ class IncomingCallTest extends TestCase
         
         $this->assertDatabaseHas('contacts', [
             'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'phone' =>  PhoneNumber::number($incomingCall->From)
+            'number' =>  PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [
@@ -376,7 +388,7 @@ class IncomingCallTest extends TestCase
         
         $this->assertDatabaseHas('contacts', [
             'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'phone' => PhoneNumber::number($incomingCall->From)
+            'number' => PhoneNumber::number($incomingCall->From)
         ]);
 
         $this->assertDatabaseHas('calls', [

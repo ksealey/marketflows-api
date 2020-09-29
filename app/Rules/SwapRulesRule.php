@@ -57,13 +57,13 @@ class SwapRulesRule implements Rule
 
         foreach( $swapRules->targets as $target ){
             if( ! is_string($target) ){
-                $this->message = 'Swap rule targets must be strings';
+                $this->message = 'Swap rule targets must be string of digits';
 
                 return false;
             }
 
-            if( ! preg_match('[0-9]{10,13}', $targetData) ){
-                $this->message = 'Swap rule target invalid - It must only contain digits and be between 10 and characters';
+            if( ! preg_match('/[0-9]{10,13}/', $target) ){
+                $this->message = 'Swap rule target invalid - It must only contain digits and be between 10 and 13 characters';
 
                 return false;
             }

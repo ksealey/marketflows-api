@@ -22,7 +22,8 @@ class CallRecording extends Model
         'external_id',
         'path',
         'duration',
-        'file_size'
+        'file_size',
+        'transcription_path'
     ];
 
     protected $hidden = [
@@ -46,6 +47,13 @@ class CallRecording extends Model
                 . '/' 
                 . trim($this->path, '/');
     }
+
+    public function getStorageUrlAttribute()
+    {
+        return rtrim(config('app.storage_url'), '/') 
+                . '/' 
+                . trim($this->path, '/');
+    }
    
     public function getKindAttribute()
     {
@@ -57,69 +65,12 @@ class CallRecording extends Model
         return 'audio/mpeg';
     }
 
-    static public function moveRecording($url, $recordingSid, $recordingDuration, $call)
+    /**
+     * Relationships
+     * 
+     */
+    public function transcription()
     {
-        //  Download file
-        $content = self::downloadRecording($url . '.mp3');
-
-        if( ! $content )
-            return null;
-
-        //  Store remotely
-        $remotePath = self::storeRecording($content, $call);
-        if( ! $remotePath )
-            return null;
-
-        //  Remove remote file
-        self::deleteRemoteFile($recordingSid);
-
-        return CallRecording::create([
-            'call_id'       => $call->id,
-            'external_id'   => $recordingSid,
-            'path'          => $remotePath,
-            'duration'      => intval($recordingDuration),
-            'file_size'     => strlen($content)
-        ]);
-    }
-
-    static public function downloadRecording($url)
-    {
-        try{
-            $client   = new \GuzzleHttp\Client();
-            $response = $client->request('GET', $url);
-
-            return $response->getBody();
-        }catch(Exception $e){
-            return null;
-        }
-    }
-
-    static public function storeRecording($content, $call)
-    {
-        $storagePath = trim(CallRecording::storagePath($call->account_id, $call->company_id, 'recordings'), '/');
-        $path        = $storagePath . '/Call-' . $call->id;
-
-        Storage::put($path, $content, 'public');
-
-        return $path;
-    }
-
-    static public function deleteRemoteFile($recordingSid)
-    {
-        $config = config('services.twilio');
-
-        $twilio = new TwilioClient($config['sid'], $config['token']);
-
-        try{
-            $twilio->recordings($recordingSid)
-                    ->delete();
-        }catch(Exception $e){
-            Log::error($e->getTraceAsString());
-        }
-    }
-
-    public function deleteRemoteResource()
-    {
-        Storage::delete($this->path);
+        return $this->hasOne('\App\Models\Company\Transcription');
     }
 }

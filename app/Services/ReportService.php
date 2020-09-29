@@ -21,7 +21,8 @@ class ReportService
             'calls.first_call'          => 'call_first_call',
             'contacts.first_name'       => 'contact_first_name',
             'contacts.last_name'        => 'contact_last_name',
-            'contacts.phone'            => 'contact_phone',
+            'contacts.country_code'     => 'contact_country_code',
+            'contacts.number'           => 'contact_number',
             'contacts.city'             => 'contact_city',
             'contacts.state'            => 'contact_state',
             'calls.created_at'          => 'call_date',
@@ -44,7 +45,8 @@ class ReportService
             'call_date'                => 'Call Date',
             'contact_first_name'       => 'Caller First Name',
             'contact_last_name'        => 'Caller Last Name',
-            'contact_phone'            => 'Caller Phone Number',
+            'contact_country_code'     => 'Caller Country Code',
+            'contact_number'           => 'Caller Phone Number',
             'contact_city'             => 'Caller City',
             'contact_state'            => 'Caller State',
         ]
@@ -65,7 +67,7 @@ class ReportService
             'calls.first_call'          => 'boolean',
             'contacts.first_name'       => 'string',
             'contacts.last_name'        => 'string',
-            'contacts.phone'            => 'string',
+            'contacts.number'           => 'string',
             'contacts.city'             => 'string',
             'contacts.state'            => 'string',
         ]
@@ -82,6 +84,10 @@ class ReportService
             'call_recording_enabled',
             'call_first_call'
         ]
+    ];
+
+    public $moduleLabels = [
+        'calls' => 'Calls'
     ];
 
     public function lineDatasetData(iterable $callData, $startDate, $endDate)
@@ -245,5 +251,10 @@ class ReportService
     public function booleanField($module, $fieldAlias)
     {
         return in_array($fieldAlias, $this->booleanFields[$module]);
+    }
+
+    public function moduleLabel($module)
+    {
+        return $this->moduleLabels[$module];
     }
 }

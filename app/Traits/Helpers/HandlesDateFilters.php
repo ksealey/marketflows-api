@@ -127,7 +127,7 @@ trait HandlesDateFilters
         $days = $startDate->diff($endDate)->days;
 
         if( $days == 0 ){ //  Time
-            $format = '%Y-%m-%d %k:00:00';
+            $format = '%Y-%m-%d %H:00:00';
         }elseif( $days <= 60 ){ //   Days
             $format = '%Y-%m-%d';
         }elseif( $days <= 730 ){ //  Months

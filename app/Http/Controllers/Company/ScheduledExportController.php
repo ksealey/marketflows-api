@@ -71,8 +71,8 @@ class ScheduledExportController extends Controller
         $scheduledExport = ScheduledExport::create([
             'company_id'                => $company->id,
             'report_id'                 => $report->id,
-            'day_of_week'               => $request->day_of_week,
-            'hour_of_day'               => $request->hour_of_day,
+            'day_of_week'               => intval($request->day_of_week),
+            'hour_of_day'               => intval($request->hour_of_day),
             'timezone'                  => $request->timezone ?: $request->user()->timezone, 
             'delivery_method'           => $request->delivery_method,
             'delivery_email_addresses'  => $request->delivery_email_addresses,

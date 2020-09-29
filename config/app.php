@@ -274,5 +274,11 @@ return [
         'SpreadsheetSettings' => \PhpOffice\PhpSpreadsheet\Settings::class
     ],
 
-    'cdn_url' => env('CDN_URL')
+    'cdn_url'     => env('CDN_URL'),
+    'storage_url' => env('AWS_S3_URL'),
+
+    'country_codes' => [
+        'US' => 1,
+        'CA' => 1
+    ]
 ];

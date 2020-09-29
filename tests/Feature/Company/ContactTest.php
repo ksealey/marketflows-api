@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\Company\Contact;
 use App\Services\ExportService;
+use App\Models\Company\PhoneNumber;
 use Queue;
 
 class ContactTest extends TestCase
@@ -29,8 +30,7 @@ class ContactTest extends TestCase
         ]);
 
         $response = $this->json('GET', route('list-contacts', [
-            'company' => $company->id,
-            'date_type' => 'ALL_TIME'
+            'company' => $company->id
         ]));
 
         $response->assertStatus(200);
@@ -48,7 +48,8 @@ class ContactTest extends TestCase
                     'first_name',
                     'last_name',
                     'email',
-                    'phone',
+                    'country_code',
+                    'number',
                     'kind',
                     'link'
                 ]
@@ -85,7 +86,9 @@ class ContactTest extends TestCase
         ]), [
             'start_date' => $twoDaysAgo->format('Y-m-d'),
             'end_date'   => $twoDaysAgo->format('Y-m-d'),
-            'date_type' => 'CUSTOM'
+            'date_type' => 'CUSTOM',
+            'order_by'  => 'contacts.id',
+            'order_dir' => 'asc'
         ]);
 
         $response->assertStatus(200);
@@ -103,7 +106,7 @@ class ContactTest extends TestCase
                     'first_name'    => $contacts[0]['first_name'],
                     'last_name'     => $contacts[0]['last_name'],
                     'email'         => $contacts[0]['email'],
-                    'phone'         => $contacts[0]['phone'],
+                    'number'        => $contacts[0]['number'],
                     'kind'          => $contacts[0]['kind'],
                     'link'          => $contacts[0]['link']
                 ],
@@ -112,7 +115,7 @@ class ContactTest extends TestCase
                     'first_name'    => $contacts[1]['first_name'],
                     'last_name'     => $contacts[1]['last_name'],
                     'email'         => $contacts[1]['email'],
-                    'phone'         => $contacts[1]['phone'],
+                    'number'        => $contacts[1]['number'],
                     'kind'          => $contacts[1]['kind'],
                     'link'          => $contacts[1]['link']
                 ]
@@ -141,25 +144,27 @@ class ContactTest extends TestCase
             'date_type' => 'ALL_TIME',
             'conditions' => json_encode([
                 [
-                    'field' => 'contacts.first_name',
-                    'operator' => 'EQUALS',
-                    'inputs' => [ $contact->first_name ]
-                ],
-                [
-                    'field' => 'contacts.last_name',
-                    'operator' => 'EQUALS',
-                    'inputs' => [ $contact->last_name ]
-                ],
-                [
-                    'field' => 'contacts.email',
-                    'operator' => 'EQUALS',
-                    'inputs' => [ $contact->email ]
-                ],
-                [
-                    'field' => 'contacts.phone',
-                    'operator' => 'EQUALS',
-                    'inputs' => [ $contact->phone ]
-                ],
+                    [
+                        'field' => 'contacts.first_name',
+                        'operator' => 'EQUALS',
+                        'inputs' => [ $contact->first_name ]
+                    ],
+                    [
+                        'field' => 'contacts.last_name',
+                        'operator' => 'EQUALS',
+                        'inputs' => [ $contact->last_name ]
+                    ],
+                    [
+                        'field' => 'contacts.email',
+                        'operator' => 'EQUALS',
+                        'inputs' => [ $contact->email ]
+                    ],
+                    [
+                        'field' => 'contacts.number',
+                        'operator' => 'EQUALS',
+                        'inputs' => [ $contact->number ]
+                    ]
+                ]
             ])
         ]);
 
@@ -179,7 +184,8 @@ class ContactTest extends TestCase
                     'first_name'    => $contact->first_name,
                     'last_name'     => $contact->last_name,
                     'email'         => $contact->email,
-                    'phone'         => $contact->phone,
+                    'country_code'  => $contact->country_code,
+                    'number'        => $contact->number,
                     'kind'          => $contact->kind,
                     'link'          => $contact->link
                 ]
@@ -188,7 +194,7 @@ class ContactTest extends TestCase
     }
 
     /**
-     * Test exportng contacts
+     * Test exporting contacts
      * 
      * @group contacts
      */
@@ -239,10 +245,12 @@ class ContactTest extends TestCase
         $contact = $contacts->first();
         $conditions = [
             [
-                'field'    => 'contacts.first_name',
-                'operator' => 'IN',
-                'inputs'   => [
-                    $contact->first_name
+                [
+                    'field'    => 'contacts.first_name',
+                    'operator' => 'IN',
+                    'inputs'   => [
+                        $contact->first_name
+                    ]
                 ]
             ]
         ];
@@ -307,13 +315,13 @@ class ContactTest extends TestCase
         $company = $this->createCompany();
         $contact = factory(Contact::class)->make();
         $body       = [
-            'first_name' => $contact->first_name,
-            'last_name' => $contact->last_name,
-            'email' => $contact->email,
-            'phone' => $contact->phone,
-            'city' => $contact->city,
-            'state' => $contact->state,
-            'zip' => $contact->zip,
+            'first_name'    => $contact->first_name,
+            'last_name'     => $contact->last_name,
+            'email'         => $contact->email,
+            'number'        => $contact->fullPhone(),
+            'city'          => $contact->city,
+            'state'         => $contact->state,
+            'zip'           => $contact->zip,
         ];
 
         $response = $this->json('POST', route('create-contact', [
@@ -321,10 +329,21 @@ class ContactTest extends TestCase
         ]), $body);
         
         $response->assertStatus(201);
-        $response->assertJSON($body);
+        $response->assertJSON([
+            'first_name'    => $contact->first_name,
+            'last_name'     => $contact->last_name,
+            'email'         => $contact->email,
+            'country_code'  => $contact->country_code,
+            'number'        => $contact->number,
+            'city'          => $contact->city,
+            'state'         => $contact->state,
+            'zip'           => $contact->zip,
+        ]);
         $this->assertDatabaseHas('contacts', [
-            'company_id' => $company->id,
-            'created_by' => $this->user->id,
+            'company_id'   => $company->id,
+            'country_code' => PhoneNumber::countryCode($contact->fullPhone()),
+            'number'       => PhoneNumber::number($contact->fullPhone()),
+            'created_by'   => $this->user->id,
         ]);
     }
 
@@ -337,14 +356,14 @@ class ContactTest extends TestCase
     {
         $company = $this->createCompany();
         $contact = factory(Contact::class)->make([
-            'email' => '',
-            'phone' => ''
+            'email'  => '',
+            'number' => ''
         ]);
         $body       = [
             'first_name' => $contact->first_name,
             'last_name' => $contact->last_name,
             'email' => $contact->email,
-            'phone' => $contact->phone,
+            'number' => $contact->number,
             'city' => $contact->city,
             'state' => $contact->state,
             'zip' => $contact->zip,
@@ -382,7 +401,7 @@ class ContactTest extends TestCase
             'first_name' => $contact->first_name,
             'last_name' => $contact->last_name,
             'email' => $contact->email,
-            'phone' => $contact->phone,
+            'number' => $contact->number,
             'city' => $contact->city,
             'state' => $contact->state,
             'zip' => $contact->zip,
@@ -411,20 +430,19 @@ class ContactTest extends TestCase
         ]);
 
         $contact = factory(Contact::class)->make([
-            'phone' => $otherContact->phone
+            'country_code' => $otherContact->country_code,
+            'number'       => $otherContact->number
         ]);
         $body       = [
             'first_name' => $contact->first_name,
             'last_name' => $contact->last_name,
             'email' => $contact->email,
-            'phone' => $contact->phone,
-            'city' => $contact->city,
-            'state' => $contact->state,
-            'zip' => $contact->zip,
+            'number' => $contact->fullPhone(),
         ];
         $response = $this->json('POST', route('create-contact', [
             'company' => $company->id
         ]), $body);
+        
         $response->assertStatus(400);
         $response->assertJSON([
             'error' => 'Duplicate exists matching field phone'
@@ -432,7 +450,7 @@ class ContactTest extends TestCase
     }
 
     /**
-     * Test eading a contact
+     * Test reading a contact
      * 
      * @group contacts
      */
@@ -456,7 +474,8 @@ class ContactTest extends TestCase
             'first_name' => $contact->first_name,
             'last_name' => $contact->last_name,
             'email'     => $contact->email,
-            'phone'     => $contact->phone,
+            'country_code' => $contact->country_code,
+            'number'     => $contact->number,
             'kind'      => 'Contact',
             'link'      => route('read-contact', [
                 'company' => $company->id,
@@ -484,10 +503,6 @@ class ContactTest extends TestCase
             'first_name' => $updateData->first_name,
             'last_name' => $updateData->last_name,
             'email' => $updateData->email,
-            'phone' => $updateData->phone,
-            'city' => $updateData->city,
-            'state' => $updateData->state,
-            'zip' => $updateData->zip,
         ];
 
         $response = $this->json('PUT', route('update-contact', [
@@ -497,6 +512,9 @@ class ContactTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON($body);
+        $response->assertJSON([
+            'activity' => []
+        ]);
 
         $this->assertDatabaseHas('contacts', [
             'id'         => $contact->id,
@@ -509,7 +527,7 @@ class ContactTest extends TestCase
      * 
      * @group contacts
      */
-    public function testUpdateContactWithOldEmailAndPhone()
+    public function testUpdateContactWithOwnEmail()
     {
         $company = $this->createCompany();
         $contact = factory(Contact::class)->create([
@@ -520,12 +538,8 @@ class ContactTest extends TestCase
         $updateData = factory(Contact::class)->make();
         $body       = [
             'first_name' => $updateData->first_name,
-            'last_name' => $updateData->last_name,
-            'email' => $contact->email,
-            'phone' => $contact->phone,
-            'city' => $updateData->city,
-            'state' => $updateData->state,
-            'zip' => $updateData->zip,
+            'last_name'  => $updateData->last_name,
+            'email'      => $contact->email,
         ];
 
         $response = $this->json('PUT', route('update-contact', [
@@ -538,6 +552,7 @@ class ContactTest extends TestCase
 
         $this->assertDatabaseHas('contacts', [
             'id'         => $contact->id,
+            'email'      => $contact->email,
             'updated_by' => $this->user->id
         ]);
     }
@@ -570,10 +585,6 @@ class ContactTest extends TestCase
             'first_name' => $updateData->first_name,
             'last_name' => $updateData->last_name,
             'email' => $updateData->email,
-            'phone' => $updateData->phone,
-            'city' => $updateData->city,
-            'state' => $updateData->state,
-            'zip' => $updateData->zip,
         ];
 
         $response = $this->json('PUT', route('update-contact', [
@@ -583,52 +594,6 @@ class ContactTest extends TestCase
         $response->assertStatus(400);
         $response->assertJSON([
             'error' => 'Duplicate exists matching field email'
-        ]);
-    }
-
-    /**
-     * Test updating a contact fails when contact matching phone exists
-     * 
-     * @group contacts
-     */
-    public function testUpdateContactFailsForExisingPhone()
-    {
-        $company      = $this->createCompany();
-
-        $otherContact = factory(Contact::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id
-        ]);
-
-        $contact = factory(Contact::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id
-        ]);
-
-        $updateData = factory(Contact::class)->make([
-            'phone' => $otherContact->phone
-        ]);
-
-        $body = [
-            'first_name' => $updateData->first_name,
-            'last_name' => $updateData->last_name,
-            'email' => $updateData->email,
-            'phone' => $updateData->phone,
-            'city' => $updateData->city,
-            'state' => $updateData->state,
-            'zip' => $updateData->zip,
-        ];
-
-        $response = $this->json('PUT', route('update-contact', [
-            'company' => $company->id,
-            'contact' => $contact->id
-        ]), $body);
-
-        $response->assertStatus(400);
-        $response->assertJSON([
-            'error' => 'Duplicate exists matching field phone'
         ]);
     }
 
@@ -646,7 +611,7 @@ class ContactTest extends TestCase
             'created_by' => $this->user->id
         ]);
 
-        $response = $this->json('DELETE', route('update-contact', [
+        $response = $this->json('DELETE', route('delete-contact', [
             'company' => $company->id,
             'contact' => $contact->id
         ]));

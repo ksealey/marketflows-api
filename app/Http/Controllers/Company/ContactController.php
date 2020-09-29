@@ -14,10 +14,12 @@ use DB;
 class ContactController extends Controller
 {
     public static $fields = [
+        'contacts.id',
         'contacts.first_name',
         'contacts.last_name',
         'contacts.email',
-        'contacts.phone',
+        'contacts.country_code',
+        'contacts.number',
         'contacts.city',
         'contacts.state',
         'contacts.zip',
@@ -63,8 +65,8 @@ class ContactController extends Controller
         $rules = [
             'first_name' => 'bail|max:32',
             'last_name'  => 'bail|max:32',
-            'email'      => 'bail|required_without:phone|email|max:128',
-            'phone'      => 'bail|required_without:email|digits_between:10,13',
+            'number'     => 'bail|required|digits_between:10,13',
+            'email'      => 'bail|email|max:128',
             'city'       => 'bail|max:64',
             'state'      => 'bail|max:64',
             'zip'        => 'bail|max:16',
@@ -81,15 +83,25 @@ class ContactController extends Controller
         //
         //  Make sure no contact exists with this phone
         //
-        $query = Contact::where('company_id', $company->id);
-        if( $request->email && ! $request->phone ){
-            $query->where('email', $request->email);
-        }elseif( ! $request->email && $request->phone ){
-            $query->where('phone', $request->phone);
-        }elseif( $request->email && $request->phone ){
-            $query->where('email', $request->email)
-                    ->orWhere('phone', $request->phone);
-        }
+        $countryCode = PhoneNumber::countryCode($request->number);
+        if( ! $countryCode )
+            $countryCode = $company->country_code;
+            
+        $number      = PhoneNumber::number($request->number);
+        $email       = $request->email; 
+
+        $query = Contact::where('company_id', $company->id)
+                        ->where(function($query) use($countryCode, $number, $email){
+                            $query->where(function($query) use($countryCode, $number){
+                                $query->where('number', $number);
+                                if( $countryCode ){
+                                    $query->where('country_code', $countryCode);
+                                }
+                            });
+                            if( $email ){
+                                $query->orWhere('email', $email);
+                            }
+                        });
 
         $contact = $query->first();
         if( $contact ){
@@ -110,13 +122,13 @@ class ContactController extends Controller
             'first_name' => $request->first_name,
             'last_name'  => $request->last_name,
             'email'      => $request->email,
-            'country_code' => PhoneNumber::countryCode($request->phone),
-            'phone'        => PhoneNumber::number($request->phone),
+            'country_code' => $countryCode,
+            'number'       => $number,
             'city'       => $request->city,
             'state'      => $request->state,
             'zip'        => $request->zip,
             'country'    => $request->country,
-            'created_by' => $request->user()->id
+            'created_by' => $request->user()->id,
         ]);
 
         return response($contact, 201);
@@ -156,18 +168,21 @@ class ContactController extends Controller
         //
         //  Make sure no contact exists with this phone
         //
-        $query = Contact::where('company_id', $company->id)
-                        ->where('id', '!=', $contact->id);
+        
 
-        if( $request->email )
-            $query->where('email', $request->email);
+        if( $request->email ){
+            $query = Contact::where('company_id', $company->id)
+                            ->where('id', '!=', $contact->id)
+                            ->where('email', $request->email);
 
-        $otherContact = $query->first();
-        if( $otherContact ){
-            return response([
-                'error' => 'Duplicate exists matching field email'
-            ], 400);
+            if( $query->first() ){
+                return response([
+                    'error' => 'Duplicate exists matching field email'
+                ], 400);
+            }
         }
+
+       
 
         if( $request->has('first_name') )
             $contact->first_name = $request->first_name;

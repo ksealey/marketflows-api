@@ -19,17 +19,27 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->bigInteger('company_id')->unsigned();
             $table->string('name', 64);
             $table->string('forward_to_number', 16);
+
             $table->boolean('greeting_enabled')->default(0);
-            $table->bigInteger('greeting_audio_clip_id')->unsigned()->nullable();
+            $table->string('greeting_message_type', 16)->nullable();
             $table->string('greeting_message', 128)->nullable();
-            $table->string('whisper_message', 128)->nullable();
+            $table->bigInteger('greeting_audio_clip_id')->unsigned()->nullable();
+            
+            $table->boolean('keypress_enabled')->default(0);
             $table->tinyInteger('keypress_key')->unsigned()->nullable();
             $table->tinyInteger('keypress_attempts')->unsigned()->nullable();
             $table->tinyInteger('keypress_timeout')->unsigned()->nullable();
-            $table->bigInteger('keypress_audio_clip_id')->unsigned()->nullable();
+            $table->string('keypress_message_type', 16)->nullable();
             $table->string('keypress_message', 128)->nullable();
+            $table->bigInteger('keypress_audio_clip_id')->unsigned()->nullable();
+
+            $table->boolean('whisper_enabled')->default(0);
+            $table->string('whisper_message', 128)->nullable();
+
             $table->boolean('recording_enabled')->default(0);
-            $table->boolean('keypress_enabled')->default(0);
+
+            $table->boolean('transcription_enabled')->default(0);
+
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();

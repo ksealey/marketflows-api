@@ -34,6 +34,8 @@ class Call extends Model
         'campaign',
 
         'recording_enabled',
+        'transcription_enabled',
+
         'forwarded_to',
 
         'cost',
@@ -65,6 +67,7 @@ class Call extends Model
             'id'                => 'Id',
             'company_name'      => 'Company',
             'caller_name'       => 'Caller Name',
+            'caller_country_code'=> 'Caller Country Code',
             'caller_number'     => 'Caller Number',
             'phone_number_name' => 'Tracking Number',
             'type'              => 'Tracking Number Type',
@@ -78,6 +81,7 @@ class Call extends Model
             'status'            => 'Status',
             'duration'          => 'Duration (Seconds)',
             'recording_enabled' => 'Recording Enabled',
+            'transcription_enabled' => 'Transcription Enabled',
             'forwarded_to'      => 'Forwarded to Number',
             'first_call'        => 'First Call',
             'created_at_local'  => 'Created',
@@ -114,7 +118,8 @@ class Call extends Model
                     ),
                     DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
                     DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name'),
-                    DB::raw("contacts.phone AS caller_number"),
+                    DB::raw("contacts.country_code AS caller_country_code"),
+                    DB::raw("contacts.number AS caller_number"),
                     DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
                 ])
                 ->where('calls.company_id', $input['company_id']);

@@ -10,6 +10,7 @@ use Illuminate\Queue\SerializesModels;
 use App\Models\Company\CallRecording;
 use App\Models\User;
 use App\Models\Company;
+use Storage;
 
 class BatchDeleteCallRecordingsJob implements ShouldQueue
 {
@@ -37,28 +38,30 @@ class BatchDeleteCallRecordingsJob implements ShouldQueue
     public function handle()
     {
         //
-        //  Delete file
+        //  Fetch all recordings
         //
-        CallRecording::whereIn('call_id', function($q){
+        $recordings = CallRecording::whereIn('call_id', function($q){
                         $q->select('id')
                           ->from('calls')
                           ->where('company_id', $this->company->id)
                           ->whereNull('deleted_at'); 
                     })
-                    ->get()
-                    ->each(function($callRecording){
-                        $callRecording->deleteRemoteResource();
-                    });  
-        //
-        //  Delete from database
-        //
-        CallRecording::whereIn('call_id', function($q){
-                        $q->select('id')
-                          ->from('calls')
-                          ->where('company_id', $this->company->id)
-                          ->whereNull('deleted_at'); 
-                    })
-                    ->update([ 'deleted_at' => now() ]);  
+                    ->get();
+
+        if( ! count($recordings) ) return;
+
+        //  Remove remote files
+        $recordings->each(function($recording){
+            Storage::delete($recording->path);
+            if( $recording->transcription_path ){
+                Storage::delete($recording->transcription_path);
+            }
+        });
+
+        //  Delete records from database
+        $recordingIds = array_column($recordings->toArray(), 'id');
+        CallRecording::whereIn('id', $recordingIds)
+                      ->delete(); 
 
     }
 }

@@ -22,7 +22,7 @@ class CreateContactsTable extends Migration
             $table->string('last_name', 32)->nullable();
             $table->string('email', 128)->nullable()->index();
             $table->string('country_code', 8)->nullable();
-            $table->string('phone', 16)->nullable()->index();
+            $table->string('number', 16)->nullable()->index();
             $table->string('city', 64)->nullable();
             $table->string('state', 64)->nullable();
             $table->string('zip', 16)->nullable();

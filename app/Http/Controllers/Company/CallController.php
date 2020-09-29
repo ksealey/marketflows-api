@@ -15,7 +15,8 @@ class CallController extends Controller
     protected $fields = [
         'contacts.first_name',
         'contacts.last_name',
-        'contacts.phone',
+        'contacts.country_code',
+        'contacts.number',
         'phone_numbers.name',
         'calls.category',
         'calls.sub_category',
@@ -62,7 +63,7 @@ class CallController extends Controller
                         ),
                         DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
                         DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name'),
-                        DB::raw("contacts.phone AS caller_number")
+                        DB::raw("contacts.number AS caller_number")
                     ])
                    ->where('calls.company_id', $company->id);
 
@@ -150,15 +151,12 @@ class CallController extends Controller
             ], 404);
         }
 
-        $recording->delete();
-
-        try{
-            Storage::delete($recording->path);
-        }catch(\Exception $e){
-            return response([
-                'error' => 'Unable to delete recording'
-            ], 400);
+        Storage::delete($recording->path);
+        if( $recording->transcription_path ){
+            Storage::delete($recording->transcription_path);
         }
+
+        $recording->delete();
 
         return response([
             'message' => 'Deleted'

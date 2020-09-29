@@ -20,6 +20,7 @@ class CreateCallRecordingsTable extends Migration
             $table->integer('duration')->unsigned();
             $table->integer('file_size')->unsigned(); 
             $table->string('path', 128);
+            $table->string('transcription_path', 128)->nullable();
             $table->timestamps();
             $table->softDeletes();
 

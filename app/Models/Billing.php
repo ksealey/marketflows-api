@@ -57,7 +57,7 @@ class Billing extends Model
     const COST_NUMBERS_TOLL_FREE    = 4.00;
     const COST_MINUTES_LOCAL        = 0.04;
     const COST_MINUTES_TOLL_FREE    = 0.07;
-    const COST_MINUTES_TRANSCRIPTION= 0.03;
+    const COST_MINUTES_TRANSCRIPTION= 0.05;
     const COST_STORAGE_GB           = 0.10;
 
     public function getPastDueAttribute()
@@ -164,9 +164,9 @@ class Billing extends Model
                                     END
                                 ) as total_minutes')
                             ])
-                            ->join('transcriptions', 'transcriptions.call_id', '=', 'calls.id')
                             ->whereNull('calls.deleted_at')
                             ->where('account_id', $this->account_id)
+                            ->where('transcription_enabled', 1)
                             ->where('created_at', '>=', $startDate)
                             ->where('created_at', '<=', $endDate);
 

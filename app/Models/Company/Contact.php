@@ -20,7 +20,7 @@ class Contact extends Model
         'last_name',
         'email',
         'country_code',
-        'phone',
+        'number',
         'city',
         'state',
         'zip',
@@ -48,7 +48,7 @@ class Contact extends Model
             'first_name'        => 'First Name',
             'last_name'         => 'Last Name',
             'country_code'      => 'Country Code',
-            'phone'             => 'Phone',
+            'number'            => 'Number',
             'email'             => 'Email',
             'city'              => 'City',
             'state'             => 'State',
@@ -98,14 +98,14 @@ class Contact extends Model
         if( count($calls) ){
             $callIds        = array_column($calls->toArray(), 'id');
             CallRecording::whereIn('call_id', $callIds)
-                                           ->get()
-                                           ->each(function($recording) use(&$recordingMap){
-                                                $recording->link = route('read-call-recording', [
-                                                    'company' => $this->company_id,
-                                                    'call'    => $recording->call_id
-                                                ]);
-                                                $recordingMap[$recording->call_id] = $recording;
-                                           });
+                            ->get()
+                            ->each(function($recording) use(&$recordingMap){
+                                $recording->link = route('read-call-recording', [
+                                    'company' => $this->company_id,
+                                    'call'    => $recording->call_id
+                                ]);
+                                $recordingMap[$recording->call_id] = $recording;
+                            });
         }
 
         foreach( $calls as $call ){
@@ -132,9 +132,14 @@ class Contact extends Model
         ];
     }
 
+    public function fullPhone()
+    {
+        return $this->country_code . $this->number;
+    }
+
     public function e164PhoneFormat()
     {
         return  ($this->country_code ? '+' . $this->country_code : '') 
-                . $this->phone;
+                . $this->number;
     }
 }

@@ -15,22 +15,31 @@ class PhoneNumberConfig extends Model
     protected $fillable = [
         'account_id',
         'company_id',
-        'created_by',
-        'updated_by',
-        'deleted_by',
+        
         'name',
         'forward_to_number',
+
         'greeting_enabled',
-        'greeting_audio_clip_id',
+        'greeting_message_type',
         'greeting_message',
-        'whisper_message',
+        'greeting_audio_clip_id',
+
+        'keypress_enabled',
         'keypress_key',
         'keypress_timeout',
         'keypress_attempts',
+        'keypress_message_type',
         'keypress_audio_clip_id',
         'keypress_message',
+
+        'whisper_enabled',
+        'whisper_message',
+
         'recording_enabled',
-        'keypress_enabled'
+
+        'transcription_enabled',
+
+        'created_by',
     ];
 
     protected $hidden = [
@@ -146,8 +155,8 @@ class PhoneNumberConfig extends Model
             '${campaign}'           => $call->campaign,
             '${caller_first_name}'  => $contact->first_name,
             '${caller_last_name}'   => $contact->last_name,
-            '${caller_country_code}'=> PhoneNumber::countryCode($contact->phone) ?: '',
-            '${caller_number}'      => PhoneNumber::countryCode($contact->phone) ?: '',
+            '${caller_country_code}'=> $contact->country_code,
+            '${caller_number}'      => $contact->number,
             '${caller_city}'        => $contact->city,
             '${caller_state}'       => $contact->state,
             '${caller_zip}'         => $contact->zip,

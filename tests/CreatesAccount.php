@@ -260,10 +260,6 @@ trait CreatesAccount
                             'path'     => $path,
                             'file_size' => 1024 * 1024 * 10
                         ]);
-
-                        factory(Transcription::class)->create([
-                            'call_id'  => $call->id
-                        ]);
                     });
                 });
             });
@@ -297,10 +293,6 @@ trait CreatesAccount
                             'call_id' => $call->id,
                             'path'     => $path,
                             'file_size' => 1024 * 1024 * 10
-                        ]);
-
-                        factory(Transcription::class)->create([
-                            'call_id'  => $call->id
                         ]);
                     });
                 });

@@ -11,41 +11,56 @@ class PhoneNumberService
 {
     public $client;
 
-    public function __construct()
-    {
-        $this->client = App::make(Twilio::class);
-    }
-
     public function listAvailable($contains = '' , $limit = 20, $type, $country = 'US')
     {
-        $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
-
-        $config   = [
-            'contains'     => $contains,
-            'voiceEnabled' => true,
-            'smsEnabled'   => true,
-        ]; 
-       
-        $numbers = [];
-        if( App::environment(['local', 'dev', 'development', 'staging']) ){
+        if( ! App::environment(['prod', 'production']) ){
             return array_map(function(){
-                $phoneNumber = new \stdClass();
+                $phoneNumber              = new \stdClass();
                 $phoneNumber->phoneNumber = config('services.twilio.magic_numbers.available');
                 return $phoneNumber;
             }, [1,2,3,4,5,6,7,8,9,10]);
         }
 
-        $query   = $this->client->availablePhoneNumbers($country);
-        $query   = $type === 'Toll-Free' ? $query->tollFree : $query->local;
-        $numbers = $query->read($config, $limit);
+        $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
+        $client   = App::make(Twilio::class);
+        $query    = $client->availablePhoneNumbers($country);
+        $query    = $type === 'Toll-Free' ? $query->tollFree : $query->local;
 
-        return $numbers ?: [];
+        return $query->read([
+            'contains'     => $contains,
+            'voiceEnabled' => true,
+            'smsEnabled'   => true,
+        ], $limit) ?: [];
     }
 
 
     public function purchase(string $number)
     {
-        $inProduction = App::environment('prod', 'production');
+        if( App::environment('prod', 'production') ){
+            $client             = App::make(Twilio::class);
+            $method             = 'POST';
+            $voiceUrl           = route('incoming-call');
+            $smsUrl             = route('incoming-sms');
+            $statusCallback     = route('incoming-call-status-changed');
+        }else{
+            $client             = App::make('TestTwilio');
+            $method             = '';
+            $voiceUrl           = '';
+            $smsUrl             = '';
+            $statusCallback     = '';
+        }
+
+        return $client->incomingPhoneNumbers
+                    ->create([
+                            'phoneNumber'           => $number,
+                            'voiceUrl'              => $voiceUrl,
+                            'voiceMethod'           => $method,
+                            'smsUrl'                => $smsUrl,
+                            'smsMethod'             => $method,
+                            'statusCallback'        => $statusCallback,
+                            'statusCallbackMethod'  => $method,
+                            'voiceCallerIdLookup'   => true
+                    ]);
 
         return $this->client
                     ->incomingPhoneNumbers

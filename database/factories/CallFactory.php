@@ -29,5 +29,7 @@ $factory->define(\App\Models\Company\Call::class, function (Faker $faker) {
 
         'recording_enabled' => mt_rand(0,1) ? 1 : 0,
         'forwarded_to' => str_replace('+', '', $faker->e164PhoneNumber),
+
+        'transcription_enabled' => 1
     ];
 });

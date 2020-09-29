@@ -88,6 +88,14 @@ class Company extends Model implements Exportable
         return 'Company';
     }
 
+    public function getCompanyCodeAttribute()
+    {
+        $countryCodes = config('app.country_codes');
+        
+        return $countryCodes[$this->country] ?? null;
+    }
+
+
     public function account()
     {
         return $this->belongsTo('\App\Models\Account');

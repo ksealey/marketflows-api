@@ -10,8 +10,20 @@ $factory->define(\App\Models\Company\PhoneNumberConfig::class, function (Faker $
         'name'                      => $faker->ein(),
         'forward_to_number'         => substr($faker->e164PhoneNumber, -10),
         'greeting_enabled'          => 1,
-        'greeting_message'          => 'Hello Greeting',
+        'greeting_message_type'     => 'TEXT',
+        'greeting_message'          => $faker->realText(64),
+
+        'keypress_enabled'          => 1,
+        'keypress_key'              => 1,
+        'keypress_attempts'         => 3,
+        'keypress_message_type'     => 'TEXT',
+        'keypress_message'          => $faker->realText(64),
+
+        'whisper_enabled'           => 1,
+        'whisper_message'           => $faker->realText(64),
+
         'recording_enabled'         => 1,
-        'whisper_message'           => 'Hello Whisper'
+
+        'transcription_enabled'      => 1,
     ];
 });

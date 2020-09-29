@@ -7,6 +7,10 @@ use Illuminate\Http\Response;
 use Twilio\Rest\Client as Twilio;
 use App\Services\PhoneNumberService;
 use App\Services\ReportService;
+use App\Services\TranscribeService;
+use App\Helpers\TextToSpeech;
+use \GuzzleHttp\Client as HTTPClient;
+use Aws\TranscribeService\TranscribeServiceClient;
 use AWS;
 use App;
 
@@ -31,6 +35,12 @@ class AppServiceProvider extends ServiceProvider
             return new Twilio($config['sid'], $config['token']);
         });
 
+        $this->app->bind('TestTwilio', function($app){
+            $config = config('services.twilio');
+            
+            return new Twilio($config['test_sid'], $config['test_token']);
+        });
+
         //  Register Number Manager
         $this->app->bind(PhoneNumberService::class, function($app){
             return new PhoneNumberService();
@@ -41,9 +51,28 @@ class AppServiceProvider extends ServiceProvider
             return new ReportService();
         });
 
-        //  Register AWS
-        $this->app->bind('App\Helpers\TextToSpeech', function($app){
-            return new \App\Helpers\TextToSpeech(AWS::createClient('polly'));
+        //  Register AWS Text to Speach
+        $this->app->bind(TextToSpeech::class, function($app){
+            return new TextToSpeech(AWS::createClient('polly'));
+        });
+
+        $this->app->bind(TranscribeService::class, function($app){
+            $config = config('services.transcribe');
+            return new TranscribeService(
+                new TranscribeServiceClient([
+                    'region' => $config['region'],
+                    'version' => 'latest',
+                    'credentials' => [
+                        'key'    => $config['key'],
+                        'secret' => $config['secret']
+                    ]
+                ]),
+                new HTTPClient()
+            );
+        });
+
+        $this->app->bind('HTTPClient', function($app){
+            return new HTTPClient();
         });
 
         $this->app->bind('Analytics', function(){
