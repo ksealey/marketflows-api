@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\PaymentMethod;
 use App\Models\BillingStatement;
 use App\Models\Company;
+use App\Models\Company\Call;
 use App\Models\User;
 use DateTime;
 use Validator;
@@ -110,6 +111,36 @@ class AccountController extends Controller
 
         return response([
             'message' => 'Bye'
+        ]);
+    }
+
+    public function summary(Request $request)
+    {
+        $user    = $request->user();
+        $summary = DB::table('accounts')->select([
+            DB::raw("(SELECT count(*) FROM companies WHERE account_id = '" . $user->account_id . "' AND deleted_at IS NULL) as company_count"),
+            DB::raw("(SELECT count(*) FROM phone_numbers WHERE account_id = '" . $user->account_id . "' AND deleted_at IS NULL) as phone_number_count"),
+            DB::raw("(SELECT count(*) FROM contacts WHERE account_id = '" . $user->account_id . "' AND deleted_at IS NULL) as contact_count"),
+            DB::raw("(SELECT count(*) FROM calls WHERE account_id = '" . $user->account_id . "' AND deleted_at IS NULL) as call_count"),
+        ])
+        ->where('id', $user->account_id)
+        ->first();
+        
+        return response([
+            'kind'  => 'Summary',
+            'link'  => route('read-summary'), 
+            'companies' => [
+                'count' => $summary->company_count
+            ],
+            'phone_numbers' => [
+                'count' => $summary->phone_number_count
+            ],
+            'contacts' => [
+                'count' => $summary->contact_count
+            ],
+            'calls' => [
+                'count' => $summary->call_count
+            ],
         ]);
     }
 }

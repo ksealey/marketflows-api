@@ -155,7 +155,7 @@ class ContactController extends Controller
         $rules = [
             'first_name' => 'bail|max:32',
             'last_name'  => 'bail|max:32',
-            'email'      => 'bail|email|max:128'
+            'email'      => 'bail|nullable|email|max:128'
         ];
 
         $validator = validator($request->input(), $rules);

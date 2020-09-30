@@ -79,8 +79,10 @@ class ProcessCallRecordingJob implements ShouldQueue
         
         //  Transcribe if enabled
         if( $call->transcription_enabled ){
+            $company                       = $call->company;
+            $language                      = config('services.transcribe.languages')[$company->tts_language] ?? 'en-US';
             $transcriber                   = App::make(TranscribeService::class);
-            $recording->transcription_path = $transcriber->transcribe($recording);
+            $recording->transcription_path = $transcriber->transcribe($recording, $language);
             $recording->save();
         }
     }

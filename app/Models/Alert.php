@@ -25,8 +25,6 @@ class Alert extends Model
         'type',
         'title',
         'message',
-        'url',
-        'url_label',
         'hidden_after'
     ];
 
@@ -48,8 +46,6 @@ class Alert extends Model
             'alerts.type',
             'alerts.title',
             'alerts.message',
-            'alerts.url',
-            'alerts.url_label',
             'alerts.created_at'
         ];
     }

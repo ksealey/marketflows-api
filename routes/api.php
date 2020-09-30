@@ -68,6 +68,15 @@ Route::middleware(['auth:api', 'api'])->group(function(){
     });
 
     /*
+    |--------------------------------
+    | Handle summary
+    |--------------------------------
+    */
+    Route::get('/summary', 'AccountController@summary')
+         ->middleware('can:read,\App\Models\Account')
+         ->name('read-summary');
+
+    /*
     |----------------------------------------
     | Handle current user
     |----------------------------------------

@@ -11,10 +11,10 @@ class SupportTicket extends Model
     const URGENCY_MEDIUM     = 'MEDIUM';
     const URGENCY_HIGH       = 'HIGH'; 
 
-    const STATUS_UNASSIGNED  = 'UNASSIGNED';
-    const STATUS_IN_PROGRESS = 'IN_PROGRESS';
-    const STATUS_PENDING_RESPONSE = 'PENDING_RESPONSE';
-    const STATUS_CLOSED      = 'CLOSED';
+    const STATUS_UNASSIGNED         = 'UNASSIGNED';
+    const STATUS_IN_PROGRESS        = 'IN_PROGRESS';
+    const STATUS_PENDING_RESPONSE   = 'PENDING_RESPONSE';
+    const STATUS_CLOSED             = 'CLOSED';
 
     protected $fillable = [
         'urgency',

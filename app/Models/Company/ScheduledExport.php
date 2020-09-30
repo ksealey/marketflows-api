@@ -72,7 +72,7 @@ class ScheduledExport extends Model
                                 THEN CONCAT(hour_of_day, ':00pm')
                             ELSE CONCAT(hour_of_day % 12, ':00pm')
                             END AS hour_of_day_time"),
-                    DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                    DB::raw("DATE_FORMAT(CONVERT_TZ(scheduled_exports.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
                 ])
                 ->where('scheduled_exports.company_id', $input['company_id'])
                 ->leftJoin('reports', 'reports.id', 'scheduled_exports.report_id');

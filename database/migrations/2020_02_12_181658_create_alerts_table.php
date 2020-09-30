@@ -20,8 +20,6 @@ class CreateAlertsTable extends Migration
             $table->string('type', 32);
             $table->string('title', 128)->nullable();
             $table->string('message', 255);
-            $table->string('url', 255)->nullable();
-            $table->string('url_label', 64)->nullable();
             $table->dateTime('hidden_after')->nullable();
             $table->timestamps();
             $table->softDeletes();
