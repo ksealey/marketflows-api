@@ -181,6 +181,41 @@ class KeywordTrackingPoolTest extends TestCase
     }
 
     /**
+     * Test create toll free phone nnumber pool
+     * 
+     * @group keyword-tracking-pools
+     */
+    public function testCreateFailsWhenPoolExists()
+    {
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = factory(KeywordTrackingPool::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'created_by' => $this->user->id
+        ]);
+
+        factory(PhoneNumber::class, 10)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'keyword_tracking_pool_id' => $pool->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $response = $this->json('POST', route('create-keyword-tracking-pool', [
+            'company' => $company->id
+        ]));
+
+        $response->assertJSON([
+            'error' => 'Only 1 keyword tracking pool is allowed per company' 
+        ]);
+
+        $response->assertStatus(400);
+    }
+
+    /**
      * Test read
      * 
      * @group keyword-tracking-pools
@@ -387,5 +422,151 @@ class KeywordTrackingPoolTest extends TestCase
                 'keyword_tracking_pool_id'  => null
             ]);
         });
+    }
+
+    /**
+     * Test adding numbers
+     * 
+     * @group keyword-tracking-pools
+     */
+    public function testAddNumbers()
+    {
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = factory(KeywordTrackingPool::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $phoneNumbers = factory(PhoneNumber::class, mt_rand(5,20))->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'keyword_tracking_pool_id' => $pool->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $count         = mt_rand(5, 20);
+        $startsWith    = strval(mt_rand(111,999));
+        $twilioNumbers = factory(TwilioPhoneNumber::class, $count)->make();
+
+        $this->mock(PhoneNumberService::class, function($mock) use($company, $twilioNumbers, $count, $startsWith){
+            $mock->shouldReceive('listAvailable')
+                 ->with($startsWith, $count, PhoneNumber::TYPE_LOCAL, $company->country)
+                 ->andReturn($twilioNumbers)
+                 ->once();
+        
+            $twilioNumbers->each(function($twilioNumber) use($mock){
+                $mock->shouldReceive('purchase')
+                     ->with($twilioNumber->phoneNumber)
+                     ->andReturn($twilioNumber);
+            });
+        });
+
+        $response = $this->json('POST', route('add-keyword-tracking-pool-numbers', [
+            'company'             => $company->id,
+            'keywordTrackingPool' => $pool->id
+        ]), [
+            'type'          => PhoneNumber::TYPE_LOCAL,
+            'starts_with'   => $startsWith,
+            'count'         => $count
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertEquals(count($response['phone_numbers']), count($phoneNumbers) + $count);
+    }
+
+    /**
+     * Test detaching numbers
+     * 
+     * @group keyword-tracking-pools
+     */
+    public function testDetachNumbers()
+    {
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = factory(KeywordTrackingPool::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $phoneNumbers = factory(PhoneNumber::class, mt_rand(5,20))->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'keyword_tracking_pool_id' => $pool->id,
+            'created_by' => $this->user->id
+        ]);
+
+        
+        $this->mock(PhoneNumberService::class, function($mock){
+            $mock->shouldReceive('releaseNumber')
+                 ->with(PhoneNumber::class)
+                 ->once();
+        });
+
+        $phoneNumber = $phoneNumbers->first();
+        $response = $this->json('DELETE', route('detach-keyword-tracking-pool-numbers', [
+            'company'             => $company->id,
+            'keywordTrackingPool' => $pool->id,
+            'phoneNumber'         => $phoneNumber->id
+        ]), [
+            'release_number' => 1
+        ]);
+        
+        $response->assertStatus(200);
+        $this->assertEquals(count($response['phone_numbers']), count($phoneNumbers) - 1);
+        $this->assertDatabaseMissing('phone_numbers', [
+            'id'            => $phoneNumber->id,
+            'deleted_at'    => null
+        ]);
+    }
+
+    /**
+     * Test detaching numbers
+     * 
+     * @group keyword-tracking-pools
+     */
+    public function testDetachNumbersWithoutRelease()
+    {
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $pool        = factory(KeywordTrackingPool::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $phoneNumbers = factory(PhoneNumber::class, mt_rand(5,20))->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'keyword_tracking_pool_id' => $pool->id,
+            'created_by' => $this->user->id
+        ]);
+
+        
+        $this->mock(PhoneNumberService::class, function($mock){
+            $mock->shouldNotReceive('releaseNumber');
+        });
+
+        $phoneNumber = $phoneNumbers->first();
+        $response = $this->json('DELETE', route('detach-keyword-tracking-pool-numbers', [
+            'company'             => $company->id,
+            'keywordTrackingPool' => $pool->id,
+            'phoneNumber'         => $phoneNumber->id
+        ]));
+        
+        $response->assertStatus(200);
+        $this->assertEquals(count($response['phone_numbers']), count($phoneNumbers) - 1);
+        $this->assertDatabaseHas('phone_numbers', [
+            'id'            => $phoneNumber->id,
+            'deleted_at'    => null
+        ]);
     }
 }

@@ -26,10 +26,8 @@ class KeywordTrackingPoolController extends Controller
 
     public function list(Request $request, Company $company)
     {
-        //  Build Query
         $query = KeywordTrackingPool::where('keyword_tracking_pools.company_id', $company->id);
                     
-        //  Pass along to parent for listing
         return parent::results(
             $request,
             $query,
@@ -155,7 +153,7 @@ class KeywordTrackingPoolController extends Controller
         DB::commit();
 
         if( $purchaseCount < $poolSize ){
-            $keywordTrackingPool->error = $purchaseCount . 'Your keyword tracking pool has been created but only ' . $purchaseCount . ' numbers were available - You can add additional numbers at any time';
+            $keywordTrackingPool->error = 'Your keyword tracking pool has been created but only ' . $purchaseCount . ' numbers were available - You can add additional numbers at any time';
         }
 
         $keywordTrackingPool->phone_numbers = $keywordTrackingPool->phone_numbers;
@@ -223,5 +221,116 @@ class KeywordTrackingPoolController extends Controller
         return response([
             'message' => 'Delete queued'
         ]);
+    }
+
+    public function addNumbers(Request $request, Company $company, KeywordTrackingPool $keywordTrackingPool)
+    {
+        $rules = [
+            'type'       => 'bail|required|in:Toll-Free,Local',
+            'count'      => 'required|numeric|min:1|max:20',
+        ];
+
+        $validator = validator($request->input(), $rules);
+        $validator->sometimes('starts_with', ['bail', 'required', 'digits_between:1,10'], function($input){
+            return $input->type === 'Local';
+        });
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $user = $request->user();
+        //
+        //  Purchase phone numbers
+        //
+        $startsWith   = $request->type === 'Local' ? $request->starts_with : '';
+        $count        = intval($request->count);
+        $foundNumbers = $this->phoneNumberService->listAvailable(
+            $startsWith, 
+            $count, 
+            $request->type, 
+            $company->country
+        ) ?: [];
+
+        if( ! count($foundNumbers) )
+            return response([
+                'error' => 'No phone numbers could be found for purchase. Please try again with a different search.'
+            ], 400);
+
+        if( count($foundNumbers) < $count ){
+            return response([
+                'error' => count($foundNumbers)  
+                            . ' number(s) were found for your search in your company\'s country(' 
+                            . $company->country . ').'
+            ], 400);
+        }
+
+        $purchaseCount = 0;
+        for( $i = 0; $i < $count; $i++ ){
+            try{
+                $purchasedPhone = $this->phoneNumberService
+                                       ->purchase($foundNumbers[$i]->phoneNumber);
+
+                PhoneNumber::create([
+                    'uuid'                      => Str::uuid(),
+                    'external_id'               => $purchasedPhone->sid,
+                    'account_id'                => $company->account_id,
+                    'company_id'                => $company->id,
+                    'phone_number_config_id'    => $keywordTrackingPool->phone_number_config_id,
+                    'keyword_tracking_pool_id'  => $keywordTrackingPool->id,
+                    'category'                  => 'ONLINE',
+                    'sub_category'              => 'WEBSITE',
+                    'type'                      => $request->type,
+                    'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
+                    'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
+                    'voice'                     => $purchasedPhone->capabilities['voice'],
+                    'sms'                       => $purchasedPhone->capabilities['sms'],
+                    'mms'                       => $purchasedPhone->capabilities['mms'],
+                    'name'                      => $purchasedPhone->phoneNumber,
+                    'swap_rules'                => json_encode($keywordTrackingPool->swap_rules),
+                    'purchased_at'              => now(),
+                    'created_by'                => $user->id
+                ]);
+
+                $purchaseCount++;
+            }catch(Exception $e){
+                continue;
+            }
+        }
+
+        if( ! $purchaseCount ){
+             return response([
+                 'error' => 'No phone numbers could be allocated for your search at this time - Please try again later'
+             ], 500);
+        }
+
+        if( $purchaseCount < $count ){
+            $keywordTrackingPool->error = 'Your keyword tracking pool has been created but only ' . $purchaseCount . ' numbers were available - You can add additional numbers at any time';
+        }
+
+        $keywordTrackingPool->phone_numbers = $keywordTrackingPool->phone_numbers;
+
+        return response($keywordTrackingPool, 201);
+    }
+
+
+    public function detachNumber(Request $request, Company $company, KeywordTrackingPool $keywordTrackingPool, PhoneNumber $phoneNumber)
+    {
+        if(  $request->release_number ){
+            $this->phoneNumberService
+                 ->releaseNumber($phoneNumber);
+
+            $phoneNumber->deleted_by = $request->user()->id;
+            $phoneNumber->deleted_at = now();   
+        }
+
+        $phoneNumber->keyword_tracking_pool_id = null;
+        $phoneNumber->save();
+
+        $keywordTrackingPool->phone_numbers = $keywordTrackingPool->phone_numbers;
+
+        return response($keywordTrackingPool);
     }
 }
