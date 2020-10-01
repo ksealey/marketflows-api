@@ -10,6 +10,7 @@ use \App\Models\Company\AudioClip;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\KeywordTrackingPool;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Jobs\BatchDeleteAudioJob;
 use \App\Jobs\BatchDeletePhoneNumbersJob;
@@ -99,5 +100,10 @@ class Company extends Model implements Exportable
     public function account()
     {
         return $this->belongsTo('\App\Models\Account');
+    }
+
+    public function keyword_tracking_pool()
+    {
+        return $this->hasOne('\App\Models\Company\KeywordTrackingPool');
     }
 }

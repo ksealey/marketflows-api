@@ -20,13 +20,13 @@ class CreatePhoneNumbersTable extends Migration
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_config_id')->unsigned();
+            $table->bigInteger('keyword_tracking_pool_id')->unsigned()->nullable();
 
             $table->string('type', 32);
             $table->string('name', 64)->index();
             $table->string('category', 32)->nullable();
             $table->string('sub_category', 32)->nullable();
             
-            $table->string('country', 16);
             $table->string('country_code', 8)->nullable();
             $table->string('number', 16)->index();
             $table->boolean('voice')->default(0);
@@ -53,6 +53,8 @@ class CreatePhoneNumbersTable extends Migration
             $table->softDeletes();
 
             $table->foreign('phone_number_config_id')->references('id')->on('phone_number_configs');
+            $table->foreign('keyword_tracking_pool_id')->references('id')->on('keyword_tracking_pools');
+            
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('created_by')->references('id')->on('users');

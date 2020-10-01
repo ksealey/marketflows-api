@@ -61,10 +61,11 @@ class AudioClipController extends Controller
 
         DB::beginTransaction();
         try{
-            $file =  $request->audio_clip; 
-
             //  Upload file
-            $filePath = Storage::putFile(AudioClip::storagePath($company->account_id, $company->id, 'audio_clips'), $file);
+            $path     = 'accounts/' . $company->account_id . '/companies/' . $company->id . '/audio_clips';
+            $filePath = Storage::putFile($path, $request->audio_clip, [
+                'visibility' => 'public',
+            ]);
 
             //  Log in database
             $audioClip = AudioClip::create([
@@ -72,7 +73,7 @@ class AudioClipController extends Controller
                 'company_id'    => $company->id,
                 'name'          => $request->name,
                 'path'          => $filePath,
-                'mime_type'     => $file->getMimeType(),
+                'mime_type'     => $request->audio_clip->getMimeType(),
                 'created_by'    => $user->id
             ]);
         }catch(Exception $e){
@@ -111,8 +112,11 @@ class AudioClipController extends Controller
                 'error' => $validator->errors()->first(),
             ], 400);
 
-        if( $request->hasFile('audio_clip') )
-            Storage::put($audioClip->path, $request->audio_clip);
+        if( $request->hasFile('audio_clip') ){
+            $filePath = Storage::putFile($audioClip->path, $request->audio_clip, [
+                'visibility' => 'public',
+            ]);
+        }
 
         if( $request->filled('name') )
             $audioClip->name = $request->name;

@@ -79,7 +79,7 @@ class BlockedPhoneNumberController extends Controller
                 continue;
 
             $wholeNumbers[]         = $wholeNumber;
-            $number['country_code'] = PhoneNumber::countryCode($wholeNumber) ?: null;
+            $number['country_code'] = PhoneNumber::countryCode($wholeNumber) ?: 1;
             $number['number']       = PhoneNumber::number($wholeNumber);
             $number['account_id']   = $user->account_id;
             $number['created_at']   = $createdAt;

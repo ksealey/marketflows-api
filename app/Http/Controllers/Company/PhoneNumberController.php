@@ -38,9 +38,11 @@ class PhoneNumberController extends Controller
         //  Build Query
         $query = PhoneNumber::select([
                         'phone_numbers.*', 
+                        'keyword_tracking_pools.name AS keyword_tracking_pool_name',
                         DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
                         DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
                     ])
+                    ->leftJoin('keyword_tracking_pools', 'keyword_tracking_pools.id', '=', 'phone_numbers.keyword_tracking_pool_id')
                     ->whereNull('phone_numbers.deleted_at')
                     ->where('phone_numbers.company_id', $company->id);
                     
@@ -138,7 +140,6 @@ class PhoneNumberController extends Controller
             'category'                  => $request->category,
             'sub_category'              => $request->sub_category,
             'type'                      => $request->type,
-            'country'                   => $company->country,
             'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
             'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
             'voice'                     => $purchasedPhone->capabilities['voice'],
@@ -176,6 +177,12 @@ class PhoneNumberController extends Controller
      */
     public function update(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
+        if( $phoneNumber->keyword_tracking_pool_id ){
+            return response([
+                'error' => 'This number belongs to a keyword tracking pool and cannot be updated'
+            ], 400);
+        }
+
         $rules = [
             'disabled'            => 'bail|boolean',
             'name'                => 'bail|min:1,max:64',
@@ -243,6 +250,12 @@ class PhoneNumberController extends Controller
      */
     public function delete(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
+        if( $phoneNumber->keyword_tracking_pool_id ){
+            return response([
+                'error' => 'This number belongs to a keyword tracking pool and cannot be deleted'
+            ], 400);
+        }
+
         $this->numberService
             ->releaseNumber($phoneNumber);
         

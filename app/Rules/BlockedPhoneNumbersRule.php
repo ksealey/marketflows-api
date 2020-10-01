@@ -53,7 +53,7 @@ class BlockedPhoneNumbersRule implements Rule
             }
 
             $validator = validator($number, [
-                'name'      => 'required',
+                'name'      => 'required|max:64',
                 'number'    => 'required|digits_between:10,13',
             ]);
 

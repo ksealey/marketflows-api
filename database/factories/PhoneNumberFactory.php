@@ -27,7 +27,6 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
         'sub_category'              => $subCategory,
         'type'                      => $type,
         'name'                      => $faker->realText(20),
-        'country'                   => 'US',
         'country_code'              => '1', 
         'number'                    => substr($faker->e164PhoneNumber, -10),
         'voice'                     => true,
@@ -41,7 +40,7 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
         'purchased_at'              => now(),
         'swap_rules'                => json_encode([
             'targets' => [
-                '18003098829'
+                str_replace('+', '', $faker->e164PhoneNumber)
             ],
             'device_types'  => ['ALL'],
             'browser_types' => ['ALL'],

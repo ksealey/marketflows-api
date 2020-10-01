@@ -89,7 +89,8 @@ class IncomingCallController extends Controller
         $callerCountryCode = PhoneNumber::countryCode($request->From) ?: $company->country_code;
         $callerNumber      = PhoneNumber::number($request->From);
         $query             = BlockedPhoneNumber::where('account_id', $phoneNumber->account_id)
-                                               ->where('number', $callerNumber);
+                                               ->where('number', $callerNumber)
+                                               ->where('country_code', $callerCountryCode);
         
         $blockedPhoneNumber = $query->first();
         if( $blockedPhoneNumber ){

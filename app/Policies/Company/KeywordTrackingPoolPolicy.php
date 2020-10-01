@@ -4,10 +4,10 @@ namespace App\Policies\Company;
 
 use App\Models\User;
 use App\Models\Company;
-use App\Models\Company\ScheduledExport;
+use App\Models\Company\KeywordTrackingPool;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class ScheduledExportPolicy
+class KeywordTrackingPoolPolicy
 {
     use HandlesAuthorization;
 
@@ -23,24 +23,24 @@ class ScheduledExportPolicy
             && $user->canViewCompany($company);
     }
 
-    public function read(User $user, ScheduledExport $scheduledExport, Company $company)
+    public function read(User $user, KeywordTrackingPool $keywordTrackingPool, Company $company)
     {
         return $user->canDoAction('read')
             && $user->canViewCompany($company)
-            && $scheduledExport->company_id === $company->id;
+            && $keywordTrackingPool->company_id === $company->id;
     }
 
-    public function update(User $user, ScheduledExport $scheduledExport, Company $company)
+    public function update(User $user, KeywordTrackingPool $keywordTrackingPool, Company $company)
     {
         return $user->canDoAction('update')
             && $user->canViewCompany($company)
-            && $scheduledExport->company_id === $company->id;
+            && $keywordTrackingPool->company_id === $company->id;
     }
 
-    public function delete(User $user, ScheduledExport $scheduledExport, Company $company)
+    public function delete(User $user, KeywordTrackingPool $keywordTrackingPool, Company $company)
     {
         return $user->canDoAction('delete')
             && $user->canViewCompany($company)
-            && $scheduledExport->company_id === $company->id;
+            && $keywordTrackingPool->company_id === $company->id;
     }
 }

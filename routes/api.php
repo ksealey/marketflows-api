@@ -451,6 +451,33 @@ Route::middleware(['auth:api', 'api'])->group(function(){
 
             /*
             |--------------------------------
+            | Handle keyword tracking pools
+            |--------------------------------
+            */
+            Route::prefix('keyword-tracking-pools')->group(function(){
+                Route::get('/', 'Company\KeywordTrackingPoolController@list')
+                    ->middleware('can:list,\App\Models\Company\KeywordTrackingPool,company')
+                    ->name('list-keyword-tracking-pools');
+
+                Route::post('/', 'Company\KeywordTrackingPoolController@create')
+                    ->middleware('can:create,\App\Models\Company\KeywordTrackingPool,company')
+                    ->name('create-keyword-tracking-pool');
+
+                Route::get('/{keywordTrackingPool}', 'Company\KeywordTrackingPoolController@read')
+                    ->middleware('can:read,keywordTrackingPool,company')
+                    ->name('read-keyword-tracking-pool');
+
+                Route::put('/{keywordTrackingPool}', 'Company\KeywordTrackingPoolController@update')
+                    ->middleware('can:update,keywordTrackingPool,company')
+                    ->name('update-keyword-tracking-pool');
+
+                Route::delete('/{keywordTrackingPool}', 'Company\KeywordTrackingPoolController@delete')
+                    ->middleware('can:delete,keywordTrackingPool,company')
+                    ->name('delete-keyword-tracking-pool');
+            }); 
+
+            /*
+            |--------------------------------
             | Handle company reports
             |--------------------------------
             */

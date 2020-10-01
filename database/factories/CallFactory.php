@@ -26,6 +26,7 @@ $factory->define(\App\Models\Company\Call::class, function (Faker $faker) {
         'medium'            => $faker->realText(40),
         'content'           => $faker->realText(40),
         'campaign'          => $faker->realText(40),
+        
 
         'recording_enabled' => mt_rand(0,1) ? 1 : 0,
         'forwarded_to' => str_replace('+', '', $faker->e164PhoneNumber),

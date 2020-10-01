@@ -46,7 +46,7 @@ class SupportTicketController extends Controller
             'urgency'     => 'in:' . implode(',', SupportTicket::urgencies()),
             'subject'     => 'bail|required|max:255',
             'description' => 'bail|required|max:1024',
-            'file'        => 'bail|max:10485760|file',
+            'file'        => 'bail|file|max:10485760',
         ]);
         
         if( $validator->fails() ){
@@ -71,7 +71,7 @@ class SupportTicketController extends Controller
             if( $request->file ){
                 //  Upload file
                 $file     = $request->file;
-                $filePath = Storage::putFile('support_tickets/' . $supportTicket->id . '/attachments' , $file, [
+                $filePath = Storage::putFile('accounts/' . $user->account_id . '/support_tickets/' . $supportTicket->id . '/attachments' , $file, [
                     'visibility'          => 'public',
                     'ContentDisposition' => 'attachment; filename=' . $file->getClientOriginalName(),
                     'ContentType'        => 'application/octet-stream'
@@ -180,7 +180,7 @@ class SupportTicketController extends Controller
         try{
             //  Upload file
             $file     = $request->file;
-            $filePath = Storage::putFile('support_tickets/' . $supportTicket->id . '/attachments' , $file, [
+            $filePath = Storage::putFile('accounts/' . $user->account_id .  '/support_tickets/' . $supportTicket->id . '/attachments' , $file, [
                 'visibility'         => 'public',
                 'ContentDisposition' => 'attachment; filename=' . $file->getClientOriginalName(),
                 'ContentType'        => 'application/octet-stream'

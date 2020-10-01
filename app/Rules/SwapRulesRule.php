@@ -55,6 +55,12 @@ class SwapRulesRule implements Rule
             return false;
         }
 
+        if( count($swapRules->targets) > 20 ){
+            $this->message = 'Swap rules cannot contain more than 20 targets';
+
+            return false;
+        }
+
         foreach( $swapRules->targets as $target ){
             if( ! is_string($target) ){
                 $this->message = 'Swap rule targets must be string of digits';

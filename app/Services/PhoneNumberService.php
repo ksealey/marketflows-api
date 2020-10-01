@@ -18,7 +18,7 @@ class PhoneNumberService
                 $phoneNumber              = new \stdClass();
                 $phoneNumber->phoneNumber = config('services.twilio.magic_numbers.available');
                 return $phoneNumber;
-            }, [1,2,3,4,5,6,7,8,9,10]);
+            }, range(0, $limit));
         }
 
         $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
@@ -51,7 +51,7 @@ class PhoneNumberService
         }
 
         return $client->incomingPhoneNumbers
-                    ->create([
+                      ->create([
                             'phoneNumber'           => $number,
                             'voiceUrl'              => $voiceUrl,
                             'voiceMethod'           => $method,
@@ -60,23 +60,7 @@ class PhoneNumberService
                             'statusCallback'        => $statusCallback,
                             'statusCallbackMethod'  => $method,
                             'voiceCallerIdLookup'   => true
-                    ]);
-
-        return $this->client
-                    ->incomingPhoneNumbers
-                    ->create([
-                            'phoneNumber'           => $number,
-                            'voiceUrl'              => $inProduction ? route('incoming-call') : '',
-                            'voiceMethod'           => $inProduction ? 'POST' : '',
-                            'statusCallback'        => $inProduction ? route('incoming-call-status-changed') : '',
-                            'statusCallbackMethod'  => $inProduction ? 'POST' :'',
-                            'smsUrl'                => $inProduction ? route('incoming-sms') : '',
-                            'smsMethod'             => $inProduction ? 'POST' : '',
-                            'mmsUrl'                => $inProduction ? route('incoming-mms') : '',
-                            'mmsMethod'             => $inProduction ? 'POST' : '',
-                            'voiceCallerIdLookup'   => true
-                      ]);
-        
+                       ]);
     }
 
     /**
