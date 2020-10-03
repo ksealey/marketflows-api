@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 |
 */
 
-
 /*
 |--------------------------------
 | Handle user auth

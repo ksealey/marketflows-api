@@ -11,6 +11,11 @@
 |
 */
 
-Route::get('/', function(){
-   
-})->name('home');
+Route::post('/start-session', 'WebSessionController@startSession')
+     ->name('web-start-session');
+
+Route::post('/collect', 'WebSessionController@collect')
+     ->name('web-collect');
+
+Route::post('/end-session', 'WebSessionController@endSession')
+     ->name('web-end-session');

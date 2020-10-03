@@ -15,10 +15,21 @@ class CreateKeywordTrackingPoolSessionsTable extends Migration
     {
         Schema::create('keyword_tracking_pool_sessions', function (Blueprint $table) {
             $table->id();
-            $table->string('uuid', 128)->index();
+            $table->uuid('guuid', 36)->index();
+            $table->uuid('uuid')->index();
             $table->bigInteger('keyword_tracking_pool_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned();
+            $table->integer('device_width')->unsigned();
+            $table->integer('device_height')->unsigned();
+            $table->string('device_type', 64);
+            $table->string('device_browser', 64);
+            $table->string('device_platform', 64);
+            $table->string('http_referrer', 1024)->nullable();
+            $table->string('landing_url', 1024);
+            $table->string('last_url', 1024);
+            $table->string('token', 64);
             $table->timestamps();
+            $table->dateTime('ended_at', 6)->nullable();
             $table->softDeletes();
 
             $table->foreign('keyword_tracking_pool_id', 'ktp_session_to_pool_fk')->references('id')->on('keyword_tracking_pools');

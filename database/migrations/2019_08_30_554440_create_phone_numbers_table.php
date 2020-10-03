@@ -15,7 +15,7 @@ class CreatePhoneNumbersTable extends Migration
     {
         Schema::create('phone_numbers', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('uuid', 128)->index();
+            $table->uuid('uuid')->index();
             $table->string('external_id', 64)->index();
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
@@ -40,7 +40,7 @@ class CreatePhoneNumbersTable extends Migration
 
             $table->json('swap_rules')->nullable();
 
-            $table->bigInteger('assignments')->unsigned()->default(0);
+            $table->bigInteger('total_assignments')->unsigned()->default(0);
             $table->dateTime('last_assigned_at', 6)->nullable();
 
             $table->dateTime('purchased_at');

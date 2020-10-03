@@ -101,14 +101,14 @@ class KeywordTrackingPoolTest extends TestCase
             'type'                   => PhoneNumber::TYPE_LOCAL,
             'starts_with'            => $startsWith,
             'swap_rules'             => json_encode($pool->swap_rules),
-            'pool_size'              => $poolSize        
+            'pool_size'              => $poolSize   
         ]);
 
         $response->assertJSON([
             'kind'                   => 'KeywordTrackingPool',
             'name'                   => $pool->name,
             'phone_number_config_id' => $config->id,
-            'phone_numbers'          => []
+            'phone_numbers'           => []
         ]);
 
         $response->assertStatus(201);
@@ -158,14 +158,14 @@ class KeywordTrackingPoolTest extends TestCase
             'phone_number_config_id' => $config->id,
             'type'                   => PhoneNumber::TYPE_TOLL_FREE,
             'swap_rules'             => json_encode($pool->swap_rules),
-            'pool_size'              => $poolSize        
+            'pool_size'              => $poolSize,
         ]);
 
         $response->assertJSON([
-            'kind'                   => 'KeywordTrackingPool',
-            'name'                   => $pool->name,
-            'phone_number_config_id' => $config->id,
-            'phone_numbers'          => []
+            'kind'                    => 'KeywordTrackingPool',
+            'name'                    => $pool->name,
+            'phone_number_config_id'  => $config->id,
+            'phone_numbers'           => []
         ]);
 
         $response->assertStatus(201);
@@ -267,7 +267,8 @@ class KeywordTrackingPoolTest extends TestCase
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
-            'created_by' => $this->user->id
+            'created_by' => $this->user->id,
+            'disabled_at' => now()
         ]);
     
         $phoneNumbers = factory(PhoneNumber::class, 10)->create([
@@ -279,7 +280,7 @@ class KeywordTrackingPoolTest extends TestCase
         ]);
 
         $updateData   = factory(KeywordTrackingPool::class)->make([
-            'phone_number_config_id' => $this->createConfig($company)->id
+            'phone_number_config_id' => $this->createConfig($company)->id,
         ]);
 
         $response = $this->json('PUT', route('update-keyword-tracking-pool', [
@@ -289,6 +290,7 @@ class KeywordTrackingPoolTest extends TestCase
             'name'                   => $updateData->name,
             'phone_number_config_id' => $updateData->phone_number_config_id,
             'swap_rules'             => json_encode($updateData->swap_rules),
+            'disabled'               => 0
         ]);
         
         $response->assertJSON([
@@ -297,6 +299,7 @@ class KeywordTrackingPoolTest extends TestCase
             'id'                        => $pool->id,
             'name'                      => $updateData->name,
             'phone_number_config_id'    => $updateData->phone_number_config_id,
+            'disabled_at'               => null,
             'swap_rules'                => json_decode(json_encode($updateData->swap_rules), true)   
         ]);
 

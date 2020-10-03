@@ -106,4 +106,12 @@ class Company extends Model implements Exportable
     {
         return $this->hasOne('\App\Models\Company\KeywordTrackingPool');
     }
+
+    public function detached_phone_numbers()
+    {
+        return $this->hasMany('\App\Models\Company\PhoneNumber')
+                    ->whereNull('keyword_tracking_pool_id')
+                    ->whereNull('deleted_at')
+                    ->orderBy('id', 'DESC');
+    }
 }

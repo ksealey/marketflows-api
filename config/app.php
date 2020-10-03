@@ -217,6 +217,8 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+
+        Jenssegers\Agent\AgentServiceProvider::class,
     ],
 
     /*
@@ -271,7 +273,8 @@ return [
         'Xlsx' => PhpOffice\PhpSpreadsheet\Writer\Xlsx::class,
         'Spreadsheet' => PhpOffice\PhpSpreadsheet\Spreadsheet::class,
         'Worksheet' => \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::class,
-        'SpreadsheetSettings' => \PhpOffice\PhpSpreadsheet\Settings::class
+        'SpreadsheetSettings' => \PhpOffice\PhpSpreadsheet\Settings::class,
+        'Agent' => Jenssegers\Agent\Facades\Agent::class,
     ],
 
     'cdn_url'     => env('CDN_URL'),

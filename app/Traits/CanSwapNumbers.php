@@ -31,12 +31,8 @@ trait CanSwapNumbers
         'NOT_LIKE'
     ];
 
-    public function swapRulesPass($browserType, $deviceType, $httpReferrer, $entryURL)
+    public function swapRulesPass($swapRules, $browserType, $deviceType, $httpReferrer, $entryURL)
     {
-        $browserType = $this->normalizeBrowserType($browserType);
-        $deviceType  = $this->normalizeDeviceType($deviceType);
-        $swapRules   = $this->swap_rules;
-
         //  If it fails for browser type stop here
         if( count($swapRules->browser_types) && $swapRules->browser_types[0] !== 'ALL' && ! in_array($browserType, $swapRules->browser_types) )
             return false;
@@ -216,6 +212,7 @@ trait CanSwapNumbers
                 return 'FIREFOX';
 
             case 'Internet Explorer':
+            case 'IE':
             case 'IE Mobile': 
                 return 'INTERNET_EXPLORER';
 
@@ -247,22 +244,7 @@ trait CanSwapNumbers
      */
     public function normalizeDeviceType($deviceType)
     {
-        switch( $deviceType ){
-            case 'desktop':
-                return 'DESKTOP';
-
-            case 'tablet':
-            case 'smart display':
-                return 'TABLET';
-
-            case 'smartphone':
-            case 'feature phone':
-            case 'phablet':
-                return 'MOBILE';
-
-            default:
-                return 'OTHER';
-        }
+        return $deviceType;
     }
 
     /**
@@ -321,23 +303,5 @@ trait CanSwapNumbers
     public function isReferral($httpReferrer = '')
     {
         return ! $this->isDirect($httpReferrer) && ! $this->isSearch($httpReferrer);
-    }
-
-    public function swapScore()
-    {
-        $score = 0;
-
-        foreach( $this->swap_rules->inclusion_rules as $ruleGroup ){
-            //  Each inclusion rule gets 1000 points
-            $score += 1000 * count($ruleGroup->rules);
-
-            //  Add a point for each input
-            foreach( $ruleGroup->rules as $rule ){
-                if( property_exists($rule, 'inputs') )
-                    $score += count($rule->inputs);
-            }
-        }
-
-        return $score;
     }
 }

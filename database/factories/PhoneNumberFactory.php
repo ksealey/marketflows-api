@@ -36,6 +36,7 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
         'content'                   => $faker->realText(10),
         'campaign'                  => $faker->realText(10),
         'source'                    => $faker->realText(10),
+        'total_assignments'         => 0,
         'last_assigned_at'          => null,
         'purchased_at'              => now(),
         'swap_rules'                => json_encode([
@@ -53,7 +54,8 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
                     ]
                 ]
             ],
-            'exclusion_rules' => []
+            'exclusion_rules' => [],
+            'expiration_days' => 30,
         ])
     ];
 });

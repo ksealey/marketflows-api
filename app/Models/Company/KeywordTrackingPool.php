@@ -3,9 +3,11 @@
 namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
+use \App\Models\Company\PhoneNumber;
+use DB;
 
 class KeywordTrackingPool extends Model
-{
+{   
     public $fillable = [
         'uuid',
         'account_id',
@@ -46,7 +48,7 @@ class KeywordTrackingPool extends Model
 
     public function phone_numbers()
     {
-        return $this->hasMany(\App\Models\Company\PhoneNumber::class);
+        return $this->hasMany(PhoneNumber::class);
     }
 
     public function getSwapRulesAttribute($rules)
@@ -75,5 +77,31 @@ class KeywordTrackingPool extends Model
             'keyword_tracking_pools.phone_number_config_id',
             'keyword_tracking_pools.created_at'
         ];
+    }
+
+    public function assignNumber()
+    {
+        $phoneNumber = PhoneNumber::select([
+                                        'phone_numbers.*',
+                                        DB::raw('(
+                                            SELECT COUNT(*) 
+                                                FROM keyword_tracking_pool_sessions 
+                                            WHERE phone_numbers.id = keyword_tracking_pool_sessions.phone_number_id
+                                                AND keyword_tracking_pool_sessions.ended_at IS NOT NULL
+                                        ) AS active_assignments')
+                                    ])
+                                    ->where('keyword_tracking_pool_id', $this->id)
+                                    ->orderBy('active_assignments', 'ASC')
+                                    ->orderBy('last_assigned_at', 'ASC')
+                                    ->orderBy('id', 'ASC')
+                                    ->first();
+
+        if( ! $phoneNumber ) return null;
+
+        $phoneNumber->last_assigned_at = now()->format('Y-m-d H:i:s.u');
+        $phoneNumber->total_assignments++;
+        $phoneNumber->save();
+
+        return $phoneNumber;
     }
 }

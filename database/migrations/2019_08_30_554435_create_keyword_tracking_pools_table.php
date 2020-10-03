@@ -15,7 +15,7 @@ class CreateKeywordTrackingPoolsTable extends Migration
     {
         Schema::create('keyword_tracking_pools', function (Blueprint $table) {
             $table->id();
-            $table->string('uuid', 128)->index();
+            $table->uuid('uuid')->index();
             $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->bigInteger('phone_number_config_id')->unsigned();

@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\User;
 use \App\Models\Company\Call;
-use \App\Traits\CanSwapNumbers;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Contracts\Exportable;
 use \App\Services\PhoneNumberService;
@@ -19,7 +18,7 @@ use Carbon\Carbon;
 
 class PhoneNumber extends Model implements Exportable
 {
-    use SoftDeletes, CanSwapNumbers;
+    use SoftDeletes; 
 
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;
@@ -69,7 +68,7 @@ class PhoneNumber extends Model implements Exportable
         'content',
         'campaign',
         'swap_rules',
-        'assignments',
+        'total_assignments',
         'last_assigned_at',
         'purchased_at'
     ];
@@ -112,6 +111,7 @@ class PhoneNumber extends Model implements Exportable
             'medium'            => 'Medium',
             'campaign'          => 'Campaign',
             'content'           => 'Content',
+            'total_assignments' => 'Total Assignments',
             'call_count'        => 'Calls',
             'last_call_at_local' => 'Last Call Date',
             'created_at_local'  => 'Created',

@@ -61,6 +61,18 @@ class SwapRulesRule implements Rule
             return false;
         }
 
+        if( ! isset($swapRules->expiration_days) ){
+            $this->message = 'Swap rules must contain an expiration_days property';
+
+            return false;
+        }
+
+        if( ! is_int($swapRules->expiration_days) || $swapRules->expiration_days < 0 || $swapRules->expiration_days > 9999 ){
+            $this->message = 'Swap rules expiration_days must be a number between 0 and 9999';
+
+            return false;
+        }
+
         foreach( $swapRules->targets as $target ){
             if( ! is_string($target) ){
                 $this->message = 'Swap rule targets must be string of digits';

@@ -21,8 +21,12 @@ use DB;
 class PhoneNumberController extends Controller
 {
     static $fields = [
+        'phone_numbers.id',
         'phone_numbers.name',
+        'phone_numbers.country_code',
         'phone_numbers.number',
+        'phone_numbers.total_assignments',
+        'phone_numbers.company_id',
         'phone_numbers.disabled_at',
         'phone_numbers.created_at',
         'phone_numbers.updated_at',

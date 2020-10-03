@@ -196,6 +196,10 @@ class KeywordTrackingPoolController extends Controller
             $keywordTrackingPool->swap_rules = $request->swap_rules;
         }
 
+        if( $request->filled('disabled') ){
+            $keywordTrackingPool->disabled_at = $request->disabled ? ($keywordTrackingPool->disabled_at ?: now()) : null;
+        }
+
         $keywordTrackingPool->save();
 
         PhoneNumber::where('keyword_tracking_pool_id', $keywordTrackingPool->id)
@@ -318,6 +322,12 @@ class KeywordTrackingPoolController extends Controller
 
     public function detachNumber(Request $request, Company $company, KeywordTrackingPool $keywordTrackingPool, PhoneNumber $phoneNumber)
     {
+        if( count($keywordTrackingPool->phone_numbers) <= 5 ){
+            return response([
+                'error' => 'Keyword tracking pools cannot contain less than 5 numbers'
+            ], 400);
+        }
+
         if(  $request->release_number ){
             $this->phoneNumberService
                  ->releaseNumber($phoneNumber);

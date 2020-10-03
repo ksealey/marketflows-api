@@ -28,13 +28,10 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
-            \App\Http\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
-            // \Illuminate\Session\Middleware\AuthenticateSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\VerifyCsrfToken::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            'rate_limit:60,1', 
+            'encrypt_cookies',
+            'queue_cookies',
+            'bindings',
         ],
 
         'api' => [
@@ -63,7 +60,9 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'rate_limit' => \App\Http\Middleware\RateLimit::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'twilio.webhooks'   => \App\Http\Middleware\TwilioWebhooks::class
+        'twilio.webhooks'   => \App\Http\Middleware\TwilioWebhooks::class,
+        'encrypt_cookies' => \App\Http\Middleware\EncryptCookies::class,
+        'queue_cookies' => \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class
     ];
 
     /**
