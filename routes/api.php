@@ -454,32 +454,28 @@ Route::middleware(['auth:api', 'api'])->group(function(){
             |--------------------------------
             */
             Route::prefix('keyword-tracking-pools')->group(function(){
-                Route::get('/', 'Company\KeywordTrackingPoolController@list')
-                    ->middleware('can:list,\App\Models\Company\KeywordTrackingPool,company')
-                    ->name('list-keyword-tracking-pools');
-
                 Route::post('/', 'Company\KeywordTrackingPoolController@create')
                     ->middleware('can:create,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('create-keyword-tracking-pool');
 
-                Route::get('/{keywordTrackingPool}', 'Company\KeywordTrackingPoolController@read')
-                    ->middleware('can:read,keywordTrackingPool,company')
+                Route::get('/', 'Company\KeywordTrackingPoolController@read')
+                    ->middleware('can:read,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('read-keyword-tracking-pool');
 
-                Route::put('/{keywordTrackingPool}', 'Company\KeywordTrackingPoolController@update')
-                    ->middleware('can:update,keywordTrackingPool,company')
+                Route::put('/', 'Company\KeywordTrackingPoolController@update')
+                    ->middleware('can:update,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('update-keyword-tracking-pool');
 
-                Route::post('/{keywordTrackingPool}/add-numbers', 'Company\KeywordTrackingPoolController@addNumbers')
-                    ->middleware('can:update,keywordTrackingPool,company')
+                Route::post('/add-numbers', 'Company\KeywordTrackingPoolController@addNumbers')
+                    ->middleware('can:update,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('add-keyword-tracking-pool-numbers');
                 
-                Route::delete('/{keywordTrackingPool}/detach-numbers/{phoneNumber}', 'Company\KeywordTrackingPoolController@detachNumber')
-                    ->middleware('can:detach,keywordTrackingPool,company,phoneNumber')
+                Route::delete('/detach-numbers/{phoneNumber}', 'Company\KeywordTrackingPoolController@detachNumber')
+                    ->middleware('can:update,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('detach-keyword-tracking-pool-numbers');
 
                 Route::delete('/{keywordTrackingPool}', 'Company\KeywordTrackingPoolController@delete')
-                    ->middleware('can:delete,keywordTrackingPool,company')
+                    ->middleware('can:delete,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('delete-keyword-tracking-pool');
             }); 
 

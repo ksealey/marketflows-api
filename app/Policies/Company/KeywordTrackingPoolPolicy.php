@@ -11,12 +11,6 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class KeywordTrackingPoolPolicy
 {
     use HandlesAuthorization;
-
-    public function list(User $user, Company $company)
-    {
-        return $user->canDoAction('read')
-            && $user->canViewCompany($company);
-    }
     
     public function create(User $user, Company $company)
     {
@@ -24,32 +18,29 @@ class KeywordTrackingPoolPolicy
             && $user->canViewCompany($company);
     }
 
-    public function read(User $user, KeywordTrackingPool $keywordTrackingPool, Company $company)
+    public function read(User $user, Company $company)
     {
         return $user->canDoAction('read')
-            && $user->canViewCompany($company)
-            && $keywordTrackingPool->company_id === $company->id;
+            && $user->canViewCompany($company);
     }
 
-    public function update(User $user, KeywordTrackingPool $keywordTrackingPool, Company $company)
+    public function update(User $user, Company $company)
     {
         return $user->canDoAction('update')
-            && $user->canViewCompany($company)
-            && $keywordTrackingPool->company_id === $company->id;
+            && $user->canViewCompany($company);
     }
 
-    public function delete(User $user, KeywordTrackingPool $keywordTrackingPool, Company $company)
+    public function delete(User $user, Company $company)
+    {
+        return $user->canDoAction('delete')
+            && $user->canViewCompany($company);
+    }
+
+    public function detach(User $user, Company $company, PhoneNumber $phoneNumber)
     {
         return $user->canDoAction('delete')
             && $user->canViewCompany($company)
-            && $keywordTrackingPool->company_id === $company->id;
-    }
-
-    public function detach(User $user, KeywordTrackingPool $keywordTrackingPool, Company $company, PhoneNumber $phoneNumber)
-    {
-        return $user->canDoAction('delete')
-            && $user->canViewCompany($company)
-            && $keywordTrackingPool->company_id === $company->id
-            && $keywordTrackingPool->id === $phoneNumber->keyword_tracking_pool_id;
+            && $phoneNumber->company_id === $company->id
+            && $phoneNumber->keyword_tracking_pool_id != null;
     }
 }

@@ -16,55 +16,7 @@ class KeywordTrackingPoolTest extends TestCase
 {
     use \Tests\CreatesAccount;
 
-    /**
-     * Test listing
-     * 
-     * @group keyword-tracking-pools
-     */
-    public function testList()
-    {
-        $company     = $this->createCompany();
-        $config      = $this->createConfig($company);
-        $pool        = factory(KeywordTrackingPool::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_config_id' => $config->id,
-            'created_by' => $this->user->id
-        ]);
-
-        $phoneNumbers = factory(PhoneNumber::class, 10)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'phone_number_config_id' => $config->id,
-            'keyword_tracking_pool_id' => $pool->id,
-            'created_by' => $this->user->id
-        ]);
-
-        $response = $this->json('GET', route('list-keyword-tracking-pools', [
-            'company' => $company->id
-        ]));
-
-        $response->assertJSON([
-            "result_count"  => 1,
-            "limit"         => 250,
-            "page"          => 1,
-            "total_pages"   => 1,
-            "next_page"     => null,
-            "results"       => [
-                [
-                    'account_id'                => $company->account_id,
-                    'company_id'                => $company->id,
-                    'id'                        => $pool->id,
-                    'name'                      => $pool->name,
-                    'phone_number_config_id'    => $pool->phone_number_config_id,
-                    'swap_rules'                => json_decode(json_encode($pool->swap_rules), true),
-                ]
-            ]    
-        ]);
-
-        $response->assertStatus(200);
-    }
-
+   
     /**
      * Test create local phone number pool
      * 
@@ -522,6 +474,7 @@ class KeywordTrackingPoolTest extends TestCase
         ]);
         
         $response->assertStatus(200);
+
         $this->assertEquals(count($response['phone_numbers']), count($phoneNumbers) - 1);
         $this->assertDatabaseMissing('phone_numbers', [
             'id'            => $phoneNumber->id,

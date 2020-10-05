@@ -24,19 +24,6 @@ class KeywordTrackingPoolController extends Controller
         $this->phoneNumberService = $phoneNumberService;
     }
 
-    public function list(Request $request, Company $company)
-    {
-        $query = KeywordTrackingPool::where('keyword_tracking_pools.company_id', $company->id);
-                    
-        return parent::results(
-            $request,
-            $query,
-            [],
-            KeywordTrackingPool::accessibleFields(),
-            'keyword_tracking_pools.created_at'
-        );
-    }
-
     public function create(Request $request, Company $company)
     {
         if( $company->keyword_tracking_pool ){
@@ -161,13 +148,27 @@ class KeywordTrackingPoolController extends Controller
         return response($keywordTrackingPool, 201);
     }
 
-    public function read(Request $request, Company $company, KeywordTrackingPool $keywordTrackingPool)
+    public function read(Request $request, Company $company)
     {
+        $keywordTrackingPool = $company->keyword_tracking_pool;
+        if( ! $keywordTrackingPool ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
         return response($keywordTrackingPool);
     }
 
-    public function update(Request $request, Company $company, KeywordTrackingPool $keywordTrackingPool)
+    public function update(Request $request, Company $company)
     {
+        $keywordTrackingPool = $company->keyword_tracking_pool;
+        if( ! $keywordTrackingPool ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
         $rules = [
             'name' => 'bail|max:64',
             'phone_number_config_id' => [
@@ -214,8 +215,15 @@ class KeywordTrackingPoolController extends Controller
         return response($keywordTrackingPool);
     }
 
-    public function delete(Request $request, Company $company, KeywordTrackingPool $keywordTrackingPool)
+    public function delete(Request $request, Company $company)
     {
+        $keywordTrackingPool = $company->keyword_tracking_pool;
+        if( ! $keywordTrackingPool ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
         DeleteKeywordTrackingPoolJob::dispatch(
             $request->user(), 
             $keywordTrackingPool, 
@@ -227,8 +235,15 @@ class KeywordTrackingPoolController extends Controller
         ]);
     }
 
-    public function addNumbers(Request $request, Company $company, KeywordTrackingPool $keywordTrackingPool)
+    public function addNumbers(Request $request, Company $company)
     {
+        $keywordTrackingPool = $company->keyword_tracking_pool;
+        if( ! $keywordTrackingPool ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
         $rules = [
             'type'       => 'bail|required|in:Toll-Free,Local',
             'count'      => 'required|numeric|min:1|max:20',
@@ -320,9 +335,17 @@ class KeywordTrackingPoolController extends Controller
     }
 
 
-    public function detachNumber(Request $request, Company $company, KeywordTrackingPool $keywordTrackingPool, PhoneNumber $phoneNumber)
+    public function detachNumber(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        if( count($keywordTrackingPool->phone_numbers) <= 5 ){
+        $keywordTrackingPool = $company->keyword_tracking_pool;
+        if( ! $keywordTrackingPool || $phoneNumber->keyword_tracking_pool_id !== $keywordTrackingPool->id ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
+        $phoneNumbers = PhoneNumber::where('keyword_tracking_pool_id', $keywordTrackingPool->id)->get();
+        if( count($phoneNumbers) <= 5 ){
             return response([
                 'error' => 'Keyword tracking pools cannot contain less than 5 numbers'
             ], 400);
@@ -339,7 +362,11 @@ class KeywordTrackingPoolController extends Controller
         $phoneNumber->keyword_tracking_pool_id = null;
         $phoneNumber->save();
 
-        $keywordTrackingPool->phone_numbers = $keywordTrackingPool->phone_numbers;
+        $phoneNumbers = $phoneNumbers->filter(function($_phoneNumber) use($phoneNumber){
+            return $_phoneNumber->id !== $phoneNumber->id;
+        });
+
+        $keywordTrackingPool->phone_numbers = $phoneNumbers;
 
         return response($keywordTrackingPool);
     }
