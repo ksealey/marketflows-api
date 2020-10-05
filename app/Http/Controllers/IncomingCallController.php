@@ -14,6 +14,7 @@ use App\Models\Company\AudioClip;
 use App\Models\BlockedPhoneNumber;
 use App\Models\BlockedCall;
 use App\Models\Company\Call;
+use App\Models\Company\KeywordTrackingPoolSession;
 use App\Models\Company\Webhook;
 use App\Events\Company\CallEvent;
 use Twilio\TwiML\VoiceResponse;
@@ -60,23 +61,18 @@ class IncomingCallController extends Controller
         //  Find out how to handle this call
         $dialedCountryCode = PhoneNumber::countryCode($request->To);
         $dialedNumber      = PhoneNumber::number($request->To);
+        
 
         $query = PhoneNumber::where('number', $dialedNumber); 
         if( $dialedCountryCode )
             $query->where('country_code', $dialedCountryCode);
         
         //  If we don't recognize this call, end it
-        $phoneNumber = $query->first();
+        $keywordTrackingPool = null;
+        $session             = null;
+        $phoneNumber         = $query->first();
+
         if( ! $phoneNumber ){
-            $response->reject();
-
-            return Response::xmlResponse($response);
-        }
-
-        //  
-        //  Reject call if number is disabled
-        //
-        if( $phoneNumber->disabled_at ){
             $response->reject();
 
             return Response::xmlResponse($response);
@@ -85,7 +81,6 @@ class IncomingCallController extends Controller
         //
         //  Log and Reject call if blocked
         //
-        $company           = $phoneNumber->company;
         $callerCountryCode = PhoneNumber::countryCode($request->From) ?: $company->country_code;
         $callerNumber      = PhoneNumber::number($request->From);
         $query             = BlockedPhoneNumber::where('account_id', $phoneNumber->account_id)
@@ -106,16 +101,67 @@ class IncomingCallController extends Controller
             return Response::xmlResponse($response);
         }
 
+        if( $phoneNumber->keyword_tracking_pool_id ){
+            //  
+            //  Reject call if keyword tracking pool is disabled
+            //
+            $keywordTrackingPool = $phoneNumber->keyword_tracking_pool;
+            if( ! $keywordTrackingPool || $keywordTrackingPool->disabled_at ){
+                $response->reject();
+                
+                return Response::xmlResponse($response);
+            }
+
+            $company  = $keywordTrackingPool->company;
+        }else{
+            //  
+            //  Reject call if number is disabled
+            //
+            if( $phoneNumber->disabled_at ){
+                $response->reject();
+
+                return Response::xmlResponse($response);
+            }
+
+            $company = $phoneNumber->company;
+        }
+
         //
         //  Look for contact and create if not exists
         //
         $cleanFullPhone = $callerCountryCode . $callerNumber;
-        $contact = Contact::where('company_id', $phoneNumber->company_id)
+        $contact = Contact::where('company_id', $company->id)
                           ->where('country_code', $callerCountryCode)
                           ->where('number', $callerNumber)
                           ->first();
 
         if( ! $contact ){
+            //
+            //  If this is from a keyword tracking pool and there are no active sessions, end here
+            //
+            $gUUID = Str::uuid();
+            if( $keywordTrackingPool ){
+                //
+                //  Get uassigned sessions for this phone number
+                //
+                $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id, true);
+                $session  = count($sessions) ? $sessions->first() : null;
+                
+                //
+                //  If there are no active sessions for this phone number, end here
+                //
+                if( ! $session ){
+                    $response->reject();
+
+                    return Response::xmlResponse($response);
+                }
+
+                $gUUID = $session->guuid;
+            }
+
+            //
+            //  Create a new contact
+            //
             $firstCall  = true;
             $callerName = $request->CallerName ?: null;
             if( ! $callerName ){
@@ -124,11 +170,11 @@ class IncomingCallController extends Controller
             
             $callerName       = str_replace(',', ' ', ($callerName ? $callerName : 'Unknown Caller'));
             $callerNamePieces = explode(' ', $callerName);
-    
+
             $contact = Contact::create([
-                'uuid'          => Str::uuid(),
-                'account_id'    => $phoneNumber->account_id,
-                'company_id'    => $phoneNumber->company_id,
+                'uuid'          => $gUUID,
+                'account_id'    => $company->account_id,
+                'company_id'    => $company->id,
                 'first_name'    => $callerNamePieces[0],
                 'last_name'     => !empty($callerNamePieces[1]) ? $callerNamePieces[1] : '',
                 'email'         => null,
@@ -139,40 +185,109 @@ class IncomingCallController extends Controller
                 'zip'           => $request->FromZip ? substr($request->FromZip, 0, 64) : null,
                 'country'       => $request->FromCountry ? substr($request->FromCountry, 0, 64) : null
             ]);
+
+            if( $session ){ // Claim session
+                $session->contact_id = $contact->id; 
+                $session->save();
+            }
         }else{
-            $firstCall = false;
+            //  This person has called before
+            $firstCall = ! Call::where('contact_id', $contact->id)->count();
+
+            if( $keywordTrackingPool ){
+                $session = $contact->activeSession($phoneNumber->id);
+                
+                if( ! $session ){
+                    $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id, true);
+                    $session  = count($sessions) ? $sessions->first() : null;
+                    if( $session ){ // Claim session
+                        $session->contact_id = $contact->id; 
+                        $session->guuid      = $contact->uuid;
+                        $session->save();
+                    }
+                }
+            }
         }
 
         //
         //  Determine how to route this call and capture sourcing data
         //  
-        $config  = $phoneNumber->phone_number_config;
+        $source     = null;
+        $medium     = null;
+        $content    = null;
+        $campaign   = null;
+        $keyword    = null;
+        $isOrganic  = null;
+        $isPaid     = null;
+        $isDirect   = null;
+        $isReferral = null;
+
+        if( $keywordTrackingPool ){
+            if( $session ){
+                $source = $session->getSource($company->source_param, $company->source_referrer_when_empty);
+                $source = $source ? substr($source, 0, 512) : null;
+
+                $medium = $session->getMedium($company->medium_param);
+                $medium = $medium ? substr($medium, 0, 128) : null;
+
+                $content = $session->getContent($company->content_param);
+                $content = $content ? substr($content, 0, 128) : null;
+
+                $campaign = $session->getCampaign($company->campaign_param);
+                $campaign = $campaign ? substr($campaign, 0, 128) : null;
+
+                $keyword = $session->getKeyword($company->keyword_param);
+                $keyword = $keyword ? substr($keyword, 0, 128) : null;
+
+                $isOrganic  = $session->getIsOrganic($company->medium_param);
+                $isPaid     = $session->getIsPaid($company->medium_param);
+                $isDirect   = $session->getIsDirect();
+                $isReferral = $session->getIsReferral();
+            }
+
+            $config = $keywordTrackingPool->phone_number_config;
+        }else{
+            $source     = $phoneNumber->source;
+            $medium     = $phoneNumber->medium ?: null;
+            $content    = $phoneNumber->content ?: null;
+            $campaign   = $phoneNumber->campaign ?: null;
+
+            $config     = $phoneNumber->phone_number_config;
+        }
 
         //
         //  Log call
         //
         $call = Call::create([
-            'account_id'                => $phoneNumber->account_id,
-            'company_id'                => $phoneNumber->company_id,
-            'phone_number_id'           => $phoneNumber->id,
-            'contact_id'                => $contact->id,
-            'phone_number_name'         => $phoneNumber->name,
-            'type'                      => $phoneNumber->type,
-            'category'                  => $phoneNumber->category,
-            'sub_category'              => $phoneNumber->sub_category,
-            'first_call'                => $firstCall,
-            'external_id'               => $request->CallSid,
-            'direction'                 => substr(ucfirst(strtolower($request->Direction)), 0, 16),
-            'status'                    => substr(ucfirst(strtolower($request->CallStatus)), 0, 64),
-            'source'                    => $phoneNumber->source,
-            'medium'                    => $phoneNumber->medium ?: null,
-            'content'                   => $phoneNumber->content ?: null,
-            'campaign'                  => $phoneNumber->campaign ?: null,
-            'recording_enabled'         => $config->recording_enabled,
-            'transcription_enabled'     => $config->transcription_enabled,
-            'forwarded_to'              => $config->forwardToPhoneNumber(),
-            'created_at'                => now()->format('Y-m-d H:i:s.u'),
-            'updated_at'                => now()->format('Y-m-d H:i:s.u')
+            'account_id'                        => $company->account_id,
+            'company_id'                        => $company->id,
+            'contact_id'                        => $contact->id,
+            'phone_number_id'                   => $phoneNumber->id,
+            'phone_number_name'                 => $phoneNumber->name,
+            'type'                              => $phoneNumber->type,
+            'category'                          => $phoneNumber->category,
+            'sub_category'                      => $phoneNumber->sub_category,
+            'keyword_tracking_pool_id'          => $keywordTrackingPool ? $keywordTrackingPool->id : null,
+            'keyword_tracking_pool_name'        => $keywordTrackingPool ? $keywordTrackingPool->name : null,
+            'keyword_tracking_pool_session_id'  => $session ? $session->id : null,
+            'first_call'                        => $firstCall,
+            'external_id'                       => $request->CallSid,
+            'direction'                         => substr(ucfirst(strtolower($request->Direction)), 0, 16),
+            'status'                            => substr(ucfirst(strtolower($request->CallStatus)), 0, 64),
+            'source'                            => $source,
+            'medium'                            => $medium,
+            'content'                           => $content,
+            'campaign'                          => $campaign,
+            'keyword'                           => $keyword,
+            'is_organic'                        => $isOrganic,
+            'is_paid'                           => $isPaid,
+            'is_direct'                         => $isDirect,
+            'is_referral'                       => $isReferral,
+            'recording_enabled'                 => $config->recording_enabled,
+            'transcription_enabled'             => $config->transcription_enabled,
+            'forwarded_to'                      => $config->forwardToPhoneNumber(),
+            'created_at'                        => now()->format('Y-m-d H:i:s.u'),
+            'updated_at'                        => now()->format('Y-m-d H:i:s.u')
         ]);
 
         event(new CallEvent(Webhook::ACTION_CALL_START, $call, $contact, $company));

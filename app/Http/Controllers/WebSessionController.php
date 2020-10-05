@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Company;
+use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\KeywordTrackingPool;
 use App\Models\Company\KeywordTrackingPoolSession;
@@ -122,8 +123,9 @@ class WebSessionController extends Controller
         }else{
             $deviceType = 'OTHER';
         }
-
+        
         $gUUID                 = $gUUID ?: Str::uuid();
+        $contactId             = null;
         $phoneNumber           = null;
         $swapRules             = null;
         $sessionToken          = null;
@@ -131,11 +133,21 @@ class WebSessionController extends Controller
         $sessionExpirationDays = 0;
         
         $pool = $company->keyword_tracking_pool;
-        if( $pool && ! $pool->disabled_at && $this->swapRulesPass($pool->swap_rules, $browserType, $deviceType, $httpReferrer, $landingURL) ){
+        if( $pool && ! $pool->disabled_at && $this->swapRulesPass($pool->swap_rules, $browserType, $deviceType, $httpReferrer, $landingURL, $company->medium_param) ){
             $phoneNumber           = $pool->assignNumber();
             $swapRules             = $pool->swap_rules;
             $sessionToken          = str_random(40);
-            $session      = KeywordTrackingPoolSession::create([
+            $existingContact       = null;
+            if( $request->cookie('guuid') ){
+                $contact   = Contact::where('uuid', $request->cookie('guuid'))->first();
+                $contactId = $contact ? $contact->id : null;
+                KeywordTrackingPoolSession::where('guuid', $request->cookie('guuid'))
+                                          ->whereNull('ended_at')
+                                          ->update(['ended_at' => now()]);
+            }
+
+            $session = KeywordTrackingPoolSession::create([
+                'contact_id'                => $contactId, // Preclaim session
                 'guuid'                     => $gUUID,
                 'uuid'                      => Str::uuid(),
                 'keyword_tracking_pool_id'  => $pool->id,
@@ -144,7 +156,7 @@ class WebSessionController extends Controller
                 'device_height'             => $request->device_height,
                 'device_type'               => $deviceType,
                 'device_browser'            => $browserType,                
-                'device_platform'           => substr($agent->platform(), 0, 64),
+                'device_platform'           => str_replace(' ','_', strtoupper(substr($agent->platform(), 0, 64))),
                 'http_referrer'             => $httpReferrer ? substr($httpReferrer, 0, 1024) : '',
                 'landing_url'               => substr($landingURL, 0, 1024),
                 'last_url'                  => substr($landingURL, 0, 1024),
@@ -155,11 +167,11 @@ class WebSessionController extends Controller
             foreach($company->detached_phone_numbers as $detachedPhoneNumber){
                 if( $detachedPhoneNumber->disabled_at 
                     || $detachedPhoneNumber->sub_category !== 'WEBSITE' 
-                    || ! $this->swapRulesPass($detachedPhoneNumber->swap_rules, $browserType, $deviceType, $httpReferrer, $landingURL)
+                    || ! $this->swapRulesPass($detachedPhoneNumber->swap_rules, $browserType, $deviceType, $httpReferrer, $landingURL, $company->medium_param)
                 ){  continue; }
 
-                $phoneNumber            = $detachedPhoneNumber;
-                $swapRules              = $phoneNumber->swap_rules;
+                $phoneNumber = $detachedPhoneNumber;
+                $swapRules   = $phoneNumber->swap_rules;
                 
                 $phoneNumber->last_assigned_at = now()->format('Y-m-d H:i:s.u');
                 $phoneNumber->total_assignments++;

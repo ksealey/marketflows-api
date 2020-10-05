@@ -61,7 +61,7 @@ class PhoneNumberConfigController extends Controller
         $validator->sometimes('greeting_message_type', 'bail|required|in:TEXT,AUDIO', function($input){
             return $input->greeting_enabled;
         });
-        $validator->sometimes('greeting_message', 'bail|required|max:128', function($input){
+        $validator->sometimes('greeting_message', 'bail|required|max:255', function($input){
             return $input->greeting_enabled && $input->greeting_message_type === 'TEXT';
         });
         $validator->sometimes('greeting_audio_clip_id', ['bail', 'required', 'numeric',  new AudioClipRule($company->id)], function($input){
@@ -80,14 +80,14 @@ class PhoneNumberConfigController extends Controller
         $validator->sometimes('keypress_message_type', ['bail', 'required', 'in:TEXT,AUDIO'], function($input){
             return $input->keypress_enabled;
         });
-        $validator->sometimes('keypress_message', ['bail', 'required', 'max:128'], function($input){
+        $validator->sometimes('keypress_message', ['bail', 'required', 'max:255'], function($input){
             return $input->keypress_enabled && $input->keypress_message_type === 'TEXT';
         });
         $validator->sometimes('keypress_audio_clip_id', ['bail', 'required', 'numeric',  new AudioClipRule($company->id)], function($input){
             return $input->keypress_enabled && $input->keypress_message_type === 'AUDIO';
         });
 
-        $validator->sometimes('whisper_message', ['bail', 'required', 'max:128'], function($input){
+        $validator->sometimes('whisper_message', ['bail', 'required', 'max:255'], function($input){
             return $input->whisper_enabled;
         });
 
@@ -160,7 +160,7 @@ class PhoneNumberConfigController extends Controller
         $validator->sometimes('greeting_message_type', 'bail|required|in:TEXT,AUDIO', function($input){
             return $input->greeting_enabled;
         });
-        $validator->sometimes('greeting_message', 'bail|required|max:128', function($input){
+        $validator->sometimes('greeting_message', 'bail|required|max:255', function($input){
             return $input->greeting_enabled && $input->greeting_message_type === 'TEXT';
         });
         $validator->sometimes('greeting_audio_clip_id', ['bail', 'required', 'numeric',  new AudioClipRule($company->id)], function($input){
@@ -179,14 +179,14 @@ class PhoneNumberConfigController extends Controller
         $validator->sometimes('keypress_message_type', ['bail', 'required', 'in:TEXT,AUDIO'], function($input){
             return $input->keypress_enabled;
         });
-        $validator->sometimes('keypress_message', ['bail', 'required', 'max:128'], function($input){
+        $validator->sometimes('keypress_message', ['bail', 'required', 'max:255'], function($input){
             return $input->keypress_enabled && $input->keypress_message_type === 'TEXT';
         });
         $validator->sometimes('keypress_audio_clip_id', ['bail', 'required', 'numeric',  new AudioClipRule($company->id)], function($input){
             return $input->keypress_enabled && $input->keypress_message_type === 'AUDIO';
         });
 
-        $validator->sometimes('whisper_message', ['bail', 'required', 'max:128'], function($input){
+        $validator->sometimes('whisper_message', ['bail', 'required', 'max:255'], function($input){
             return $input->whisper_enabled;
         });
 

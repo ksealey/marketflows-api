@@ -157,6 +157,11 @@ class PhoneNumber extends Model implements Exportable
         return $this->hasMany('\App\Models\Company\Call');
     }
 
+    public function keyword_tracking_pool()
+    {
+        return $this->belongsTo('\App\Models\Company\KeywordTrackingPool');
+    }
+
     /**
      * Get the link
      * 

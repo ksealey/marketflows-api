@@ -92,9 +92,15 @@ class RegisterController extends Controller
 
             //  Create account
             $account = Account::create([
-                'name'        => $request->account_name,
-                'tts_voice'   => 'Joanna',
-                'tts_language'=> 'en-US',
+                'name'                          => $request->account_name,
+                'tts_voice'                     => 'Joanna',
+                'tts_language'                  => 'en-US',
+                'source_param'                  => 'utm_source,source',
+                'medium_param'                  => 'utm_medium,medium',
+                'content_param'                 => 'utm_content,content',
+                'campaign_param'                => 'utm_campaign,content',
+                'keyword_param'                 => 'utm_term,keyword,term',
+                'source_referrer_when_empty'    => 1
             ]);
 
             //  Setup billing for account

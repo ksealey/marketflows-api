@@ -13,14 +13,17 @@ class Call extends Model
     protected $fillable = [
         'account_id',
         'company_id',
-        'phone_number_id',
         'contact_id',
-        
-        'phone_number_name',
-        
         'type',
         'category',
         'sub_category',
+
+        'phone_number_id',
+        'phone_number_name',
+
+        'keyword_tracking_pool_id',
+        'keyword_tracking_pool_name',
+        'keyword_tracking_pool_session_id',
 
         'external_id',
         'direction',
@@ -32,6 +35,12 @@ class Call extends Model
         'medium',
         'content',
         'campaign',
+        'keyword',
+
+        'is_organic',
+        'is_paid',
+        'is_direct',
+        'is_referral',
 
         'recording_enabled',
         'transcription_enabled',
@@ -172,6 +181,11 @@ class Call extends Model
     public function recording()
     {
         return $this->hasOne('\App\Models\Company\CallRecording');
+    }
+
+    public function session()
+    {
+        return $this->belongsTo('\App\Models\Company\KeywordTrackingPoolSession');
     }
     
     public function getLinkAttribute()

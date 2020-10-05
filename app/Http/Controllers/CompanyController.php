@@ -12,6 +12,7 @@ use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Rules\CountryRule;
+use \App\Rules\ParamNameRule;
 use Validator;
 use Exception;
 use DB;
@@ -66,12 +67,18 @@ class CompanyController extends Controller
         $voices    = array_keys($config[$voiceKey]['voices']); 
 
         $rules = [
-            'name'      => 'bail|required|max:64',
-            'industry'  => 'bail|required|max:64',
-            'country'   => ['bail', 'required', new CountryRule()],
-            'ga_id'     => ['bail', 'nullable', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
-            'tts_language'  => 'bail|in:' . implode(',', $languages),
-            'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)]
+            'name'                       => 'bail|required|max:64',
+            'industry'                   => 'bail|required|max:64',
+            'country'                    => ['bail', 'required', new CountryRule()],
+            'ga_id'                      => ['bail', 'nullable', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
+            'tts_language'               => 'bail|in:' . implode(',', $languages),
+            'tts_voice'                  => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)],
+            'source_param'               => ['bail', new ParamNameRule()],
+            'medium_param'               => ['bail', new ParamNameRule()],
+            'content_param'              => ['bail', new ParamNameRule()],
+            'campaign_param'             => ['bail', new ParamNameRule()],
+            'keyword_param'              => ['bail', new ParamNameRule()],
+            'source_referrer_when_empty' => 'boolean'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -85,16 +92,22 @@ class CompanyController extends Controller
         $account = $user->account;
 
         $company = Company::create([
-            'account_id'        => $user->account_id,
-            'user_id'           => $user->id,
-            'name'              => $request->name,
-            'industry'          => $request->industry,
-            'country'           => $request->country,
-            'ga_id'             => $request->ga_id ?: null,
-            'tts_voice'         => $request->tts_voice ?: $account->tts_voice,
-            'tts_language'      => $request->tts_language ?: $account->tts_language,
-            'created_by'        => $user->id,
-            'updated_by'        => null     
+            'account_id'                    => $user->account_id,
+            'user_id'                       => $user->id,
+            'name'                          => $request->name,
+            'industry'                      => $request->industry,
+            'country'                       => $request->country,
+            'ga_id'                         => $request->ga_id ?: null,
+            'tts_voice'                     => $request->tts_voice ?: $account->tts_voice,
+            'tts_language'                  => $request->tts_language ?: $account->tts_language,
+            'source_param'                  => $request->source_param ?: $account->source_param,
+            'medium_param'                  => $request->medium_param ?: $account->medium_param,
+            'content_param'                 => $request->content_param ?: $account->content_param,
+            'campaign_param'                => $request->campaign_param ?: $account->campaign_param,
+            'keyword_param'                 => $request->keyword_param ?: $account->keyword_param,
+            'source_referrer_when_empty'    => $request->filled('source_referrer_when_empty') ? intval($request->source_referrer_when_empty) : $account->source_referrer_when_empty,
+            'created_by'                    => $user->id,
+            'updated_by'                    => null     
         ]);
        
         return response($company, 201);
@@ -133,7 +146,13 @@ class CompanyController extends Controller
             'country'       => [new CountryRule()],
             'ga_id'         => ['bail', 'nullable', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
             'tts_language'  => 'bail|in:' . implode(',', $languages),
-            'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)]
+            'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)],
+            'source_param'  => ['bail', new ParamNameRule()],
+            'medium_param'  => ['bail', new ParamNameRule()],
+            'content_param' => ['bail', new ParamNameRule()],
+            'campaign_param'    => ['bail', new ParamNameRule()],
+            'keyword_param'     => ['bail', new ParamNameRule()],
+            'source_referrer_when_empty' => 'boolean'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -155,6 +174,18 @@ class CompanyController extends Controller
             $company->tts_voice = $request->tts_voice;
         if( $request->filled('tts_language') )
             $company->tts_language = $request->tts_language;
+        if( $request->filled('source_param') )
+            $company->source_param = $request->source_param;
+        if( $request->filled('medium_param') )
+            $company->medium_param = $request->medium_param;
+        if( $request->filled('content_param') )
+            $company->content_param = $request->content_param;
+        if( $request->filled('campaign_param') )
+            $company->campaign_param = $request->campaign_param;
+        if( $request->filled('keyword_param') )
+            $company->keyword_param = $request->keyword_param;
+        if( $request->filled('source_referrer_when_empty') )
+            $company->source_referrer_when_empty = $request->source_referrer_when_empty;
 
         $user = $request->user();
 

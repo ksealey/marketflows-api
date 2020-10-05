@@ -4,8 +4,10 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
+use \App\Models\Company\KeywordTrackingPoolSession;
 use DB;
 
 class Contact extends Model
@@ -70,6 +72,33 @@ class Contact extends Model
                             DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
                         ])
                         ->where('contacts.company_id', $input['company_id']);
+    }
+
+    public function sessions()
+    {
+        return $this->hasMany(KeywordTrackingPoolSession::class)
+                    ->orderBy('updated_at', 'DESC');
+    }
+
+    public function activeSession($phoneNumberId = null)
+    {
+        $query =  KeywordTrackingPoolSession::whereNull('ended_at')
+                                        ->where('contact_id', $this->id)
+                                        ->orderBy('updated_at', 'DESC')
+                                        ->orderBy('created_at', 'DESC');
+
+        if( $phoneNumberId ){
+            $query->where('phone_number_id', $phoneNumberId);
+        }
+        
+        return $query->first();
+    }
+
+    public function hasCalled(PhoneNumber $phoneNumber)
+    {
+        return Call::where('contact_id', $this->id)
+                    ->where('phone_number_id', $phoneNumber->id)
+                    ->count() ? true : false;  
     }
 
     public function getKindAttribute()

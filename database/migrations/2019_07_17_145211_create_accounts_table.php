@@ -18,6 +18,12 @@ class CreateAccountsTable extends Migration
             $table->string('name', 64);
             $table->string('tts_voice', 32);
             $table->string('tts_language', 32);
+            $table->string('source_param', 128);
+            $table->string('medium_param', 128);
+            $table->string('content_param', 128);
+            $table->string('campaign_param', 128);
+            $table->string('keyword_param', 128);
+            $table->boolean('source_referrer_when_empty')->default(1);
             $table->dateTime('suspended_at')->nullable();
             $table->string('suspension_message', 255)->nullable();
             $table->string('suspension_code', 32)->nullable();

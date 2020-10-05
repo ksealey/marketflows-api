@@ -25,6 +25,12 @@ class Account extends Model
         'name',
         'tts_voice',
         'tts_language',
+        'source_param',
+        'medium_param',
+        'content_param',
+        'campaign_param',
+        'keyword_param',
+        'source_referrer_when_empty',
         'suspended_at',
         'suspension_message',
     ];

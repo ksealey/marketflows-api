@@ -1,5 +1,6 @@
 <?php
 namespace App\Traits;
+use \App\Models\Company;
 
 trait CanSwapNumbers
 {
@@ -31,7 +32,7 @@ trait CanSwapNumbers
         'NOT_LIKE'
     ];
 
-    public function swapRulesPass($swapRules, $browserType, $deviceType, $httpReferrer, $entryURL)
+    public function swapRulesPass($swapRules, $browserType, $deviceType, $httpReferrer, $entryURL, $mediumCsvList)
     {
         //  If it fails for browser type stop here
         if( count($swapRules->browser_types) && $swapRules->browser_types[0] !== 'ALL' && ! in_array($browserType, $swapRules->browser_types) )
@@ -43,7 +44,7 @@ trait CanSwapNumbers
 
         $aRuleGroupPassed = false;
         foreach( $swapRules->inclusion_rules as $ruleGroup ){
-            if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer) )
+            if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer, $mediumCsvList) )
                 $aRuleGroupPassed = true;
         }
 
@@ -57,7 +58,7 @@ trait CanSwapNumbers
             return true;
         
         foreach( $swapRules->exclusion_rules as $ruleGroup ){
-            if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer) )
+            if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer, $mediumCsvList) )
                 return false;
         }
         
@@ -68,10 +69,10 @@ trait CanSwapNumbers
      * Determine if an entire rule group passes
      * 
      */
-    public function ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer)
+    public function ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer, $mediumCsvList)
     {
         foreach( $ruleGroup->rules as $rule ){
-            if( ! $this->rulePasses($rule, $entryURL, $httpReferrer) )
+            if( ! $this->rulePasses($rule, $entryURL, $httpReferrer, $mediumCsvList) )
                 return false;
         }
 
@@ -82,7 +83,7 @@ trait CanSwapNumbers
      * Determine if a single rule passes
      * 
      */
-    public function rulePasses($rule, $entryURL, $httpReferrer)
+    public function rulePasses($rule, $entryURL, $httpReferrer, $mediumCsvList)
     {
         $entryURL     = strtolower($entryURL);
         $httpReferrer = strtolower($httpReferrer);
@@ -96,11 +97,11 @@ trait CanSwapNumbers
 
         //  ! is paid
         if( $rule->type === 'ORGANIC' )
-            return $this->isOrganic($httpReferrer, $entryURL);
+            return $this->isOrganic($httpReferrer, $entryURL, $mediumCsvList);
 
         //  UTM medium or medium in cpc,ppc,cpa,cpm,cpv,cpp
         if( $rule->type === 'PAID' )
-            return $this->isPaid($entryURL);
+            return $this->isPaid($entryURL, $mediumCsvList);
 
         //  Referrer google, yahoo or bing
         if( $rule->type === 'SEARCH' )
@@ -260,9 +261,9 @@ trait CanSwapNumbers
      * Determine if a visitor came from search without it being paid
      * 
      */
-    public function isOrganic($httpReferrer, $entryURL)
+    public function isOrganic($httpReferrer, $entryURL, $mediumCsvList)
     {
-        return $this->isSearch($httpReferrer) && !$this->isPaid($entryURL);
+        return $this->isSearch($httpReferrer) && !$this->isPaid($entryURL, $mediumCsvList);
     }
 
     /**
@@ -272,13 +273,11 @@ trait CanSwapNumbers
      * 
      * @return bool
      */
-    public function isPaid($entryURL)
+    public function isPaid($entryURL, $mediumCsvList)
     {
-        parse_str(parse_url(strtolower($entryURL), PHP_URL_QUERY), $params);
+        $medium = $this->getParam($entryURL, $mediumCsvList);
 
-        if( ! count($params) ) return false;
-
-        $medium = trim($params['utm_medium'] ?? $params['medium'] ?? '');
+        if( ! $medium ) return false;
 
         return in_array($medium, ['cpc', 'ppc', 'cpa', 'cpm', 'cpv', 'cpp']);
     }
@@ -292,7 +291,7 @@ trait CanSwapNumbers
      */
     public function isSearch($httpReferrer = '')
     {
-        return preg_match('/^(http(s)?:\/\/)?((www.)?google.com|((search|www).)?yahoo.com|(www.)?bing.com)/', strtolower($httpReferrer));
+        return preg_match('/^(http(s)?:\/\/)?((www.)?google.com|((search|www).)?yahoo.com|(www.)?bing.com)/i', strtolower($httpReferrer));
     }
 
     /**
@@ -303,5 +302,26 @@ trait CanSwapNumbers
     public function isReferral($httpReferrer = '')
     {
         return ! $this->isDirect($httpReferrer) && ! $this->isSearch($httpReferrer);
+    }
+
+    public function getParam($landingUrl, $csvList)
+    {
+        $fields = explode(',', strtolower($csvList));
+        $fields = array_map(function($field){ // Normalize fields
+            return trim($field);
+        }, $fields);
+
+        $params = [];
+        parse_str(parse_url($landingUrl, PHP_URL_QUERY), $_params);
+        foreach( $_params as $prop => $param ){
+            $params[strtolower(trim($prop))] = $param;
+        }
+
+        foreach( $fields as $field ){
+            if( isset($params[$field]) )
+                return $params[$field];
+        }
+        
+        return null;
     }
 }

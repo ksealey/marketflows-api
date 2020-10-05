@@ -15,6 +15,12 @@ $factory->define(Account::class, function (Faker $faker) {
     return [
         'name'           => $faker->company,
         'tts_language'   => $language,
-        'tts_voice'      => $voice
+        'tts_voice'      => $voice,
+        'source_param'   => 'utm_source,source',
+        'medium_param'   => 'utm_medium,medium',
+        'content_param'  => 'utm_content,content',
+        'campaign_param' => 'utm_campaign,content',
+        'keyword_param'  => 'utm_term,keyword,term',
+        'source_referrer_when_empty' => 1
     ];
 });

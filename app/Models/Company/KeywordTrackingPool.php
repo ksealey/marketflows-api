@@ -4,10 +4,12 @@ namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
 use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\KeywordTrackingPoolSession;
 use DB;
 
+
 class KeywordTrackingPool extends Model
-{   
+{ 
     public $fillable = [
         'uuid',
         'account_id',
@@ -81,21 +83,22 @@ class KeywordTrackingPool extends Model
 
     public function assignNumber()
     {
-        $phoneNumber = PhoneNumber::select([
-                                        'phone_numbers.*',
-                                        DB::raw('(
-                                            SELECT COUNT(*) 
-                                                FROM keyword_tracking_pool_sessions 
-                                            WHERE phone_numbers.id = keyword_tracking_pool_sessions.phone_number_id
-                                                AND keyword_tracking_pool_sessions.ended_at IS NOT NULL
-                                        ) AS active_assignments')
-                                    ])
-                                    ->where('keyword_tracking_pool_id', $this->id)
-                                    ->orderBy('active_assignments', 'ASC')
-                                    ->orderBy('last_assigned_at', 'ASC')
-                                    ->orderBy('id', 'ASC')
-                                    ->first();
+        $query = PhoneNumber::select([
+                                    'phone_numbers.*',
+                                    DB::raw('(
+                                        SELECT COUNT(*) 
+                                            FROM keyword_tracking_pool_sessions 
+                                        WHERE keyword_tracking_pool_sessions.phone_number_id = phone_numbers.id
+                                            AND keyword_tracking_pool_sessions.ended_at IS NULL
+                                    ) AS active_assignments')
+                                ])
+                                ->where('keyword_tracking_pool_id', $this->id)
+                                ->orderBy('active_assignments', 'ASC')
+                                ->orderBy('last_assigned_at', 'ASC')
+                                ->orderBy('id', 'ASC');
 
+        $phoneNumber = $query->first();
+        
         if( ! $phoneNumber ) return null;
 
         $phoneNumber->last_assigned_at = now()->format('Y-m-d H:i:s.u');
@@ -103,5 +106,21 @@ class KeywordTrackingPool extends Model
         $phoneNumber->save();
 
         return $phoneNumber;
+    }
+
+    public function activeSessions($phoneNumberId = null, $unclaimedOnly = false)
+    {
+        $query = KeywordTrackingPoolSession::whereNull('ended_at')
+                                           ->orderBy('updated_at', 'DESC')
+                                           ->orderBy('created_at', 'DESC');
+        if( $phoneNumberId ){
+            $query->where('phone_number_id', $phoneNumberId);
+        }
+
+        if( $unclaimedOnly ){
+            $query->whereNull('contact_id');
+        }
+
+        return $query->get();
     }
 }

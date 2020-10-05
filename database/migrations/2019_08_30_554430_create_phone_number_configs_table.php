@@ -22,7 +22,7 @@ class CreatePhoneNumberConfigsTable extends Migration
 
             $table->boolean('greeting_enabled')->default(0);
             $table->string('greeting_message_type', 16)->nullable();
-            $table->string('greeting_message', 128)->nullable();
+            $table->string('greeting_message', 255)->nullable();
             $table->bigInteger('greeting_audio_clip_id')->unsigned()->nullable();
             
             $table->boolean('keypress_enabled')->default(0);
@@ -30,11 +30,11 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->tinyInteger('keypress_attempts')->unsigned()->nullable();
             $table->tinyInteger('keypress_timeout')->unsigned()->nullable();
             $table->string('keypress_message_type', 16)->nullable();
-            $table->string('keypress_message', 128)->nullable();
+            $table->string('keypress_message', 255)->nullable();
             $table->bigInteger('keypress_audio_clip_id')->unsigned()->nullable();
 
             $table->boolean('whisper_enabled')->default(0);
-            $table->string('whisper_message', 128)->nullable();
+            $table->string('whisper_message', 255)->nullable();
 
             $table->boolean('recording_enabled')->default(0);
 

@@ -19,6 +19,7 @@ class CreateKeywordTrackingPoolSessionsTable extends Migration
             $table->uuid('uuid')->index();
             $table->bigInteger('keyword_tracking_pool_id')->unsigned();
             $table->bigInteger('phone_number_id')->unsigned();
+            $table->bigInteger('contact_id')->unsigned()->nullable();
             $table->integer('device_width')->unsigned();
             $table->integer('device_height')->unsigned();
             $table->string('device_type', 64);
@@ -28,12 +29,13 @@ class CreateKeywordTrackingPoolSessionsTable extends Migration
             $table->string('landing_url', 1024);
             $table->string('last_url', 1024);
             $table->string('token', 64);
-            $table->timestamps();
+            $table->dateTime('created_at', 6);
+            $table->dateTime('updated_at', 6)->nullable();
             $table->dateTime('ended_at', 6)->nullable();
-            $table->softDeletes();
 
             $table->foreign('keyword_tracking_pool_id', 'ktp_session_to_pool_fk')->references('id')->on('keyword_tracking_pools');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
+            $table->foreign('contact_id')->references('id')->on('contacts');
         });
     }
 

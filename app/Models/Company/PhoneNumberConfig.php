@@ -153,6 +153,7 @@ class PhoneNumberConfig extends Model
             '${medium}'             => $call->medium,
             '${content}'            => $call->content,
             '${campaign}'           => $call->campaign,
+            '${keyword}'            => $call->keyword,
             '${caller_first_name}'  => $contact->first_name,
             '${caller_last_name}'   => $contact->last_name,
             '${caller_country_code}'=> $contact->country_code,
@@ -161,10 +162,11 @@ class PhoneNumberConfig extends Model
             '${caller_state}'       => $contact->state,
             '${caller_zip}'         => $contact->zip,
             '${caller_country}'     => $contact->country,
-            '${dialed_number}'      => $call->forwarded_to
+            '${forward_number}'     => $call->forwarded_to,
+            '${dialed_number}'      => $call->phone_number_name
         ];
 
-        return str_replace(array_keys($variables), array_values($variables), strtolower($message));
+        return str_ireplace(array_keys($variables), array_values($variables), $message);
     }
     
 }

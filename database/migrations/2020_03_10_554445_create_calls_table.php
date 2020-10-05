@@ -25,15 +25,23 @@ class CreateCallsTable extends Migration
             $table->string('category', 32)->nullable();
             $table->string('sub_category', 32)->nullable();
 
+            $table->bigInteger('keyword_tracking_pool_id')->unsigned()->nullable();
+            $table->string('keyword_tracking_pool_name', 64)->nullable();
+            $table->bigInteger('keyword_tracking_pool_session_id')->unsigned()->nullable();
+
             $table->string('external_id', 64)->unique();
             $table->string('direction', 16);
             $table->string('status', 64);
 
-            $table->string('source', 128)->nullable();
+            $table->string('source', 512)->nullable();
             $table->string('medium', 128)->nullable();
             $table->string('content', 128)->nullable();
             $table->string('campaign', 128)->nullable();
-
+            $table->string('keyword', 128)->nullable();
+            $table->boolean('is_organic')->nullable();
+            $table->boolean('is_paid')->nullable();
+            $table->boolean('is_direct')->nullable();
+            $table->boolean('is_referral')->nullable();
             $table->boolean('recording_enabled');
             $table->boolean('transcription_enabled');
             
@@ -54,6 +62,8 @@ class CreateCallsTable extends Migration
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
             $table->foreign('contact_id')->references('id')->on('contacts');
+            $table->foreign('keyword_tracking_pool_id')->references('id')->on('keyword_tracking_pools');
+            $table->foreign('keyword_tracking_pool_session_id')->references('id')->on('keyword_tracking_pool_sessions');
             $table->foreign('updated_by')->references('id')->on('users');
             $table->foreign('deleted_by')->references('id')->on('users');
             $table->index(['created_at', 'updated_at']);

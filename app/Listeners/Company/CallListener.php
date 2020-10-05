@@ -38,6 +38,8 @@ class CallListener implements ShouldQueue
             $contact = $call->contact;
         if( ! $company )
             $company = $call->company;
+            
+        $call->session = $call->session;
 
         //
         //  Fire webhooks

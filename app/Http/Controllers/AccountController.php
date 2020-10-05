@@ -9,6 +9,7 @@ use App\Models\BillingStatement;
 use App\Models\Company;
 use App\Models\Company\Call;
 use App\Models\User;
+use App\Rules\ParamNameRule;
 use DateTime;
 use Validator;
 use Exception;
@@ -33,9 +34,15 @@ class AccountController extends Controller
         $voices    = array_keys($config[$voiceKey]['voices']); 
 
         $rules = [
-            'name'          => 'bail|min:1|max:64',
-            'tts_language'  => 'bail|in:' . implode(',', $languages),
-            'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)]
+            'name'                          => 'bail|min:1|max:64',
+            'tts_language'                  => 'bail|in:' . implode(',', $languages),
+            'tts_voice'                     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)],
+            'source_param'                  => ['bail', new ParamNameRule()],
+            'medium_param'                  => ['bail', new ParamNameRule()],
+            'content_param'                 => ['bail', new ParamNameRule()],
+            'campaign_param'                => ['bail', new ParamNameRule()],
+            'keyword_param'                 => ['bail', new ParamNameRule()],
+            'source_referrer_when_empty'    => 'boolean'
         ];
 
         $validator = validator($request->all(), $rules);
@@ -54,8 +61,26 @@ class AccountController extends Controller
             $account->tts_language = $request->tts_language;
 
         if( $request->filled('tts_voice') )
-            $account->tts_voice = $request->tts_voice;
-        
+            $account->tts_voice = $request->tts_voice; 
+
+        if( $request->filled('source_param') )
+            $account->source_param = $request->source_param;
+
+        if( $request->filled('medium_param') )
+            $account->medium_param = $request->medium_param;
+
+        if( $request->filled('content_param') )
+            $account->content_param = $request->content_param;
+
+        if( $request->filled('campaign_param') )
+            $account->campaign_param = $request->campaign_param;
+
+        if( $request->filled('keyword_param') )
+            $account->keyword_param = $request->keyword_param;
+
+        if( $request->filled('source_referrer_when_empty') )
+            $account->source_referrer_when_empty = $request->source_referrer_when_empty;
+
         $account->save();
 
         return response($account);

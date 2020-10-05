@@ -34,20 +34,10 @@ class TranscribeService
         if( ! $content )
             throw new Exception('Unable to download transcript for job ' . $jobId);
 
-        $transcript = $this->transformContent($content);
-
-        //
-        //  Upload
-        //
-        $transcriptionPath = str_replace('recordings/Call-' . $recording->call_id . '.mp3', 'transcriptions/Call-' . $recording->call_id . '.json', $recording->path);
-        Storage::put($transcriptionPath, json_encode($transcript), 'public');
-
-        //
         //  Delete original
-        //
         $this->deleteTranscription($jobId);
 
-        return $transcriptionPath; 
+        return $this->transformContent($content);
     }
 
     public function startTranscription($recording, $languageCode)

@@ -32,9 +32,16 @@ class Company extends Model implements Exportable
         'country',
         'tts_voice',
         'tts_language',
+        'source_param',
+        'medium_param',
+        'content_param',
+        'campaign_param',
+        'keyword_param',
+        'source_referrer_when_empty',
         'ga_id',
         'created_by',
-        'updated_by'
+        'updated_by',
+        
     ];
 
     protected $hidden = [
@@ -95,7 +102,6 @@ class Company extends Model implements Exportable
         
         return $countryCodes[$this->country] ?? null;
     }
-
 
     public function account()
     {

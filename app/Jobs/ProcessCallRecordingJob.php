@@ -79,10 +79,19 @@ class ProcessCallRecordingJob implements ShouldQueue
         
         //  Transcribe if enabled
         if( $call->transcription_enabled ){
-            $company                       = $call->company;
-            $language                      = config('services.transcribe.languages')[$company->tts_language] ?? 'en-US';
-            $transcriber                   = App::make(TranscribeService::class);
-            $recording->transcription_path = $transcriber->transcribe($recording, $language);
+            $company        = $call->company;
+            $language       = config('services.transcribe.languages')[$company->tts_language] ?? 'en-US';
+            $transcriber    = App::make(TranscribeService::class);
+
+            $jobId   = $transcriber->startTranscription($recording, $language);
+            $fileUrl = $transcriber->waitForUrl($jobId);
+            $content = $transcriber->downloadFromUrl($fileUrl);
+            if( ! $content ) throw new Exception('Unable to download transcript for job ' . $jobId);
+
+            $recording->transcription_path = str_replace('recordings/Call-' . $recording->call_id . '.mp3', 'transcriptions/Transcription-' . $recording->call_id . '.json', $recording->path);
+            Storage::put($recording->transcription_path, json_encode($transcriber->transformContent($content)), 'public');
+
+            $transcriber->deleteTranscription($jobId);
             $recording->save();
         }
     }
