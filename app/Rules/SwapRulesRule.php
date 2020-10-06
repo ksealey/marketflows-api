@@ -67,8 +67,8 @@ class SwapRulesRule implements Rule
             return false;
         }
 
-        if( ! is_int($swapRules->expiration_days) || $swapRules->expiration_days < 0 || $swapRules->expiration_days > 9999 ){
-            $this->message = 'Swap rules expiration_days must be a number between 0 and 9999';
+        if( ! is_int($swapRules->expiration_days) || $swapRules->expiration_days < 0 || $swapRules->expiration_days > 99999 ){
+            $this->message = 'Swap rules expiration_days must be a number between 0 and 99999';
 
             return false;
         }

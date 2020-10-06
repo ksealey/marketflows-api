@@ -453,7 +453,7 @@ Route::middleware(['auth:api', 'api'])->group(function(){
             | Handle keyword tracking pools
             |--------------------------------
             */
-            Route::prefix('keyword-tracking-pools')->group(function(){
+            Route::prefix('keyword-tracking-pool')->group(function(){
                 Route::post('/', 'Company\KeywordTrackingPoolController@create')
                     ->middleware('can:create,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('create-keyword-tracking-pool');
@@ -474,7 +474,7 @@ Route::middleware(['auth:api', 'api'])->group(function(){
                     ->middleware('can:update,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('detach-keyword-tracking-pool-numbers');
 
-                Route::delete('/{keywordTrackingPool}', 'Company\KeywordTrackingPoolController@delete')
+                Route::delete('/', 'Company\KeywordTrackingPoolController@delete')
                     ->middleware('can:delete,\App\Models\Company\KeywordTrackingPool,company')
                     ->name('delete-keyword-tracking-pool');
             }); 
@@ -703,4 +703,10 @@ Route::middleware('twilio.webhooks')->group(function(){
 
     Route::post('incoming-mms', 'IncomingSMSController@handleMMS')
             ->name('incoming-mms');
+});
+
+Route::fallback(function(){
+    return response([
+        'error' => 'Not found'
+    ], 404);
 });

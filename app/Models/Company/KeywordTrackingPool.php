@@ -3,13 +3,17 @@
 namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\KeywordTrackingPoolSession;
+use \App\Models\Company\Call;
 use DB;
 
 
 class KeywordTrackingPool extends Model
 { 
+    use SoftDeletes;
+
     public $fillable = [
         'uuid',
         'account_id',
@@ -48,9 +52,14 @@ class KeywordTrackingPool extends Model
         return $this->belongsTo('\App\Models\Company\PhoneNumberConfig');
     }
 
-    public function phone_numbers()
+    public function getPhoneNumbersAttribute()
     {
-        return $this->hasMany(PhoneNumber::class);
+        $query = PhoneNumber::select([
+            'phone_numbers.*',
+            DB::raw('(SELECT COUNT(*) FROM keyword_tracking_pool_sessions WHERE keyword_tracking_pool_sessions.phone_number_id = phone_numbers.id AND ended_at IS NULL) AS active_assignments')
+        ])->where('keyword_tracking_pool_id', $this->id);
+        
+        return $query->get();
     }
 
     public function getSwapRulesAttribute($rules)
@@ -69,6 +78,22 @@ class KeywordTrackingPool extends Model
             'company'             => $this->company_id,
             'keywordTrackingPool' => $this->id       
         ]);
+    }
+
+    public function getCallCountAttribute()
+    {
+        return Call::where('keyword_tracking_pool_id', $this->id)->count();
+    }
+
+    public function getTotalAssignmentsAttribute()
+    {
+        return DB::table('phone_numbers')
+                 ->select([
+                     DB::raw('SUM(phone_numbers.total_assignments) AS _total_assignments')
+                 ])
+                 ->where('phone_numbers.keyword_tracking_pool_id', $this->id)
+                 ->first()
+                 ->_total_assignments;
     }
 
     public static function accessibleFields()

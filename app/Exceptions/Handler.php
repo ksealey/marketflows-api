@@ -14,7 +14,7 @@ class Handler extends ExceptionHandler
      * @var array
      */
     protected $dontReport = [
-        //'Symfony\Component\HttpKernel\Exception\NotFoundHttpException'
+        'Symfony\Component\HttpKernel\Exception\NotFoundHttpException'
     ];
 
     /**
@@ -51,7 +51,7 @@ class Handler extends ExceptionHandler
             app('sentry')->captureException($exception);
         }
         
-        if( $exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException || $exception instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException){
+        if( $exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException || $exception instanceof \Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException ){
             return response([
                 'error' => 'Not found'
             ], 404);

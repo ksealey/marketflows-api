@@ -45,7 +45,7 @@ class KeywordTrackingPoolController extends Controller
         ];
 
         $validator = validator($request->input(), $rules);
-        $validator->sometimes('starts_with', ['bail', 'required', 'digits_between:1,10'], function($input){
+        $validator->sometimes('starts_with', ['bail', 'required', 'digits_between:1,3'], function($input){
             return $input->type === 'Local';
         });
 
@@ -157,6 +157,10 @@ class KeywordTrackingPoolController extends Controller
             ], 404);
         }
 
+        $keywordTrackingPool->phone_numbers     = $keywordTrackingPool->phone_numbers;
+        $keywordTrackingPool->call_count        = $keywordTrackingPool->call_count;
+        $keywordTrackingPool->total_assignments = $keywordTrackingPool->total_assignments;
+
         return response($keywordTrackingPool);
     }
 
@@ -210,7 +214,9 @@ class KeywordTrackingPoolController extends Controller
                         'swap_rules'             => json_encode($keywordTrackingPool->swap_rules),
                     ]);
 
-        $keywordTrackingPool->phone_numbers = $keywordTrackingPool->phone_numbers;
+        $keywordTrackingPool->phone_numbers     = $keywordTrackingPool->phone_numbers;
+        $keywordTrackingPool->call_count        = $keywordTrackingPool->call_count;
+        $keywordTrackingPool->total_assignments = $keywordTrackingPool->total_assignments;
 
         return response($keywordTrackingPool);
     }
@@ -224,8 +230,14 @@ class KeywordTrackingPoolController extends Controller
             ], 404);
         }
 
+        $user = $request->user();
+
+        $keywordTrackingPool->deleted_at = now();
+        $keywordTrackingPool->deleted_by = $user->id;
+        $keywordTrackingPool->save();
+
         DeleteKeywordTrackingPoolJob::dispatch(
-            $request->user(), 
+            $user,
             $keywordTrackingPool, 
             $request->release_numbers ?: false
         );
@@ -329,7 +341,9 @@ class KeywordTrackingPoolController extends Controller
             $keywordTrackingPool->error = 'Your keyword tracking pool has been created but only ' . $purchaseCount . ' numbers were available - You can add additional numbers at any time';
         }
 
-        $keywordTrackingPool->phone_numbers = $keywordTrackingPool->phone_numbers;
+        $keywordTrackingPool->phone_numbers     = $keywordTrackingPool->phone_numbers;
+        $keywordTrackingPool->call_count        = $keywordTrackingPool->call_count;
+        $keywordTrackingPool->total_assignments = $keywordTrackingPool->total_assignments;
 
         return response($keywordTrackingPool, 201);
     }
@@ -366,7 +380,9 @@ class KeywordTrackingPoolController extends Controller
             return $_phoneNumber->id !== $phoneNumber->id;
         });
 
-        $keywordTrackingPool->phone_numbers = $phoneNumbers;
+        $keywordTrackingPool->phone_numbers     = $keywordTrackingPool->phone_numbers;
+        $keywordTrackingPool->call_count        = $keywordTrackingPool->call_count;
+        $keywordTrackingPool->total_assignments = $keywordTrackingPool->total_assignments;
 
         return response($keywordTrackingPool);
     }

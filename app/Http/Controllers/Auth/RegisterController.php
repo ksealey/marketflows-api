@@ -99,7 +99,7 @@ class RegisterController extends Controller
                 'medium_param'                  => 'utm_medium,medium',
                 'content_param'                 => 'utm_content,content',
                 'campaign_param'                => 'utm_campaign,content',
-                'keyword_param'                 => 'utm_term,keyword,term',
+                'keyword_param'                 => 'utm_term,term,keyword',
                 'source_referrer_when_empty'    => 1
             ]);
 

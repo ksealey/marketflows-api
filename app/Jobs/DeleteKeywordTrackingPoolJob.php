@@ -40,10 +40,6 @@ class DeleteKeywordTrackingPoolJob implements ShouldQueue
     {
         $phoneNumbers = $this->keywordTrackingPool->phone_numbers;
 
-        $this->keywordTrackingPool->deleted_by = $this->user->id;
-        $this->keywordTrackingPool->deleted_at = now();
-        $this->keywordTrackingPool->save();
-
         PhoneNumber::where('keyword_tracking_pool_id', $this->keywordTrackingPool->id)
                    ->update([ 'keyword_tracking_pool_id' => null ]);
 
