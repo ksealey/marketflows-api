@@ -163,27 +163,27 @@ class IncomingCallController extends Controller
             //  Create a new contact
             //
             $firstCall  = true;
-            $callerName = $request->CallerName ?: null;
+            $callerName = strtolower($request->CallerName ?: null);
             if( ! $callerName ){
-                $callerName  = trim(strtolower($request->FromCity  ?: '') . ' ' . ($request->FromState ?: ''));
+                $callerName  = trim($request->FromCity  ?: '') . ' ' . ($request->FromState ?: '');
             }
             
-            $callerName       = str_replace(',', ' ', ($callerName ? $callerName : 'Unknown Caller'));
+            $callerName       = strtolower(str_replace(',', ' ', ($callerName ? $callerName : 'Unknown Caller')));
             $callerNamePieces = explode(' ', $callerName);
 
             $contact = Contact::create([
                 'uuid'          => $gUUID,
                 'account_id'    => $company->account_id,
                 'company_id'    => $company->id,
-                'first_name'    => $callerNamePieces[0],
-                'last_name'     => !empty($callerNamePieces[1]) ? $callerNamePieces[1] : '',
+                'first_name'    => $this->fieldFormat($callerNamePieces[1]),
+                'last_name'     => $this->fieldFormat($callerNamePieces[0] ?? ''),
                 'email'         => null,
                 'country_code'  => $callerCountryCode,
                 'number'        => $callerNumber,
-                'city'          => $request->FromCity ? substr($request->FromCity, 0, 64) : null,
-                'state'         => $request->FromState ? substr($request->FromState, 0, 64) : null,
-                'zip'           => $request->FromZip ? substr($request->FromZip, 0, 64) : null,
-                'country'       => $request->FromCountry ? substr($request->FromCountry, 0, 64) : null
+                'city'          => $this->fieldFormat($request->FromCity),
+                'state'         => $this->fieldFormat($request->FromState),
+                'zip'           => $this->fieldFormat($request->FromZip),
+                'country'       => $this->fieldFormat($request->FromCountry)
             ]);
 
             if( $session ){ // Claim session
@@ -539,5 +539,12 @@ class IncomingCallController extends Controller
             ];
         }
         return $numberConfig;
+    }
+
+    protected function fieldFormat($data)
+    {
+        if( ! $data ) return null;
+
+        return substr(ucwords(strtolower($data)), 0, 64);
     }
 }

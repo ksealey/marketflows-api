@@ -2,9 +2,9 @@ FROM marketflows/ubuntu18-php7:latest
 
 # Copy app files
 COPY . /var/www/app
-COPY laravel-cron /etc/cron.d/laravel-cron
-COPY laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf 
-COPY laravel-websockets.conf /etc/supervisor/conf.d/laravel-websockets.conf 
+COPY build/laravel-cron /etc/cron.d/laravel-cron
+COPY build/laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf 
+COPY build/laravel-websockets.conf /etc/supervisor/conf.d/laravel-websockets.conf 
 
 # Install dependencies
 WORKDIR /var/www/app
@@ -25,5 +25,3 @@ RUN apt-get update && \
     supervisorctl start laravel-worker:* && \
     supervisorctl start laravel-websockets:* && \
     service supervisor stop
-
-CMD service supervisor start && apachectl -D FOREGROUND

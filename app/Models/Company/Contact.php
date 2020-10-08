@@ -39,7 +39,9 @@ class Contact extends Model
 
     protected $appends = [
         'kind',
-        'link'
+        'link',
+        'formatted_name',
+        'formatted_number'
     ];
 
     static public function exports() : array
@@ -112,6 +114,16 @@ class Contact extends Model
             'company' => $this->company_id,
             'contact' => $this->id
         ]);
+    }
+
+    public function getFormattedNameAttribute()
+    {
+        return trim($this->first_name . ' ' . ($this->last_name ?: ''));
+    }
+
+    public function getFormattedNumberAttribute()
+    {
+        return $this->e164PhoneFormat();
     }
 
     public function getActivityAttribute()
