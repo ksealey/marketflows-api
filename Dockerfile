@@ -2,7 +2,6 @@ FROM marketflows/ubuntu18-php7:latest
 
 # Copy app files
 COPY . /var/www/app
-COPY .env.prod /var/www/app/.env
 COPY laravel-cron /etc/cron.d/laravel-cron
 COPY laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf 
 COPY laravel-websockets.conf /etc/supervisor/conf.d/laravel-websockets.conf 

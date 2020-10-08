@@ -13,6 +13,7 @@ use \GuzzleHttp\Client as HTTPClient;
 use Aws\TranscribeService\TranscribeServiceClient;
 use AWS;
 use App;
+use URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -106,5 +107,9 @@ class AppServiceProvider extends ServiceProvider
             return response($content, $responseCode)
                     ->header('Content-Type', 'application/javascript');
         });
+
+        if(App::environment([ 'production', 'prod' ])) {
+            URL::forceScheme('https');
+        }
     }
 }
