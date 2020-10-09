@@ -27,11 +27,10 @@ class ScheduledExport extends Model
     {
         return [
             'id'                          => 'Id',
-            'company_id'                  => 'Company Id',
+            'company_name'                => 'Company',
             'report_name'                 => 'Exported Report',
             'day_of_week_day'             => 'Day of Week',
             'hour_of_day_time'            => 'Time of Day',
-            'timezone'                    => 'Time Zone',
             'delivery_method'             => 'Delivery Method',
             'delivery_email_address_list' => 'Delivery Email Addresses',
             'last_export_at'              => 'Last Export',
@@ -48,6 +47,7 @@ class ScheduledExport extends Model
     {
         return ScheduledExport::select([
                     'scheduled_exports.*',
+                    'companies.name AS company_name',
                     'reports.name AS report_name',
                     'delivery_email_addresses AS delivery_email_address_list',
                     DB::raw("CASE WHEN day_of_week = 0
@@ -72,10 +72,11 @@ class ScheduledExport extends Model
                                 THEN CONCAT(hour_of_day, ':00pm')
                             ELSE CONCAT(hour_of_day % 12, ':00pm')
                             END AS hour_of_day_time"),
-                    DB::raw("DATE_FORMAT(CONVERT_TZ(scheduled_exports.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                    DB::raw("DATE_FORMAT(CONVERT_TZ(scheduled_exports.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local")
                 ])
-                ->where('scheduled_exports.company_id', $input['company_id'])
-                ->leftJoin('reports', 'reports.id', 'scheduled_exports.report_id');
+                ->leftJoin('companies', 'companies.id', 'scheduled_exports.company_id')
+                ->leftJoin('reports', 'reports.id', 'scheduled_exports.report_id')
+                ->where('scheduled_exports.company_id', $input['company_id']);
     }
 
     /**

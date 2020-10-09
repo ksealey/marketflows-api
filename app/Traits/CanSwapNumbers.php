@@ -291,7 +291,7 @@ trait CanSwapNumbers
      */
     public function isSearch($httpReferrer = '')
     {
-        return preg_match('/^(http(s)?:\/\/)?((www.)?google.com|((search|www).)?yahoo.com|(www.)?bing.com)/i', strtolower($httpReferrer));
+        return preg_match('/^(http(s)?:\/\/)?((www.)?google.com|((search|www).)?yahoo.com|(www.)?bing.com|(www.)?duckduckgo.com|(www.)?yandex.com)/i', strtolower($httpReferrer));
     }
 
     /**

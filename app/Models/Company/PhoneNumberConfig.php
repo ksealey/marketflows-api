@@ -52,6 +52,13 @@ class PhoneNumberConfig extends Model
         'kind'
     ];
 
+    public $casts = [
+        'recording_enabled' => 'boolean',
+        'transcription_enabled' => 'boolean',
+        'keypress_enabled' => 'boolean',
+        'whisper_enabled' => 'boolean'
+    ];
+
     /**
      * Relationships
      * 
@@ -82,8 +89,13 @@ class PhoneNumberConfig extends Model
     {
         return [
             'id'                => 'Id',
+            'company_name'       => 'Company',
             'name'              => 'Name',
             'forward_to_number' => 'Forwarding Number',
+            'recording_enabled' => 'Recording Enabled',
+            'transcription_enabled' => 'Transcription Enabled',
+            'keypress_enabled'  => 'Keypress Enabled',
+            'whisper_enabled'   => 'Whisper Enabled',
             'created_at_local'  => 'Created'
         ];
     }
@@ -97,8 +109,9 @@ class PhoneNumberConfig extends Model
     {
         return PhoneNumberConfig::select([
                                     'phone_number_configs.*',
-                                    DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                                    DB::raw("DATE_FORMAT(CONVERT_TZ(phone_number_configs.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local")
                                 ])
+                                ->leftJoin('companies', 'companies.id', 'phone_number_configs.company_id')
                                 ->where('company_id', $input['company_id']);
     }
 

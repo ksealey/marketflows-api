@@ -25,12 +25,21 @@ class PhoneNumberController extends Controller
         'phone_numbers.name',
         'phone_numbers.country_code',
         'phone_numbers.number',
+        'phone_numbers.type',
+        'phone_numbers.category',
+        'phone_numbers.sub_category',
+        'phone_numbers.source',
+        'phone_numbers.medium',
+        'phone_numbers.campaign',
+        'phone_numbers.content',
         'phone_numbers.total_assignments',
         'phone_numbers.company_id',
         'phone_numbers.disabled_at',
         'phone_numbers.created_at',
         'phone_numbers.updated_at',
-        'call_count'
+        'call_count',
+        'last_call_at',
+        'status',
     ];
 
     /**
@@ -40,15 +49,7 @@ class PhoneNumberController extends Controller
     public function list(Request $request, Company $company)
     {
         //  Build Query
-        $query = PhoneNumber::select([
-                        'phone_numbers.*', 
-                        'keyword_tracking_pools.name AS keyword_tracking_pool_name',
-                        DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
-                        DB::raw('(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at'),
-                    ])
-                    ->leftJoin('keyword_tracking_pools', 'keyword_tracking_pools.id', '=', 'phone_numbers.keyword_tracking_pool_id')
-                    ->whereNull('phone_numbers.deleted_at')
-                    ->where('phone_numbers.company_id', $company->id);
+        $query = PhoneNumber::exportQuery($request->user(), ['company_id' => $company->id]);
                     
         //  Pass along to parent for listing
         return parent::results(

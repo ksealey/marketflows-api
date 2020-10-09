@@ -8,7 +8,6 @@ use App\Models\Company;
 use App\Models\Company\Report;
 use App\Models\Company\ScheduledExport;
 use App\Rules\ConditionsRule;
-use App\Services\ReportService;
 use DB;
 use Validator;
 use DateTime;
@@ -46,13 +45,6 @@ class ReportController extends Controller
         'contacts.city',
         'contacts.state',
     ];
-
-    public $reportService;
-
-    public function __construct(ReportService $reportService)
-    {
-        $this->reportService = $reportService;
-    }
 
     /**
      * List reports

@@ -221,6 +221,7 @@ class IncomingCallController extends Controller
         $isPaid     = null;
         $isDirect   = null;
         $isReferral = null;
+        $isSearch   = null;
 
         if( $keywordTrackingPool ){
             if( $session ){
@@ -243,6 +244,7 @@ class IncomingCallController extends Controller
                 $isPaid     = $session->getIsPaid($company->medium_param);
                 $isDirect   = $session->getIsDirect();
                 $isReferral = $session->getIsReferral();
+                $isSearch   = $session->getIsSearch();
             }
 
             $config = $keywordTrackingPool->phone_number_config;
@@ -283,6 +285,7 @@ class IncomingCallController extends Controller
             'is_paid'                           => $isPaid,
             'is_direct'                         => $isDirect,
             'is_referral'                       => $isReferral,
+            'is_search'                         => $isSearch,
             'recording_enabled'                 => $config->recording_enabled,
             'transcription_enabled'             => $config->transcription_enabled,
             'forwarded_to'                      => $config->forwardToPhoneNumber(),
@@ -371,7 +374,7 @@ class IncomingCallController extends Controller
 
         $isComplete = trim(strtolower($request->CallStatus)) == 'completed' ? true : false;
 
-        event(new CallEvent($isComplete ? Webhook::ACTION_CALL_END : Webhook::ACTION_CALL_UPDATED, $call));
+        event(new CallEvent($isComplete ? Webhook::ACTION_CALL_END : Webhook::ACTION_CALL_UPDATED, $call, $call->contact, $call->company));
     }
 
 
@@ -510,7 +513,10 @@ class IncomingCallController extends Controller
 
     protected function getDialConfig($phoneNumberConfig)
     {
-        $dialConfig = ['answerOnBridge' => 'true'];
+        $dialConfig = [
+            'answerOnBridge' => 'true',
+            
+        ];
 
         //  Handle recording
         if( $phoneNumberConfig->recording_enabled ){

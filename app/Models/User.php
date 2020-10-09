@@ -90,6 +90,7 @@ class User extends Authenticatable
             'first_name'        => 'First Name',
             'last_name'         => 'Last Name',
             'email'             => 'Email',
+            'role'              => 'Role',
             'created_at_local'  => 'Created'
         ];
     }

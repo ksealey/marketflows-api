@@ -92,4 +92,9 @@ class KeywordTrackingPoolSession extends Model
     {
         return $this->isReferral($this->http_referrer);
     }
+
+    public function getIsSearch()
+    {
+        return $this->isSearch($this->http_referrer);
+    }
 }

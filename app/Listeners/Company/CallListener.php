@@ -33,13 +33,11 @@ class CallListener implements ShouldQueue
         $call      = $event->call;
         $contact   = $event->contact;
         $company   = $event->company;
-
-        if( ! $contact )
-            $contact = $call->contact;
-        if( ! $company )
-            $company = $call->company;
-            
-        $call->session = $call->session;
+          
+        if( $call->keyword_tracking_pool_id )
+            $call->session = $call->session;
+        else 
+            $call->session = null;
 
         //
         //  Fire webhooks

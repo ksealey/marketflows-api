@@ -40,6 +40,7 @@ class Call extends Model
         'is_organic',
         'is_paid',
         'is_direct',
+        'is_search',
         'is_referral',
 
         'recording_enabled',
@@ -65,6 +66,8 @@ class Call extends Model
     ];
 
     protected $casts = [
+        'recording_enabled' => 'boolean',
+        'transcription_enabled' => 'boolean',
         'first_call' => 'boolean'
     ];
 
@@ -73,27 +76,27 @@ class Call extends Model
     static public function exports() : array
     {
         return [
-            'id'                => 'Id',
-            'company_name'      => 'Company',
-            'caller_name'       => 'Caller Name',
-            'caller_country_code'=> 'Caller Country Code',
-            'caller_number'     => 'Caller Number',
-            'phone_number_name' => 'Tracking Number',
-            'type'              => 'Tracking Number Type',
-            'category'          => 'Category',
-            'sub_category'      => 'Sub-Category',
-            'direction'         => 'Direction',
-            'source'            => 'Source',
-            'medium'            => 'Medium',
-            'content'           => 'Content',
-            'campaign'          => 'Campaign',
-            'status'            => 'Status',
-            'duration'          => 'Duration (Seconds)',
-            'recording_enabled' => 'Recording Enabled',
+            'id'                    => 'Id',
+            'company_name'          => 'Company',
+            'caller_name'           => 'Caller',
+            'caller_country_code'   => 'Caller Country Code',
+            'caller_number'         => 'Caller Number',
+            'phone_number_name'     => 'Tracking Number',
+            'status'                => 'Status',
+            'created_at_local'      => 'Call Time',
+            'duration'              => 'Duration (Seconds)',
+            'category'              => 'Category',
+            'sub_category'          => 'Sub-Category',
+            'source'                => 'Source',
+            'medium'                => 'Medium',
+            'campaign'              => 'Campaign',
+            'content'               => 'Content',
+            'keywords'              => 'Keyword',
+            
+            'recording_enabled'     => 'Recording Enabled',
             'transcription_enabled' => 'Transcription Enabled',
-            'forwarded_to'      => 'Forwarded to Number',
-            'first_call'        => 'First Call',
-            'created_at_local'  => 'Created',
+            'first_call'            => 'First Call',
+            
         ];
     }
 
@@ -106,7 +109,13 @@ class Call extends Model
     {
         $query = Call::select([
                     'calls.*', 
-                    'phone_numbers.name AS phone_number_name',
+                    DB::raw(
+                        'CASE WHEN phone_numbers.keyword_tracking_pool_id IS NOT NULL
+                            THEN keyword_tracking_pools.name
+                        ELSE
+                            phone_number.name
+                        END AS phone_number_name'
+                    ),
                     'companies.id AS company_id',
                     'companies.name AS company_name',
                     DB::raw(
@@ -129,7 +138,7 @@ class Call extends Model
                     DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name'),
                     DB::raw("contacts.country_code AS caller_country_code"),
                     DB::raw("contacts.number AS caller_number"),
-                    DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                    DB::raw("DATE_FORMAT(CONVERT_TZ(calls.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local")
                 ])
                 ->where('calls.company_id', $input['company_id']);
 
@@ -146,6 +155,11 @@ class Call extends Model
         $query->leftJoin('phone_numbers', function($join){
             $join->on('calls.phone_number_id', 'phone_numbers.id')
                 ->whereNull('phone_numbers.deleted_at');
+        });
+
+        $query->leftJoin('keyword_tracking_pools', function($join){
+            $join->on('calls.keyword_tracking_pool_id', 'keyword_tracking_pools.id')
+                ->whereNull('keyword_tracking_pools.deleted_at');
         });
 
         //  Join non-deleted companies

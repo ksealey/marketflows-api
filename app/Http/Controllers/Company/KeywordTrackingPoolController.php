@@ -374,6 +374,8 @@ class KeywordTrackingPoolController extends Controller
         }
 
         $phoneNumber->keyword_tracking_pool_id = null;
+        $phoneNumber->total_assignments = 0;
+        $phoneNumber->last_assigned_at  = null;
         $phoneNumber->save();
 
         $phoneNumbers = $phoneNumbers->filter(function($_phoneNumber) use($phoneNumber){

@@ -54,8 +54,8 @@ class Billing extends Model
 
     const COST_SERVICE              = 39.99;
     const COST_NUMBERS_LOCAL        = 2.50;
-    const COST_NUMBERS_TOLL_FREE    = 4.00;
-    const COST_MINUTES_LOCAL        = 0.04;
+    const COST_NUMBERS_TOLL_FREE    = 5.00;
+    const COST_MINUTES_LOCAL        = 0.05;
     const COST_MINUTES_TOLL_FREE    = 0.07;
     const COST_MINUTES_TRANSCRIPTION= 0.05;
     const COST_STORAGE_GB           = 0.10;

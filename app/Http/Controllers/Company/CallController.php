@@ -25,8 +25,15 @@ class CallController extends Controller
         'calls.medium',
         'calls.content',
         'calls.campaign',
+        'calls.keyword',
+        'calls.duration',
         'calls.forwarded_to',
-        'calls.created_at'
+        'calls.created_at',
+        'calls.recording_enabled',
+        'calls.transcription_enabled',
+        'calls.first_call',
+        'caller_name',
+        'caller_number',
     ];
 
     /**
@@ -63,6 +70,7 @@ class CallController extends Controller
                         ),
                         DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
                         DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name'),
+                        DB::raw("contacts.country_code AS caller_country_code"),
                         DB::raw("contacts.number AS caller_number")
                     ])
                    ->where('calls.company_id', $company->id);

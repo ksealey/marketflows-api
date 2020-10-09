@@ -99,22 +99,22 @@ class PhoneNumber extends Model implements Exportable
     static public function exports() : array
     {
         return [
-            'id'                => 'Id',
-            'company_id'        => 'Company Id',
-            'category'          => 'Category',
-            'sub_category'      => 'Sub-Category',
-            'name'              => 'Name',
-            'country_code'      => 'Country Code',
-            'number'            => 'Number',
-            'type'              => 'Type',
-            'source'            => 'Source',
-            'medium'            => 'Medium',
-            'campaign'          => 'Campaign',
-            'content'           => 'Content',
-            'total_assignments' => 'Total Assignments',
-            'call_count'        => 'Calls',
-            'last_call_at_local' => 'Last Call Date',
-            'created_at_local'  => 'Created',
+            'id'                         => 'Id',
+            'company_name'               => 'Company',
+            'name'                       => 'Name',
+            'country_code'               => 'Country Code',
+            'number'                     => 'Number',
+            'call_count'                 => 'Calls',
+            'last_call_at_local'         => 'Last Call',
+            'type'                       => 'Type',
+            'category'                   => 'Category',
+            'sub_category'               => 'Sub-Category',
+            'source'                     => 'Source',
+            'medium'                     => 'Medium',
+            'campaign'                   => 'Campaign',
+            'content'                    => 'Content',
+            'status'                     => 'Status',
+            'created_at_local'           => 'Purchase Date',
         ];
     }
 
@@ -127,14 +127,23 @@ class PhoneNumber extends Model implements Exportable
     {
         return PhoneNumber::select([
                                 'phone_numbers.*',
-                                DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
-                                DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local"),
-                                DB::raw("DATE_FORMAT(CONVERT_TZ((SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id), 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS last_call_at_local")
+                                DB::raw("
+                                    CASE WHEN phone_numbers.disabled_at IS NULL
+                                        THEN 'Enabled'
+                                    ELSE
+                                        'Disabled'
+                                    END AS status
+                                "),
+                                'companies.name AS company_name',
+                                DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id AND deleted_at IS NULL) AS call_count'),
+                                DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local"),
+                                DB::raw("(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at"),
+                                DB::raw("DATE_FORMAT(CONVERT_TZ((SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id), 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS last_call_at_local")
                           ])
-                          ->leftJoin('calls', function($join){
-                             $join->on('calls.phone_number_id', '=', 'phone_numbers.id')
-                                  ->whereNull('calls.deleted_at');
-                          })
+                          ->leftJoin('companies', function($join){
+                            $join->on('phone_numbers.company_id', '=', 'companies.id');
+                         })
+                          ->whereNull('phone_numbers.keyword_tracking_pool_id')
                           ->where('phone_numbers.company_id', $input['company_id']);
     }
 

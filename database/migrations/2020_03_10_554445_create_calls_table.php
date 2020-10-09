@@ -42,6 +42,7 @@ class CreateCallsTable extends Migration
             $table->boolean('is_paid')->nullable();
             $table->boolean('is_direct')->nullable();
             $table->boolean('is_referral')->nullable();
+            $table->boolean('is_search')->nullable();
             $table->boolean('recording_enabled');
             $table->boolean('transcription_enabled');
             
