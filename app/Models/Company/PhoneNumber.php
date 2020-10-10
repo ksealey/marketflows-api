@@ -9,7 +9,6 @@ use \App\Models\Company\Call;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Contracts\Exportable;
 use \App\Services\PhoneNumberService;
-
 use Twilio\Rest\Client as TwilioClient;
 use App;
 use DB;
@@ -191,6 +190,16 @@ class PhoneNumber extends Model implements Exportable
     public function getKindAttribute()
     {
         return 'PhoneNumber';
+    }
+
+    public function getCallCountAttribute()
+    {
+        return DB::table('phone_number_call_count')
+                 ->select('phone_number_call_count.call_count')
+                 ->from('phone_number_call_count')
+                 ->where('phone_number_id', $this->id)
+                 ->first()
+                 ->call_count;
     }
 
     /**

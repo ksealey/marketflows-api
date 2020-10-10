@@ -171,7 +171,7 @@ class PhoneNumberController extends Controller
      */
     public function read(Request $request, Company $company, PhoneNumber $phoneNumber)
     {
-        $phoneNumber->call_count = Call::where('phone_number_id', $phoneNumber->id)->count();
+        $phoneNumber->call_count = $phoneNumber->call_count;
 
         return response($phoneNumber);
     }
@@ -245,6 +245,8 @@ class PhoneNumberController extends Controller
         }
         
         $phoneNumber->save();
+
+        $phoneNumber->call_count = $phoneNumber->call_count;
 
         return response($phoneNumber);
     }
