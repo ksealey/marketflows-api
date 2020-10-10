@@ -20,7 +20,7 @@ class PhoneNumberService
                 return $phoneNumber;
             }, range(0, $limit));
         }
-
+        
         $contains = $contains ? str_pad($contains, 10, '*', STR_PAD_RIGHT) : '';
         $client   = App::make(Twilio::class);
         $query    = $client->availablePhoneNumbers($country);
@@ -36,7 +36,7 @@ class PhoneNumberService
 
     public function purchase(string $number)
     {
-        if( App::environment('prod', 'production') ){
+        if( App::environment(['prod', 'production']) ){
             $client             = App::make(Twilio::class);
             $method             = 'POST';
             $voiceUrl           = route('incoming-call');
@@ -72,9 +72,9 @@ class PhoneNumberService
         if( App::environment(['local', 'dev', 'development', 'staging']) )
             return $this;
 
-        $this->client
-             ->incomingPhoneNumbers($phoneNumber->external_id)
-             ->delete();
+        $client = App::make(Twilio::class);
+        $client->incomingPhoneNumbers($phoneNumber->external_id)
+               ->delete();
        
         return $this;
     }
