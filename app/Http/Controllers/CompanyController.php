@@ -207,7 +207,7 @@ class CompanyController extends Controller
     {
         $user = $request->user();
 
-        $user->deleteCompany($company);
+        //$user->deleteCompany($company);
 
         $company->deleted_by = $user->id;
         $company->deleted_at = now();

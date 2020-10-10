@@ -6,10 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Company\Webhook;
+use Guzzle\Http\Exception\ClientErrorResponseException;
+use App\Traits\SendsWebhooks;
 use Validator;
+use App;
+use Exception;
 
 class WebhookController extends Controller
 {
+    use SendsWebhooks;
+
     static public $fields = [
         'webhooks.action',
         'webhooks.method',
@@ -59,6 +65,16 @@ class WebhookController extends Controller
             ], 400);
         }
 
+        $result = $this->sendWebhook($request->method, $request->url, [
+            'message' => 'Hello from MarketFlows'
+        ]);
+
+        if( ! $result->ok ){
+            return response([
+                'error' => 'Webhook URL did not return a 200-399 status code. Status code: ' . $result->status_code . '.'
+            ], 400);
+        }
+
         $webhook = Webhook::create([
             'company_id'    => $company->id,
             'action'        => $request->action,
@@ -102,12 +118,21 @@ class WebhookController extends Controller
         if( $request->filled('enabled') )
             $webhook->enabled_at = $request->enabled ? now() : null;
 
+        $result = $this->sendWebhook($webhook->method, $webhook->url, [
+            'message' => 'Hello from MarketFlows'
+        ]);
+
+        if( ! $result->ok ){
+            return response([
+                'error' => 'Webhook URL did not return a 200-399 status code. Status code: ' . $result->status_code . '.'
+            ], 400);
+        }
+
         $webhook->updated_by = $request->user()->id;
         $webhook->save();
 
         return response($webhook);
     }
-
 
     public function delete(Request $request, Company $company, Webhook $webhook)
     {
