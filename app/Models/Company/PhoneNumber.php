@@ -135,7 +135,7 @@ class PhoneNumber extends Model implements Exportable
                                     END AS status
                                 "),
                                 'companies.name AS company_name',
-                                DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id AND deleted_at IS NULL) AS call_count'),
+                                'phone_number_call_count.call_count',
                                 DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local"),
                                 DB::raw("(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at"),
                                 DB::raw("DATE_FORMAT(CONVERT_TZ((SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id), 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS last_call_at_local")
@@ -143,6 +143,7 @@ class PhoneNumber extends Model implements Exportable
                           ->leftJoin('companies', function($join){
                             $join->on('phone_numbers.company_id', '=', 'companies.id');
                          })
+                         ->leftJoin('phone_number_call_count', 'phone_number_call_count.phone_number_id', 'phone_numbers.id')
                           ->whereNull('phone_numbers.keyword_tracking_pool_id')
                           ->where('phone_numbers.company_id', $input['company_id']);
     }

@@ -32,8 +32,6 @@ class CallController extends Controller
         'calls.recording_enabled',
         'calls.transcription_enabled',
         'calls.first_call',
-        'caller_name',
-        'caller_number',
     ];
 
     /**

@@ -37,9 +37,9 @@ class PhoneNumberController extends Controller
         'phone_numbers.disabled_at',
         'phone_numbers.created_at',
         'phone_numbers.updated_at',
-        'call_count',
-        'last_call_at',
-        'status',
+        'phone_numbers.last_call_at',
+        'phone_numbers.status',
+        'phone_number_call_count.call_count'
     ];
 
     /**
