@@ -13,6 +13,7 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Rules\CountryRule;
 use \App\Rules\ParamNameRule;
+use \App\Jobs\DeleteCompanyJob;
 use Validator;
 use Exception;
 use DB;
@@ -207,8 +208,8 @@ class CompanyController extends Controller
     {
         $user = $request->user();
 
-        //$user->deleteCompany($company);
-
+        DeleteCompanyJob::dispatch($user, $company);
+        
         $company->deleted_by = $user->id;
         $company->deleted_at = now();
         $company->save();

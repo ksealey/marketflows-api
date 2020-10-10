@@ -9,6 +9,7 @@ class Webhook extends Model
     use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $fillable = [
+        'account_id',
         'company_id',
         'action',
         'method',

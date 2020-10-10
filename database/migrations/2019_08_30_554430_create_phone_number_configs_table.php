@@ -50,6 +50,7 @@ class CreatePhoneNumberConfigsTable extends Migration
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('greeting_audio_clip_id')->references('id')->on('audio_clips');
             $table->foreign('keypress_audio_clip_id')->references('id')->on('audio_clips');
+            
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('updated_by')->references('id')->on('users');
             $table->foreign('deleted_by')->references('id')->on('users');

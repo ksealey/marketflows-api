@@ -9,9 +9,6 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\Call;
-use \App\Jobs\BatchDeleteAudioJob;
-use \App\Jobs\BatchDeletePhoneNumbersJob;
-use \App\Jobs\BatchDeleteCallRecordingsJob;
 use Queue;
 
 class AccountTest extends TestCase
@@ -90,7 +87,7 @@ class AccountTest extends TestCase
     /**
      * Test closing account removes resources
      * 
-     * @group accounts--
+     * @group accounts
      */
     public function testClosingAccountRemovesResources()
     {
@@ -113,17 +110,7 @@ class AccountTest extends TestCase
         $response->assertJSON([
             'message' => 'Bye'
         ]);
-
-        Queue::assertPushed(BatchDeleteAudioJob::class, function($job){
-            return $job->user->id == $this->user->id;
-        });
-
-        Queue::assertPushed(BatchDeletePhoneNumbersJob::class, function($job){
-            return $job->user->id == $this->user->id;
-        });
-
-        Queue::assertPushed(BatchDeleteCallRecordingsJob::class, function($job){
-            return $job->user->id == $this->user->id;
-        });
+        
+        exit('FIX');
     }
 }

@@ -16,9 +16,6 @@ use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\Webhook;
-use \App\Jobs\BatchDeleteAudioJob;
-use \App\Jobs\BatchDeletePhoneNumbersJob;
-use \App\Jobs\BatchDeleteCallRecordingsJob;
 use Mail;
 use DateTime;
 use Cache;
@@ -185,47 +182,5 @@ class User extends Authenticatable
     public function isOnline()
     {
         return Cache::has('websockets.users.' . $this->id);
-    }
-
-    /**
-     * Remove a company from the system along with all traces of it
-     * 
-     */
-    public function deleteCompany(Company $company)
-    {
-        Webhook::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-        
-        Call::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-        
-        PhoneNumberConfig::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-
-        BlockedCall::whereIn('blocked_phone_number_id', function($q) use($company){
-                        $q->select('id')
-                            ->from('blocked_phone_numbers')
-                            ->where('blocked_phone_numbers.company_id', $company->id);
-                    })->delete();
-
-        BlockedPhoneNumber::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-
-        //
-        //  Batch delete items with remote resources
-        //
-        BatchDeletePhoneNumbersJob::dispatch($this, $company);
-        BatchDeleteAudioJob::dispatch($this, $company);
-        BatchDeleteCallRecordingsJob::dispatch($this, $company);
-
-        $company->delete();
     }
 }

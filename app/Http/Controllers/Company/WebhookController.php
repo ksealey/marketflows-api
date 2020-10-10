@@ -77,6 +77,7 @@ class WebhookController extends Controller
         }
 
         $webhook = Webhook::create([
+            'account_id'    => $company->account_id,
             'company_id'    => $company->id,
             'action'        => $request->action,
             'method'        => $request->method,

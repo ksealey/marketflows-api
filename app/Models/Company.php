@@ -12,10 +12,6 @@ use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\KeywordTrackingPool;
 use \App\Models\Company\PhoneNumberConfig;
-use \App\Jobs\BatchDeleteAudioJob;
-use \App\Jobs\BatchDeletePhoneNumbersJob;
-use \App\Jobs\BatchDeleteCallRecordingsJob;
-
 use Exception;
 use DB;
 

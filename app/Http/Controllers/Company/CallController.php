@@ -162,7 +162,9 @@ class CallController extends Controller
             Storage::delete($recording->transcription_path);
         }
 
-        $recording->delete();
+        $recording->deleted_by = $request->user()->id;
+        $recording->deleted_at = now();
+        $recording->save();
 
         return response([
             'message' => 'Deleted'

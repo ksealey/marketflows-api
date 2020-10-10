@@ -67,6 +67,8 @@ class ProcessCallRecordingJob implements ShouldQueue
 
         //  Create record
         $recording = CallRecording::create([
+            'account_id'    => $call->account_id,
+            'company_id'    => $call->company_id,
             'call_id'       => $call->id,
             'external_id'   => $this->recordingSid,
             'path'          => $storagePath,

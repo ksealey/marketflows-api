@@ -165,10 +165,14 @@ trait CreatesAccount
                 $path = '/to-recording/' . str_random(10) . '.mp3';
                 Storage::put($path, 'foobar');
                 factory(CallRecording::class)->create([
+                    'account_id' => $call->account_id,
+                    'company_id' => $call->company_id,
                     'call_id' => $call->id,
                     'path'     => $path
                 ]);
                 factory(CallRecording::class)->create([
+                    'account_id' => $call->account_id,
+                    'company_id' => $call->company_id,
                     'call_id' => $call->id,
                     'path'    => $path
                 ]);
@@ -176,13 +180,13 @@ trait CreatesAccount
         });
         
 
-        //  Blocked Numbers (Company)
+        //  Blocked Numbers
         factory(BlockedPhoneNumber::class, 2)->create([
-            'account_id' => $this->account->id,
-            'company_id' => $company->id,
+            'account_id' => $this->user->account_id,
             'created_by' => $this->user->id
         ])->each(function($blockedNumber) use($phoneNumber){
             factory(BlockedCall::class, 2)->create([
+                'account_id' => $this->user->account_id,
                 'blocked_phone_number_id' => $blockedNumber->id,
                 'phone_number_id'         => $phoneNumber->id,
             ]);
@@ -190,7 +194,7 @@ trait CreatesAccount
         
         //  Report
         $report = factory(Report::class)->create([
-            'account_id' => $this->account->id,
+            'account_id' => $this->user->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
@@ -256,6 +260,8 @@ trait CreatesAccount
                         Storage::put($path, 'foobar');
 
                         factory(CallRecording::class)->create([
+                            'account_id' => $call->account_id,
+                            'company_id' => $call->company_id,
                             'call_id' => $call->id,
                             'path'     => $path,
                             'file_size' => 1024 * 1024 * 10
@@ -290,6 +296,8 @@ trait CreatesAccount
                         Storage::put($path, 'foobar');
 
                         factory(CallRecording::class)->create([
+                            'account_id' => $call->account_id,
+                            'company_id' => $call->company_id,
                             'call_id' => $call->id,
                             'path'     => $path,
                             'file_size' => 1024 * 1024 * 10
