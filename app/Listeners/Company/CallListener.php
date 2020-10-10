@@ -5,11 +5,13 @@ namespace App\Listeners\Company;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use App\Models\Company\Webhook;
+use App\Services\WebhookService;
 use App;
 
 class CallListener implements ShouldQueue
 {
     protected $analytics;
+    protected $webhookService;
 
     /**
      * Create the event listener.
@@ -18,7 +20,8 @@ class CallListener implements ShouldQueue
      */
     public function __construct()
     {
-        $this->analytics = App::make('Analytics');
+        $this->analytics      = App::make('Analytics');
+        $this->webhookService = App::make(WebhookService::class);
     }
 
     /**
@@ -46,22 +49,12 @@ class CallListener implements ShouldQueue
                            ->where('action', $eventName)
                            ->whereNotNull('enabled_at')
                            ->get();
-            
-        $client = new \GuzzleHttp\Client();
+
         foreach( $webhooks as $webhook ){
-            try{
-                $params      = $webhook->params ? (array)$webhook->params : [];
-                $params      = array_merge($call->toArray(), $params);
-                $fieldsKey   = $webhook->method == 'GET' ? 'query' : 'form_params';
-                $contentType = $webhook->method == 'GET' ? 'application/text' : 'application/x-www-form-urlencoded';  
-                $request     = $client->request($webhook->method, $webhook->url, [
-                    'headers' => [
-                        'X-Sender'     => 'MarketFlows',
-                        'Content-Type' => $contentType
-                    ],
-                    $fieldsKey => $params
-                ]);
-            }catch(\Exception $e){}
+            $params      = $webhook->params ? (array)$webhook->params : [];
+            $params      = array_merge($call->toArray(), $params);
+
+            $this->webhookService->sendWebhook($webhook->method, $webhook->url, $params);  
         }
 
         //

@@ -6,21 +6,22 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Company\Webhook;
-use Guzzle\Http\Exception\ClientErrorResponseException;
-use App\Traits\SendsWebhooks;
+use App\Services\WebhookService;
 use Validator;
 use App;
-use Exception;
 
 class WebhookController extends Controller
 {
-    use SendsWebhooks;
-
     static public $fields = [
         'webhooks.action',
         'webhooks.method',
         'webhooks.url'
     ];
+
+    public function __construct(WebhookService $webhookService)
+    {
+        $this->webhookService = $webhookService;
+    }
 
     public function list(Request $request, Company $company)
     {
@@ -65,7 +66,7 @@ class WebhookController extends Controller
             ], 400);
         }
 
-        $result = $this->sendWebhook($request->method, $request->url, [
+        $result = $this->webhookService->sendWebhook($request->method, $request->url, [
             'message' => 'Hello from MarketFlows'
         ]);
 
@@ -93,7 +94,6 @@ class WebhookController extends Controller
         return response($webhook);
     }
 
-
     public function update(Request $request, Company $company, Webhook $webhook)
     {
         $rules = [
@@ -118,7 +118,7 @@ class WebhookController extends Controller
         if( $request->filled('enabled') )
             $webhook->enabled_at = $request->enabled ? now() : null;
 
-        $result = $this->sendWebhook($webhook->method, $webhook->url, [
+        $result = $this->webhookService->sendWebhook($webhook->method, $webhook->url, [
             'message' => 'Hello from MarketFlows'
         ]);
 

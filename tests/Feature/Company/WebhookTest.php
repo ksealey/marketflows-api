@@ -5,6 +5,7 @@ namespace Tests\Feature\Company;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
+use App\Services\WebhookService;
 use \App\Models\Company\Webhook;
 
 class WebhookTest extends TestCase
@@ -73,6 +74,19 @@ class WebhookTest extends TestCase
         $company = $this->createCompany();
 
         $webhook  = factory(Webhook::class)->make();
+
+        $this->mock(WebhookService::class,  function($mock) use($webhook){
+            $mock->shouldReceive('sendWebhook')
+                 ->with($webhook->method, $webhook->url, [
+                     'message' => 'Hello from MarketFlows'
+                 ])
+                 ->andReturn((object)[
+                     'ok'          => true,
+                     'status_code' => 200,
+                     'error'       => null
+                 ]);
+        });
+
         $response = $this->json('POST', route('create-webhook',[
             'company' => $company->id
         ]), [
@@ -134,6 +148,17 @@ class WebhookTest extends TestCase
         ]);
 
         $updatedWebhook = factory(Webhook::class)->make();
+        $this->mock(WebhookService::class,  function($mock) use($updatedWebhook){
+            $mock->shouldReceive('sendWebhook')
+                 ->with($updatedWebhook->method, $updatedWebhook->url, [
+                     'message' => 'Hello from MarketFlows'
+                 ])
+                 ->andReturn((object)[
+                     'ok'          => true,
+                     'status_code' => 200,
+                     'error'       => null
+                 ]);
+        });
 
         $response = $this->json('PUT', route('read-webhook', [
             'company' => $company->id,

@@ -1,10 +1,10 @@
-<?php
-namespace App\Traits;
+<?php 
+namespace App\Services;
 
-use Exception;
 use App;
+use Exception;
 
-trait SendsWebhooks
+class WebhookService
 {
     public function sendWebhook($method, $url, $data = [])
     {
