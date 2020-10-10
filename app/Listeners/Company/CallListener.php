@@ -33,11 +33,11 @@ class CallListener implements ShouldQueue
         $call      = $event->call;
         $contact   = $event->contact;
         $company   = $event->company;
-          
+         
+        $call->session = null;
+
         if( $call->keyword_tracking_pool_id )
             $call->session = $call->session;
-        else 
-            $call->session = null;
 
         //
         //  Fire webhooks
@@ -68,7 +68,8 @@ class CallListener implements ShouldQueue
         //  Push ended calls to GA
         //
         if( $company->ga_id && $eventName === Webhook::ACTION_CALL_END ){
-            $this->analytics->setProtocolVersion('1')
+            $analytics = $this->analytics
+                            ->setProtocolVersion('1')
                             ->setTrackingId($company->ga_id)
                             ->setUserId($contact->uuid) 
                             ->setEventCategory('call')
@@ -76,12 +77,21 @@ class CallListener implements ShouldQueue
                             ->setEventLabel($contact->e164PhoneFormat())
                             ->setEventValue(1)
                             ->setAnonymizeIp(1)
-                            ->setGeographicalOverride($contact->country)
-                            ->setCampaignName($call->campaign)
-                            ->setCampaignSource($call->source)
-                            ->setCampaignMedium($call->medium)
-                            ->setCampaignContent($call->content)
-                            ->sendEvent();
+                            ->setGeographicalOverride($contact->country);
+            if( $call->campaign ){
+                $analytics->setCampaignName($call->campaign);
+            }
+            if( $call->source ){
+                $analytics->setCampaignSource($call->source);
+            }
+            if( $call->medium ){
+                $analytics->setCampaignMedium($call->medium);
+            }
+            if( $call->content ){
+                $analytics->setCampaignContent($call->content);
+            }
+            
+            $analytics->sendEvent();
         }
     }
 }
