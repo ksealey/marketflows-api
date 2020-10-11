@@ -20,7 +20,6 @@ class Contact extends Model
         'company_id',
         'first_name',
         'last_name',
-        'email',
         'country_code',
         'number',
         'city',

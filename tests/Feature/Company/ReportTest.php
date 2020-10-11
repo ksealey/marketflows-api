@@ -394,7 +394,7 @@ class ReportTest extends TestCase
             ]),
             "data" => [
                 'type'     => $report->type,
-                'title'    => $report->name,
+                'title'    => 'Source',
                 'labels'   => [],
                 'datasets' => [],
             ]
@@ -448,7 +448,7 @@ class ReportTest extends TestCase
             ]),
             "data" => [
                 'type'     => $report->type,
-                'title'    => $report->name,
+                'title'    => ucfirst($report->module),
                 'labels'   => [],
                 'datasets' => [],
             ]

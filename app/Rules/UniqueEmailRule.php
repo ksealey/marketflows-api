@@ -30,7 +30,7 @@ class UniqueEmailRule implements Rule
     {
         $query = User::where('email', $value);
         if( $this->userId ){
-            $query->where('user_id', '!=', $this->userId);
+            $query->where('id', '!=', $this->userId);
         }
 
         if( $query->count() ){

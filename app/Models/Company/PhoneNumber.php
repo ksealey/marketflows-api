@@ -10,6 +10,7 @@ use \App\Models\Company\PhoneNumberConfig;
 use \App\Contracts\Exportable;
 use \App\Services\PhoneNumberService;
 use Twilio\Rest\Client as TwilioClient;
+use App\Traits\CanSwapNumbers;
 use App;
 use DB;
 use Exception;
@@ -17,7 +18,7 @@ use Carbon\Carbon;
 
 class PhoneNumber extends Model implements Exportable
 {
-    use SoftDeletes; 
+    use SoftDeletes, CanSwapNumbers;
 
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;

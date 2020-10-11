@@ -245,7 +245,7 @@ trait CanSwapNumbers
      */
     public function normalizeDeviceType($deviceType)
     {
-        return $deviceType;
+        return strtoupper($deviceType);
     }
 
     /**
@@ -279,7 +279,7 @@ trait CanSwapNumbers
 
         if( ! $medium ) return false;
 
-        return in_array($medium, ['cpc', 'ppc', 'cpa', 'cpm', 'cpv', 'cpp']);
+        return in_array(strtolower($medium), ['cpc', 'ppc', 'cpa', 'cpm', 'cpv', 'cpp']);
     }
 
     /**

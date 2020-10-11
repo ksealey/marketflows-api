@@ -8,23 +8,6 @@ use \Tests\TestCase;
 class SwapRuleTest extends TestCase
 {
     use \Tests\CreatesAccount;
-
-    /**
-     * Test normalizing device type
-     * 
-     * @group swap-rules
-     */
-    public function testNormalizeDeviceType()
-    {
-        $company     = $this->createCompany();
-        $config      = $this->createConfig($company); 
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-
-        $this->assertTrue( $phoneNumber->normalizeDeviceType('desktop') == 'DESKTOP' );
-        $this->assertTrue( $phoneNumber->normalizeDeviceType('tablet') == 'TABLET' );
-        $this->assertTrue( $phoneNumber->normalizeDeviceType('smartphone') == 'MOBILE' );
-        $this->assertTrue( $phoneNumber->normalizeDeviceType(str_random(10)) == 'OTHER' );
-    }
     
     /**
      * Test normalizing browser type
@@ -66,31 +49,31 @@ class SwapRuleTest extends TestCase
         $this->assertFalse($phoneNumber->isDirect($faker->url));
 
          //  Test Organic
-        $this->assertTrue($phoneNumber->isOrganic('https://search.yahoo.com', $faker->url));
-        $this->assertTrue($phoneNumber->isOrganic('https://yahoo.com', $faker->url));
-        $this->assertTrue($phoneNumber->isOrganic('https://www.yahoo.com', $faker->url));
+        $this->assertTrue($phoneNumber->isOrganic('https://search.yahoo.com', $faker->url, $company->medium_param));
+        $this->assertTrue($phoneNumber->isOrganic('https://yahoo.com', $faker->url, $company->medium_param));
+        $this->assertTrue($phoneNumber->isOrganic('https://www.yahoo.com', $faker->url, $company->medium_param));
 
-        $this->assertTrue($phoneNumber->isOrganic('https://www.google.com', $faker->url));
-        $this->assertTrue($phoneNumber->isOrganic('https://google.com', $faker->url));
+        $this->assertTrue($phoneNumber->isOrganic('https://www.google.com', $faker->url, $company->medium_param));
+        $this->assertTrue($phoneNumber->isOrganic('https://google.com', $faker->url, $company->medium_param));
 
-        $this->assertTrue($phoneNumber->isOrganic('https://bing.com', $faker->url));
-        $this->assertTrue($phoneNumber->isOrganic('https://www.bing.com', $faker->url));
+        $this->assertTrue($phoneNumber->isOrganic('https://bing.com', $faker->url, $company->medium_param));
+        $this->assertTrue($phoneNumber->isOrganic('https://www.bing.com', $faker->url, $company->medium_param));
 
-        $this->assertFalse($phoneNumber->isOrganic($faker->url, $faker->url));
+        $this->assertFalse($phoneNumber->isOrganic($faker->url, $faker->url, $company->medium_param));
 
         //  Test Paid
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpc'));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpm'));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=PpC'));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=CPA&utm_source=' . str_random(3)));
-        $this->assertFalse($phoneNumber->isPaid($faker->url));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpc', $company->medium_param));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpm', $company->medium_param));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=PpC', $company->medium_param));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=CPA&utm_source=' . str_random(3), $company->medium_param));
+        $this->assertFalse($phoneNumber->isPaid($faker->url, $company->medium_param));
    
         //  Test Search
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpc'));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpm'));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=PpC'));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=CPA&utm_source=' . str_random(3)));
-        $this->assertFalse($phoneNumber->isPaid($faker->url));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpc', $company->medium_param));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpm', $company->medium_param));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=PpC', $company->medium_param));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=CPA&utm_source=' . str_random(3), $company->medium_param));
+        $this->assertFalse($phoneNumber->isPaid($faker->url, $company->medium_param));
 
         //  Test Referral
         $this->assertTrue($phoneNumber->isReferral($faker->url, $faker->url));

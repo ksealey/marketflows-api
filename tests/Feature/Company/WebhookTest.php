@@ -40,7 +40,7 @@ class WebhookTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            'result_count' => 9
+            'result_count' => 6
         ]);
 
         $response->assertJSONStructure([

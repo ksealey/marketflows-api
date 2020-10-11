@@ -75,8 +75,9 @@ class AlertTest extends TestCase
      */
     public function testListWithCondition()
     {
-        $alerts = factory(Alert::class, 10)->create([
-            'user_id' => $this->user->id
+        $alerts = factory(Alert::class, 5)->create([
+            'account_id' => $this->account->id,
+            'user_id'    => $this->user->id
         ]);
         $alert = $alerts->first();
 

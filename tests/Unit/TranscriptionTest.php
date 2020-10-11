@@ -46,9 +46,11 @@ class TranscriptionTest extends TestCase
         Storage::put($path, 'blah blah!');
 
         $recording = factory(CallRecording::class)->create([
-            'call_id' => $call->id,
-            'path' => $path,
-            'transcription_path' => ''
+            'account_id'            => $call->account_id,
+            'company_id'            => $call->company_id,
+            'call_id'               => $call->id,
+            'path'                  => $path,
+            'transcription_path'    => ''
         ]);
 
         $jobId = $recording->id . '-' . date('U');

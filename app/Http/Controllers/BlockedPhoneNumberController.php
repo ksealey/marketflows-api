@@ -20,10 +20,12 @@ class BlockedPhoneNumberController extends Controller
     public function list(Request $request)
     {
         $query = BlockedPhoneNumber::select([
-                                        'blocked_phone_numbers.*', 
+                                        'blocked_phone_numbers.*',
+                                        'blocked_phone_number_call_count.call_count', 
                                         DB::raw('(SELECT count(*) FROM blocked_calls WHERE blocked_calls.blocked_phone_number_id = blocked_phone_numbers.id) AS call_count')
                                     ])
-                                    ->where('blocked_phone_numbers.account_id', $request->user()->id);
+                                    ->leftJoin('blocked_phone_number_call_count', 'blocked_phone_number_call_count.blocked_phone_number_id', 'blocked_phone_numbers.id')
+                                    ->where('blocked_phone_numbers.account_id', $request->user()->account_id);
 
         return parent::results(
             $request,

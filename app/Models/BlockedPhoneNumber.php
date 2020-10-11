@@ -40,7 +40,7 @@ class BlockedPhoneNumber extends Model
             'blocked_phone_numbers.number',
             'blocked_phone_numbers.created_at',
             'blocked_phone_numbers.updated_at',
-            'call_count'
+            'blocked_phone_number_call_count.call_count'
         ];
     }
 

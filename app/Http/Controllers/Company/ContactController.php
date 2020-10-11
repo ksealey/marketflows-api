@@ -17,7 +17,6 @@ class ContactController extends Controller
         'contacts.id',
         'contacts.first_name',
         'contacts.last_name',
-        'contacts.email',
         'contacts.country_code',
         'contacts.number',
         'contacts.city',
@@ -66,7 +65,6 @@ class ContactController extends Controller
             'first_name' => 'bail|max:32',
             'last_name'  => 'bail|max:32',
             'number'     => 'bail|required|digits_between:10,13',
-            'email'      => 'bail|email|max:128',
             'city'       => 'bail|max:64',
             'state'      => 'bail|max:64',
             'zip'        => 'bail|max:16',
@@ -87,31 +85,19 @@ class ContactController extends Controller
         if( ! $countryCode )
             $countryCode = $company->country_code;
             
-        $number      = PhoneNumber::number($request->number);
-        $email       = $request->email; 
-
-        $query = Contact::where('company_id', $company->id)
-                        ->where(function($query) use($countryCode, $number, $email){
-                            $query->where(function($query) use($countryCode, $number){
-                                $query->where('number', $number);
-                                if( $countryCode ){
-                                    $query->where('country_code', $countryCode);
-                                }
-                            });
-                            if( $email ){
-                                $query->orWhere('email', $email);
+        $number = PhoneNumber::number($request->number);
+        $query  = Contact::where('company_id', $company->id)
+                        ->where(function($query) use($countryCode, $number){
+                            $query->where('number', $number);
+                            if( $countryCode ){
+                                $query->where('country_code', $countryCode);
                             }
                         });
 
         $contact = $query->first();
         if( $contact ){
-            $matchField = $contact->email === $request->email ? 'email' : '';
-            if( ! $matchField ){
-                $matchField = $contact->phone === $request->phone ? 'phone' : '';
-            }
-
             return response([
-                'error' => 'Duplicate exists matching field ' . $matchField
+                'error' => 'Duplicate contact exists with phone number'
             ], 400);
         }
             
@@ -121,7 +107,6 @@ class ContactController extends Controller
             'company_id' => $company->id,
             'first_name' => $request->first_name,
             'last_name'  => $request->last_name,
-            'email'      => $request->email,
             'country_code' => $countryCode,
             'number'       => $number,
             'city'       => $request->city,
@@ -155,7 +140,6 @@ class ContactController extends Controller
         $rules = [
             'first_name' => 'bail|max:32',
             'last_name'  => 'bail|max:32',
-            'email'      => 'bail|nullable|email|max:128'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -169,27 +153,10 @@ class ContactController extends Controller
         //  Make sure no contact exists with this phone
         //
         
-
-        if( $request->email ){
-            $query = Contact::where('company_id', $company->id)
-                            ->where('id', '!=', $contact->id)
-                            ->where('email', $request->email);
-
-            if( $query->first() ){
-                return response([
-                    'error' => 'Duplicate exists matching field email'
-                ], 400);
-            }
-        }
-
-       
-
         if( $request->has('first_name') )
             $contact->first_name = $request->first_name;
         if( $request->has('last_name') )
             $contact->last_name = $request->last_name;
-        if( $request->has('email') )
-            $contact->email = $request->email;
 
         $contact->updated_by = $request->user()->id;
         $contact->save();
