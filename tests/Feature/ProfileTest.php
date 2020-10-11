@@ -75,6 +75,7 @@ class MeTest extends TestCase
     {
         $alertCount = mt_rand(1, 20);
         factory(Alert::class, $alertCount)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
         $response = $this->json('GET', route('list-alerts'), [
@@ -109,6 +110,7 @@ class MeTest extends TestCase
     public function testCanDeleteAlert()
     {
         $alerts = factory(Alert::class, 3)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
 
@@ -135,6 +137,7 @@ class MeTest extends TestCase
     public function testOtherUserCannotSeeMyAlerts()
     {
         $alerts = factory(Alert::class, 3)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
 
@@ -163,10 +166,12 @@ class MeTest extends TestCase
     public function testICannotSeeHiddenAlerts()
     {
         $alerts = factory(Alert::class, 3)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
 
         $alerts = factory(Alert::class, 10)->create([
+            'account_id' => $this->account->id,
             'user_id'      => $this->user->id,
             'hidden_after' => now()->subMinutes(5)
         ]);

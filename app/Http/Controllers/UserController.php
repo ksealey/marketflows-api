@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Company;
 use App\Mail\AddUser as AddUserEmail;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use App\Rules\CompanyListRule;
+use App\Rules\UniqueEmailRule;
 use Validator;
 use DB;
 use Mail;
@@ -46,7 +46,7 @@ class UserController extends Controller
         $rules  = [
             'first_name' => 'bail|required|min:2|max:32',
             'last_name'  => 'bail|required|min:2|max:32',
-            'email'      => 'bail|required|email|max:128|unique:users,email',
+            'email'      => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule(null)],
             'role'       => 'bail|required|in:' . implode(',', User::roles()),
             'timezone'   => 'bail|required|timezone',
         ];
@@ -100,14 +100,7 @@ class UserController extends Controller
             'first_name' => 'bail|min:1',
             'last_name'  => 'bail|min:1',
             'login_disabled' => 'bail|boolean',
-            'email'      => [
-                'bail',
-                'email',
-                'max:128',
-                Rule::unique('users')->where(function ($query) use($user){
-                    $query->where('id', '!=', $user->id);
-                })
-            ],
+            'email'      => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule($user->id)],
         ];
 
         $validator = validator($request->input(), $rules);
@@ -151,7 +144,6 @@ class UserController extends Controller
         
         $user->deleted_at = now();
         $user->deleted_by = $me->id;
-        $user->email      = '__DELETED__' . $user->email . '__DELETED__';
         $user->save();
 
         return response([

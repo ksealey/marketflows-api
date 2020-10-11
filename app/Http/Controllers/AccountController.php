@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\Company\Call;
 use App\Models\User;
 use App\Rules\ParamNameRule;
+use App\Jobs\DeleteAccountJob;
 use DateTime;
 use Validator;
 use Exception;
@@ -112,23 +113,7 @@ class AccountController extends Controller
             ], 400);
         }
 
-        //  Remove companies and resources
-        $companies = Company::where('account_id', $account->id)->get();
-        foreach($companies as $company){
-            $user->deleteCompany($company);
-        }
-
-        //  Remove all users
-        User::where('account_id', $account->id)
-            ->whereNull('deleted_at')
-            ->update([
-                'deleted_at' => now(),
-                'deleted_by' => $user->id,
-                'email'      => DB::raw("CONCAT('__DELETED__', email, '__DELETED__')")
-            ]);
-
-        //  Remove account and billing
-        $account->billing->delete();
+        DeleteAccountJob::dispatch($user, $account);
 
         $account->deleted_at = now();
         $account->deleted_by = $user->id;

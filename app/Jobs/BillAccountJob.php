@@ -170,6 +170,7 @@ class BillAccountJob implements ShouldQueue
                 ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
         }else{
             Alert::create([
+                'account_id'    => $user->account_id,
                 'user_id'       => $user->id,  
                 'category'      => Alert::CATEGORY_PAYMENT,
                 'type'          => Alert::TYPE_DANGER,

@@ -689,21 +689,23 @@ Route::prefix('v1')->group(function(){
         |--------------------------------
         */
         Route::prefix('incoming-calls')->group(function(){
-            Route::post('/', 'IncomingCallController@handleCall')
+            Route::post('/', 'IncomingCallController@handleIncomingCall')
                     ->name('incoming-call');
-
-            Route::post('/status-changed', 'IncomingCallController@handleCallStatusChanged')
-                    ->name('incoming-call-status-changed');
-
-            Route::post('/recording-available', 'IncomingCallController@handleRecordingAvailable')
-                    ->name('incoming-call-recording-available');
-
-            Route::get('/whisper', 'IncomingCallController@handleCallWhisper')
-                    ->name('incoming-call-whisper');
 
             Route::post('/collect', 'IncomingCallController@handleCollect')
                     ->name('incoming-call-collect');
 
+            Route::get('/whisper', 'IncomingCallController@handleCallWhisper')
+                    ->name('incoming-call-whisper');
+
+            Route::post('/completed', 'IncomingCallController@handleCompletedCall')
+                    ->name('incoming-call-completed');
+
+            Route::post('/duration', 'IncomingCallController@handleCompletedCallDuration')
+                    ->name('incoming-call-duration');
+
+            Route::post('/recording-available', 'IncomingCallController@handleRecordingAvailable')
+                    ->name('incoming-call-recording-available');
         });
 
         /*

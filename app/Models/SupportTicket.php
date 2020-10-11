@@ -17,6 +17,7 @@ class SupportTicket extends Model
     const STATUS_CLOSED             = 'CLOSED';
 
     protected $fillable = [
+        'account_id',
         'urgency',
         'subject',
         'description',

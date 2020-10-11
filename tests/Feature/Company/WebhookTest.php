@@ -26,13 +26,6 @@ class WebhookTest extends TestCase
             'created_by' => $this->user->id,
             'action'     => Webhook::ACTION_CALL_START
         ]);
-        
-        factory(Webhook::class, 3)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id,
-            'action'     => Webhook::ACTION_CALL_UPDATED
-        ]);
 
         factory(Webhook::class, 3)->create([
             'account_id' => $company->account_id,

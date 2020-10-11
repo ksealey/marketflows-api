@@ -343,6 +343,7 @@ class BillingTest extends TestCase
 
         //  Add alert
         $alert = factory(Alert::class)->create([
+            'account_id' => $this->account->id,
             'user_id'  => $this->user->id,
             'category' => Alert::CATEGORY_PAYMENT
         ]);

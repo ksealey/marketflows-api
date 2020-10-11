@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class SupportTicketAttachment extends Model
 {
     protected $fillable = [
+        'account_id',
         'support_ticket_id',
         'support_ticket_comment_id',
         'file_name',

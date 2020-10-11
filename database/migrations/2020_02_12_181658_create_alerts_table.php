@@ -15,6 +15,7 @@ class CreateAlertsTable extends Migration
     {
         Schema::create('alerts', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('user_id')->unsigned();
             $table->string('category', 32);
             $table->string('type', 32);
@@ -23,6 +24,7 @@ class CreateAlertsTable extends Migration
             $table->dateTime('hidden_after')->nullable();
             $table->timestamps();
             $table->softDeletes();
+            $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('user_id')->references('id')->on('users');
         });
     }

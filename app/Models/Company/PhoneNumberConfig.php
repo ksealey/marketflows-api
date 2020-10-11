@@ -133,20 +133,14 @@ class PhoneNumberConfig extends Model
         return $number;
     }
 
-    public function greetingMessage(Call $call)
+    public function greetingMessage()
     {
-        if( ! $this->greeting_message )
-            return '';
-
-        return $this->variableMessage($this->greeting_message, $call);
+        return $this->greeting_message ?: '';
     }
 
-    public function keypressMessage(Call $call)
+    public function keypressMessage()
     {
-        if( ! $this->keypress_message )
-            return '';
-
-        return $this->variableMessage($this->keypress_message, $call);
+        return $this->keypress_message ?: '';
     }
 
     public function whisperMessage(Call $call)

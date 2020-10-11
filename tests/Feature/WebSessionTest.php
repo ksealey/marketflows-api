@@ -598,9 +598,6 @@ class WebSessionTest extends TestCase
                 'campaign'                      => $phoneNumber->campaign,
                 'medium'                        => $phoneNumber->medium,
             ]);
-            Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_UPDATED;
-            });
 
             //  End the call
             $incomingCall->CallStatus   = 'Completed';
@@ -891,9 +888,6 @@ class WebSessionTest extends TestCase
                     'is_direct'                     => $session->getIsDirect(),
                     'is_referral'                   => $session->getIsReferral(),
                 ]);
-                Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                    return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_UPDATED;
-                });
 
                 //  End the call
                 $incomingCall->CallStatus   = 'Completed';
@@ -1163,9 +1157,6 @@ class WebSessionTest extends TestCase
                     'is_direct'                     => $session->getIsDirect(),
                     'is_referral'                   => $session->getIsReferral(),
                 ]);
-                Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                    return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_UPDATED;
-                });
 
                 //  End the call
                 $incomingCall->CallStatus   = 'Completed';

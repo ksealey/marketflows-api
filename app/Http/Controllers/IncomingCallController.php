@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\Account;
+use App\Models\Company;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\PhoneNumber;
@@ -31,23 +32,26 @@ class IncomingCallController extends Controller
     /**
      * Entry point for all new incoming calls
      * 
+     * @param Request $request
+     * 
+     * @return Response
      */
-    public function handleCall(Request $request)
+    public function handleIncomingCall(Request $request)
     {
         $rules = [
-            'CallSid'       => 'required|max:64',
-            'CallStatus'    => 'required|max:64',
-            'Direction'     => 'required|max:64',
-            'To'            => 'required|max:16',
-            'ToCity'        => 'max:128',
-            'ToState'       => 'max:128',
-            'ToZip'         => 'max:16',
-            'ToCountry'     => 'max:128',
-            'From'          => 'required|max:16',
-            'FromCity'      => 'max:128',
-            'FromState'     => 'max:128',
-            'FromZip'       => 'max:16',
-            'FromCountry'   => 'max:255'
+            'CallSid'       => 'bail|required|max:64',
+            'CallStatus'    => 'bail|required|max:64',
+            'Direction'     => 'bail|required|max:64',
+            'To'            => 'bail|required|max:16',
+            'ToCity'        => 'bail|max:128',
+            'ToState'       => 'bail|max:128',
+            'ToZip'         => 'bail|max:16',
+            'ToCountry'     => 'bail|max:128',
+            'From'          => 'bail|required|max:16',
+            'FromCity'      => 'bail|max:128',
+            'FromState'     => 'bail|max:128',
+            'FromZip'       => 'bail|max:16',
+            'FromCountry'   => 'bail|max:255'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -59,19 +63,16 @@ class IncomingCallController extends Controller
         $response = new VoiceResponse();
 
         //  Find out how to handle this call
+        $callerCountryCode = PhoneNumber::countryCode($request->From);
+        $callerNumber      = PhoneNumber::number($request->From);
+
         $dialedCountryCode = PhoneNumber::countryCode($request->To);
         $dialedNumber      = PhoneNumber::number($request->To);
         
-
-        $query = PhoneNumber::where('number', $dialedNumber); 
-        if( $dialedCountryCode )
-            $query->where('country_code', $dialedCountryCode);
+        $query = PhoneNumber::where('number', $dialedNumber)
+                            ->where('country_code', $dialedCountryCode);
         
-        //  If we don't recognize this call, end it
-        $keywordTrackingPool = null;
-        $session             = null;
-        $phoneNumber         = $query->first();
-
+        $phoneNumber = $query->first();
         if( ! $phoneNumber ){
             $response->reject();
 
@@ -81,11 +82,9 @@ class IncomingCallController extends Controller
         //
         //  Log and Reject call if blocked
         //
-        $callerCountryCode = PhoneNumber::countryCode($request->From) ?: $company->country_code;
-        $callerNumber      = PhoneNumber::number($request->From);
-        $query             = BlockedPhoneNumber::where('account_id', $phoneNumber->account_id)
-                                               ->where('number', $callerNumber)
-                                               ->where('country_code', $callerCountryCode);
+        $query = BlockedPhoneNumber::where('account_id', $phoneNumber->account_id)
+                                   ->where('number', $callerNumber)
+                                   ->where('country_code', $callerCountryCode);
         
         $blockedPhoneNumber = $query->first();
         if( $blockedPhoneNumber ){
@@ -113,6 +112,22 @@ class IncomingCallController extends Controller
             }
 
             $company  = $keywordTrackingPool->company;
+            $config   = $keywordTrackingPool->phone_number_config;
+
+            //
+            //  If this is a keyword tracking pool number, there are no unclaimed active sessions for this number and this contact does not exist, end now
+            //
+            $contact = Contact::where('company_id', $company->id)
+                                ->where('country_code', $callerCountryCode)
+                                ->where('number', $callerNumber)
+                                ->first();
+
+            $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id);
+            if( ! count($sessions) && ! $contact ){ 
+                $response->reject();
+
+                return Response::xmlResponse($response);
+            }
         }else{
             //  
             //  Reject call if number is disabled
@@ -124,7 +139,304 @@ class IncomingCallController extends Controller
             }
 
             $company = $phoneNumber->company;
+            $config  = $phoneNumber->phone_number_config;
         }
+
+        //  Handle greeting
+        if( $config->greeting_enabled ){
+            if( $config->greeting_message_type === 'TEXT' ){
+                $response->say($config->greetingMessage(), [
+                    'language' => $company->tts_language,
+                    'voice'    => 'Polly.' . $company->tts_voice
+                ]);
+            }elseif( $config->greeting_message_type === 'AUDIO' ){
+                $audioClip = AudioClip::find($config->greeting_audio_clip_id);
+                $response->play($audioClip->url);
+            }
+        }
+
+        //  Handle keypad entry, sending response now
+        if( $config->keypress_enabled ){
+            $response->gather([
+                'numDigits'             => 1,
+                'timeout'               => $config->keypress_timeout,
+                'actionOnEmptyResult'   => true,
+                'method'                => 'POST',
+                'action'    => route('incoming-call-collect', [
+                    'company_id'             => $company->id,
+                    'phone_number_id'        => $phoneNumber->id,
+                    'phone_number_config_id' => $config->id,
+                    'failed_attempts'        => 0,
+                ])
+            ]);
+
+            return Response::xmlResponse($response);
+        }
+
+        $call        = $this->createCall($company, $phoneNumber, $config, $request);
+        $dialCommand = $response->dial(null, $this->getDialConfig($config));
+        $dialCommand->number(
+            $config->forwardToPhoneNumber(), 
+            $this->getNumberConfig($config, $call)
+        );
+
+        event(new CallEvent(Webhook::ACTION_CALL_START, $call));
+
+        return Response::xmlResponse($response);
+    }
+
+    /**
+     * Handle collecting digits
+     * 
+     * @param Request $request
+     * 
+     * @return Response
+     */
+    public function handleCollect(Request $request)
+    {
+        $validator = validator($request->input(), [
+            'CallSid'                => 'bail|required|max:64',
+            'CallStatus'             => 'bail|required|max:64',
+            'Direction'              => 'bail|required|max:64',
+            'To'                     => 'bail|required|max:16',
+            'ToCity'                 => 'bail|max:128',
+            'ToState'                => 'bail|max:128',
+            'ToZip'                  => 'bail|max:16',
+            'ToCountry'              => 'bail|max:128',
+            'From'                   => 'bail|required|max:16',
+            'FromCity'               => 'bail|max:128',
+            'FromState'              => 'bail|max:128',
+            'FromZip'                => 'bail|max:16',
+            'FromCountry'            => 'bail|max:255',
+            'company_id'             => 'bail|required|numeric',
+            'phone_number_id'        => 'bail|required|numeric',
+            'phone_number_config_id' => 'bail|required|numeric',
+            'failed_attempts'        => 'bail|required|numeric',
+            'Digits'                 => 'bail|nullable|numeric',
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $response         = new VoiceResponse();
+        $failedAttempts   = intval($request->failed_attempts);
+
+        $company          = Company::find($request->company_id);
+        $phoneNumber      = PhoneNumber::find($request->phone_number_id);
+        $config           = PhoneNumberConfig::find($request->phone_number_config_id); 
+
+        //  If user did not enter the correct key
+        if( ! $request->filled('Digits') || $request->Digits != $config->keypress_key ){
+            ++$failedAttempts;
+            if( $failedAttempts >= intval($config->keypress_attempts)){
+                $response->reject();
+                return Response::xmlResponse($response);  // End call           
+            }
+
+            //  Let the user try again
+            $gather = $response->gather([
+                'numDigits'             => 1,
+                'timeout'               => $config->keypress_timeout,
+                'actionOnEmptyResult'   => true,
+                'method'                => 'POST',
+                'action'    => route('incoming-call-collect', [
+                    'company_id'             => $request->company_id,
+                    'phone_number_id'        => $request->phone_number_id,
+                    'phone_number_config_id' => $request->phone_number_config_id,
+                    'failed_attempts'        => $failedAttempts,
+                ])
+            ]);
+
+            if( $config->keypress_message_type === 'AUDIO' ){
+                $audioClip = AudioClip::find($config->keypress_audio_clip_id);
+                $gather->play($audioClip->url);
+            }elseif( $config->keypress_message_type === 'TEXT' ){
+                $gather->say($config->keypressMessage(), [
+                    'language' => $company->tts_language,
+                    'voice'    => 'Polly.' . $company->tts_voice
+                ]);
+            }
+
+            return Response::xmlResponse($response);
+        }
+
+        //  Valid input, forward call
+        $call        = $this->createCall($company, $phoneNumber, $config, $request);
+        $dialCommand = $response->dial(null, $this->getDialConfig($config));
+        $dialCommand->number(
+            $config->forwardToPhoneNumber(), 
+            $this->getNumberConfig($config, $call)
+        );
+
+        event(new CallEvent(Webhook::ACTION_CALL_START, $call));
+
+        return Response::xmlResponse($response);
+    }
+
+    /**
+     * Handle generating a whisper message
+     * 
+     * @param Request $request
+     * 
+     * @return Response
+     */
+    public function handleCallWhisper(Request $request)
+    {
+        $config   = [];
+        if( $request->whisper_language )
+            $config['language'] = $request->whisper_language;
+
+        if( $request->whisper_voice )
+            $config['voice'] = 'Polly.' . $request->whisper_voice;
+
+        $response = new VoiceResponse();
+        $response->say($request->whisper_message, $config);
+
+        return Response::xmlResponse($response);
+    }
+
+    /**
+     * Handle a completed call
+     *
+     * @param Request $request
+     * 
+     * @return Response
+     */
+    public function handleCompletedCall(Request $request)
+    {
+        $rules = [
+            'CallSid'       => 'required|max:64',
+            'DialCallStatus'=> 'required|max:64'
+        ];
+
+        $validator = validator($request->input(), $rules);
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $call           = Call::where('external_id', $request->CallSid)->first();
+        $call->status   = $this->callStatus($request->DialCallStatus);
+        $call->save();
+
+        return Response::xmlResponse(new VoiceResponse());
+    }
+
+    /**
+     * Handle getting a complete call duration
+     * 
+     * @param Request $request
+     * 
+     * @return Response
+     */
+    public function handleCompletedCallDuration(Request $request)
+    {
+        $rules = [
+            'CallSid'       => 'required|max:64',
+            'CallDuration'  => 'required|max:64'
+        ];
+
+        $call           = Call::where('external_id', $request->CallSid)->first();
+        $call->duration = intval($request->CallDuration);
+        $call->save();
+
+        event(new CallEvent(Webhook::ACTION_CALL_END, $call));
+
+        return Response::xmlResponse(new VoiceResponse());
+    }
+
+    /**
+     * Handle downloading a call recording
+     * 
+     * @param Request $request
+     * 
+     * @return Response
+     */
+    public function handleRecordingAvailable(Request $request)
+    {
+        $rules = [
+            'CallSid'           => 'required|max:64',
+            'RecordingSid'      => 'required|max:64',
+            'RecordingUrl'      => 'required',
+            'RecordingDuration' => 'required|numeric'
+        ];
+
+        $validator = Validator::make($request->input(), $rules);
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+
+        $call = Call::where('external_id', $request->CallSid)->first();
+        if( ! $call ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
+        //  Push job to store recording and transcribe ir neccessary
+        ProcessCallRecordingJob::dispatch(
+            $call,
+            $request->RecordingUrl, 
+            $request->RecordingSid,
+            $request->RecordingDuration
+        );
+    }
+
+    protected function getDialConfig($phoneNumberConfig)
+    {
+        $dialConfig = [
+            'answerOnBridge' => 'true',
+            'action'         => route('incoming-call-completed')
+        ];
+
+        //  Handle recording
+        if( $phoneNumberConfig->recording_enabled ){
+            $dialConfig['record']                       = 'record-from-ringing-dual';
+            $dialConfig['recordingStatusCallback']      = route('incoming-call-recording-available');
+            $dialConfig['recordingStatusCallbackEvent'] = 'completed';
+        }else{
+            $dialConfig['record'] = 'do-not-record';
+        }
+
+        return $dialConfig;
+    }
+
+    protected function getNumberConfig($phoneNumberConfig, $call)
+    {
+        $numberConfig = [];
+        if( $phoneNumberConfig->whisper_enabled ){
+            $company = $call->company;
+            $numberConfig = [
+                'url' => route('incoming-call-whisper', [
+                    'whisper_message'  => $phoneNumberConfig->whisperMessage($call),
+                    'whisper_language' => $company->tts_language,
+                    'whisper_voice'    => $company->tts_voice
+                ]),
+                'method' => 'GET'
+            ];
+        }
+        return $numberConfig;
+    }
+
+    protected function fieldFormat($data)
+    {
+        if( ! $data ) return null;
+
+        return substr(ucwords(strtolower($data)), 0, 64);
+    }
+
+    protected function createCall($company, $phoneNumber, $config, Request $request)
+    {
+        $callerCountryCode = PhoneNumber::countryCode($request->From);
+        $callerNumber      = PhoneNumber::number($request->From);
+
+        $keywordTrackingPool = $phoneNumber->keyword_tracking_pool_id ? $phoneNumber->keyword_tracking_pool : null;
+        $session             = null;
 
         //
         //  Look for contact and create if not exists
@@ -142,21 +454,13 @@ class IncomingCallController extends Controller
             $gUUID = Str::uuid();
             if( $keywordTrackingPool ){
                 //
-                //  Get uassigned sessions for this phone number
+                //  Get unassigned sessions for this phone number
                 //
-                $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id, true);
+                $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id);
                 $session  = count($sessions) ? $sessions->first() : null;
-                
-                //
-                //  If there are no active sessions for this phone number, end here
-                //
-                if( ! $session ){
-                    $response->reject();
-
-                    return Response::xmlResponse($response);
+                if( $session ){
+                    $gUUID = $session->guuid;   
                 }
-
-                $gUUID = $session->guuid;
             }
 
             //
@@ -195,14 +499,19 @@ class IncomingCallController extends Controller
             $firstCall = ! Call::where('contact_id', $contact->id)->count();
 
             if( $keywordTrackingPool ){
-                $session = $contact->activeSession($phoneNumber->id);
-                
+                //  First look for claimed session
+                $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id, $contact->id, false);
+                $session  = count($sessions) ? $sessions->first() : null;
+                //var_dump($session); exit;
+                //  Look for unclaimed session
                 if( ! $session ){
-                    $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id, true);
+                    $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id);
                     $session  = count($sessions) ? $sessions->first() : null;
                     if( $session ){ // Claim session
+                        $contact->uuid       = $session->guuid;  //  Update contact to have new guuid
                         $session->contact_id = $contact->id; 
-                        $session->guuid      = $contact->uuid;
+
+                        $contact->save();
                         $session->save();
                     }
                 }
@@ -274,8 +583,8 @@ class IncomingCallController extends Controller
             'keyword_tracking_pool_session_id'  => $session ? $session->id : null,
             'first_call'                        => $firstCall,
             'external_id'                       => $request->CallSid,
-            'direction'                         => substr(ucfirst(strtolower($request->Direction)), 0, 16),
-            'status'                            => substr(ucfirst(strtolower($request->CallStatus)), 0, 64),
+            'direction'                         => 'Inbound',
+            'status'                            => $this->callStatus($request->CallStatus),
             'source'                            => $source,
             'medium'                            => $medium,
             'content'                           => $content,
@@ -293,264 +602,14 @@ class IncomingCallController extends Controller
             'updated_at'                        => now()->format('Y-m-d H:i:s.u')
         ]);
 
-        event(new CallEvent(Webhook::ACTION_CALL_START, $call, $contact, $company));
+        $call->company = $company;
+        $call->contact = $contact;
 
-        //
-        //  Handle recording, greeting, keypad entry, forwarding, and whisper message
-        //
-    
-        //  Handle greeting
-        if( $config->greeting_enabled ){
-            if( $config->greeting_message_type === 'TEXT' ){
-                $response->say($config->greetingMessage($call), [
-                    'language' => $company->tts_language,
-                    'voice'    => 'Polly.' . $company->tts_voice
-                ]);
-            }elseif( $config->greeting_message_type === 'AUDIO' ){
-                $audioClip = AudioClip::find($config->greeting_audio_clip_id);
-                $response->play($audioClip->url);
-            }
-        }
-
-        //  Handle keypad entry, sending response now
-        if( $config->keypress_enabled ){
-            $response->gather([
-                'numDigits'             => 1,
-                'timeout'               => $config->keypress_timeout,
-                'actionOnEmptyResult'   => true,
-                'method'                => 'POST',
-                'action'    => route('incoming-call-collect', [
-                    'call_id'                => $call->id,
-                    'phone_number_config_id' => $config->id,
-                    'keypress_attempts'      => $config->keypress_attempts,
-                    'keypress_key'           => $config->keypress_key,
-                    'failed_attempts'        => 0,
-                ])
-            ]);
-
-            return Response::xmlResponse($response);
-        }
-
-        $dialCommand = $response->dial(null, $this->getDialConfig($config));
-        $dialCommand->number(
-            $config->forwardToPhoneNumber(), 
-            $this->getNumberConfig($config, $call)
-        );
-
-        return Response::xmlResponse($response);
+        return $call;
     }
 
-    /**
-     * Handle a call changing it's status
-     * 
-     * @param Request $request
-     * 
-     * @return Response
-     */
-    public function handleCallStatusChanged(Request $request)
+    public function callStatus($status)
     {
-        $rules = [
-            'CallSid'       => 'required|max:64',
-            'CallStatus'    => 'required|max:64',
-            'CallDuration'  => 'numeric'
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() )
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-
-        $call = Call::where('external_id', $request->CallSid)
-                    ->first();
-
-        if( ! $call )
-            return response('No Content', 204);
-
-        //  Update call  
-        $call->status   = substr(ucfirst(strtolower($request->CallStatus)), 0, 64);
-        $call->duration = intval($request->CallDuration) ?: null;
-        $call->save();
-
-        $isComplete = trim(strtolower($request->CallStatus)) == 'completed' ? true : false;
-
-        event(new CallEvent($isComplete ? Webhook::ACTION_CALL_END : Webhook::ACTION_CALL_UPDATED, $call, $call->contact, $call->company));
-    }
-
-
-    /**
-     * Handle collecting digits
-     * 
-     */
-    public function handleCollect(Request $request)
-    {
-        $validator = validator($request->input(), [
-            'call_id'                => 'bail|required|numeric',
-            'phone_number_config_id' => 'bail|required|numeric',
-            'keypress_attempts'      => 'bail|required|numeric',
-            'keypress_key'           => 'bail|required|numeric',
-            'failed_attempts'        => 'bail|required|numeric',
-            'Digits'                 => 'bail|nullable|numeric'
-        ]);
-
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $response         = new VoiceResponse();
-        $keypressAttempts = intval($request->keypress_attempts);
-        $keypressKey      = intval($request->keypress_key);
-        $failedAttempts   = intval($request->failed_attempts);
-        $config           = PhoneNumberConfig::find($request->phone_number_config_id); 
-        $call             = Call::find($request->call_id);
-        $company          = $call->company;
-
-        //  If user did not enter the correct key
-        if( ! $request->filled('Digits') || intval($request->Digits) != $keypressKey ){
-            ++$failedAttempts;
-            if( $failedAttempts >= $keypressAttempts ){
-                $response->reject();
-                return Response::xmlResponse($response);  // End call           
-            }
-
-            //  Let the user try again
-            $gather = $response->gather([
-                'numDigits'             => 1,
-                'timeout'               => $config->keypress_timeout,
-                'actionOnEmptyResult'   => true,
-                'method'                => 'POST',
-                'action'    => route('incoming-call-collect', [
-                    'call_id'                => $request->call_id,
-                    'phone_number_config_id' => $request->phone_number_config_id,
-                    'keypress_attempts'      => $request->keypress_attempts,
-                    'keypress_key'           => $request->keypress_key,
-                    'failed_attempts'        => $failedAttempts,
-                ])
-            ]);
-
-            if( $config->keypress_message_type === 'AUDIO' ){
-                $audioClip = AudioClip::find($config->keypress_audio_clip_id);
-                $gather->play($audioClip->url);
-            }elseif( $config->keypress_message_type === 'TEXT' ){
-                $gather->say($config->keypressMessage($call), [
-                    'language' => $company->tts_language,
-                    'voice'    => 'Polly.' . $company->tts_voice
-                ]);
-            }
-
-            return Response::xmlResponse($response);
-        }
-
-        //  Valid input, forward call
-        $dialCommand = $response->dial(null, $this->getDialConfig($config));
-        $dialCommand->number(
-            $config->forwardToPhoneNumber(), 
-            $this->getNumberConfig($config, $call)
-        );
-
-        return Response::xmlResponse($response);
-    }
-
-    /**
-     * Handle generating a whisper message
-     * 
-     * @param Request $request
-     * 
-     * @return Response
-     */
-    public function handleCallWhisper(Request $request)
-    {
-        $config   = [];
-        if( $request->whisper_language )
-            $config['language'] = $request->whisper_language;
-
-        if( $request->whisper_voice )
-            $config['voice'] = 'Polly.' . $request->whisper_voice;
-
-        $response = new VoiceResponse();
-        $response->say($request->whisper_message, $config);
-
-        return Response::xmlResponse($response);
-    }
-
-    /**
-     * Handle downloading a call recording
-     * 
-     */
-    public function handleRecordingAvailable(Request $request)
-    {
-        $rules = [
-            'CallSid'           => 'required|max:64',
-            'RecordingSid'      => 'required|max:64',
-            'RecordingUrl'      => 'required',
-            'RecordingDuration' => 'required|numeric'
-        ];
-
-        $validator = Validator::make($request->input(), $rules);
-        if( $validator->fails() )
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-
-        $call = Call::where('external_id', $request->CallSid)->first();
-        if( ! $call ){
-            return response([
-                'error' => 'Not found'
-            ], 404);
-        }
-
-        //  Push job to store recording and transcribe ir neccessary
-        ProcessCallRecordingJob::dispatch(
-            $call,
-            $request->RecordingUrl, 
-            $request->RecordingSid,
-            $request->RecordingDuration
-        );
-    }
-
-
-    protected function getDialConfig($phoneNumberConfig)
-    {
-        $dialConfig = [
-            'answerOnBridge' => 'true',
-            
-        ];
-
-        //  Handle recording
-        if( $phoneNumberConfig->recording_enabled ){
-            $dialConfig['record']                       = 'record-from-ringing-dual';
-            $dialConfig['recordingStatusCallback']      = route('incoming-call-recording-available');
-            $dialConfig['recordingStatusCallbackEvent'] = 'completed';
-        }else{
-            $dialConfig['record'] = 'do-not-record';
-        }
-
-        return $dialConfig;
-    }
-
-    protected function getNumberConfig($phoneNumberConfig, $call)
-    {
-        $numberConfig = [];
-        if( $phoneNumberConfig->whisper_enabled ){
-            $company = $call->company;
-            $numberConfig = [
-                'url' => route('incoming-call-whisper', [
-                    'whisper_message'  => $phoneNumberConfig->whisperMessage($call),
-                    'whisper_language' => $company->tts_language,
-                    'whisper_voice'    => $company->tts_voice
-                ]),
-                'method' => 'GET'
-            ];
-        }
-        return $numberConfig;
-    }
-
-    protected function fieldFormat($data)
-    {
-        if( ! $data ) return null;
-
-        return substr(ucwords(strtolower($data)), 0, 64);
+        return substr(ucwords(strtolower(str_replace('-', ' ', $status))), 0, 64);
     }
 }

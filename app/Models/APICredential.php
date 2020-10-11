@@ -9,6 +9,7 @@ class APICredential extends Model
     protected $table = 'api_credentials';
 
     protected $fillable = [
+        'account_id',
         'user_id',
         'name',
         'key',

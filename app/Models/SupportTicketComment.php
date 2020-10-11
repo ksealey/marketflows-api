@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class SupportTicketComment extends Model
 {
     protected $fillable = [
+        'account_id',
         'support_ticket_id',
         'comment',
         'created_by_user_id',

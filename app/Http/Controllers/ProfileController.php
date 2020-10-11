@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use App\Rules\UniqueEmailRule;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use \App\Models\User;
 use \Carbon\Carbon;
@@ -23,13 +23,7 @@ class ProfileController extends Controller
             'timezone'   => 'timezone',
             'first_name' => 'min:1',
             'last_name'  => 'min:1',
-            'email'      => [
-                'email',
-                'max:128',
-                Rule::unique('users')->where(function ($query) use($me){
-                    $query->where('account_id', '!=', $me->account_id);
-                })
-            ],
+            'email'      => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule($me->id)],
             'phone' => 'nullable|digits_between:10,13'
         ];
 

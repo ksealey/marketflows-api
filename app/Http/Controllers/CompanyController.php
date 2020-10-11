@@ -106,7 +106,7 @@ class CompanyController extends Controller
             'content_param'                 => $request->content_param ?: $account->content_param,
             'campaign_param'                => $request->campaign_param ?: $account->campaign_param,
             'keyword_param'                 => $request->keyword_param ?: $account->keyword_param,
-            'source_referrer_when_empty'    => $request->filled('source_referrer_when_empty') ? intval($request->source_referrer_when_empty) : $account->source_referrer_when_empty,
+            'source_referrer_when_empty'    => $request->filled('source_referrer_when_empty') ? $request->source_referrer_when_empty : $account->source_referrer_when_empty,
             'created_by'                    => $user->id,
             'updated_by'                    => null     
         ]);
@@ -208,7 +208,7 @@ class CompanyController extends Controller
     {
         $user = $request->user();
 
-        DeleteCompanyJob::dispatch($user, $company);
+        DeleteCompanyJob::dispatch($user, $company, true);
         
         $company->deleted_by = $user->id;
         $company->deleted_at = now();

@@ -456,11 +456,7 @@ class CompanyTest extends TestCase
             'company_id' => $company->id,
             'report_id'  => $report->id
         ]);
-        
-
-        //  Wipe all files for company
-        //Storage::delete('/accounts/' . $company->account_id . '/companies/' . $company->id);
-
+    
         //    
         //  Perform delete
         //

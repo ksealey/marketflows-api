@@ -29,15 +29,18 @@ class DeleteCompanyJob implements ShouldQueue
 
     public $user;
     public $company;
+    public $deleteFiles;
+
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct(User $user, Company $company)
+    public function __construct(User $user, Company $company, $deleteFiles = true)
     {
-        $this->user    = $user;
-        $this->company = $company;
+        $this->user         = $user;
+        $this->company      = $company;
+        $this->deleteFiles  = $deleteFiles;
     }
 
     /**
@@ -113,7 +116,9 @@ class DeleteCompanyJob implements ShouldQueue
                         $phoneNumber->save();
                     });
 
-        //  Wipe all files for company
-        Storage::deleteDirectory('/accounts/' . $company->account_id . '/companies/' . $company->id);
+        if( $this->deleteFiles ){
+            //  Wipe all files for company
+            Storage::deleteDirectory('/accounts/' . $company->account_id . '/companies/' . $company->id);
+        }
     }
 }

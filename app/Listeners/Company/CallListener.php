@@ -34,8 +34,9 @@ class CallListener implements ShouldQueue
     {
         $eventName = $event->name;
         $call      = $event->call;
-        $contact   = $event->contact;
-        $company   = $event->company;
+        
+        $contact = $call->contact;
+        $company = $call->company;
          
         $call->session = null;
 

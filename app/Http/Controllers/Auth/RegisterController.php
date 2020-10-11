@@ -13,6 +13,7 @@ use App\Models\Auth\EmailVerification;
 use App\Helpers\PaymentManager;
 use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use \App\Rules\CountryRule;
+use \App\Rules\UniqueEmailRule;
 use \Carbon\Carbon;
 use Validator;
 use DB;
@@ -41,7 +42,7 @@ class RegisterController extends Controller
             'account_name'          => 'bail|required|min:4|max:64',
             'first_name'            => 'bail|required|min:2|max:32',
             'last_name'             => 'bail|required|min:2|max:32',
-            'email'                 => 'bail|required|email|max:128|unique:users,email',
+            'email'                 => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule(null)],
             'phone'                 => ['bail','required', 'regex:/(.*)[0-9]{3}(.*)[0-9]{3}(.*)[0-9]{4}/'],
             'password' => [
                 'bail',

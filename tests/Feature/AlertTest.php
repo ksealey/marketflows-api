@@ -19,6 +19,7 @@ class AlertTest extends TestCase
     public function testList()
     {
         factory(Alert::class, 10)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
 
@@ -47,6 +48,7 @@ class AlertTest extends TestCase
     public function testListWithAllConditions()
     {
         factory(Alert::class, 10)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
 
