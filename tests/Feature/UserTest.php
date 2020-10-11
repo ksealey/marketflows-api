@@ -17,11 +17,11 @@ class UserTest extends TestCase
    use \Tests\CreatesAccount;
 
    /**
-    *   Test listing users with self included
+    *   Test listing users
     *
     *   @group users
     */
-    public function testListingWithSelfUsers()
+    public function testList()
     {
         $users = factory(User::class, 10)->create([
             'account_id' => $this->account->id,
@@ -34,33 +34,6 @@ class UserTest extends TestCase
         $response->assertStatus(200);
         $response->assertJSON([
             'result_count' => 11, // Add one 
-            'limit' => 250,
-            'page' => 1,
-            'total_pages' => 1,
-            'next_page' => null,
-            'results' => []
-        ]);
-    }
-
-    /**
-    *   Test listing users with self exluded
-    *
-    *   @group users
-    */
-    public function testListingUsersWithoutSelf()
-    {
-        $users = factory(User::class, 10)->create([
-            'account_id' => $this->account->id,
-        ]);
-
-        $response = $this->json('GET', route('list-users'), [
-            'exclude_self' => 1,
-            'date_type' => 'ALL_TIME'
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'result_count' => 10,
             'limit' => 250,
             'page' => 1,
             'total_pages' => 1,
@@ -99,11 +72,6 @@ class UserTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'id' => $response['id']
-        ]);
-
-        $this->assertDatabaseMissing('users', [
-            'id' => $response['id'],
-            'email_verified_at' => null
         ]);
 
         Mail::assertQueued(AddUserEmail::class);
