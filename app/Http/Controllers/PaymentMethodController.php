@@ -67,11 +67,21 @@ class PaymentMethodController extends Controller
             ], 400);
         }
 
-        $paymentMethod = PaymentMethod::createFromToken(
-            $request->token, 
-            $request->user(), 
-            true 
-        );
+        try{
+            $paymentMethod = PaymentMethod::createFromToken(
+                $request->token, 
+                $request->user(), 
+                true 
+            );
+        }catch(\Stripe\Exception\CardException $e){
+            return response([
+                'error' => $e->getMessage()
+            ], 400);
+        }catch(\Stripe\Exception\RateLimitException $e){
+            return response([
+                'error' => 'We can\'t complete this request right now. Please try again shortly.'
+            ], 400);
+        }
 
         //  
         //  If there are unpaid statements, add job

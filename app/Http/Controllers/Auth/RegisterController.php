@@ -77,16 +77,26 @@ class RegisterController extends Controller
         //  Try to add customer with payment method
         //
         $customer = null;
-        $card = null;
-
-        DB::beginTransaction();
+        $card     = null;
 
         try{
             $customer = $this->paymentManager->createCustomer(
                 $request->account_name,
                 $request->payment_token
             );
-            
+        }catch(\Stripe\Exception\CardException $e){
+            return response([
+                'error' => $e->getMessage()
+            ], 400);
+        }catch(\Stripe\Exception\RateLimitException $e){
+            return response([
+                'error' => 'We can\'t complete this request right now. Please try again shortly.'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try{
             $paymentMethods = $this->paymentManager->getPaymentMethods($customer->id);
             $paymentMethod  = $paymentMethods->data[0];
             $card           = $paymentMethod->card;
