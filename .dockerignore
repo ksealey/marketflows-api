@@ -9,8 +9,9 @@ Dockerfile
 Jenkinsfile
 xdebug.log
 docker
-storage/app/public/*
-storage/app/framework/cache/*
-storage/app/framework/sessions/*
-storage/app/framework/testing/*
+storage/app/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
 storage/logs/*

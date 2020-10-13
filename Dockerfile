@@ -19,9 +19,7 @@ RUN chmod 0644 /etc/cron.d/laravel-cron && \
 # Install and setup supervisor to manage queue workers
 RUN apt-get update && \
     apt-get install -y supervisor
-    service supervisor start && \
-    supervisorctl reread && \
-    supervisorctl update && \
-    supervisorctl start laravel-worker:*
+
+CMD /bin/bash /var/www/app/startup.sh
 
 
