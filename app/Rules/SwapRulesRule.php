@@ -235,7 +235,7 @@ class SwapRulesRule implements Rule
                 return true;
 
         //  Validate for types that do not need inputs
-        if( in_array($rule->type, ['DIRECT', 'ORGANIC', 'PAID', 'SEARCH', 'REFERRAL']) )
+        if( in_array($rule->type, ['DIRECT', 'ORGANIC', 'PAID', 'SEARCH', 'PAID_SEARCH', 'REFERRAL']) )
             return true;
 
         //

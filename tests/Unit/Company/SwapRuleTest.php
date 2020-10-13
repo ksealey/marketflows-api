@@ -69,12 +69,35 @@ class SwapRuleTest extends TestCase
         $this->assertFalse($phoneNumber->isPaid($faker->url, $company->medium_param));
    
         //  Test Search
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpc', $company->medium_param));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpm', $company->medium_param));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=PpC', $company->medium_param));
-        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=CPA&utm_source=' . str_random(3), $company->medium_param));
-        $this->assertFalse($phoneNumber->isPaid($faker->url, $company->medium_param));
+        $this->assertTrue($phoneNumber->isSearch('https://google.com/?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://www.google.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://yahoo.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://www.yahoo.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://search.yahoo.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://bing.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://www.bing.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://duckduckgo.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://www.duckduckgo.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://yandex.com?utm_medium=cpc'));
+        $this->assertTrue($phoneNumber->isSearch('https://www.yandex.com?utm_medium=cpc'));
+        $this->assertFalse($phoneNumber->isSearch('https://twitter.com?utm_medium=cpc'));
+        $this->assertFalse($phoneNumber->isSearch('https://facebook.com?utm_medium=cpc'));
+        $this->assertFalse($phoneNumber->isSearch('https://instagram.com?utm_medium=cpc'));
+        $this->assertFalse($phoneNumber->isSearch('https://linkedin.com?utm_medium=cpc'));
+        $this->assertFalse($phoneNumber->isSearch('https://www.freesamples.com?utm_term=123'));
 
+        //  Test paid search
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpc', $company->medium_param));
+        $this->assertTrue($phoneNumber->isPaid($faker->url . '?utm_medium=cpp', $company->medium_param));
+        
+        $paidSearchRef   = 'https://google.com';
+        $paidSearchEntry = $faker->url .'?utm_medium=cpc&utm_source=google';
+        $this->assertTrue(
+            $phoneNumber->isPaid($paidSearchEntry, $company->medium_param) && 
+            $phoneNumber->isSearch($paidSearchRef) &&
+            !$phoneNumber->isOrganic($paidSearchRef, $paidSearchEntry, $company->medium_param)
+        );
+       
         //  Test Referral
         $this->assertTrue($phoneNumber->isReferral($faker->url, $faker->url));
         $this->assertTrue($phoneNumber->isReferral($faker->url, $faker->url . '?utm_medium=cpc'));

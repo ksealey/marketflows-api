@@ -107,6 +107,10 @@ trait CanSwapNumbers
         if( $rule->type === 'SEARCH' )
             return $this->isSearch($httpReferrer); 
 
+        if( $rule->type === 'PAID_SEARCH' ){
+            return $this->isPaid($entryURL, $mediumCsvList) && $this->isSearch($httpReferrer); 
+        }
+
         //  TODO: Add SOCIAL. Facebook, Instagram, Youtube, etc
         
         // Is a referral
@@ -291,7 +295,24 @@ trait CanSwapNumbers
      */
     public function isSearch($httpReferrer = '')
     {
-        return preg_match('/^(http(s)?:\/\/)?((www.)?google.com|((search|www).)?yahoo.com|(www.)?bing.com|(www.)?duckduckgo.com|(www.)?yandex.com)/i', strtolower($httpReferrer));
+        $searchDomains = [
+            'google.com',
+            'www.google.com',
+            'yahoo.com',
+            'www.yahoo.com',
+            'search.yahoo.com',
+            'bing.com',
+            'www.bing.com',
+            'duckduckgo.com',
+            'www.duckduckgo.com',
+            'yandex.com',
+            'www.yandex.com'
+        ];
+
+        $referrer = trim(strtolower($httpReferrer));
+        $host     = parse_url($referrer, PHP_URL_HOST);
+        
+        return in_array($host, $searchDomains);
     }
 
     /**
