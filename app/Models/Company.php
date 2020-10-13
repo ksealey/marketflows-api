@@ -52,6 +52,10 @@ class Company extends Model implements Exportable
         'kind'
     ];
 
+    public $casts = [
+        'source_referrer_when_empty' => 'boolean'
+    ];
+
     static public function exports() : array
     {
         return [
