@@ -186,7 +186,7 @@ class CompanyController extends Controller
         if( $request->filled('keyword_param') )
             $company->keyword_param = $request->keyword_param;
         if( $request->filled('source_referrer_when_empty') )
-            $company->source_referrer_when_empty = $request->source_referrer_when_empty;
+            $company->source_referrer_when_empty = intval($request->source_referrer_when_empty);
 
         $user = $request->user();
 
