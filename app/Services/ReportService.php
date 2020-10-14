@@ -6,6 +6,31 @@ class ReportService
 {
     use \App\Traits\Helpers\HandlesDateFilters;
 
+    public $conditionFields = [
+        'calls.type',
+        'calls.category',
+        'calls.sub_category',
+        'calls.source',
+        'calls.medium',
+        'calls.content',
+        'calls.campaign',
+        'calls.keyword',
+        'calls.forwarded_to',
+        'calls.duration',
+        'calls.is_paid',
+        'calls.is_organic',
+        'calls.is_search',
+        'calls.is_referral',
+        'calls.first_call',
+        'calls.recording_enabled',
+        'calls.transcription_enabled',
+        'contacts.first_name',
+        'contacts.last_name',
+        'contacts.number',
+        'contacts.city',
+        'contacts.state',
+    ];
+
     public $fieldAliases = [
         'calls' => [
             'calls.type'                => 'call_type',
@@ -15,10 +40,17 @@ class ReportService
             'calls.medium'              => 'call_medium',
             'calls.content'             => 'call_content',
             'calls.campaign'            => 'call_campaign',
+            'calls.keyword'             => 'call_keyword',
             'calls.recording_enabled'   => 'call_recording_enabled',
             'calls.forwarded_to'        => 'call_forwarded_to',
             'calls.duration'            => 'call_duration',
             'calls.first_call'          => 'call_first_call',
+            'calls.recording_enabled' => 'call_recording_enabled',
+            'calls.transcription_enabled' => 'call_transcription_enabled',
+            'calls.is_paid'             => 'call_is_paid',
+            'calls.is_organic'          => 'call_is_organic',
+            'calls.is_referral'         => 'call_is_referral',
+            'calls.is_search'           => 'call_is_search',
             'contacts.first_name'       => 'contact_first_name',
             'contacts.last_name'        => 'contact_last_name',
             'contacts.country_code'     => 'contact_country_code',
@@ -38,10 +70,17 @@ class ReportService
             'call_medium'              => 'Medium',
             'call_content'             => 'Content',
             'call_campaign'            => 'Campaign',
+            'call_keyword'             => 'Keyword',
             'call_recording_enabled'   => 'Recording Enabled',
             'call_forwarded_to'        => 'Forwarded To Phone Number',
             'call_duration'            => 'Call Duration',
             'call_first_call'          => 'First Time Caller',
+            'call_recording_enabled'   => 'Recording Enabled',
+            'call_transcription_enabled' => 'Transcription Enabled',
+            'call_is_paid'             => 'Is Paid',
+            'call_is_organic'          => 'Is Organic',
+            'call_is_referral'         => 'Is Referral',
+            'call_is_search'           => 'Is Search',
             'call_date'                => 'Call Date',
             'contact_first_name'       => 'Caller First Name',
             'contact_last_name'        => 'Caller Last Name',
@@ -61,10 +100,17 @@ class ReportService
             'calls.medium'              => 'string',
             'calls.content'             => 'string',
             'calls.campaign'            => 'string',
+            'calls.keyword'             => 'string',
             'calls.recording_enabled'   => 'boolean',
             'calls.forwarded_to'        => 'string',
             'calls.duration'            => 'integer',
             'calls.first_call'          => 'boolean',
+            'calls.recording_enabled' => 'boolean',
+            'calls.transcription_enabled' => 'boolean',
+            'calls.is_paid'             => 'boolean',
+            'calls.is_organic'          => 'boolean',
+            'calls.is_referral'         => 'boolean',
+            'calls.is_search'           => 'boolean',
             'contacts.first_name'       => 'string',
             'contacts.last_name'        => 'string',
             'contacts.number'           => 'string',
@@ -169,7 +215,7 @@ class ReportService
             if( $input->group_by_type === 'boolean' ){
                 return $input->group_by ? 'Yes' : 'No';
             }
-            return  $input->group_by;
+            return  strval($input->group_by);
         }, $inputData->toArray());
 
         $labels = [];
