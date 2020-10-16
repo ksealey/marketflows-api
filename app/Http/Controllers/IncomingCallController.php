@@ -340,7 +340,10 @@ class IncomingCallController extends Controller
             'CallDuration'  => 'required|max:64'
         ];
 
-        $call           = Call::where('external_id', $request->CallSid)->first();
+        $call = Call::where('external_id', $request->CallSid)->first();
+        if( ! $call )
+            return Response::xmlResponse(new VoiceResponse());
+            
         $call->duration = intval($request->CallDuration);
         $call->save();
 
