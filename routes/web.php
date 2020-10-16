@@ -11,19 +11,35 @@
 |
 */
 
-Route::prefix('v1')->group(function(){
-     Route::any('/start-session', 'WebSessionController@startSession')
-          ->name('web-start-session');
+Route::prefix('web')->group(function(){
+     Route::get('/', function(){
+          return response([ 
+              'versions' => [ 
+                  'v1' 
+              ]
+          ]);
+     });
 
-     Route::post('/collect', 'WebSessionController@collect')
-          ->name('web-collect');
+     Route::prefix('v1')->group(function(){
+          Route::get('/', function(){
+              return response([
+                  'status' => 'OK'
+              ]);
+          });
 
-     Route::post('/keep-alive', 'WebSessionController@keepAlive')
-          ->name('web-keep-alive');
+          Route::any('/start-session', 'WebSessionController@startSession')
+               ->name('web-start-session');
 
-     Route::post('/number-status', 'WebSessionController@numberStatus')
-          ->name('web-number-status');
+          Route::post('/collect', 'WebSessionController@collect')
+               ->name('web-collect');
 
-     Route::post('/pause-session', 'WebSessionController@pauseSession')
-          ->name('web-keep-alive');
+          Route::post('/keep-alive', 'WebSessionController@keepAlive')
+               ->name('web-keep-alive');
+
+          Route::post('/number-status', 'WebSessionController@numberStatus')
+               ->name('web-number-status');
+
+          Route::post('/pause-session', 'WebSessionController@pauseSession')
+               ->name('web-keep-alive');
+     });
 });

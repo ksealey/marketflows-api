@@ -1,4 +1,5 @@
 #!/bin/bash
+php artisan cache:clear
 php artisan config:cache
 service supervisor start
 supervisorctl reread
