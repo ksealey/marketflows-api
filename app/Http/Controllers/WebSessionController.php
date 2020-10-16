@@ -55,11 +55,33 @@ class WebSessionController extends Controller
             ], 404);
         }
 
+        //
+        //  If the use has an active session, stop here
+        //
+        if( $request->cookie('guuid') && $request->cookie('session_uuid') ){
+            $session = KeywordTrackingPoolSession::where('uuid', $request->cookie('session_uuid'))
+                                                 ->where('guuid', $request->cookie('guuid'))
+                                                 ->whereNull('ended_at')
+                                                 ->first();
+            if( $session ){
+                return response([
+                    'message' => 'Session in progress'
+                ]);
+            }
+        }
+
+        $cookieDomain = explode('.', $request->getHttpHost());
+        if( count($cookieDomain) > 2 ){
+            $cookieDomain = array_slice($cookieDomain, count($cookieDomain) - 2, 2);
+        }
+        $cookieDomain = implode('.', $cookieDomain);
+
         $gUUID             = $request->cookie('guuid') ?: Str::uuid();
         $expirationMinutes = $company->tracking_expiration_days * 60 * 24;
+        
 
-        Cookie::queue('guuid', $gUUID, 60 * 24 * 365 * 100); // Last forever forever
-        Cookie::queue('init_complete', 1, $expirationMinutes, '/', null, false, false);
+        Cookie::queue('guuid', $gUUID, 60 * 24 * 365 * 100, '/', $cookieDomain); // Last forever forever
+        Cookie::queue('init_complete', 1, $expirationMinutes, '/', $cookieDomain, false, false);
 
         //
         //  Determine if we should swap numbers at all
@@ -68,8 +90,8 @@ class WebSessionController extends Controller
         $landingURL   = $request->cookie('landing_url')   ?: $request->landing_url;
 
         //  Allow frontend access until the time specified by the user
-        Cookie::queue('http_referrer', $httpReferrer, $expirationMinutes, '/', null, false, false);
-        Cookie::queue('landing_url', $landingURL, $expirationMinutes, '/', null, false, false);
+        Cookie::queue('http_referrer', $httpReferrer, $expirationMinutes, '/', $cookieDomain, false, false);
+        Cookie::queue('landing_url', $landingURL, $expirationMinutes, '/', $cookieDomain, false, false);
 
         $browserType  = $this->normalizeBrowserType($agent->browser());
 
@@ -143,19 +165,19 @@ class WebSessionController extends Controller
         }
 
         if( $phoneNumber ){
-            Cookie::queue('phone_uuid', $phoneNumber->uuid, $expirationMinutes, '/', null, false, false);
-            Cookie::queue('phone_country_code', $phoneNumber->country_code, $expirationMinutes, '/', null, false, false);
-            Cookie::queue('phone_number', $phoneNumber->number, $expirationMinutes, '/', null, false, false);
-            Cookie::queue('swapping_targets', json_encode($swapRules->targets), $expirationMinutes, '/', null, false, false);
+            Cookie::queue('phone_uuid', $phoneNumber->uuid, $expirationMinutes, '/', $cookieDomain, false, false);
+            Cookie::queue('phone_country_code', $phoneNumber->country_code, $expirationMinutes, '/', $cookieDomain, false, false);
+            Cookie::queue('phone_number', $phoneNumber->number, $expirationMinutes, '/', $cookieDomain, false, false);
+            Cookie::queue('swapping_targets', json_encode($swapRules->targets), $expirationMinutes, '/', $cookieDomain, false, false);
         }
 
         if( $session ){
             //  Allow frontend access for the length of the session
-            Cookie::queue('session_ktp_id', $pool->id, $expirationMinutes, '/', null, false, false);
-            Cookie::queue('session_uuid', $session->uuid, $expirationMinutes, '/', null, false, false);
+            Cookie::queue('session_ktp_id', $pool->id, $expirationMinutes, '/', $cookieDomain, false, false);
+            Cookie::queue('session_uuid', $session->uuid, $expirationMinutes, '/', $cookieDomain, false, false);
 
             //  Http only, for the length of the session
-            Cookie::queue('session_token', $sessionToken, $expirationMinutes);
+            Cookie::queue('session_token', $sessionToken, $expirationMinutes, '/', $cookieDomain);
         }
 
         return response([
