@@ -26,7 +26,12 @@ class KeywordTrackingPoolSession extends Model
         'landing_url',
         'last_url',
         'token',
-        'ended_at'
+        'active',
+        'last_activity_at',
+        'end_after',
+        'ended_at',
+        'created_at',
+        'updated_at',
     ];
 
     public function phone_number()

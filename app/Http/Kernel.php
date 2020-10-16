@@ -29,15 +29,16 @@ class Kernel extends HttpKernel
     protected $middlewareGroups = [
         'web' => [
             'rate_limit:60,1', 
-            'encrypt_cookies',
             'queue_cookies',
             'bindings',
+            'add_origin',
         ],
 
         'api' => [
             'rate_limit:300,1', 
             'bindings',
-            'suspended_accounts'
+            'suspended_accounts',
+            'add_origin',
         ],
     ];
 
@@ -62,7 +63,8 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'twilio.webhooks'   => \App\Http\Middleware\TwilioWebhooks::class,
         'encrypt_cookies' => \App\Http\Middleware\EncryptCookies::class,
-        'queue_cookies' => \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class
+        'queue_cookies' => \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        'add_origin'    => \App\Http\Middleware\AddOrigin::class,
     ];
 
     /**

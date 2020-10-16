@@ -35,9 +35,9 @@ class Company extends Model implements Exportable
         'keyword_param',
         'source_referrer_when_empty',
         'ga_id',
+        'tracking_expiration_days',
         'created_by',
-        'updated_by',
-        
+        'updated_by'
     ];
 
     protected $hidden = [

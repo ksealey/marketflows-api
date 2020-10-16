@@ -340,7 +340,7 @@ trait CreatesAccount
                         ]
                     ]
                 ],
-                'exclusion_rules' => []
+                'exclusion_rules' => [],
             ],  $with));
     }
 

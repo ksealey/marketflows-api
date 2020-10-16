@@ -25,7 +25,6 @@ $factory->define(\App\Models\Company\KeywordTrackingPool::class, function (Faker
                 ]
             ],
             'exclusion_rules' => [],
-            'expiration_days' => 30,
         ])
     ];
 });

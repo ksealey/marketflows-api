@@ -48,7 +48,7 @@ class WebSessionTest extends TestCase
                     ]
                 ]
             ],
-            'exclusion_rules' => []
+            'exclusion_rules' => [],
         ]);
 
         //  Pool w/numbers
@@ -128,7 +128,7 @@ class WebSessionTest extends TestCase
             'browser_types' => ['CHROME'],// Only on chrome
             'device_types'  => ['ALL'], 
             'inclusion_rules' => [ [ 'rules' => [ [ 'type' => 'ALL' ] ] ] ],
-            'exclusion_rules' => []
+            'exclusion_rules' => [],
         ]);
 
          //  Pool w/numbers

@@ -114,7 +114,7 @@ class KeywordTrackingPool extends Model
                                         SELECT COUNT(*) 
                                             FROM keyword_tracking_pool_sessions 
                                         WHERE keyword_tracking_pool_sessions.phone_number_id = phone_numbers.id
-                                            AND keyword_tracking_pool_sessions.ended_at IS NULL
+                                            AND active = 1
                                     ) AS active_assignments')
                                 ])
                                 ->where('keyword_tracking_pool_id', $this->id)
@@ -136,7 +136,7 @@ class KeywordTrackingPool extends Model
     public function activeSessions($phoneNumberId = null, $contactId = null, $excludeClaimed = true)
     {
         $query = KeywordTrackingPoolSession::where('keyword_tracking_pool_id', $this->id)
-                                           ->whereNull('ended_at');
+                                           ->where('active', 1);
         if( $phoneNumberId ){
             $query->where('phone_number_id', $phoneNumberId);
         }

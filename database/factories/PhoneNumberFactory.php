@@ -55,7 +55,6 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
                 ]
             ],
             'exclusion_rules' => [],
-            'expiration_days' => 30,
         ])
     ];
 });

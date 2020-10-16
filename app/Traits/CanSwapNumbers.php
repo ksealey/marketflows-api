@@ -41,7 +41,7 @@ trait CanSwapNumbers
          //  If it fails for device type stop here
          if( count($swapRules->device_types) && $swapRules->device_types[0] !== 'ALL' && ! in_array($deviceType, $swapRules->device_types) )
             return false;
-
+        
         $aRuleGroupPassed = false;
         foreach( $swapRules->inclusion_rules as $ruleGroup ){
             if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer, $mediumCsvList) )
@@ -56,7 +56,7 @@ trait CanSwapNumbers
         //
         if( empty($swapRules->exclusion_rules) )
             return true;
-        
+
         foreach( $swapRules->exclusion_rules as $ruleGroup ){
             if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer, $mediumCsvList) )
                 return false;

@@ -28,6 +28,7 @@ class CreateCompaniesTable extends Migration
             $table->string('keyword_param', 128);
             $table->boolean('source_referrer_when_empty')->default(1);
             $table->string('ga_id', 32)->nullable();
+            $table->integer('tracking_expiration_days')->unsigned()->default(30);
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();

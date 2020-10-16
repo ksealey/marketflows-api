@@ -17,6 +17,9 @@ $factory->define(\App\Models\Company\KeywordTrackingPoolSession::class, function
         'landing_url'   => $faker->url,
         'last_url'      => $faker->url,
         'http_referrer' => $faker->url,
-        'token'         => bcrypt('token')
+        'token'         => bcrypt('token'),
+        'active' => 1,
+        'last_activity_at' => now(),
+        'end_after' => now()->addDays(30)
     ];
 });
