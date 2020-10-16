@@ -12,6 +12,7 @@ services:
       - mf_net
     volumes: 
       - "$APP_PATH:/var/www/app"
+      - "$APP_PATH/build/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf"
   mf_app_db:
     image: mysql:5.7.22
     restart: always

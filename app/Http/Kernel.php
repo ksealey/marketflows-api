@@ -39,8 +39,7 @@ class Kernel extends HttpKernel
             'add_origin',
             'rate_limit:300,1', 
             'bindings',
-            'suspended_accounts',
-            
+            'suspended_accounts'
         ],
     ];
 
