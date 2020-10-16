@@ -14,6 +14,7 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middleware = [
+        \App\Http\Middleware\AddOrigin::class,
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\CheckForMaintenanceMode::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
@@ -28,15 +29,12 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
-            'add_origin',
             'rate_limit:60,1', 
             'queue_cookies',
             'bindings',
-            
         ],
 
         'api' => [
-            'add_origin',
             'rate_limit:300,1', 
             'bindings',
             'suspended_accounts'

@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
 | Handle user auth
 |--------------------------------
 */
-Route::middleware('add_origin')->prefix('/')->group(function(){
+Route::prefix('/')->group(function(){
     Route::get('/', function(){
         return response([ 'status' => 'OK' ]);
     });
