@@ -28,17 +28,19 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
+            'add_origin',
             'rate_limit:60,1', 
             'queue_cookies',
             'bindings',
-            'add_origin',
+            
         ],
 
         'api' => [
+            'add_origin',
             'rate_limit:300,1', 
             'bindings',
             'suspended_accounts',
-            'add_origin',
+            
         ],
     ];
 
@@ -75,6 +77,7 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middlewarePriority = [
+        \App\Http\Middleware\AddOrigin::class,
         \Illuminate\Session\Middleware\StartSession::class,
         \Illuminate\View\Middleware\ShareErrorsFromSession::class,
         \App\Http\Middleware\Authenticate::class,
