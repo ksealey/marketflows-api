@@ -10,7 +10,7 @@ use App\Models\Company\PhoneNumber;
 use App\Models\Company\KeywordTrackingPool;
 use App\Models\Company\KeywordTrackingPoolSession;
 use Jenssegers\Agent\Agent;
-use Cookie;
+use App;
 
 class WebSessionController extends Controller
 {
@@ -19,6 +19,7 @@ class WebSessionController extends Controller
     public function startSession(Request $request)
     {
         $rules = [
+            'guuid'         => 'nullable|uuid',
             'device_width'  => 'required|numeric',
             'device_height' => 'required|numeric',
             'company_id'    => 'required|numeric',
@@ -27,13 +28,6 @@ class WebSessionController extends Controller
         ];
 
         $validator = validator($request->input(), $rules);
-        $validator->sometimes('landing_url', 'required|url', function() use($request){
-            return ! $request->cookie('landing_url');
-        });
-        $validator->sometimes('http_referrer', 'nullable|url', function()  use($request){
-            return ! $request->cookie('http_referrer');
-        });
-
         if( $validator->fails() ){
             return response([
                 'error' => 'Invalid request'
@@ -58,9 +52,8 @@ class WebSessionController extends Controller
         //
         //  If the use has an active session, stop here
         //
-        if( $request->cookie('guuid') && $request->cookie('session_uuid') ){
-            $session = KeywordTrackingPoolSession::where('uuid', $request->cookie('session_uuid'))
-                                                 ->where('guuid', $request->cookie('guuid'))
+        if( $request->guuid ){
+            $session = KeywordTrackingPoolSession::where('guuid', $request->guuid)
                                                  ->whereNull('ended_at')
                                                  ->first();
             if( $session ){
@@ -70,29 +63,14 @@ class WebSessionController extends Controller
             }
         }
 
-        $cookieDomain = explode('.', $request->getHttpHost());
-        if( count($cookieDomain) > 2 ){
-            $cookieDomain = array_slice($cookieDomain, count($cookieDomain) - 2, 2);
-        }
-        $cookieDomain = implode('.', $cookieDomain);
-
-        $gUUID             = $request->cookie('guuid') ?: Str::uuid();
+        $gUUID             = $request->guuid ?: Str::uuid();
         $expirationMinutes = $company->tracking_expiration_days * 60 * 24;
         
-
-        Cookie::queue('guuid', $gUUID, 60 * 24 * 365 * 100, '/', $cookieDomain); // Last forever forever
-        Cookie::queue('init_complete', 1, $expirationMinutes, '/', $cookieDomain, false, false);
-
         //
         //  Determine if we should swap numbers at all
         //
-        $httpReferrer = $request->cookie('http_referrer') ?: $request->http_referrer;
-        $landingURL   = $request->cookie('landing_url')   ?: $request->landing_url;
-
-        //  Allow frontend access until the time specified by the user
-        Cookie::queue('http_referrer', $httpReferrer, $expirationMinutes, '/', $cookieDomain, false, false);
-        Cookie::queue('landing_url', $landingURL, $expirationMinutes, '/', $cookieDomain, false, false);
-
+        $httpReferrer = $request->http_referrer;
+        $landingURL   = $request->landing_url;
         $browserType  = $this->normalizeBrowserType($agent->browser());
 
         if( $agent->isDesktop() ){
@@ -117,10 +95,10 @@ class WebSessionController extends Controller
             $swapRules             = $pool->swap_rules;
             $sessionToken          = str_random(40);
             $existingContact       = null;
-            if( $request->cookie('guuid') ){
-                $contact   = Contact::where('uuid', $request->cookie('guuid'))->first();
+            if( $request->guuid ){
+                $contact   = Contact::where('uuid', $request->guuid)->first();
                 $contactId = $contact ? $contact->id : null;
-                KeywordTrackingPoolSession::where('guuid', $request->cookie('guuid'))
+                KeywordTrackingPoolSession::where('guuid', $request->guuid)
                                           ->whereNull('ended_at')
                                           ->update([
                                               'ended_at' => now(),
@@ -164,22 +142,6 @@ class WebSessionController extends Controller
             }
         }
 
-        if( $phoneNumber ){
-            Cookie::queue('phone_uuid', $phoneNumber->uuid, $expirationMinutes, '/', $cookieDomain, false, false);
-            Cookie::queue('phone_country_code', $phoneNumber->country_code, $expirationMinutes, '/', $cookieDomain, false, false);
-            Cookie::queue('phone_number', $phoneNumber->number, $expirationMinutes, '/', $cookieDomain, false, false);
-            Cookie::queue('swapping_targets', json_encode($swapRules->targets), $expirationMinutes, '/', $cookieDomain, false, false);
-        }
-
-        if( $session ){
-            //  Allow frontend access for the length of the session
-            Cookie::queue('session_ktp_id', $pool->id, $expirationMinutes, '/', $cookieDomain, false, false);
-            Cookie::queue('session_uuid', $session->uuid, $expirationMinutes, '/', $cookieDomain, false, false);
-
-            //  Http only, for the length of the session
-            Cookie::queue('session_token', $sessionToken, $expirationMinutes, '/', $cookieDomain);
-        }
-
         return response([
             'guuid'   => $gUUID,
             'session' => $session ? [
@@ -194,14 +156,17 @@ class WebSessionController extends Controller
             ] : null,
             'swapping' => $swapRules ? [
                 'targets' => $swapRules->targets,
-            ] : null
+            ] : null,
+            'tracking_expiration_days' => $company->tracking_expiration_days
         ]);
     }
 
     public function collect(Request $request)
     {
         $validator = validator($request->input(), [
-            'url' => 'required|url',
+            'url'          => 'required|url',
+            'session_uuid' => 'required|uuid',
+            'session_token'=> 'required|max:255'
         ]);
 
         if( $validator->fails() ){
@@ -210,21 +175,19 @@ class WebSessionController extends Controller
             ], 400);
         }
 
-        if( $request->cookie('session_uuid') && $request->cookie('session_token') ){
-            $session = KeywordTrackingPoolSession::where('uuid', $request->cookie('session_uuid'))
-                                                 ->whereNull('ended_at')
-                                                 ->first();
+        $session = KeywordTrackingPoolSession::where('uuid', $request->session_uuid)
+                                                ->whereNull('ended_at')
+                                                ->first();
 
-            if( $session && password_verify($request->cookie('session_token'), $session->token) ){
-                $session->last_url = $request->url;
-                $session->active   = 1;
-                $session->last_activity_at = now()->format('Y-m-d H:i:s.u');
-                $session->save();
+        if( $session && password_verify($request->session_token, $session->token) ){
+            $session->last_url = $request->url;
+            $session->active   = 1;
+            $session->last_activity_at = now()->format('Y-m-d H:i:s.u');
+            $session->save();
 
-                return response([
-                    'status' => 'OK'
-                ]);
-            }
+            return response([
+                'status' => 'OK'
+            ]);
         }
 
         return response([
@@ -234,20 +197,29 @@ class WebSessionController extends Controller
 
     public function keepAlive(Request $request)
     {
-        if( $request->cookie('session_uuid') && $request->cookie('session_token') ){
-            $session = KeywordTrackingPoolSession::where('uuid', $request->cookie('session_uuid'))
+        $validator = validator($request->input(), [
+            'session_uuid' => 'required|uuid',
+            'session_token'=> 'required|max:255'
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $session = KeywordTrackingPoolSession::where('uuid', $request->session_uuid)
                                                 ->whereNull('ended_at')
                                                 ->first();
 
-            if( $session && password_verify($request->cookie('session_token'), $session->token) ){
-                $session->active           = 1;
-                $session->last_activity_at = now()->format('Y-m-d H:i:s.u');
-                $session->save();
+        if( $session && password_verify($request->session_token, $session->token) ){
+            $session->active           = 1;
+            $session->last_activity_at = now()->format('Y-m-d H:i:s.u');
+            $session->save();
 
-                return response([
-                    'status' => 'OK'
-                ]);
-            }
+            return response([
+                'status' => 'OK'
+            ]);
         }
 
         return response([
@@ -257,31 +229,53 @@ class WebSessionController extends Controller
 
     public function pauseSession(Request $request)
     {
-        if( $request->cookie('session_uuid') && $request->cookie('session_token') ){
-            $session = KeywordTrackingPoolSession::where('uuid', $request->cookie('session_uuid'))
+        $validator = validator($request->input(), [
+            'session_uuid' => 'required|uuid',
+            'session_token'=> 'required|max:255'
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $session = KeywordTrackingPoolSession::where('uuid', $request->session_uuid)
                                                 ->whereNull('ended_at')
                                                 ->first();
 
-            if( $session && password_verify($request->cookie('session_token'), $session->token) ){
-                $session->active           = 0;
-                $session->save();
+        if( $session && password_verify($request->session_token, $session->token) ){
+            $session->active           = 0;
+            $session->last_activity_at = now()->format('Y-m-d H:i:s.u');
+            $session->save();
 
-                return response([
-                    'status' => 'OK'
-                ]);
-            }
+            return response([
+                'status' => 'OK'
+            ]);
         }
+
+        return response([
+            'error' => 'Session does not exist'
+        ], 404);
     }
 
     public function numberStatus(Request $request)
     {
-        if( $request->cookie('phone_uuid') && $request->cookie('guuid') ){
-            $phoneNumber = PhoneNumber::where('uuid', $request->cookie('phone_uuid'))->first();
-            if( $phoneNumber && ! $phoneNumber->disabled_at ){
-                return response([
-                    'status' => 'OK'
-                ]);
-            }
+        $validator = validator($request->input(), [
+            'phone_uuid' => 'required|uuid',
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $phoneNumber = PhoneNumber::where('uuid', $request->phone_uuid)->first();
+        if( $phoneNumber && ! $phoneNumber->disabled_at ){
+            return response([
+                'status' => 'OK'
+            ]);
         }
 
         return response([

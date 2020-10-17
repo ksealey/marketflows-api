@@ -64,7 +64,6 @@ class CreateCallsTable extends Migration
             $table->foreign('phone_number_id')->references('id')->on('phone_numbers');
             $table->foreign('contact_id')->references('id')->on('contacts');
             $table->foreign('keyword_tracking_pool_id')->references('id')->on('keyword_tracking_pools');
-            $table->foreign('keyword_tracking_pool_session_id')->references('id')->on('keyword_tracking_pool_sessions');
             $table->foreign('updated_by')->references('id')->on('users');
             $table->foreign('deleted_by')->references('id')->on('users');
             $table->index(['created_at', 'updated_at']);

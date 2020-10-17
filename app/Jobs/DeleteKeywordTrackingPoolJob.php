@@ -39,13 +39,9 @@ class DeleteKeywordTrackingPoolJob implements ShouldQueue
      */
     public function handle()
     {
-        //  End active sessions for pool
+        //  Delete sessions
         KeywordTrackingPoolSession::where('keyword_tracking_pool_id', $this->keywordTrackingPool->id)
-                                    ->whereNull('ended_at')
-                                    ->update([
-                                        'ended_at' => now(),
-                                        'active'   => 0
-                                    ]);
+                                  ->delete();
 
         $phoneNumbers = $this->keywordTrackingPool->phone_numbers;
 
