@@ -34,6 +34,15 @@ class KeywordTrackingPoolSession extends Model
         'updated_at',
     ];
 
+    protected $appends = [
+        'kind'
+    ];
+
+    public function getKindAttribute()
+    {
+        return 'KeywordTrackingPoolSession';
+    }
+
     public function phone_number()
     {
         return $this->belongsTo(\App\Models\Company\PhoneNumber::class);

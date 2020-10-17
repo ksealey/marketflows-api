@@ -169,6 +169,12 @@ class Contact extends Model
         ], $calls->toArray());
 
         //
+        //  Add sessions
+        //
+        $sessions = $this->sessions;
+        $activities = array_merge($sessions->toArray(), $activities);
+
+        //
         //  Order by create date, asc
         //    
         usort($activities, function($a, $b){
