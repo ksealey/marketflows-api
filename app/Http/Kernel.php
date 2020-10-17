@@ -29,8 +29,7 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
-            'rate_limit:60,1', 
-            'queue_cookies',
+            'rate_limit:120,1', 
             'bindings',
         ],
 

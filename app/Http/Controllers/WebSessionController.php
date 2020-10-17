@@ -55,7 +55,10 @@ class WebSessionController extends Controller
         if( $request->guuid ){
             $session = KeywordTrackingPoolSession::where('guuid', $request->guuid)
                                                  ->whereNull('ended_at')
-                                                 ->first();
+                                                 ->update([
+                                                     'active'   => 0,
+                                                     'ended_at' => now()
+                                                 ]);
             if( $session ){
                 return response([
                     'message' => 'Session in progress'

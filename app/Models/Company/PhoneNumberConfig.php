@@ -155,8 +155,23 @@ class PhoneNumberConfig extends Model
     {
         $contact = $call->contact;
 
+        //  Replace URL as source with domain 
+        $source = $call->source;
+        if( preg_match('/^http(s)?:\/\//i', $source) ){
+            $source = parse_url($source, PHP_URL_HOST);
+            if( $source ){
+                $source = explode('.', $source);
+                if( count($source) > 2 ){
+                    $source = array_slice($source, -2, 2);
+                }
+                $source = implode('.', $source);
+            }else{
+                $source = 'Website Referral';
+            }
+        }
+
         $variables = [
-            '${source}'             => $call->source,
+            '${source}'             => $source,
             '${medium}'             => $call->medium,
             '${content}'            => $call->content,
             '${campaign}'           => $call->campaign,

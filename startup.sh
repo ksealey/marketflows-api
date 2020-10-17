@@ -5,4 +5,5 @@ service supervisor start
 supervisorctl reread
 supervisorctl update
 supervisorctl start laravel-worker:*
+service cron start
 exec apachectl -D FOREGROUND
