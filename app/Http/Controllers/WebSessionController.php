@@ -59,11 +59,6 @@ class WebSessionController extends Controller
                                                      'active'   => 0,
                                                      'ended_at' => now()
                                                  ]);
-            if( $session ){
-                return response([
-                    'message' => 'Session in progress'
-                ]);
-            }
         }
 
         $gUUID             = $request->guuid ?: Str::uuid();
