@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Company;
 use App\Mail\AddUser as AddUserEmail;
-use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use App\Rules\CompanyListRule;
 use App\Rules\UniqueEmailRule;
 use Validator;
@@ -95,35 +94,14 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $rules = [
-            'role'       => 'bail|in:' . implode(',', User::roles()),
-            'timezone'   => 'bail|timezone',
-            'first_name' => 'bail|min:1',
-            'last_name'  => 'bail|min:1',
+            'role'           => 'bail|in:' . implode(',', User::roles()),
             'login_disabled' => 'bail|boolean',
-            'email'      => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule($user->id)],
         ];
 
         $validator = validator($request->input(), $rules);
         
         if( $request->filled('role') )
             $user->role = $request->role;
-
-        if( $request->filled('timezone') )
-            $user->timezone = $request->timezone;
-
-        if( $request->filled('first_name') )
-            $user->first_name = $request->first_name;
-
-        if( $request->filled('last_name') )
-            $user->last_name = $request->last_name;
-
-        if( $request->filled('email') && $user->email != $request->email ){
-            $user->email = $request->email;
-            $user->email_verified_at = null;
-
-            Mail::to($user)
-                ->queue(new UserEmailVerificationMail($user));
-        }
 
         if( $request->filled('login_disabled') )
             $user->login_disabled = !!$request->login_disabled;

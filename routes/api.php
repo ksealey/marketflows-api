@@ -41,6 +41,12 @@ Route::prefix('/')->group(function(){
             });
 
             Route::middleware(['rate_limit:30,1'])->prefix('auth')->group(function(){
+                Route::post('/request-email-verification', 'Auth\RegisterController@requestEmailVerification')
+                    ->name('auth-request-email-verification');
+
+                Route::post('/verify-email', 'Auth\RegisterController@verifyEmail')
+                    ->name('auth-verify-email');
+
                 Route::post('/register', 'Auth\RegisterController@register')
                     ->name('auth-register');
 
@@ -55,12 +61,6 @@ Route::prefix('/')->group(function(){
                     
                 Route::post('/reset-password', 'Auth\LoginController@resetPassword')
                     ->name('auth-handle-reset-password');  
-
-                Route::post('/verify-email', 'Auth\RegisterController@verifyEmail')
-                    ->name('verify-email');
-
-                Route::get('/email-availability', 'Auth\RegisterController@emailAvailability')
-                    ->name('email-availability');
             });
 
             /*
@@ -109,9 +109,8 @@ Route::prefix('/')->group(function(){
                     Route::put('/', 'ProfileController@updateMe')
                         ->name('update-me');
 
-                    Route::post('/resend-verification-email', 'ProfileController@resendVerificationEmail')
-                        ->name('resend-verification-email');
-
+                    Route::put('/email', 'ProfileController@updateEmail')
+                        ->name('update-my-email');
                     /*
                     |----------------------------------------
                     | Handle alerts

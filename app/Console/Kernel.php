@@ -43,6 +43,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('keyword-tracking-pools:update-sessions')
                  ->everyFiveMinutes()
                  ->onOneServer();
+
+        //  Clear expired email verifications
+        $schedule->command('clear-expired-email-verifications')
+                 ->everyFiveMinutes()
+                 ->onOneServer();
     }
 
     /**

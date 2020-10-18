@@ -145,8 +145,6 @@ class UserTest extends TestCase
      */
     public function testUpdateUser()
     {
-        Mail::fake();
-
         $originalUser = factory(User::class)->create([
             'account_id' => $this->account->id
         ]); 
@@ -160,14 +158,11 @@ class UserTest extends TestCase
         ]), $user->toArray());
 
         $response->assertJSON([
-            'first_name' => $user->first_name,
-            'last_name'  => $user->last_name,
-            'email'      => $user->email,
-            'timezone'   => $user->timezone,
-            'role'       => $user->role
+            'role'   => $user->role,
+            'email'  => $originalUser->email, // Email not updated through this endpoint
         ]);
 
-        Mail::assertQueued(UserEmailVerificationMail::class);
+        $response->assertStatus(200);
     }
 
     /**

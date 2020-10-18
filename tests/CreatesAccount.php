@@ -40,7 +40,6 @@ trait CreatesAccount
 
         $this->user = factory(User::class)->create([
             'account_id' => $this->account->id,
-            'email_verified_at' => now()
         ]);
 
         $this->paymentMethod = factory(PaymentMethod::class)->create([

@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use \App\Models\EmailVerification;
 use \App\Models\Company;
 use \App\Models\BlockedPhoneNumber;
 use \App\Models\BlockedCall;
@@ -28,8 +27,6 @@ class User extends Authenticatable
     const ROLE_ADMIN     = 'ADMIN';
     const ROLE_SYSTEM    = 'SYSTEM';
 
-    private $emailVerification;
-
     protected $fillable = [
         'id',
         'account_id',
@@ -43,7 +40,6 @@ class User extends Authenticatable
         'password_reset_token',
         'password_reset_expires_at',
         'auth_token',
-        'email_verified_at',
         'last_login_at',
         'login_attempts',
         'created_at',

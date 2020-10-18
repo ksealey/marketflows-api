@@ -121,11 +121,11 @@ class IncomingCallController extends Controller
                                 ->where('country_code', $callerCountryCode)
                                 ->where('number', $callerNumber)
                                 ->first();
-
+            
             $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id);
             if( ! count($sessions) && ! $contact ){ 
                 $response->reject();
-
+                
                 return Response::xmlResponse($response);
             }
         }else{

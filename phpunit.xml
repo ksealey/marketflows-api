@@ -32,7 +32,6 @@
         <server name="LOG_CHANNEL" value="stdout"/>
         <server name="BROADCAST_DRIVER" value="log"/>
         <server name="S3_URL" value="foobar"/>
-        <server name="CDN_URL" value="foobar"/>
         <server name="AWS_BUCKET" value="foobar"/>
         <server name="AWS_ACCESS_KEY_ID" value="foobar"/>
         <server name="AWS_SECRET_ACCESS_KEY" value="foobar"/>

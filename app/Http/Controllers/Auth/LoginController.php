@@ -161,7 +161,6 @@ class LoginController extends Controller
         $user->login_attempts            = 0;
         $user->login_disabled_at         = null;
         $user->auth_token                = str_random(128);
-        $user->email_verified_at         = $user->email_verified_at ?: now();
         $user->save();
 
         return response([
