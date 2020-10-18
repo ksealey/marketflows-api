@@ -39,6 +39,10 @@ class PhoneNumberController extends Controller
         'phone_numbers.updated_at',
         'phone_numbers.last_call_at',
         'phone_numbers.status',
+        'phone_numbers.is_paid',
+        'phone_numbers.is_organic',
+        'phone_numbers.is_referral',
+        'phone_numbers.is_search',
         'phone_number_call_count.call_count'
     ];
 
@@ -81,13 +85,19 @@ class PhoneNumberController extends Controller
             'source'              => 'bail|required|max:64', 
             'medium'              => 'bail|nullable|max:64',
             'content'             => 'bail|nullable|max:64',
-            'campaign'            => 'bail|nullable|max:64',       
+            'campaign'            => 'bail|nullable|max:64',   
+            'is_paid'             => 'bail|nullable|boolean', 
+            'is_organic'          => 'bail|nullable|boolean',  
+            'is_direct'           => 'bail|nullable|boolean', 
+            'is_referral'         => 'bail|nullable|boolean',   
+            'is_search'           => 'bail|nullable|boolean',      
             'phone_number_config_id' => [
                 'bail',
                 'required',
                 (new PhoneNumberConfigRule($company))
             ],
-            'type'          => 'bail|required|in:Toll-Free,Local'
+            'type'          => 'bail|required|in:Toll-Free,Local',
+            
         ];
 
         $validator = validator($request->input(), $rules);
@@ -155,6 +165,11 @@ class PhoneNumberController extends Controller
             'medium'                    => $request->medium,
             'content'                   => $request->content,
             'campaign'                  => $request->campaign,
+            'is_paid'                   => boolval($request->is_paid),
+            'is_organic'                => boolval($request->is_organic),
+            'is_direct'                 => boolval($request->is_direct),
+            'is_referral'               => boolval($request->is_referral),
+            'is_search'                 => boolval($request->is_search),
             'swap_rules'                => ($request->sub_category == 'WEBSITE') ? $request->swap_rules : null,
             'purchased_at'              => now(),
             'created_by'                => $user->id
@@ -194,7 +209,12 @@ class PhoneNumberController extends Controller
             'source'              => 'bail|min:1,max:64',  
             'medium'              => 'bail|nullable|max:64',  
             'content'             => 'bail|nullable|max:64',  
-            'campaign'            => 'bail|nullable|max:64',        
+            'campaign'            => 'bail|nullable|max:64', 
+            'is_paid'             => 'bail|nullable|boolean', 
+            'is_organic'          => 'bail|nullable|boolean',  
+            'is_direct'           => 'bail|nullable|boolean', 
+            'is_referral'         => 'bail|nullable|boolean',   
+            'is_search'           => 'bail|nullable|boolean',           
             'phone_number_config' => [
                 'bail',
                 (new PhoneNumberConfigRule($company))
@@ -239,6 +259,16 @@ class PhoneNumberController extends Controller
             $phoneNumber->content = $request->content ?: null;
         if( $request->has('campaign') )
             $phoneNumber->campaign = $request->campaign ?: null;
+        if( $request->filled('is_paid') )
+            $phoneNumber->is_paid = boolval($request->is_paid);
+        if( $request->filled('is_organic') )
+            $phoneNumber->is_organic = boolval($request->is_organic);
+        if( $request->filled('is_direct') )
+            $phoneNumber->is_direct = boolval($request->is_direct);
+        if( $request->filled('is_referral') )
+            $phoneNumber->is_referral = boolval($request->is_referral);
+        if( $request->filled('is_search') )
+            $phoneNumber->is_search = boolval($request->is_search);
 
         if( $request->filled('swap_rules') ){
             $phoneNumber->swap_rules = $request->sub_category == 'WEBSITE' ? $request->swap_rules : null;

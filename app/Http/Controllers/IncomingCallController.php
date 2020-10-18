@@ -524,17 +524,6 @@ class IncomingCallController extends Controller
         //
         //  Determine how to route this call and capture sourcing data
         //  
-        $source     = null;
-        $medium     = null;
-        $content    = null;
-        $campaign   = null;
-        $keyword    = null;
-        $isOrganic  = null;
-        $isPaid     = null;
-        $isDirect   = null;
-        $isReferral = null;
-        $isSearch   = null;
-
         if( $keywordTrackingPool ){
             if( $session ){
                 $source = $session->getSource($company->source_param, $company->source_referrer_when_empty);
@@ -557,6 +546,17 @@ class IncomingCallController extends Controller
                 $isDirect   = $session->getIsDirect();
                 $isReferral = $session->getIsReferral();
                 $isSearch   = $session->getIsSearch();
+            }else{
+                $source     = 'Unknown';
+                $medium     = null;
+                $content    = null;
+                $campaign   = null;
+                $keyword    = null;
+                $isOrganic  = false;
+                $isPaid     = false;
+                $isDirect   = false;
+                $isReferral = false;
+                $isSearch   = false;
             }
 
             $config = $keywordTrackingPool->phone_number_config;
@@ -565,6 +565,12 @@ class IncomingCallController extends Controller
             $medium     = $phoneNumber->medium ?: null;
             $content    = $phoneNumber->content ?: null;
             $campaign   = $phoneNumber->campaign ?: null;
+            $keyword    = null;
+            $isOrganic  = $phoneNumber->is_organic;
+            $isPaid     = $phoneNumber->is_paid;
+            $isDirect   = $phoneNumber->is_direct;
+            $isReferral = $phoneNumber->is_referral;
+            $isSearch   = $phoneNumber->is_search;
 
             $config     = $phoneNumber->phone_number_config;
         }
@@ -593,8 +599,8 @@ class IncomingCallController extends Controller
             'content'                           => $content,
             'campaign'                          => $campaign,
             'keyword'                           => $keyword,
-            'is_organic'                        => $isOrganic,
             'is_paid'                           => $isPaid,
+            'is_organic'                        => $isOrganic,
             'is_direct'                         => $isDirect,
             'is_referral'                       => $isReferral,
             'is_search'                         => $isSearch,

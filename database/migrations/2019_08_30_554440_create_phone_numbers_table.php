@@ -38,6 +38,12 @@ class CreatePhoneNumbersTable extends Migration
             $table->string('campaign', 64)->nullable();
             $table->string('content', 64)->nullable();
 
+            $table->boolean('is_paid')->default(0);
+            $table->boolean('is_organic')->default(0);
+            $table->boolean('is_direct')->default(0);
+            $table->boolean('is_referral')->default(0);
+            $table->boolean('is_search')->default(0);
+
             $table->json('swap_rules')->nullable();
 
             $table->bigInteger('total_assignments')->unsigned()->default(0);
