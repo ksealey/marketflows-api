@@ -122,10 +122,11 @@ class Billing extends Model
                 //
                 $query = DB::table('phone_numbers')
                             ->where('account_id', $this->account_id)
-                            ->where('created_at', '<=', $endDate) // Upper bound
-                            ->where(function($query) use($startDate){ // Lower bound
-                                $query->whereNull('deleted_at') // Active
-                                      ->orWhere('deleted_at', '>=', $startDate); // or deleted after start date
+                            ->where('created_at', '<=', $endDate) // Created before the en
+                            ->where(function($query) use($startDate, $endDate){
+                                //  Active within timeframe
+                                $query->whereNull('deleted_at')
+                                      ->orWhereBetween('deleted_at', [$startDate, $endDate]);
                             });
 
                 $query->where('type', $item == self::ITEM_NUMBERS_LOCAL ? 'Local' : 'Toll-Free');
@@ -139,13 +140,12 @@ class Billing extends Model
                 $query = DB::table('calls')->select([
                             DB::raw('SUM(
                                 CASE 
-                                    WHEN duration < 60
+                                    WHEN duration <= 60
                                         THEN 1
                                     ELSE CEIL(duration / 60)
                                 END
                             ) as total_minutes')
                         ])
-                        ->whereNull('calls.deleted_at')
                         ->where('account_id', $this->account_id)
                         ->where('created_at', '>=', $startDate)
                         ->where('created_at', '<=', $endDate);
@@ -158,17 +158,17 @@ class Billing extends Model
                 $query = DB::table('calls')->select([
                                 DB::raw('SUM(
                                     CASE 
-                                        WHEN duration < 60
+                                        WHEN call_recordings.duration <= 60
                                             THEN 1
-                                        ELSE CEIL(duration / 60)
+                                        ELSE CEIL(call_recordings.duration / 60)
                                     END
                                 ) as total_minutes')
                             ])
-                            ->whereNull('calls.deleted_at')
-                            ->where('account_id', $this->account_id)
-                            ->where('transcription_enabled', 1)
-                            ->where('created_at', '>=', $startDate)
-                            ->where('created_at', '<=', $endDate);
+                            ->leftJoin('call_recordings', 'call_recordings.call_id', 'calls.id')
+                            ->where('calls.account_id', $this->account_id)
+                            ->where('calls.transcription_enabled', 1)
+                            ->where('calls.recording_enabled', 1)
+                            ->whereBetween('calls.created_at', [$startDate, $endDate]);
 
                 return $query->first()->total_minutes ?: 0;
 

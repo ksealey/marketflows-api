@@ -253,7 +253,8 @@ trait CreatesAccount
                         'phone_number_name' => $phoneNumber->name,
                         'duration'        => mt_rand(0, 59),
                         'type'            => 'Local',
-                        'created_at'      => now()->subMinutes(5)
+                        'created_at'      => now()->subMinutes(5),
+                        'recording_enabled' => 1
                     ])->each(function($call){
                         $path = '/to-recording/' . str_random(10) . '.mp3';
                         Storage::put($path, 'foobar');
@@ -261,8 +262,10 @@ trait CreatesAccount
                         factory(CallRecording::class)->create([
                             'account_id' => $call->account_id,
                             'company_id' => $call->company_id,
+                            'duration'   => $call->duration,
                             'call_id' => $call->id,
                             'path'     => $path,
+                            'transcription_path' => str_replace('recording/', 'transciption/', $path),
                             'file_size' => 1024 * 1024 * 10
                         ]);
                     });
@@ -289,6 +292,7 @@ trait CreatesAccount
                         'phone_number_name'=> $phoneNumber->name,
                         'duration'        => mt_rand(0, 59),
                         'type'            => 'Toll-Free',
+                        'recording_enabled' => 1,
                         'created_at'      => now()->subMinutes(5)
                     ])->each(function($call){
                         $path = '/to-recording/' . str_random(10) . '.mp3';
@@ -298,7 +302,9 @@ trait CreatesAccount
                             'account_id' => $call->account_id,
                             'company_id' => $call->company_id,
                             'call_id' => $call->id,
+                            'duration'  => $call->duration,
                             'path'     => $path,
+                            'transcription_path' => str_replace('recording/', 'transciption/', $path),
                             'file_size' => 1024 * 1024 * 10
                         ]);
                     });

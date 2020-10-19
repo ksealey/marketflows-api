@@ -231,7 +231,7 @@ class BillingTest extends TestCase
     /**
      * Test that the billing calculates properly
      * 
-     * @group billing
+     * @group billing--
      */
     public function testBillingCalculatesProperly()
     {
@@ -244,7 +244,6 @@ class BillingTest extends TestCase
         $billingPeriodStart = $billing->billing_period_starts_at;
         $billingPeriodEnd   = $billing->billing_period_ends_at;
 
-        // populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber)
         $companyCount           = 2;
         $localNumberCount       = 11;
         $tollFreeNumberCount    = 1;

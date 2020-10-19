@@ -68,14 +68,14 @@ class IncomingCallTest extends TestCase
         
         $response->assertStatus(200);
 
-        $this->assertDatabaseHas('contacts', [
-            'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'number'       => PhoneNumber::number($incomingCall->From)
-        ]);
+        $contact = Contact::where('country_code', PhoneNumber::countryCode($incomingCall->From))
+                            ->where('number', PhoneNumber::number($incomingCall->From))
+                            ->first();
 
         $this->assertDatabaseHas('calls', [
             'account_id'                    => $this->account->id,
             'company_id'                    => $company->id,
+            'contact_id'                    => $contact->id,
             'keyword_tracking_pool_id'      => null,
             'keyword_tracking_pool_name'    => null,
             'phone_number_id'               => $phoneNumber->id,
@@ -91,10 +91,11 @@ class IncomingCallTest extends TestCase
             'content'                       => $phoneNumber->content,
             'campaign'                      => $phoneNumber->campaign,
             'keyword'                       => null,
-            'is_paid'                       => null,
-            'is_organic'                    => null, 
-            'is_direct'                     => null,
-            'is_referral'                   => null,
+            'is_paid'                       => $phoneNumber->is_paid,
+            'is_organic'                    => $phoneNumber->is_organic, 
+            'is_direct'                     => $phoneNumber->is_direct,
+            'is_referral'                   => $phoneNumber->is_referral,
+            'is_search'                     => $phoneNumber->is_search,
             'recording_enabled'             => $config->recording_enabled,
             'forwarded_to'                  => $config->forwardToPhoneNumber(),
             'duration'                      => null,
@@ -133,14 +134,14 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
 
-        $this->assertDatabaseHas('contacts', [
-            'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'number' =>  PhoneNumber::number($incomingCall->From)
-        ]);
+        $contact = Contact::where('country_code', PhoneNumber::countryCode($incomingCall->From))
+                            ->where('number', PhoneNumber::number($incomingCall->From))
+                            ->first();
 
         $this->assertDatabaseHas('calls', [
             'account_id'                    => $this->account->id,
             'company_id'                    => $company->id,
+            'contact_id'                    => $contact->id,
             'keyword_tracking_pool_id'      => null,
             'keyword_tracking_pool_name'    => null,
             'phone_number_id'               => $phoneNumber->id,
@@ -156,10 +157,11 @@ class IncomingCallTest extends TestCase
             'content'                       => $phoneNumber->content,
             'campaign'                      => $phoneNumber->campaign,
             'keyword'                       => null,
-            'is_paid'                       => null,
-            'is_organic'                    => null, 
-            'is_direct'                     => null,
-            'is_referral'                   => null,
+            'is_paid'                       => $phoneNumber->is_paid,
+            'is_organic'                    => $phoneNumber->is_organic, 
+            'is_direct'                     => $phoneNumber->is_direct,
+            'is_referral'                   => $phoneNumber->is_referral,
+            'is_search'                     => $phoneNumber->is_search,
             'recording_enabled'             => $config->recording_enabled,
             'forwarded_to'                  => $config->forwardToPhoneNumber(),
             'duration'                      => null,
@@ -201,10 +203,9 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
         
-        $this->assertDatabaseHas('contacts', [
-            'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'number' =>  PhoneNumber::number($incomingCall->From)
-        ]);
+        $contact = Contact::where('country_code', PhoneNumber::countryCode($incomingCall->From))
+                            ->where('number', PhoneNumber::number($incomingCall->From))
+                            ->first();
 
         $this->assertDatabaseHas('calls', [
             'account_id'                    => $this->account->id,
@@ -224,18 +225,16 @@ class IncomingCallTest extends TestCase
             'content'                       => $phoneNumber->content,
             'campaign'                      => $phoneNumber->campaign,
             'keyword'                       => null,
-            'is_paid'                       => null,
-            'is_organic'                    => null, 
-            'is_direct'                     => null,
-            'is_referral'                   => null,
+            'is_paid'                       => $phoneNumber->is_paid,
+            'is_organic'                    => $phoneNumber->is_organic, 
+            'is_direct'                     => $phoneNumber->is_direct,
+            'is_referral'                   => $phoneNumber->is_referral,
+            'is_search'                     => $phoneNumber->is_search,
             'recording_enabled'             => $config->recording_enabled,
             'forwarded_to'                  => $config->forwardToPhoneNumber(),
             'duration'                      => null,
         ]);
 
-        $call    = Call::where('external_id', $incomingCall->CallSid)->first();
-        $contact = $call->contact;
-        
         $response->assertSee('<Response><Say language="' . $company->tts_language . '" voice="Polly.'  . $company->tts_voice . '">' . $config->greetingMessage() . '</Say><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
 
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
@@ -272,14 +271,14 @@ class IncomingCallTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
         
-        $this->assertDatabaseHas('contacts', [
-            'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'number' =>  PhoneNumber::number($incomingCall->From)
-        ]);
+        $contact = Contact::where('country_code', PhoneNumber::countryCode($incomingCall->From))
+                            ->where('number', PhoneNumber::number($incomingCall->From))
+                            ->first();
 
         $this->assertDatabaseHas('calls', [
             'account_id'                    => $this->account->id,
             'company_id'                    => $company->id,
+            'contact_id'                    => $contact->id,
             'keyword_tracking_pool_id'      => null,
             'keyword_tracking_pool_name'    => null,
             'phone_number_id'               => $phoneNumber->id,
@@ -295,16 +294,15 @@ class IncomingCallTest extends TestCase
             'content'                       => $phoneNumber->content,
             'campaign'                      => $phoneNumber->campaign,
             'keyword'                       => null,
-            'is_paid'                       => null,
-            'is_organic'                    => null, 
-            'is_direct'                     => null,
-            'is_referral'                   => null,
+            'is_paid'                       => $phoneNumber->is_paid,
+            'is_organic'                    => $phoneNumber->is_organic, 
+            'is_direct'                     => $phoneNumber->is_direct,
+            'is_referral'                   => $phoneNumber->is_referral,
+            'is_search'                     => $phoneNumber->is_search,
             'recording_enabled'             => $config->recording_enabled,
             'forwarded_to'                  => $config->forwardToPhoneNumber(),
             'duration'                      => null,
         ]);
-        
-        $call = Call::where('external_id', $incomingCall->CallSid)->first();
         
         $response->assertSee('<Response><Play>' . $audioClip->url . '</Play><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
         
@@ -419,6 +417,11 @@ class IncomingCallTest extends TestCase
             'medium'                => $phoneNumber->medium,
             'content'               => $phoneNumber->content,
             'campaign'              => $phoneNumber->campaign,
+            'is_paid'               => $phoneNumber->is_paid,
+            'is_organic'            => $phoneNumber->is_organic, 
+            'is_direct'             => $phoneNumber->is_direct,
+            'is_referral'           => $phoneNumber->is_referral,
+            'is_search'             => $phoneNumber->is_search,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
             'duration'              => null,
@@ -866,10 +869,11 @@ class IncomingCallTest extends TestCase
             'content'                       => $phoneNumber->content,
             'campaign'                      => $phoneNumber->campaign,
             'keyword'                       => null,
-            'is_paid'                       => null,
-            'is_organic'                    => null, 
-            'is_direct'                     => null,
-            'is_referral'                   => null,
+            'is_paid'                       => $phoneNumber->is_paid,
+            'is_organic'                    => $phoneNumber->is_organic, 
+            'is_direct'                     => $phoneNumber->is_direct,
+            'is_referral'                   => $phoneNumber->is_referral,
+            'is_search'                     => $phoneNumber->is_search,
             'recording_enabled'             => $config->recording_enabled,
             'forwarded_to'                  => $config->forwardToPhoneNumber(),
             'duration'                      => null,
@@ -1202,6 +1206,7 @@ class IncomingCallTest extends TestCase
             'is_organic'            => $session->getIsOrganic($company->medium_param),
             'is_direct'             => $session->getIsDirect(),
             'is_referral'           => $session->getIsReferral(),
+            'is_search'             => $session->getIsSearch(),
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
             'duration'              => null,
@@ -1323,6 +1328,7 @@ class IncomingCallTest extends TestCase
             'is_organic'            => $session2->getIsOrganic($company->medium_param),
             'is_direct'             => $session2->getIsDirect(),
             'is_referral'           => $session2->getIsReferral(),
+            'is_search'             => $session2->getIsSearch(),
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
             'duration'              => null,
@@ -1468,7 +1474,7 @@ class IncomingCallTest extends TestCase
     }
 
     /**
-     * Test calling a pool with no active session
+     * Test calling a pool with no active session for a contact that exists with a call to this number is routed
      *
      * @group incoming-calls
      */
@@ -1540,15 +1546,16 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'source'                => null,
+            'source'                => 'Unknown',
             'medium'                => null,
             'content'               => null,
             'campaign'              => null,
             'keyword'               => null,
-            'is_paid'               => null,
-            'is_organic'            => null,
-            'is_direct'             => null,
-            'is_referral'           => null,
+            'is_paid'               => 0,
+            'is_organic'            => 0, 
+            'is_direct'             => 0,
+            'is_referral'           => 0,
+            'is_search'             => 0,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
             'duration'              => null,

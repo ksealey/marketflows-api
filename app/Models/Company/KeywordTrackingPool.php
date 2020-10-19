@@ -136,7 +136,8 @@ class KeywordTrackingPool extends Model
     public function activeSessions($phoneNumberId = null, $contactId = null, $excludeClaimed = true)
     {
         $query = KeywordTrackingPoolSession::where('keyword_tracking_pool_id', $this->id)
-                                           ->where('active', 1);
+                                           ->where('active', 1)
+                                           ->whereNull('ended_at');
         if( $phoneNumberId ){
             $query->where('phone_number_id', $phoneNumberId);
         }
