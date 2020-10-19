@@ -131,7 +131,7 @@ class RegisterController extends Controller
             Billing::create([
                 'account_id'                => $account->id,
                 'billing_period_starts_at'  => now()->startOfDay(),// Start of the next day
-                'billing_period_ends_at'    => now()->addDays(30)->endOfDay(), // End of day, 30 days from now,
+                'billing_period_ends_at'    => now()->addDays(7)->endOfDay(), // End of day, 30 days from now,
                 'external_id'               => $customer->id
             ]);
 
