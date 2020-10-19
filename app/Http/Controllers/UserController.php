@@ -57,31 +57,21 @@ class UserController extends Controller
             ], 400);
         }
 
-        DB::beginTransaction();
+       
+        $user = User::create([
+            'account_id'                => $creator->account_id,
+            'role'                      => $request->role,
+            'timezone'                  => $request->timezone,
+            'first_name'                => $request->first_name,
+            'last_name'                 => $request->last_name,
+            'email'                     => $request->email,
+            'password_reset_token'      => str_random(128), // To allow password reset
+            'password_hash'             => str_random(64), // Jibberish
+            'auth_token'                => str_random(255),
+        ]);
 
-        try{
-            //  Create this user
-            $user = User::create([
-                'account_id'                => $creator->account_id,
-                'role'                      => $request->role,
-                'timezone'                  => $request->timezone,
-                'first_name'                => $request->first_name,
-                'last_name'                 => $request->last_name,
-                'email'                     => $request->email,
-                'password_reset_token'      => str_random(128), // To allow password reset
-                'password_hash'             => str_random(64), // Jibberish
-                'auth_token'                => str_random(255),
-            ]);
-
-            Mail::to($user)
-                ->queue(new AddUserEmail($creator, $user));
-        }catch(Exception $e){
-            DB::rollBack();
-
-            throw $e;
-        }
-
-        DB::commit();
+        Mail::to($user)
+            ->queue(new AddUserEmail($creator, $user));
 
         return response($user, 201);
     }

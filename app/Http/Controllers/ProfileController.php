@@ -23,6 +23,7 @@ class ProfileController extends Controller
             'timezone'   => 'timezone',
             'first_name' => 'min:1',
             'last_name'  => 'min:1',
+            'phone'      => 'numeric:digits_between:10,13'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -40,6 +41,9 @@ class ProfileController extends Controller
 
         if( $request->filled('last_name') )
             $me->last_name = $request->last_name;
+
+        if( $request->has('phone') )
+            $me->phone = $request->phone;
 
         $me->save();
 

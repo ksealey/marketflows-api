@@ -24,6 +24,11 @@ class AccountPolicy
         return $user->role === User::ROLE_ADMIN;
     }
 
+    public function summary(User $user)
+    {
+        return $user->role === User::ROLE_ADMIN || $user->role === User::ROLE_SYSTEM;
+    }
+
     public function delete(User $user)
     {
         return $user->role === User::ROLE_ADMIN;

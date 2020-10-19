@@ -94,7 +94,7 @@ Route::prefix('/')->group(function(){
                 |--------------------------------
                 */
                 Route::get('/summary', 'AccountController@summary')
-                    ->middleware('can:read,\App\Models\Account')
+                    ->middleware('can:summary,\App\Models\Account')
                     ->name('read-summary');
 
                 /*
