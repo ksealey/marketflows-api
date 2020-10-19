@@ -505,7 +505,7 @@ class IncomingCallController extends Controller
                 //  First look for claimed session
                 $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id, $contact->id, false);
                 $session  = count($sessions) ? $sessions->first() : null;
-                //var_dump($session); exit;
+                
                 //  Look for unclaimed session
                 if( ! $session ){
                     $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id);

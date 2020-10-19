@@ -45,6 +45,7 @@ class Billing extends Model
     const ITEM_MINUTES_TRANSCRIPTION    = 'Minutes.Transcription';
     const ITEM_STORAGE_GB               = 'Storage.GB';
 
+    const TIER_SERVICE                  = 0;
     const TIER_NUMBERS_LOCAL            = 10;
     const TIER_NUMBERS_TOLL_FREE        = 0;
     const TIER_MINUTES_LOCAL            = 500;
@@ -325,7 +326,8 @@ class Billing extends Model
                 'price'                => $servicePrice,
                 'price_formatted'      => number_format($servicePrice, 2),
                 'total'                => $serviceTotal,
-                'total_formatted'      => number_format($serviceTotal, 2)
+                'total_formatted'      => number_format($serviceTotal, 2),
+                'free_tier'            => Billing::TIER_SERVICE
             ],
             [
                 'type'                 => 'STANDARD',
@@ -334,7 +336,8 @@ class Billing extends Model
                 'price'                => $localNumberPrice,
                 'price_formatted'      => number_format($localNumberPrice, 2),
                 'total'                => $localNumberTotal,
-                'total_formatted'      => number_format($localNumberTotal, 2)
+                'total_formatted'      => number_format($localNumberTotal, 2),
+                'free_tier'            => Billing::TIER_NUMBERS_LOCAL
             ],
             [
                 'type'                 => 'STANDARD',
@@ -343,7 +346,8 @@ class Billing extends Model
                 'price'                => $tollFreeNumberPrice,
                 'price_formatted'      => number_format($tollFreeNumberPrice, 2),
                 'total'                => $tollFreeNumberTotal,
-                'total_formatted'      => number_format($tollFreeNumberTotal, 2)
+                'total_formatted'      => number_format($tollFreeNumberTotal, 2),
+                'free_tier'            => Billing::TIER_NUMBERS_TOLL_FREE
             ],
             [
                 'type'                 => 'STANDARD',
@@ -352,7 +356,8 @@ class Billing extends Model
                 'price'                => $localMinutesPrice,
                 'price_formatted'      => number_format($localMinutesPrice, 2),
                 'total'                => $localMinutesTotal,
-                'total_formatted'      => number_format($localMinutesTotal, 2)
+                'total_formatted'      => number_format($localMinutesTotal, 2),
+                'free_tier'            => Billing::TIER_MINUTES_LOCAL
             ],
             [
                 'type'                 => 'STANDARD',
@@ -361,7 +366,8 @@ class Billing extends Model
                 'price'                => $tollFreeMinutesPrice,
                 'price_formatted'      => number_format($tollFreeMinutesPrice, 2),
                 'total'                => $tollFreeMinutesTotal,
-                'total_formatted'      => number_format($tollFreeMinutesTotal, 2)
+                'total_formatted'      => number_format($tollFreeMinutesTotal, 2),
+                'free_tier'            => Billing::TIER_MINUTES_TOLL_FREE
             ],
             [
                 'type'                 => 'STANDARD',
@@ -370,7 +376,8 @@ class Billing extends Model
                 'price'                => $transMinutesPrice,
                 'price_formatted'      => number_format($transMinutesPrice, 2),
                 'total'                => $transMinutesTotal,
-                'total_formatted'      => number_format($transMinutesTotal, 2)
+                'total_formatted'      => number_format($transMinutesTotal, 2),
+                'free_tier'            => Billing::TIER_MINUTES_TRANSCRIPTION
             ],
             [
                 'type'                 => 'STANDARD',
@@ -379,7 +386,8 @@ class Billing extends Model
                 'price'                => $storagePrice,
                 'price_formatted'      => number_format($storagePrice, 2),
                 'total'                => $storageTotal,
-                'total_formatted'      => number_format($storageTotal, 2)
+                'total_formatted'      => number_format($storageTotal, 2),
+                'free_tier'            => Billing::TIER_STORAGE_GB
             ],
         ];
         
