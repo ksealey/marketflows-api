@@ -131,7 +131,7 @@ class RegisterController extends Controller
             Billing::create([
                 'account_id'                => $account->id,
                 'billing_period_starts_at'  => now()->startOfDay(),// Start of the next day
-                'billing_period_ends_at'    => now()->addDays(7)->endOfDay(), // End of day, 30 days from now,
+                'billing_period_ends_at'    => now()->addDays(7)->endOfDay(),
                 'external_id'               => $customer->id
             ]);
 
@@ -198,10 +198,11 @@ class RegisterController extends Controller
         $emailVerification = EmailVerification::create([
             'email'      => $request->email,
             'code'       => mt_rand(100000, 999999),
-            'expires_at' => now()->addMinutes(3)
+            'expires_at' => now()->addHours(1)
         ]);
 
-        Mail::queue(new EmailVerificationMail($emailVerification));
+        Mail::to($emailVerification->email)
+            ->queue(new EmailVerificationMail($emailVerification));
         
         return response([
             'message' => 'Sent'
