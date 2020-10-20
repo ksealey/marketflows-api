@@ -23,6 +23,7 @@ class APICredentialController extends Controller
         $key         = strtoupper(str_random(30));
         $secret      = str_random(30);
         $credentials = APICredential::create([
+            'account_id'    => $user->account_id,
             'user_id'       => $user->id,
             'name'          => $request->name,
             'key'           => $key,

@@ -22,6 +22,7 @@ class AlertPolicy
 
     public function delete(User $user, Alert $alert)
     {
-        return $alert->user_id === $user->id;
+        return $alert->account_id == $user->account_id 
+            && $alert->user_id === $user->id;
     }
 }

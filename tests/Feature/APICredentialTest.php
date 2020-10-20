@@ -50,6 +50,7 @@ class APICredentialTest extends TestCase
     public function testDelete()
     {
         $creds = factory(APICredential::class)->create([
+            'account_id' => $this->account->id,
             'user_id'    => $this->user->id,
         ]);
 
@@ -75,6 +76,7 @@ class APICredentialTest extends TestCase
     public function testListAPICredentials()
     {
         factory(APICredential::class, 5)->create([
+            'account_id' => $this->account->id,
             'user_id'    => $this->user->id,
         ]);
 
@@ -110,6 +112,7 @@ class APICredentialTest extends TestCase
     {
         $secret = str_random(30);
         $creds = factory(APICredential::class)->create([
+            'account_id' => $this->account->id,
             'user_id'    => $this->user->id,
             'secret'     => bcrypt($secret)  
         ]);
@@ -137,6 +140,7 @@ class APICredentialTest extends TestCase
     {
         $secret = str_random(30);
         $creds = factory(APICredential::class)->create([
+            'account_id' => $this->account->id,
             'user_id'    => $this->user->id,
             'secret'     => bcrypt($secret)  
         ]);

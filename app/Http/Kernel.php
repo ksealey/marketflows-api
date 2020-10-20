@@ -14,6 +14,7 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middleware = [
+        \App\Http\Middleware\AddOrigin::class,
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\CheckForMaintenanceMode::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
@@ -28,9 +29,7 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
-            'rate_limit:60,1', 
-            'encrypt_cookies',
-            'queue_cookies',
+            'rate_limit:120,1', 
             'bindings',
         ],
 
@@ -62,7 +61,8 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'twilio.webhooks'   => \App\Http\Middleware\TwilioWebhooks::class,
         'encrypt_cookies' => \App\Http\Middleware\EncryptCookies::class,
-        'queue_cookies' => \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class
+        'queue_cookies' => \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        'add_origin'    => \App\Http\Middleware\AddOrigin::class,
     ];
 
     /**
@@ -73,6 +73,7 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middlewarePriority = [
+        \App\Http\Middleware\AddOrigin::class,
         \Illuminate\Session\Middleware\StartSession::class,
         \Illuminate\View\Middleware\ShareErrorsFromSession::class,
         \App\Http\Middleware\Authenticate::class,

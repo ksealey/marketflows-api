@@ -1,6 +1,4 @@
-.env
-.env.testing
-.env.staging
+.env*
 .dockerignore
 .editorconfig
 .gitattributes
@@ -11,8 +9,5 @@ Dockerfile
 Jenkinsfile
 xdebug.log
 docker
-storage/app/public/*
-storage/app/framework/cache/*
-storage/app/framework/sessions/*
-storage/app/framework/testing/*
+storage/app/*
 storage/logs/*

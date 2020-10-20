@@ -42,7 +42,6 @@ class ReleaseAccountNumbersJob implements ShouldQueue
                     ->each(function($phoneNumber) use($numberService){
                         $numberService->releaseNumber($phoneNumber);
                         $phoneNumber->delete();
-                        usleep(250); // Limit to 4 requests per second
                     }); 
     }
 }

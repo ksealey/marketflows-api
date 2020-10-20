@@ -76,6 +76,7 @@ class SendAccountSuspensionWarnings extends Command
         foreach( $accountsPastDue as $account ){
             foreach($account->admin_users as $user){
                 Alert::create([
+                    'account_id'    => $user->account_id,
                     'user_id'       => $user->id,  
                     'category'      => Alert::CATEGORY_PAYMENT,
                     'type'          => Alert::TYPE_DANGER,
@@ -123,6 +124,7 @@ class SendAccountSuspensionWarnings extends Command
 
             foreach($account->admin_users as $user){
                 Alert::create([
+                    'account_id'    => $user->account_id,
                     'user_id'       => $user->id,  
                     'type'          => Alert::TYPE_DANGER,
                     'category'      => Alert::CATEGORY_PAYMENT,
@@ -165,6 +167,7 @@ class SendAccountSuspensionWarnings extends Command
         foreach( $accountsPastDue as $account ){
             foreach($account->admin_users as $user){
                 Alert::create([
+                    'account_id'    => $user->account_id,
                     'user_id'       => $user->id,  
                     'category'      => Alert::CATEGORY_PAYMENT,
                     'type'          => Alert::TYPE_DANGER,
@@ -210,6 +213,7 @@ class SendAccountSuspensionWarnings extends Command
             foreach($account->admin_users as $user){
                 //  Let the user know
                 Alert::create([
+                    'account_id'    => $user->account_id,
                     'user_id'       => $user->id,  
                     'category'      => Alert::CATEGORY_PAYMENT,
                     'type'          => Alert::TYPE_DANGER,

@@ -10,7 +10,7 @@ $factory->define(Alert::class, function (Faker $faker) {
     return [
         'type'      => Alert::TYPE_DEFAULT,
         'category'  => Alert::CATEGORY_PAYMENT,
-        'title'     => $faker->realText(10),
+        'title'     => str_random(40),
         'message'   => $faker->realText(150),
     ];
 });

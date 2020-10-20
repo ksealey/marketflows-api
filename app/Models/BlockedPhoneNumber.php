@@ -13,7 +13,6 @@ class BlockedPhoneNumber extends Model
 
     protected $fillable = [
         'account_id',
-        'company_id',
         'name',
         'number', 
         'country_code',
@@ -40,18 +39,19 @@ class BlockedPhoneNumber extends Model
             'blocked_phone_numbers.country_code',
             'blocked_phone_numbers.number',
             'blocked_phone_numbers.created_at',
-            'blocked_phone_numbers.updated_at'
+            'blocked_phone_numbers.updated_at',
+            'blocked_phone_number_call_count.call_count'
         ];
     }
 
     static public function exports() : array
     {
         return [
-            'id'           => 'Id',
-            'name'         => 'Name',
-            'country_code' => 'Country Code',
-            'number'       => 'Number',
-            'call_count'   => 'Calls',
+            'id'                 => 'Id',
+            'name'               => 'Name',
+            'country_code'       => 'Country Code',
+            'number'             => 'Number',
+            'call_count'         => 'Calls',
             'created_at_local'   => 'Created'
         ];
     }
@@ -66,7 +66,7 @@ class BlockedPhoneNumber extends Model
         return BlockedPhoneNumber::select([
                                 'blocked_phone_numbers.*',
                                 DB::raw('(SELECT count(*) FROM blocked_calls WHERE blocked_calls.blocked_phone_number_id = blocked_phone_numbers.id) AS call_count'),
-                                DB::raw("DATE_FORMAT(CONVERT_TZ(blocked_phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local") 
+                                DB::raw("DATE_FORMAT(CONVERT_TZ(blocked_phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local") 
                           ])
                           ->where('blocked_phone_numbers.account_id', $input['account_id']);
     }

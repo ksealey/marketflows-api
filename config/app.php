@@ -283,5 +283,7 @@ return [
     'country_codes' => [
         'US' => 1,
         'CA' => 1
-    ]
+    ],
+
+    'cookie_domain' => env('COOKIE_DOMAIN')
 ];

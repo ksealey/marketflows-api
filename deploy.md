@@ -5,7 +5,7 @@
  - Merge release/*.*.* into production
  - Commit release with tag
  - Run image deploy to copy code into container and push layer
-    `sh deploy-production-image.sh`
+    `sh deploy-image.sh {IMAGE-TAG}`
 
 ### Pull new image on existing instances
  - Run SSH Script to have servers pull new image

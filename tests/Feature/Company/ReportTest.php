@@ -9,8 +9,10 @@ use \App\Models\Company\Contact;
 use \App\Models\Company\Report;
 use \App\Models\Company\ScheduledExport;
 use \App\Models\Company\Call;
+use \App\Services\ReportService;
 use \DateTimeZone;
 use Queue;
+use App;
 
 class ReportTest extends TestCase
 {
@@ -282,32 +284,47 @@ class ReportTest extends TestCase
     public function testCreateTimeframeReport()
     {
         $company  = $this->createCompany();
-        $days     = mt_rand(0, 700);
-        $response = $this->json('POST', route('create-report', [
-            'company' => $company->id
-        ]), [
-            'name'        => 'Report 1',
-            'module'      => 'calls',
-            'date_type'   => 'LAST_N_DAYS',
-            'last_n_days' => $days,
-            'type'        => 'timeframe',
-        ]);
-        $response->assertStatus(201);
-        $response->assertJSON([
-            "account_id" => $this->account->id,
-            "company_id" => $company->id,
-            "created_by" => $this->user->id,
-            "name"       => "Report 1",
-            "module"     => "calls",
-            "type"        => "timeframe",
-            "date_type"   => "LAST_N_DAYS",
-            "group_by"    => null,
-            "last_n_days" => $days,
-            "start_date" => null,
-            "end_date"   => null,
-            "conditions" => [],
-            "kind"       => "Report"
-        ]);
+        $reportService = App::make(ReportService::class);
+
+        foreach( $reportService->conditionFields as $field ){
+            $days     = mt_rand(0, 700);
+            $response = $this->json('POST', route('create-report', [
+                'company' => $company->id
+            ]), [
+                'name'        => 'Report 1',
+                'module'      => 'calls',
+                'date_type'   => 'LAST_N_DAYS',
+                'last_n_days' => $days,
+                'type'        => 'timeframe',
+                'conditions'  => json_encode([
+                    [
+                        [
+                            'field' => $field,
+                            'operator' => 'EQUALS',
+                            'inputs' => [
+                                str_random(10)
+                            ]
+                        ]
+                    ]
+                ])
+            ]);
+            $response->assertStatus(201);
+            $response->assertJSON([
+                "account_id" => $this->account->id,
+                "company_id" => $company->id,
+                "created_by" => $this->user->id,
+                "name"       => "Report 1",
+                "module"     => "calls",
+                "type"        => "timeframe",
+                "date_type"   => "LAST_N_DAYS",
+                "group_by"    => null,
+                "last_n_days" => $days,
+                "start_date" => null,
+                "end_date"   => null,
+                "conditions" => [],
+                "kind"       => "Report"
+            ]);
+        }
     }
 
     /**
@@ -318,33 +335,37 @@ class ReportTest extends TestCase
     public function testCreateCountReport()
     {
         $company  = $this->createCompany();
-        $days     = mt_rand(0, 700);
-        $response = $this->json('POST', route('create-report', [
-            'company' => $company->id
-        ]), [
-            'name'      => 'Report 1',
-            'module'    => 'calls',
-            'date_type' => 'LAST_N_DAYS',
-            'last_n_days' => $days,
-            'type'      => 'count',
-            'group_by'  => 'calls.source'
-        ]);
-        $response->assertStatus(201);
-        $response->assertJSON([
-            "account_id" => $this->account->id,
-            "company_id" => $company->id,
-            "created_by" => $this->user->id,
-            "name"       => "Report 1",
-            "module"     => "calls",
-            "type"       => "count",
-            "date_type"  => "LAST_N_DAYS",
-            "group_by"   => "calls.source",
-            "last_n_days" => $days,
-            "start_date" => null,
-            "end_date"   => null,
-            "conditions" => [],
-            "kind"       => "Report"
-        ]);
+        $reportService = App::make(ReportService::class);
+
+        foreach( $reportService->conditionFields as $field ){
+            $days     = mt_rand(0, 700);
+            $response = $this->json('POST', route('create-report', [
+                'company' => $company->id
+            ]), [
+                'name'      => 'Report 1',
+                'module'    => 'calls',
+                'date_type' => 'LAST_N_DAYS',
+                'last_n_days' => $days,
+                'type'      => 'count',
+                'group_by'  => $field
+            ]);
+            $response->assertStatus(201);
+            $response->assertJSON([
+                "account_id" => $this->account->id,
+                "company_id" => $company->id,
+                "created_by" => $this->user->id,
+                "name"       => "Report 1",
+                "module"     => "calls",
+                "type"       => "count",
+                "date_type"  => "LAST_N_DAYS",
+                "group_by"   => $field,
+                "last_n_days" => $days,
+                "start_date" => null,
+                "end_date"   => null,
+                "conditions" => [],
+                "kind"       => "Report"
+            ]);
+        }
     }
 
     /**
@@ -394,7 +415,7 @@ class ReportTest extends TestCase
             ]),
             "data" => [
                 'type'     => $report->type,
-                'title'    => $report->name,
+                'title'    => 'Source',
                 'labels'   => [],
                 'datasets' => [],
             ]
@@ -448,7 +469,7 @@ class ReportTest extends TestCase
             ]),
             "data" => [
                 'type'     => $report->type,
-                'title'    => $report->name,
+                'title'    => ucfirst($report->module),
                 'labels'   => [],
                 'datasets' => [],
             ]

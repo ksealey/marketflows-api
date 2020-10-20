@@ -8,11 +8,13 @@ use Twilio\Rest\Client as Twilio;
 use App\Services\PhoneNumberService;
 use App\Services\ReportService;
 use App\Services\TranscribeService;
+use App\Services\WebhookService;
 use App\Helpers\TextToSpeech;
 use \GuzzleHttp\Client as HTTPClient;
 use Aws\TranscribeService\TranscribeServiceClient;
 use AWS;
 use App;
+use URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -50,6 +52,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ReportService::class, function($app){
             return new ReportService();
         });
+
+        //  Register report service
+        $this->app->bind(WebhookService::class, function($app){
+            return new WebhookService();
+        });
+
 
         //  Register AWS Text to Speach
         $this->app->bind(TextToSpeech::class, function($app){
@@ -106,5 +114,9 @@ class AppServiceProvider extends ServiceProvider
             return response($content, $responseCode)
                     ->header('Content-Type', 'application/javascript');
         });
+
+        if(App::environment([ 'production', 'prod' ])) {
+            URL::forceScheme('https');
+        }
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\KeywordTrackingPool;
+use App\Models\Company\KeywordTrackingPoolSession;
 use App\Services\PhoneNumberService;
 use App\Rules\SwapRulesRule;
 use App\Rules\Company\PhoneNumberConfigRule;
@@ -119,6 +120,11 @@ class KeywordTrackingPoolController extends Controller
                     'mms'                       => $purchasedPhone->capabilities['mms'],
                     'name'                      => $purchasedPhone->phoneNumber,
                     'swap_rules'                => $request->swap_rules,
+                    'is_paid'                   => 0,
+                    'is_organic'                => 0,
+                    'is_direct'                 => 0,
+                    'is_referral'               => 0,
+                    'is_search'                 => 0,
                     'purchased_at'              => now(),
                     'created_by'                => $user->id
                 ]);
@@ -203,6 +209,16 @@ class KeywordTrackingPoolController extends Controller
 
         if( $request->filled('disabled') ){
             $keywordTrackingPool->disabled_at = $request->disabled ? ($keywordTrackingPool->disabled_at ?: now()) : null;
+        }
+
+        //  End active sessions for this pool
+        if( $keywordTrackingPool->disabled_at ){
+            KeywordTrackingPoolSession::where('keyword_tracking_pool_id', $keywordTrackingPool->id)
+                                    ->whereNull('ended_at')
+                                    ->update([
+                                        'ended_at' => now(),
+                                        'active'   => 0
+                                    ]);
         }
 
         $keywordTrackingPool->save();
@@ -321,6 +337,11 @@ class KeywordTrackingPoolController extends Controller
                     'mms'                       => $purchasedPhone->capabilities['mms'],
                     'name'                      => $purchasedPhone->phoneNumber,
                     'swap_rules'                => json_encode($keywordTrackingPool->swap_rules),
+                    'is_paid'                   => 0,
+                    'is_organic'                => 0,
+                    'is_direct'                 => 0,
+                    'is_referral'               => 0,
+                    'is_search'                 => 0,
                     'purchased_at'              => now(),
                     'created_by'                => $user->id
                 ]);
@@ -374,7 +395,17 @@ class KeywordTrackingPoolController extends Controller
         }
 
         $phoneNumber->keyword_tracking_pool_id = null;
+        $phoneNumber->total_assignments = 0;
+        $phoneNumber->last_assigned_at  = null;
         $phoneNumber->save();
+
+        //  End active sessions for this phone number
+        KeywordTrackingPoolSession::where('phone_number_id', $phoneNumber->id)
+                                    ->whereNull('ended_at')
+                                    ->update([
+                                        'ended_at' => now(),
+                                        'active'   => 0
+                                    ]);
 
         $phoneNumbers = $phoneNumbers->filter(function($_phoneNumber) use($phoneNumber){
             return $_phoneNumber->id !== $phoneNumber->id;

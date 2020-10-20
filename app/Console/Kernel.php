@@ -38,6 +38,16 @@ class Kernel extends ConsoleKernel
         $schedule->command('send-account-suspension-warnings')
                  ->everyFiveMinutes()
                  ->onOneServer();
+
+        //  Deactivate/end inactive sessions
+        $schedule->command('keyword-tracking-pools:update-sessions')
+                 ->everyFiveMinutes()
+                 ->onOneServer();
+
+        //  Clear expired email verifications
+        $schedule->command('clear-expired-email-verifications')
+                 ->everyFiveMinutes()
+                 ->onOneServer();
     }
 
     /**

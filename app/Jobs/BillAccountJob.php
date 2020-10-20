@@ -156,7 +156,7 @@ class BillAccountJob implements ShouldQueue
         //
         //  Unlock billing and forward billing period
         //
-        $billing->locked_at = null;
+        $billing->locked_at                = null;
         $billing->billing_period_starts_at = (new Carbon($billing->billing_period_ends_at))->addDays(1)->startOfDay(); // Start of the next day
         $billing->billing_period_ends_at   = (new Carbon($billing->billing_period_starts_at))->addDays(30)->endOfDay(); // End of day, 30 days from now
         $billing->save();
@@ -170,6 +170,7 @@ class BillAccountJob implements ShouldQueue
                 ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
         }else{
             Alert::create([
+                'account_id'    => $user->account_id,
                 'user_id'       => $user->id,  
                 'category'      => Alert::CATEGORY_PAYMENT,
                 'type'          => Alert::TYPE_DANGER,

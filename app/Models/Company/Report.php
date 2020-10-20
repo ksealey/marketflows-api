@@ -64,8 +64,10 @@ class Report extends Model
     {
         return [
             'id'                => 'Id',
-            'company_id'        => 'Company Id',
+            'company_name'      => 'Company',
             'name'              => 'Name',
+            'module'            => 'Module',
+            'type'              => 'Type',
             'created_at_local'  => 'Created'
         ];
     }
@@ -79,8 +81,12 @@ class Report extends Model
     {
         return Report::select([
                         'reports.*',
-                        DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                        DB::raw('CONCAT(UCASE(LEFT(reports.module, 1)), SUBSTRING(reports.module, 2)) AS module'),
+                        DB::raw('CONCAT(UCASE(LEFT(reports.type, 1)), SUBSTRING(reports.type, 2)) AS type'),
+                        'companies.name AS company_name',
+                        DB::raw("DATE_FORMAT(CONVERT_TZ(reports.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local")
                     ])
+                    ->leftJoin('companies', 'companies.id', 'reports.company_id')
                      ->where('reports.company_id', $input['company_id']);
     }
 

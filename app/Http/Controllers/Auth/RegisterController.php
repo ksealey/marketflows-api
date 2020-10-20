@@ -11,8 +11,9 @@ use App\Models\Company\PhoneNumber;
 use App\Models\PaymentMethod;
 use App\Models\Auth\EmailVerification;
 use App\Helpers\PaymentManager;
-use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
+use App\Mail\Auth\EmailVerification as EmailVerificationMail;
 use \App\Rules\CountryRule;
+use \App\Rules\UniqueEmailRule;
 use \Carbon\Carbon;
 use Validator;
 use DB;
@@ -41,7 +42,7 @@ class RegisterController extends Controller
             'account_name'          => 'bail|required|min:4|max:64',
             'first_name'            => 'bail|required|min:2|max:32',
             'last_name'             => 'bail|required|min:2|max:32',
-            'email'                 => 'bail|required|email|max:128|unique:users,email',
+            'email'                 => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule(null)],
             'phone'                 => ['bail','required', 'regex:/(.*)[0-9]{3}(.*)[0-9]{3}(.*)[0-9]{4}/'],
             'password' => [
                 'bail',
@@ -73,19 +74,42 @@ class RegisterController extends Controller
         }
 
         //
+        //  Make sure the email was verified
+        //
+        $emailVerification = EmailVerification::where('email', $request->email)
+                                              ->whereNotNull('verified_at')
+                                              ->first();
+        if( ! $emailVerification ){
+            return response([
+                'error' => 'You must verify your email address before creating an account'
+            ], 400);
+        }
+        
+
+        //
         //  Try to add customer with payment method
         //
         $customer = null;
-        $card = null;
-
-        DB::beginTransaction();
+        $card     = null;
 
         try{
             $customer = $this->paymentManager->createCustomer(
                 $request->account_name,
                 $request->payment_token
             );
-            
+        }catch(\Stripe\Exception\CardException $e){
+            return response([
+                'error' => $e->getMessage()
+            ], 400);
+        }catch(\Stripe\Exception\RateLimitException $e){
+            return response([
+                'error' => 'We can\'t complete this request right now. Please try again shortly.'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try{
             $paymentMethods = $this->paymentManager->getPaymentMethods($customer->id);
             $paymentMethod  = $paymentMethods->data[0];
             $card           = $paymentMethod->card;
@@ -107,7 +131,7 @@ class RegisterController extends Controller
             Billing::create([
                 'account_id'                => $account->id,
                 'billing_period_starts_at'  => now()->startOfDay(),// Start of the next day
-                'billing_period_ends_at'    => now()->addDays(30)->endOfDay(), // End of day, 30 days from now,
+                'billing_period_ends_at'    => now()->addDays(7)->endOfDay(), // End of day, 30 days from now,
                 'external_id'               => $customer->id
             ]);
 
@@ -138,10 +162,6 @@ class RegisterController extends Controller
                 'expiration'     => $expiration->format('Y-m-d'),
                 'primary_method' => true
             ]);
-
-            //  Add verification mail to queue
-            Mail::to($user->email)
-                ->queue(new UserEmailVerificationMail($user));
         }catch(Exception $e){
             DB::rollBack();
             
@@ -162,61 +182,10 @@ class RegisterController extends Controller
         ], 201);
     }
 
-    /**
-     * Verify email address
-     * 
-     */
-    public function verifyEmail(Request $request)
-    {
-        $rules = [
-            'user_id' => 'required',
-            'key'     => 'required'
-        ];
-
-        $validator = validator($request->input(), $rules);
-        if( $validator->fails() ){
-            return response([
-                'error' => $validator->errors()->first()
-            ], 400);
-        }
-
-        $verification = EmailVerification::where('user_id', $request->user_id)
-                                         ->where('key', $request->key)
-                                         ->first();
-        if( ! $verification ){
-            return response([
-                'error' => 'Invalid request'
-            ], 400);
-        }
-
-        $verification->delete();
-
-        $expiresAt = new Carbon($verification->expires_at);
-        if( $expiresAt->format('U') <= now()->format('U') ){
-            return response([
-                'error' => 'Verification expired'
-            ], 400);
-        }
-
-        $user = User::find($verification->user_id);
-        if( ! $user ){
-            return response([
-                'error' => 'User no longer exists'
-            ], 400);
-        }
-
-        $user->email_verified_at = now();
-        $user->save();
-
-        return response([
-            'message' => 'Verified'
-        ]);
-    }
-
-    public function emailAvailability(Request $request)
+    public function requestEmailVerification(Request $request)
     {
         $validator = Validator::make($request->input(), [
-            'email' => 'required|email|max:128',
+            'email' => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule(null)],
         ]);
 
         if( $validator->fails() )
@@ -224,10 +193,63 @@ class RegisterController extends Controller
                 'error' => $validator->errors()->first()
             ], 400); 
 
-        $available = User::where('email', $request->email)->count() == 0;
+        EmailVerification::where('email', $request->email)->delete();
 
+        $emailVerification = EmailVerification::create([
+            'email'      => $request->email,
+            'code'       => mt_rand(100000, 999999),
+            'expires_at' => now()->addMinutes(3)
+        ]);
+
+        Mail::queue(new EmailVerificationMail($emailVerification));
+        
         return response([
-            'available' => $available
+            'message' => 'Sent'
         ]);  
+    }
+
+    public function verifyEmail(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'email' => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule(null)],
+            'code'  => 'bail|required|numeric|digits:6'
+        ]);
+
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400); 
+
+        $emailVerification = EmailVerification::where('email', $request->email)
+                                              ->whereNull('verified_at')
+                                              ->first();
+        if( ! $emailVerification ){
+            return response([
+                'error' => 'No verifications for this email address found'
+            ], 400);
+        }
+
+        if( $emailVerification->code == $request->code ){
+            $emailVerification->verified_at = now();
+            $emailVerification->save();
+
+            return response([
+                'message' => 'Verified'
+            ]);
+        }
+
+        $emailVerification->failed_attempts++;
+        if( $emailVerification->failed_attempts >= 3 ){
+            $emailVerification->delete();
+
+            return response([
+                'error' => 'Too many failed attempts. You must request verification again.'
+            ], 400);
+        }
+
+        $emailVerification->save();
+        return response([
+            'error' => 'Code invalid'
+        ], 400);
     }
 }

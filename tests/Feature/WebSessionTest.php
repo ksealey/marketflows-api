@@ -48,7 +48,7 @@ class WebSessionTest extends TestCase
                     ]
                 ]
             ],
-            'exclusion_rules' => []
+            'exclusion_rules' => [],
         ]);
 
         //  Pool w/numbers
@@ -128,7 +128,7 @@ class WebSessionTest extends TestCase
             'browser_types' => ['CHROME'],// Only on chrome
             'device_types'  => ['ALL'], 
             'inclusion_rules' => [ [ 'rules' => [ [ 'type' => 'ALL' ] ] ] ],
-            'exclusion_rules' => []
+            'exclusion_rules' => [],
         ]);
 
          //  Pool w/numbers
@@ -531,7 +531,8 @@ class WebSessionTest extends TestCase
         $audioClip   = $this->createAudioClip($company);
         $config      = $this->createConfig($company, [
             'recording_enabled'     => 1,
-            'transcription_enabled' => 1
+            'transcription_enabled' => 1,
+            'keypress_enabled'      => 0
         ]);
 
         $phoneNumber = factory(PhoneNumber::class, 10)->create([
@@ -583,13 +584,13 @@ class WebSessionTest extends TestCase
             });
 
             //  Update the call
-            $incomingCall->CallStatus = 'Answered';
-            $response = $this->post(route('incoming-call-status-changed'), $incomingCall->toArray());
+            $incomingCall->DialCallStatus = 'Completed';
+            $response = $this->post(route('incoming-call-completed'), $incomingCall->toArray());
             $this->assertDatabaseHas('calls', [
                 'id'                            => $call->id,
                 'external_id'                   => $incomingCall->CallSid,
                 'phone_number_id'               => $phoneNumber->id,
-                'status'                        => 'Answered',
+                'status'                        => $incomingCall->DialCallStatus,
                 'forwarded_to'                  => $config->forwardToPhoneNumber(),
                 'keyword_tracking_pool_id'      => null,
                 'keyword_tracking_pool_name'    => null,
@@ -598,27 +599,13 @@ class WebSessionTest extends TestCase
                 'campaign'                      => $phoneNumber->campaign,
                 'medium'                        => $phoneNumber->medium,
             ]);
-            Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_UPDATED;
-            });
 
-            //  End the call
-            $incomingCall->CallStatus   = 'Completed';
+            //  Update the call duration
             $incomingCall->CallDuration = mt_rand(99,999); 
-            $response = $this->post(route('incoming-call-status-changed'), $incomingCall->toArray());
+            $response = $this->post(route('incoming-call-duration'), $incomingCall->toArray());
             $this->assertDatabaseHas('calls', [
-                'id'                            => $call->id,
-                'external_id'                   => $incomingCall->CallSid,
-                'phone_number_id'               => $phoneNumber->id,
-                'status'                        => 'Completed',
-                'duration'                      => $incomingCall->CallDuration,
-                'forwarded_to'                  => $config->forwardToPhoneNumber(),
-                'keyword_tracking_pool_id'      => null,
-                'keyword_tracking_pool_name'    => null,
-                'source'                        => $phoneNumber->source,
-                'content'                       => $phoneNumber->content,
-                'campaign'                      => $phoneNumber->campaign,
-                'medium'                        => $phoneNumber->medium,
+                'duration'        => $incomingCall->CallDuration,
+                'forwarded_to'    => $config->forwardToPhoneNumber()
             ]);
 
             Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
@@ -717,11 +704,7 @@ class WebSessionTest extends TestCase
             'greeting_enabled'      => 1,
             'greeting_message_type' => 'TEXT',
             'greeting_message'      => 'Hello World',
-            'keypress_enabled'      => 1,
-            'keypress_message_type' => 'TEXT',
-            'keypress_message'      => 'Invalid Entry. Please press 1 to continue.',
-            'keypress_attempts'     => 3,
-            'keypress_key'          => 1,
+            'keypress_enabled'      => 0,
             'recording_enabled'     => 1,
             'transcription_enabled' => 1
         ]);
@@ -870,13 +853,13 @@ class WebSessionTest extends TestCase
                 });
                 
                 //  Update the call
-                $incomingCall->CallStatus = 'Answered';
-                $response = $this->post(route('incoming-call-status-changed'), $incomingCall->toArray());
+                $incomingCall->DialCallStatus = 'Answered';
+                $response = $this->post(route('incoming-call-completed'), $incomingCall->toArray());
                 $this->assertDatabaseHas('calls', [
                     'id'                            => $call->id,
                     'external_id'                   => $incomingCall->CallSid,
                     'phone_number_id'               => $phoneNumber->id,
-                    'status'                        => 'Answered',
+                    'status'                        => $incomingCall->DialCallStatus,
                     'forwarded_to'                  => $config->forwardToPhoneNumber(),
                     'keyword_tracking_pool_id'      => $pool->id,
                     'keyword_tracking_pool_name'    => $pool->name,
@@ -891,19 +874,14 @@ class WebSessionTest extends TestCase
                     'is_direct'                     => $session->getIsDirect(),
                     'is_referral'                   => $session->getIsReferral(),
                 ]);
-                Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                    return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_UPDATED;
-                });
 
                 //  End the call
-                $incomingCall->CallStatus   = 'Completed';
                 $incomingCall->CallDuration = mt_rand(99,999); 
-                $response = $this->post(route('incoming-call-status-changed'), $incomingCall->toArray());
+                $response = $this->post(route('incoming-call-duration'), $incomingCall->toArray());
                 $this->assertDatabaseHas('calls', [
                     'id'                            => $call->id,
                     'external_id'                   => $incomingCall->CallSid,
                     'phone_number_id'               => $phoneNumber->id,
-                    'status'                        => 'Completed',
                     'forwarded_to'                  => $config->forwardToPhoneNumber(),
                     'keyword_tracking_pool_id'      => $pool->id,
                     'keyword_tracking_pool_name'    => $pool->name,
@@ -917,6 +895,7 @@ class WebSessionTest extends TestCase
                     'is_organic'                    => $session->getIsOrganic($company->medium_param),
                     'is_direct'                     => $session->getIsDirect(),
                     'is_referral'                   => $session->getIsReferral(),
+                    'duration'                      => $incomingCall->CallDuration 
                 ]);
 
                 Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
@@ -1142,13 +1121,13 @@ class WebSessionTest extends TestCase
                 });
                 
                 //  Update the call
-                $incomingCall->CallStatus = 'Answered';
-                $response = $this->post(route('incoming-call-status-changed'), $incomingCall->toArray());
+                $incomingCall->DialCallStatus = 'Answered';
+                $response = $this->post(route('incoming-call-completed'), $incomingCall->toArray());
                 $this->assertDatabaseHas('calls', [
                     'id'                            => $call->id,
                     'external_id'                   => $incomingCall->CallSid,
                     'phone_number_id'               => $phoneNumber->id,
-                    'status'                        => 'Answered',
+                    'status'                        => $incomingCall->DialCallStatus,
                     'forwarded_to'                  => $config->forwardToPhoneNumber(),
                     'keyword_tracking_pool_id'      => $pool->id,
                     'keyword_tracking_pool_name'    => $pool->name,
@@ -1163,19 +1142,14 @@ class WebSessionTest extends TestCase
                     'is_direct'                     => $session->getIsDirect(),
                     'is_referral'                   => $session->getIsReferral(),
                 ]);
-                Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                    return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_UPDATED;
-                });
 
                 //  End the call
-                $incomingCall->CallStatus   = 'Completed';
                 $incomingCall->CallDuration = mt_rand(99,999); 
-                $response = $this->post(route('incoming-call-status-changed'), $incomingCall->toArray());
+                $response = $this->post(route('incoming-call-duration'), $incomingCall->toArray());
                 $this->assertDatabaseHas('calls', [
                     'id'                            => $call->id,
                     'external_id'                   => $incomingCall->CallSid,
                     'phone_number_id'               => $phoneNumber->id,
-                    'status'                        => 'Completed',
                     'forwarded_to'                  => $config->forwardToPhoneNumber(),
                     'keyword_tracking_pool_id'      => $pool->id,
                     'keyword_tracking_pool_name'    => $pool->name,
@@ -1189,6 +1163,7 @@ class WebSessionTest extends TestCase
                     'is_organic'                    => $session->getIsOrganic($company->medium_param),
                     'is_direct'                     => $session->getIsDirect(),
                     'is_referral'                   => $session->getIsReferral(),
+                    'duration'                      => $incomingCall->CallDuration
                 ]);
 
                 Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){

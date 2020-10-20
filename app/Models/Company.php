@@ -12,10 +12,6 @@ use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\KeywordTrackingPool;
 use \App\Models\Company\PhoneNumberConfig;
-use \App\Jobs\BatchDeleteAudioJob;
-use \App\Jobs\BatchDeletePhoneNumbersJob;
-use \App\Jobs\BatchDeleteCallRecordingsJob;
-
 use Exception;
 use DB;
 
@@ -39,9 +35,9 @@ class Company extends Model implements Exportable
         'keyword_param',
         'source_referrer_when_empty',
         'ga_id',
+        'tracking_expiration_days',
         'created_by',
-        'updated_by',
-        
+        'updated_by'
     ];
 
     protected $hidden = [
@@ -54,6 +50,10 @@ class Company extends Model implements Exportable
     protected $appends = [
         'link',
         'kind'
+    ];
+
+    public $casts = [
+        'source_referrer_when_empty' => 'boolean'
     ];
 
     static public function exports() : array

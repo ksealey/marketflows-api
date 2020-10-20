@@ -229,7 +229,7 @@ class ScheduledExportTest extends TestCase
     /**
      * Test that the scheduled report jobs are dispatched when called
      * 
-     * @group scheduled-exports
+     * @group scheduled-exports--
      */
     public function testScheduledReportDispatched()
     {

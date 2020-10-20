@@ -557,7 +557,12 @@ class PhoneNumberTest extends TestCase
             'content'     => $numberData->content,
             'campaign'    => $numberData->campaign,
             'phone_number_config_id' => $config->id,
-            'swap_rules'  => json_encode($numberData->swap_rules)
+            'swap_rules'  => json_encode($numberData->swap_rules),
+            'is_paid'     => $numberData->is_paid,
+            'is_organic'  => $numberData->is_organic,
+            'is_direct'   => $numberData->is_direct,
+            'is_referral' => $numberData->is_referral,
+            'is_search'   => $numberData->is_search,
         ]);
 
         $response->assertStatus(201);
@@ -572,7 +577,12 @@ class PhoneNumberTest extends TestCase
             'source'      => $numberData->source,
             'medium'      => $numberData->medium,
             'content'     => $numberData->content,
-            'campaign'        => $numberData->campaign,
+            'campaign'    => $numberData->campaign,
+            'is_paid'     => $numberData->is_paid,
+            'is_organic'  => $numberData->is_organic,
+            'is_direct'   => $numberData->is_direct,
+            'is_referral' => $numberData->is_referral,
+            'is_search'   => $numberData->is_search,
             'phone_number_config_id' => $config->id,
             'swap_rules'   => $numberData->sub_category == 'WEBSITE' ?  json_decode(json_encode($numberData->swap_rules), true)  : null,
             'call_count'   => 0,
@@ -1018,7 +1028,12 @@ class PhoneNumberTest extends TestCase
             'source'                 => $updatedNumberData->source,  
             'medium'                 => $updatedNumberData->medium,  
             'content'                => $updatedNumberData->content,  
-            'campaign'               => $updatedNumberData->campaign,        
+            'campaign'               => $updatedNumberData->campaign,  
+            'is_paid'                => $updatedNumberData->is_paid,   
+            'is_organic'             => $updatedNumberData->is_organic, 
+            'is_referral'            => $updatedNumberData->is_referral, 
+            'is_direct'              => $updatedNumberData->is_direct, 
+            'is_search'              => $updatedNumberData->is_search,    
             'phone_number_config_id' => $newConfig->id,
             'category'               => $updatedNumberData->category,
             'sub_category'           => $updatedNumberData->sub_category,
@@ -1103,70 +1118,5 @@ class PhoneNumberTest extends TestCase
             'company'     => $company->id,
             'phoneNumber' => $phoneNumber->id
         ]));
-    }
-
-    /**
-     * Test twilio client function numbers
-     * 
-     * @group phone-numbers
-     */
-    public function testTwilioListsNumbersWithPurchase()
-    {
-        $company     = $this->createCompany();
-        $config      = $this->createConfig($company);
-
-        $twilioNumber = factory('Tests\Models\TwilioPhoneNumber')->make();
-
-        $mock = $this->partialMock(PhoneNumberService::class);
-        $mock->client = $this->partialMock(Twilio::class, function($mock) use($twilioNumber){
-            $query = $this->mock('stdClass');
-            $query->local = $this->mock('stdClass', function($m) use($twilioNumber){
-                $m->shouldReceive('read')->once()->andReturn([$twilioNumber]);
-            });
-
-            $mock->shouldReceive('availablePhoneNumbers')
-                ->once()
-                ->with('US')
-                ->andReturn($query);
-
-            $mock->incomingPhoneNumbers = $this->mock('stdClass', function($mock) use($twilioNumber){
-                    $mock->shouldReceive('create')
-                        ->once()
-                        ->andReturn($twilioNumber);
-            });
-                
-        });
-
-
-        $numberData = factory(PhoneNumber::class)->make();
-        $areaCode   = '813'; 
-
-        $response = $this->json('POST', route('create-phone-number', [
-            'company' => $company->id
-        ]), [
-            'name'        => $numberData->name,
-            'category'    => $numberData->category,
-            'sub_category'=> $numberData->sub_category,
-            'type'        => PhoneNumber::TYPE_LOCAL,
-            'starts_with' => $areaCode,
-            'source'      => $numberData->source,
-            'medium'      => $numberData->medium,
-            'content'     => $numberData->content,
-            'campaign'    => $numberData->campaign,
-            'phone_number_config_id' => $config->id,
-            'swap_rules'  => json_encode($numberData->swap_rules)
-        ]);
-
-        $response->assertStatus(201);
-        $response->assertJSON([
-            'name'        => $numberData->name,
-            'country_code'=> PhoneNumber::countryCode($twilioNumber->phoneNumber),
-            'number'      => PhoneNumber::number($twilioNumber->phoneNumber),
-            'source'      => $numberData->source,
-            'medium'      => $numberData->medium,
-            'content'     => $numberData->content,
-            'campaign'    => $numberData->campaign,
-            'kind' => 'PhoneNumber'
-        ]);
     }
 }

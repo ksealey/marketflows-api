@@ -96,7 +96,7 @@
         <div class="container">
             <div class="page">
                 <div class="logo">
-                    <img alt="MarketFlows logo" src="https://marketflows.s3.amazonaws.com/assets/images/logo.png"/>
+                    <img alt="MarketFlows logo" src="{{config('app.cdn_url')}}/assets/images/logo.png"/>
                 </div>
                 <div class="content">
                     @yield('content')

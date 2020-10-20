@@ -8,11 +8,11 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\PaymentMethod;
+use App\Models\User;
 use App\Models\Alert;
 use App\Models\Account;
 use App\Models\Billing;
 use App\Models\BillingStatement;
-use App\Models\User;
 use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
 use Mail;
@@ -66,19 +66,20 @@ class PayUnpaidStatementsJob implements ShouldQueue
         foreach( $statements as $statement ){
             $payment = $this->paymentManager->charge($paymentMethod, $statement->total);
             if( ! $payment ){
-                foreach( $account->admin_users as $user ){
-                    Alert::create([
-                        'user_id'       => $user->id,  
-                        'category'      => Alert::CATEGORY_PAYMENT,
-                        'type'          => Alert::TYPE_DANGER,
-                        'title'         => 'Payment method failed',
-                        'message'       => 'Payment method ' . $paymentMethod->brand . ' ending in ' . $paymentMethod->last_4 . ' has failed. Please update your payment method to avoid any disruptions in service.',
-                    ]);
+                $user = User::find($paymentMethod->created_by);
+                
+                Alert::create([
+                    'account_id'    => $user->account_id,
+                    'user_id'       => $user->id,  
+                    'category'      => Alert::CATEGORY_PAYMENT,
+                    'type'          => Alert::TYPE_DANGER,
+                    'title'         => 'Payment method failed',
+                    'message'       => 'Payment method ' . $paymentMethod->brand . ' ending in ' . $paymentMethod->last_4 . ' has failed. Please update your payment method to avoid any disruptions in service.',
+                ]);
 
-                    Mail::to($user)
-                        ->send(new PaymentMethodFailed($user, $paymentMethod, $statement));
-                }
-               
+                Mail::to($user)
+                    ->send(new PaymentMethodFailed($user, $paymentMethod, $statement));
+                
                 return;
             }
 

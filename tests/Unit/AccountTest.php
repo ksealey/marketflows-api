@@ -13,7 +13,6 @@ use \App\Mail\SuspensionWarning3Days as SuspensionWarning3DaysMail;
 use \App\Mail\SuspensionWarning7Days as SuspensionWarning7DaysMail;
 use \App\Mail\SuspensionWarning9Days as SuspensionWarning9DaysMail;
 use \App\Mail\SuspensionWarning10Days as SuspensionWarning10DaysMail;
-use \App\Jobs\ReleaseAccountNumbersJob;
 use \App\Services\PhoneNumberService;
 use Artisan;
 use Mail;

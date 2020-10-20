@@ -15,6 +15,7 @@ class CreateApiCredentialsTable extends Migration
     {
         Schema::create('api_credentials', function (Blueprint $table) {
             $table->id();
+            $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('user_id')->unsigned();
             $table->string('name', 64);
             $table->string('key', 32)->index();
@@ -22,6 +23,7 @@ class CreateApiCredentialsTable extends Migration
             $table->dateTime('last_used_at')->nullable();
             $table->timestamps();
 
+            $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('user_id')->references('id')->on('users');
         });
     }

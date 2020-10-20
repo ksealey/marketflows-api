@@ -25,8 +25,18 @@ class CallController extends Controller
         'calls.medium',
         'calls.content',
         'calls.campaign',
+        'calls.keyword',
+        'calls.is_paid',
+        'calls.is_organic',
+        'calls.is_referral',
+        'calls.is_direct',
+        'calls.is_search',
+        'calls.duration',
         'calls.forwarded_to',
-        'calls.created_at'
+        'calls.created_at',
+        'calls.recording_enabled',
+        'calls.transcription_enabled',
+        'calls.first_call',
     ];
 
     /**
@@ -63,6 +73,7 @@ class CallController extends Controller
                         ),
                         DB::raw('CONCAT(phone_numbers.country_code,phone_numbers.number) AS phone_number'),
                         DB::raw('TRIM(CONCAT(contacts.first_name, \' \', contacts.last_name)) AS caller_name'),
+                        DB::raw("contacts.country_code AS caller_country_code"),
                         DB::raw("contacts.number AS caller_number")
                     ])
                    ->where('calls.company_id', $company->id);
@@ -156,7 +167,9 @@ class CallController extends Controller
             Storage::delete($recording->transcription_path);
         }
 
-        $recording->delete();
+        $recording->deleted_by = $request->user()->id;
+        $recording->deleted_at = now();
+        $recording->save();
 
         return response([
             'message' => 'Deleted'

@@ -114,7 +114,7 @@ class KeywordTrackingPool extends Model
                                         SELECT COUNT(*) 
                                             FROM keyword_tracking_pool_sessions 
                                         WHERE keyword_tracking_pool_sessions.phone_number_id = phone_numbers.id
-                                            AND keyword_tracking_pool_sessions.ended_at IS NULL
+                                            AND active = 1
                                     ) AS active_assignments')
                                 ])
                                 ->where('keyword_tracking_pool_id', $this->id)
@@ -133,19 +133,30 @@ class KeywordTrackingPool extends Model
         return $phoneNumber;
     }
 
-    public function activeSessions($phoneNumberId = null, $unclaimedOnly = false)
+    public function activeSessions($phoneNumberId = null, $contactId = null, $excludeClaimed = true)
     {
-        $query = KeywordTrackingPoolSession::whereNull('ended_at')
-                                           ->orderBy('updated_at', 'DESC')
-                                           ->orderBy('created_at', 'DESC');
+        $query = KeywordTrackingPoolSession::where('keyword_tracking_pool_id', $this->id)
+                                           ->where('active', 1)
+                                           ->whereNull('ended_at');
         if( $phoneNumberId ){
             $query->where('phone_number_id', $phoneNumberId);
         }
 
-        if( $unclaimedOnly ){
-            $query->whereNull('contact_id');
-        }
+        if( $contactId ){
+            $query->where(function($query) use($contactId, $excludeClaimed){
+                $query->where('contact_id', $contactId);
+                if( $excludeClaimed )
+                    $query->orWhereNull('contact_id');
+            });
+            $query->orderBy('contact_id', 'DESC');
+        }else{
+            if( $excludeClaimed )
+                $query->whereNull('contact_id');
 
+            $query->orderBy('updated_at', 'DESC');
+            $query->orderBy('created_at', 'DESC');
+        }
+        
         return $query->get();
     }
 }

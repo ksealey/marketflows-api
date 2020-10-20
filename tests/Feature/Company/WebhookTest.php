@@ -5,6 +5,7 @@ namespace Tests\Feature\Company;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
+use App\Services\WebhookService;
 use \App\Models\Company\Webhook;
 
 class WebhookTest extends TestCase
@@ -20,18 +21,14 @@ class WebhookTest extends TestCase
     {
         $company = $this->createCompany();
         factory(Webhook::class, 3)->create([
+            'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
             'action'     => Webhook::ACTION_CALL_START
         ]);
-        
-        factory(Webhook::class, 3)->create([
-            'company_id' => $company->id,
-            'created_by' => $this->user->id,
-            'action'     => Webhook::ACTION_CALL_UPDATED
-        ]);
 
         factory(Webhook::class, 3)->create([
+            'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
             'action'     => Webhook::ACTION_CALL_END
@@ -43,7 +40,7 @@ class WebhookTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJSON([
-            'result_count' => 9
+            'result_count' => 6
         ]);
 
         $response->assertJSONStructure([
@@ -73,6 +70,19 @@ class WebhookTest extends TestCase
         $company = $this->createCompany();
 
         $webhook  = factory(Webhook::class)->make();
+
+        $this->mock(WebhookService::class,  function($mock) use($webhook){
+            $mock->shouldReceive('sendWebhook')
+                 ->with($webhook->method, $webhook->url, [
+                     'message' => 'Hello from MarketFlows'
+                 ])
+                 ->andReturn((object)[
+                     'ok'          => true,
+                     'status_code' => 200,
+                     'error'       => null
+                 ]);
+        });
+
         $response = $this->json('POST', route('create-webhook',[
             'company' => $company->id
         ]), [
@@ -100,6 +110,7 @@ class WebhookTest extends TestCase
     {
         $company = $this->createCompany();
         $webhook = factory(Webhook::class)->create([
+            'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
@@ -129,11 +140,23 @@ class WebhookTest extends TestCase
     {
         $company = $this->createCompany();
         $webhook = factory(Webhook::class)->create([
+            'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
 
         $updatedWebhook = factory(Webhook::class)->make();
+        $this->mock(WebhookService::class,  function($mock) use($updatedWebhook){
+            $mock->shouldReceive('sendWebhook')
+                 ->with($updatedWebhook->method, $updatedWebhook->url, [
+                     'message' => 'Hello from MarketFlows'
+                 ])
+                 ->andReturn((object)[
+                     'ok'          => true,
+                     'status_code' => 200,
+                     'error'       => null
+                 ]);
+        });
 
         $response = $this->json('PUT', route('read-webhook', [
             'company' => $company->id,
@@ -164,6 +187,7 @@ class WebhookTest extends TestCase
     {
         $company = $this->createCompany();
         $webhook = factory(Webhook::class)->create([
+            'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);

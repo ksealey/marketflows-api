@@ -13,6 +13,7 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Rules\CountryRule;
 use \App\Rules\ParamNameRule;
+use \App\Jobs\DeleteCompanyJob;
 use Validator;
 use Exception;
 use DB;
@@ -78,6 +79,7 @@ class CompanyController extends Controller
             'content_param'              => ['bail', new ParamNameRule()],
             'campaign_param'             => ['bail', new ParamNameRule()],
             'keyword_param'              => ['bail', new ParamNameRule()],
+            'tracking_expiration_days'   => ['bail', 'numeric', 'min:0', 'max:9999'],
             'source_referrer_when_empty' => 'boolean'
         ];
 
@@ -105,7 +107,8 @@ class CompanyController extends Controller
             'content_param'                 => $request->content_param ?: $account->content_param,
             'campaign_param'                => $request->campaign_param ?: $account->campaign_param,
             'keyword_param'                 => $request->keyword_param ?: $account->keyword_param,
-            'source_referrer_when_empty'    => $request->filled('source_referrer_when_empty') ? intval($request->source_referrer_when_empty) : $account->source_referrer_when_empty,
+            'source_referrer_when_empty'    => $request->filled('source_referrer_when_empty') ? $request->source_referrer_when_empty : $account->source_referrer_when_empty,
+            'tracking_expiration_days'      => $request->filled('tracking_expiration_days') ? intval($request->tracking_expiration_days) : 30,
             'created_by'                    => $user->id,
             'updated_by'                    => null     
         ]);
@@ -185,7 +188,9 @@ class CompanyController extends Controller
         if( $request->filled('keyword_param') )
             $company->keyword_param = $request->keyword_param;
         if( $request->filled('source_referrer_when_empty') )
-            $company->source_referrer_when_empty = $request->source_referrer_when_empty;
+            $company->source_referrer_when_empty = intval($request->source_referrer_when_empty);
+        if( $request->filled('tracking_expiration_days') )
+            $company->tracking_expiration_days = intval($request->tracking_expiration_days);
 
         $user = $request->user();
 
@@ -207,8 +212,8 @@ class CompanyController extends Controller
     {
         $user = $request->user();
 
-        $user->deleteCompany($company);
-
+        DeleteCompanyJob::dispatch($user, $company, true);
+        
         $company->deleted_by = $user->id;
         $company->deleted_at = now();
         $company->save();

@@ -75,11 +75,6 @@ class Handler extends ExceptionHandler
             ], 500);
         }
 
-        if( App::environment(['test', 'testing']) ){
-            var_dump($exception->getTraceAsString()); 
-            exit;
-        }
-
         return parent::render($request, $exception);
     }
 }

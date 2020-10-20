@@ -45,6 +45,7 @@ class Billing extends Model
     const ITEM_MINUTES_TRANSCRIPTION    = 'Minutes.Transcription';
     const ITEM_STORAGE_GB               = 'Storage.GB';
 
+    const TIER_SERVICE                  = 0;
     const TIER_NUMBERS_LOCAL            = 10;
     const TIER_NUMBERS_TOLL_FREE        = 0;
     const TIER_MINUTES_LOCAL            = 500;
@@ -54,8 +55,8 @@ class Billing extends Model
 
     const COST_SERVICE              = 39.99;
     const COST_NUMBERS_LOCAL        = 2.50;
-    const COST_NUMBERS_TOLL_FREE    = 4.00;
-    const COST_MINUTES_LOCAL        = 0.04;
+    const COST_NUMBERS_TOLL_FREE    = 5.00;
+    const COST_MINUTES_LOCAL        = 0.05;
     const COST_MINUTES_TOLL_FREE    = 0.07;
     const COST_MINUTES_TRANSCRIPTION= 0.05;
     const COST_STORAGE_GB           = 0.10;
@@ -122,10 +123,11 @@ class Billing extends Model
                 //
                 $query = DB::table('phone_numbers')
                             ->where('account_id', $this->account_id)
-                            ->where('created_at', '<=', $endDate) // Upper bound
-                            ->where(function($query) use($startDate){ // Lower bound
-                                $query->whereNull('deleted_at') // Active
-                                      ->orWhere('deleted_at', '>=', $startDate); // or deleted after start date
+                            ->where('created_at', '<=', $endDate) // Created before the en
+                            ->where(function($query) use($startDate, $endDate){
+                                //  Active within timeframe
+                                $query->whereNull('deleted_at')
+                                      ->orWhereBetween('deleted_at', [$startDate, $endDate]);
                             });
 
                 $query->where('type', $item == self::ITEM_NUMBERS_LOCAL ? 'Local' : 'Toll-Free');
@@ -139,13 +141,12 @@ class Billing extends Model
                 $query = DB::table('calls')->select([
                             DB::raw('SUM(
                                 CASE 
-                                    WHEN duration < 60
+                                    WHEN duration <= 60
                                         THEN 1
                                     ELSE CEIL(duration / 60)
                                 END
                             ) as total_minutes')
                         ])
-                        ->whereNull('calls.deleted_at')
                         ->where('account_id', $this->account_id)
                         ->where('created_at', '>=', $startDate)
                         ->where('created_at', '<=', $endDate);
@@ -158,17 +159,17 @@ class Billing extends Model
                 $query = DB::table('calls')->select([
                                 DB::raw('SUM(
                                     CASE 
-                                        WHEN duration < 60
+                                        WHEN call_recordings.duration <= 60
                                             THEN 1
-                                        ELSE CEIL(duration / 60)
+                                        ELSE CEIL(call_recordings.duration / 60)
                                     END
                                 ) as total_minutes')
                             ])
-                            ->whereNull('calls.deleted_at')
-                            ->where('account_id', $this->account_id)
-                            ->where('transcription_enabled', 1)
-                            ->where('created_at', '>=', $startDate)
-                            ->where('created_at', '<=', $endDate);
+                            ->leftJoin('call_recordings', 'call_recordings.call_id', 'calls.id')
+                            ->where('calls.account_id', $this->account_id)
+                            ->where('calls.transcription_enabled', 1)
+                            ->where('calls.recording_enabled', 1)
+                            ->whereBetween('calls.created_at', [$startDate, $endDate]);
 
                 return $query->first()->total_minutes ?: 0;
 
@@ -325,7 +326,8 @@ class Billing extends Model
                 'price'                => $servicePrice,
                 'price_formatted'      => number_format($servicePrice, 2),
                 'total'                => $serviceTotal,
-                'total_formatted'      => number_format($serviceTotal, 2)
+                'total_formatted'      => number_format($serviceTotal, 2),
+                'free_tier'            => Billing::TIER_SERVICE
             ],
             [
                 'type'                 => 'STANDARD',
@@ -334,7 +336,8 @@ class Billing extends Model
                 'price'                => $localNumberPrice,
                 'price_formatted'      => number_format($localNumberPrice, 2),
                 'total'                => $localNumberTotal,
-                'total_formatted'      => number_format($localNumberTotal, 2)
+                'total_formatted'      => number_format($localNumberTotal, 2),
+                'free_tier'            => Billing::TIER_NUMBERS_LOCAL
             ],
             [
                 'type'                 => 'STANDARD',
@@ -343,7 +346,8 @@ class Billing extends Model
                 'price'                => $tollFreeNumberPrice,
                 'price_formatted'      => number_format($tollFreeNumberPrice, 2),
                 'total'                => $tollFreeNumberTotal,
-                'total_formatted'      => number_format($tollFreeNumberTotal, 2)
+                'total_formatted'      => number_format($tollFreeNumberTotal, 2),
+                'free_tier'            => Billing::TIER_NUMBERS_TOLL_FREE
             ],
             [
                 'type'                 => 'STANDARD',
@@ -352,7 +356,8 @@ class Billing extends Model
                 'price'                => $localMinutesPrice,
                 'price_formatted'      => number_format($localMinutesPrice, 2),
                 'total'                => $localMinutesTotal,
-                'total_formatted'      => number_format($localMinutesTotal, 2)
+                'total_formatted'      => number_format($localMinutesTotal, 2),
+                'free_tier'            => Billing::TIER_MINUTES_LOCAL
             ],
             [
                 'type'                 => 'STANDARD',
@@ -361,7 +366,8 @@ class Billing extends Model
                 'price'                => $tollFreeMinutesPrice,
                 'price_formatted'      => number_format($tollFreeMinutesPrice, 2),
                 'total'                => $tollFreeMinutesTotal,
-                'total_formatted'      => number_format($tollFreeMinutesTotal, 2)
+                'total_formatted'      => number_format($tollFreeMinutesTotal, 2),
+                'free_tier'            => Billing::TIER_MINUTES_TOLL_FREE
             ],
             [
                 'type'                 => 'STANDARD',
@@ -370,7 +376,8 @@ class Billing extends Model
                 'price'                => $transMinutesPrice,
                 'price_formatted'      => number_format($transMinutesPrice, 2),
                 'total'                => $transMinutesTotal,
-                'total_formatted'      => number_format($transMinutesTotal, 2)
+                'total_formatted'      => number_format($transMinutesTotal, 2),
+                'free_tier'            => Billing::TIER_MINUTES_TRANSCRIPTION
             ],
             [
                 'type'                 => 'STANDARD',
@@ -379,7 +386,8 @@ class Billing extends Model
                 'price'                => $storagePrice,
                 'price_formatted'      => number_format($storagePrice, 2),
                 'total'                => $storageTotal,
-                'total_formatted'      => number_format($storageTotal, 2)
+                'total_formatted'      => number_format($storageTotal, 2),
+                'free_tier'            => Billing::TIER_STORAGE_GB
             ],
         ];
         

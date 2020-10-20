@@ -23,16 +23,16 @@ pipeline {
                 branch 'master'  
             }
             steps {
-                sh 'echo "Testing..."'
+                sh './vendor/bin/phpunit'
             }
         }
 
-        stage('Deploy to Staging') {
+        stage('Deploy Image') {
             when {
                 branch 'master'  
             }
             steps {
-                sh 'echo "Deploy Staging..."'
+                sh 'deploy-image.sh production'
             }
         }
     }

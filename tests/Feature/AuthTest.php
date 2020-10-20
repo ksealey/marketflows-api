@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\CreatesAccount;
 use App\Mail\Auth\EmailVerification as EmailVerificationEmail;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\PasswordReset as PasswordResetEmail;
@@ -19,7 +20,136 @@ use Mail;
 
 class AuthTest extends TestCase
 {
-    
+    use CreatesAccount, WithFaker;
+
+    /**
+     * Test requesting an email verification
+     * 
+     * @group auth
+     */
+    public function testRequestEmailVerification()
+    {
+        Mail::fake();
+
+        $faker    = $this->faker();
+        $email    = $faker->email;
+        $response = $this->json('POST', route('auth-request-email-verification'), [
+            'email' => $email
+        ]);
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'message' => 'Sent'
+        ]);
+
+        Mail::assertQueued(EmailVerificationEmail::class, function($mail) use($email){
+            return $mail->emailVerification->email == $email;
+        });
+
+        $this->assertDatabaseHas('email_verifications', [
+            'email'       => $email,
+            'verified_at' => null
+        ]);
+    }
+
+    /**
+     * Test requesting an email verification fails gracefully
+     * 
+     * @group auth
+     */
+    public function testRequestEmailVerificationFailsGracefully()
+    {
+        Mail::fake();
+
+        $this->createAccount();
+        $response = $this->json('POST', route('auth-request-email-verification'), [
+            'email' => $this->user->email
+        ]);
+        $response->assertStatus(400);
+        $response->assertJSONStructure([
+            'error'
+        ]);
+
+        Mail::assertNotQueued(EmailVerificationEmail::class);
+        
+        $this->assertDatabaseMissing('email_verifications', [
+            'email' => $this->user->email
+        ]);
+    }
+
+    /**
+     * Test verifying an email address
+     * 
+     * @group auth
+     */
+    public function testVerifyEmail()
+    {
+        $emailVerification = factory(EmailVerification::class)->create();
+
+        $response = $this->json('POST', route('auth-verify-email'), [
+            'email' => $emailVerification->email,
+            'code'  => $emailVerification->code,
+        ]);
+        
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'message' => 'Verified'
+        ]);
+
+        $this->assertDatabaseMissing('email_verifications', [
+            'id'          => $emailVerification->id,
+            'email'       => $emailVerification->email,
+            'verified_at' => null
+        ]);
+    }
+
+    /**
+     * Test verifying fails gracefully
+     * 
+     * @group auth
+     */
+    public function testVerifyEmailFailsGracefully()
+    {
+        $emailVerification = factory(EmailVerification::class)->create();
+
+        // First 2 attempts
+        for($i = 0; $i < 2; $i++){
+            $response = $this->json('POST', route('auth-verify-email'), [
+                'email' => $emailVerification->email,
+                'code'  => mt_rand(100000,999999),
+            ]);
+            $response->assertStatus(400);
+            $response->assertJSON([
+                'error' => 'Code invalid'
+            ]);
+        }
+
+        //  Third should remove verification
+        $response = $this->json('POST', route('auth-verify-email'), [
+            'email' => $emailVerification->email,
+            'code'  => mt_rand(100000,999999),
+        ]);
+        $response->assertStatus(400);
+        $response->assertJSON([
+            'error' => 'Too many failed attempts. You must request verification again.'
+        ]);
+
+        //  Fourth should fail for verification missing
+        $response = $this->json('POST', route('auth-verify-email'), [
+            'email' => $emailVerification->email,
+            'code'  => mt_rand(100000,999999),
+        ]);
+        $response->assertStatus(400);
+        $response->assertJSON([
+            'error' => 'No verifications for this email address found'
+        ]);
+
+        $this->assertDatabaseMissing('email_verifications', [
+            'id'          => $emailVerification->id
+        ]);
+    }
+
+
+
     /**
      * Test creating an account successfully
      * 
@@ -29,9 +159,14 @@ class AuthTest extends TestCase
     {
         Mail::fake();
 
+        $emailVerification = factory(EmailVerification::class)->create([
+            'verified_at' => now()
+        ]);
+
         $account = factory(Account::class)->make();
         $user    = factory(User::class)->make([
-            'password'     => 'Password1!'
+            'password'     => 'Password1!',
+            'email'        => $emailVerification->email
         ]);
         $paymentToken = 'tok_bypassPending';
         $customer     = new \stdClass();
@@ -74,7 +209,7 @@ class AuthTest extends TestCase
             'email'         => $user->email,
             'phone'         => $user->phone,
             'password'      => $user->password,
-            'timezone'      => $user->timezone
+            'timezone'      => $user->timezone,
         ]);
         $response->assertStatus(201);
         $response->assertJSON([
@@ -107,8 +242,6 @@ class AuthTest extends TestCase
             'created_by' => $response['user']['id'],
             'external_id'=> $paymentMethod->id
         ]);
-        
-        Mail::assertQueued(EmailVerificationEmail::class);
     }
 
      /**
@@ -382,118 +515,6 @@ class AuthTest extends TestCase
         $user = User::find($user->id);
         $this->assertNull($user->password_reset_token);
         $this->assertNull($user->password_reset_expires_at);
-    }
-
-    /**
-     * Test verifying email
-     * 
-     * @group auth
-     */
-    public function testVerifyEmail()
-    {
-        $account = factory(Account::class)->create();
-        $user    = factory(User::class)->create([
-            'account_id'     => $account->id,
-            'email_verified_at' => null
-        ]);
-
-        $verification = EmailVerification::create([
-            'user_id' => $user->id,
-            'key'     => str_random(30),
-            'expires_at' => now()->addHours(24)
-        ]);
-
-        $response = $this->json('POST', route('verify-email'), [
-            'user_id' => $verification->user_id,
-            'key'     => $verification->key
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'message' => 'Verified'
-        ]);
-
-        $this->assertDatabaseMissing('email_verifications', [
-            'user_id' => $user->id
-        ]);
-
-        $this->assertDatabaseMissing('users', [
-            'id'                => $user->id,
-            'email_verified_at' => null
-        ]);
-    }
-
-    /**
-     * Test verifying fails when invalid
-     * 
-     * @group auth
-     */
-    public function testVerifyEmailFailsWhenInvalid()
-    {
-        $account = factory(Account::class)->create();
-        $user    = factory(User::class)->create([
-            'account_id'     => $account->id,
-            'email_verified_at' => null
-        ]);
-
-        $verification = EmailVerification::create([
-            'user_id'    => $user->id,
-            'key'        => str_random(30),
-            'expires_at' => now()
-        ]);
-
-        $response = $this->json('POST', route('verify-email'), [
-            'user_id' => $verification->user_id,
-            'key'     => 'foo'
-        ]);
-
-        $response->assertStatus(400);
-        $response->assertJSONStructure([
-            'error'
-        ]);
-
-        $this->assertDatabaseHas('users', [
-            'id'                => $user->id,
-            'email_verified_at' => null
-        ]);
-    }
-
-    /**
-     * Test verifying fails when expired
-     * 
-     * @group auth
-     */
-    public function testVerifyEmailFailsWhenExpired()
-    {
-        $account = factory(Account::class)->create();
-        $user    = factory(User::class)->create([
-            'account_id'     => $account->id
-        ]);
-
-        $verification = EmailVerification::create([
-            'user_id'    => $user->id,
-            'key'        => str_random(30),
-            'expires_at' => now()
-        ]);
-
-        $response = $this->json('POST', route('verify-email'), [
-            'user_id' => $verification->user_id,
-            'key'     => $verification->key
-        ]);
-
-        $response->assertStatus(400);
-        $response->assertJSONStructure([
-            'error'
-        ]);
-
-        $this->assertDatabaseMissing('email_verifications', [
-            'user_id' => $user->id
-        ]);
-
-        $this->assertDatabaseHas('users', [
-            'id'                => $user->id,
-            'email_verified_at' => null
-        ]);
     }
 }
 

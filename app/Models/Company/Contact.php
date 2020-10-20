@@ -20,7 +20,6 @@ class Contact extends Model
         'company_id',
         'first_name',
         'last_name',
-        'email',
         'country_code',
         'number',
         'city',
@@ -33,27 +32,31 @@ class Contact extends Model
     ];
 
     protected $hidden = [
+        'email',
         'deleted_at',
         'deleted_by'
     ];
 
     protected $appends = [
         'kind',
-        'link'
+        'link',
+        'formatted_name',
+        'formatted_number'
     ];
 
     static public function exports() : array
     {
         return [
             'id'                => 'Id',
-            'company_id'        => 'Company Id',
+            'company_name'      => 'Company',
             'first_name'        => 'First Name',
             'last_name'         => 'Last Name',
             'country_code'      => 'Country Code',
             'number'            => 'Number',
-            'email'             => 'Email',
+            'call_count'        => 'Calls',
+            'last_call_at_local' => 'Last Call',
             'city'              => 'City',
-            'state'             => 'State',
+            'state'             => 'State/Province',
             'zip'               => 'Zip',
             'country'           => 'Country',
             'created_at_local'  => 'Created',
@@ -69,8 +72,15 @@ class Contact extends Model
     {
         return Contact::select([
                             'contacts.*',
-                            DB::raw("DATE_FORMAT(CONVERT_TZ(created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                            'contact_call_count.call_count',
+                            'contact_last_call_at.last_call_at',
+                            DB::raw("DATE_FORMAT(CONVERT_TZ(last_call_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS last_call_at_local"),
+                            'companies.name as company_name',
+                            DB::raw("DATE_FORMAT(CONVERT_TZ(contacts.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local")
                         ])
+                        ->leftJoin('companies', 'companies.id', 'contacts.company_id')
+                        ->leftJoin('contact_call_count', 'contact_call_count.contact_id', 'contacts.id')
+                        ->leftJoin('contact_last_call_at', 'contact_last_call_at.contact_id', 'contacts.id')
                         ->where('contacts.company_id', $input['company_id']);
     }
 
@@ -114,6 +124,16 @@ class Contact extends Model
         ]);
     }
 
+    public function getFormattedNameAttribute()
+    {
+        return trim($this->first_name . ' ' . ($this->last_name ?: ''));
+    }
+
+    public function getFormattedNumberAttribute()
+    {
+        return $this->e164PhoneFormat();
+    }
+
     public function getActivityAttribute()
     {
         $calls = Call::where('contact_id', $this->id)
@@ -147,6 +167,12 @@ class Contact extends Model
                 'created_at' => $this->created_at
             ],
         ], $calls->toArray());
+
+        //
+        //  Add sessions
+        //
+        $sessions = $this->sessions;
+        $activities = array_merge($sessions->toArray(), $activities);
 
         //
         //  Order by create date, asc

@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Company\Webhook;
+use App\Services\WebhookService;
 use Validator;
+use App;
 
 class WebhookController extends Controller
 {
@@ -15,6 +17,11 @@ class WebhookController extends Controller
         'webhooks.method',
         'webhooks.url'
     ];
+
+    public function __construct(WebhookService $webhookService)
+    {
+        $this->webhookService = $webhookService;
+    }
 
     public function list(Request $request, Company $company)
     {
@@ -59,7 +66,18 @@ class WebhookController extends Controller
             ], 400);
         }
 
+        $result = $this->webhookService->sendWebhook($request->method, $request->url, [
+            'message' => 'Hello from MarketFlows'
+        ]);
+
+        if( ! $result->ok ){
+            return response([
+                'error' => 'Webhook URL did not return a 200-399 status code. Status code: ' . $result->status_code . '.'
+            ], 400);
+        }
+
         $webhook = Webhook::create([
+            'account_id'    => $company->account_id,
             'company_id'    => $company->id,
             'action'        => $request->action,
             'method'        => $request->method,
@@ -76,7 +94,6 @@ class WebhookController extends Controller
     {
         return response($webhook);
     }
-
 
     public function update(Request $request, Company $company, Webhook $webhook)
     {
@@ -102,12 +119,21 @@ class WebhookController extends Controller
         if( $request->filled('enabled') )
             $webhook->enabled_at = $request->enabled ? now() : null;
 
+        $result = $this->webhookService->sendWebhook($webhook->method, $webhook->url, [
+            'message' => 'Hello from MarketFlows'
+        ]);
+
+        if( ! $result->ok ){
+            return response([
+                'error' => 'Webhook URL did not return a 200-399 status code. Status code: ' . $result->status_code . '.'
+            ], 400);
+        }
+
         $webhook->updated_by = $request->user()->id;
         $webhook->save();
 
         return response($webhook);
     }
-
 
     public function delete(Request $request, Company $company, Webhook $webhook)
     {

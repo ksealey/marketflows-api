@@ -8,6 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Company\PhoneNumber;
+use App\Models\Company\KeywordTrackingPoolSession;
 use App\Services\PhoneNumberService;
 use App;
 
@@ -38,6 +39,10 @@ class DeleteKeywordTrackingPoolJob implements ShouldQueue
      */
     public function handle()
     {
+        //  Delete sessions
+        KeywordTrackingPoolSession::where('keyword_tracking_pool_id', $this->keywordTrackingPool->id)
+                                  ->delete();
+
         $phoneNumbers = $this->keywordTrackingPool->phone_numbers;
 
         PhoneNumber::where('keyword_tracking_pool_id', $this->keywordTrackingPool->id)

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -14,6 +13,7 @@ use App\Traits\AppliesConditions;
 use App\Traits\Helpers\HandlesDateFilters;
 use App\Services\ExportService;
 use App\Services\PhoneNumberService;
+use App\Services\ReportService;
 use Carbon\Carbon;
 use DateTime;
 use DateTimeZone;
@@ -26,12 +26,14 @@ class Controller extends BaseController
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests, HandlesDateFilters, AppliesConditions;
 
     public $exportService;
+    public $reportService;
     public $numberService;
 
-    public function __construct(ExportService $exportService, PhoneNumberService $numberService)
+    public function __construct(ExportService $exportService, PhoneNumberService $numberService, ReportService $reportService)
     {
         $this->exportService = $exportService;
         $this->numberService = $numberService;
+        $this->reportService = $reportService;
     }
 
     public function results(Request $request, $query, $additionalRules = [], $fields = [], $rangeField = 'created_at', callable $formatter = null)
@@ -144,7 +146,7 @@ class Controller extends BaseController
             $query = $this->applyConditions($query,  json_decode($request->conditions));
 
         $query->orderBy($orderBy, $orderDir);
-
+       
         return $this->exportService
                     ->exportAsOutput($user, $input, $query, $model::exports(), $model::exportFileName($user, $input));
     }

@@ -52,6 +52,13 @@ class PhoneNumberConfig extends Model
         'kind'
     ];
 
+    public $casts = [
+        'recording_enabled' => 'boolean',
+        'transcription_enabled' => 'boolean',
+        'keypress_enabled' => 'boolean',
+        'whisper_enabled' => 'boolean'
+    ];
+
     /**
      * Relationships
      * 
@@ -82,8 +89,13 @@ class PhoneNumberConfig extends Model
     {
         return [
             'id'                => 'Id',
+            'company_name'       => 'Company',
             'name'              => 'Name',
             'forward_to_number' => 'Forwarding Number',
+            'recording_enabled' => 'Recording Enabled',
+            'transcription_enabled' => 'Transcription Enabled',
+            'keypress_enabled'  => 'Keypress Enabled',
+            'whisper_enabled'   => 'Whisper Enabled',
             'created_at_local'  => 'Created'
         ];
     }
@@ -97,8 +109,9 @@ class PhoneNumberConfig extends Model
     {
         return PhoneNumberConfig::select([
                                     'phone_number_configs.*',
-                                    DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local")
+                                    DB::raw("DATE_FORMAT(CONVERT_TZ(phone_number_configs.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local")
                                 ])
+                                ->leftJoin('companies', 'companies.id', 'phone_number_configs.company_id')
                                 ->where('company_id', $input['company_id']);
     }
 
@@ -120,20 +133,14 @@ class PhoneNumberConfig extends Model
         return $number;
     }
 
-    public function greetingMessage(Call $call)
+    public function greetingMessage()
     {
-        if( ! $this->greeting_message )
-            return '';
-
-        return $this->variableMessage($this->greeting_message, $call);
+        return $this->greeting_message ?: '';
     }
 
-    public function keypressMessage(Call $call)
+    public function keypressMessage()
     {
-        if( ! $this->keypress_message )
-            return '';
-
-        return $this->variableMessage($this->keypress_message, $call);
+        return $this->keypress_message ?: '';
     }
 
     public function whisperMessage(Call $call)
@@ -148,8 +155,23 @@ class PhoneNumberConfig extends Model
     {
         $contact = $call->contact;
 
+        //  Replace URL as source with domain 
+        $source = $call->source;
+        if( preg_match('/^http(s)?:\/\//i', $source) ){
+            $source = parse_url($source, PHP_URL_HOST);
+            if( $source ){
+                $source = explode('.', $source);
+                if( count($source) > 2 ){
+                    $source = array_slice($source, -2, 2);
+                }
+                $source = implode('.', $source);
+            }else{
+                $source = 'Website Referral';
+            }
+        }
+
         $variables = [
-            '${source}'             => $call->source,
+            '${source}'             => $source,
             '${medium}'             => $call->medium,
             '${content}'            => $call->content,
             '${campaign}'           => $call->campaign,

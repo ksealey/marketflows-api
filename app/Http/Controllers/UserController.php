@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Company;
 use App\Mail\AddUser as AddUserEmail;
-use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
 use App\Rules\CompanyListRule;
+use App\Rules\UniqueEmailRule;
 use Validator;
 use DB;
 use Mail;
@@ -30,9 +29,6 @@ class UserController extends Controller
     {
         $user  = $request->user();
         $query = User::where('users.account_id', $user->account_id);
-        if( $request->exclude_self )
-            $query->where('id', '!=', $user->id);
-        
         return parent::results(
             $request,
             $query,
@@ -49,7 +45,7 @@ class UserController extends Controller
         $rules  = [
             'first_name' => 'bail|required|min:2|max:32',
             'last_name'  => 'bail|required|min:2|max:32',
-            'email'      => 'bail|required|email|max:128|unique:users,email',
+            'email'      => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule(null)],
             'role'       => 'bail|required|in:' . implode(',', User::roles()),
             'timezone'   => 'bail|required|timezone',
         ];
@@ -61,31 +57,21 @@ class UserController extends Controller
             ], 400);
         }
 
-        DB::beginTransaction();
+       
+        $user = User::create([
+            'account_id'                => $creator->account_id,
+            'role'                      => $request->role,
+            'timezone'                  => $request->timezone,
+            'first_name'                => $request->first_name,
+            'last_name'                 => $request->last_name,
+            'email'                     => $request->email,
+            'password_reset_token'      => str_random(128), // To allow password reset
+            'password_hash'             => str_random(64), // Jibberish
+            'auth_token'                => str_random(255),
+        ]);
 
-        try{
-            //  Create this user
-            $user = User::create([
-                'account_id'                => $creator->account_id,
-                'role'                      => $request->role,
-                'timezone'                  => $request->timezone,
-                'first_name'                => $request->first_name,
-                'last_name'                 => $request->last_name,
-                'email'                     => $request->email,
-                'password_reset_token'      => str_random(128), // To allow password reset
-                'password_hash'             => str_random(64), // Jibberish
-                'auth_token'                => str_random(255),
-            ]);
-
-            Mail::to($user)
-                ->queue(new AddUserEmail($creator, $user));
-        }catch(Exception $e){
-            DB::rollBack();
-
-            throw $e;
-        }
-
-        DB::commit();
+        Mail::to($user)
+            ->queue(new AddUserEmail($creator, $user));
 
         return response($user, 201);
     }
@@ -98,42 +84,14 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $rules = [
-            'role'       => 'bail|in:' . implode(',', User::roles()),
-            'timezone'   => 'bail|timezone',
-            'first_name' => 'bail|min:1',
-            'last_name'  => 'bail|min:1',
+            'role'           => 'bail|in:' . implode(',', User::roles()),
             'login_disabled' => 'bail|boolean',
-            'email'      => [
-                'bail',
-                'email',
-                'max:128',
-                Rule::unique('users')->where(function ($query) use($user){
-                    $query->where('id', '!=', $user->id);
-                })
-            ],
         ];
 
         $validator = validator($request->input(), $rules);
         
         if( $request->filled('role') )
             $user->role = $request->role;
-
-        if( $request->filled('timezone') )
-            $user->timezone = $request->timezone;
-
-        if( $request->filled('first_name') )
-            $user->first_name = $request->first_name;
-
-        if( $request->filled('last_name') )
-            $user->last_name = $request->last_name;
-
-        if( $request->filled('email') && $user->email != $request->email ){
-            $user->email = $request->email;
-            $user->email_verified_at = null;
-
-            Mail::to($user)
-                ->queue(new UserEmailVerificationMail($user));
-        }
 
         if( $request->filled('login_disabled') )
             $user->login_disabled = !!$request->login_disabled;
@@ -154,7 +112,6 @@ class UserController extends Controller
         
         $user->deleted_at = now();
         $user->deleted_by = $me->id;
-        $user->email      = '__DELETED__' . $user->email . '__DELETED__';
         $user->save();
 
         return response([

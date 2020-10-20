@@ -27,6 +27,7 @@ class SupportTicketTest extends TestCase
     public function testList()
     {
         factory(SupportTicket::class, 10)->create([
+            'account_id' => $this->account->id,
             'created_by_user_id' => $this->user->id
         ]);
 
@@ -91,10 +92,12 @@ class SupportTicketTest extends TestCase
     public function testRead()
     {
         $ticket = factory(SupportTicket::class)->create([
+            'account_id' => $this->account->id,
             'created_by_user_id' => $this->user->id
         ]);
 
         $comment = factory(SupportTicketComment::class)->create([
+            'account_id' => $this->account->id,
             'created_by_user_id' => $this->user->id,
             'support_ticket_id'  => $ticket->id
         ]);
@@ -123,6 +126,7 @@ class SupportTicketTest extends TestCase
     public function testClosingSupportTicket()
     {
         $ticket = factory(SupportTicket::class)->create([
+            'account_id' => $this->account->id,
             'created_by_user_id' => $this->user->id
         ]);
 
@@ -156,6 +160,7 @@ class SupportTicketTest extends TestCase
         $agent = factory(Agent::class)->create();
 
         $ticket = factory(SupportTicket::class)->create([
+            'account_id' => $this->account->id,
             'created_by_user_id' => $this->user->id,
             'agent_id' => $agent->id
         ]);
@@ -192,6 +197,7 @@ class SupportTicketTest extends TestCase
         $file       = UploadedFile::fake()->image($fileName);
         $agent      = factory(Agent::class)->create();
         $ticket     = factory(SupportTicket::class)->create([
+                            'account_id' => $this->account->id,
                             'created_by_user_id' => $this->user->id,
                             'agent_id'           => $agent->id
                       ]);
@@ -204,7 +210,7 @@ class SupportTicketTest extends TestCase
 
         $response->assertStatus(201);
 
-        $expectedPath = 'support_tickets/' . $ticket->id . '/attachments/' . $file->hashName();
+        $expectedPath = 'accounts/' . $this->account->id .  '/support_tickets/' . $ticket->id . '/attachments/' . $file->hashName();
         $response->assertJSON([
             'created_by_user_id' => $this->user->id,
             'file_name'          => $fileName,

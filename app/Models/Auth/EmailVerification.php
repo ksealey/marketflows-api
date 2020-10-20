@@ -8,8 +8,9 @@ use App\Models\User;
 class EmailVerification extends Model
 {
     protected $fillable = [
-        'user_id',
-        'key',
-        'expires_at'
+        'email',
+        'code',
+        'expires_at',
+        'verified_at'
     ];
 }

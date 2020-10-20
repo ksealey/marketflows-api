@@ -8,13 +8,15 @@ use App\Models\Company;
 use App\Models\Company\Report;
 use App\Models\Company\ScheduledExport;
 use App\Rules\ConditionsRule;
+use App\Traits\Helpers\HandlesDateFilters;
 use App\Services\ReportService;
+use App;
 use DB;
 use Validator;
 use DateTime;
 use DateTimeZone;
 use \Carbon\Carbon;
-use App\Traits\Helpers\HandlesDateFilters;
+
 
 class ReportController extends Controller
 {
@@ -27,32 +29,6 @@ class ReportController extends Controller
         'reports.created_at',
         'reports.updated_at'
     ];
-
-    protected $conditionFields = [
-        'calls.type',
-        'calls.category',
-        'calls.sub_category',
-        'calls.source',
-        'calls.medium',
-        'calls.content',
-        'calls.campaign',
-        'calls.recording_enabled',
-        'calls.forwarded_to',
-        'calls.duration',
-        'calls.first_call',
-        'contacts.first_name',
-        'contacts.last_name',
-        'contacts.number',
-        'contacts.city',
-        'contacts.state',
-    ];
-
-    public $reportService;
-
-    public function __construct(ReportService $reportService)
-    {
-        $this->reportService = $reportService;
-    }
 
     /**
      * List reports
@@ -81,15 +57,17 @@ class ReportController extends Controller
      */
     public function create(Request $request, Company $company)
     {
+        $reportService = App::make(ReportService::class);
+
         $validator = $this->getDateFilterValidator($request->input(), [
             'name'          => 'bail|required|max:64',
             'module'        => 'bail|required|in:calls',
             'type'          => 'bail|required|in:timeframe,count',
-            'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($this->conditionFields) ],
+            'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($reportService->conditionFields) ],
             'vs_previous_period' => 'bail|boolean'
         ]);
 
-        $validator->sometimes('group_by', 'required|in:' . implode(',', $this->conditionFields), function($input){
+        $validator->sometimes('group_by', 'required|in:' . implode(',', $reportService->conditionFields), function($input){
             return $input->type === 'count';
         });
 
@@ -145,11 +123,13 @@ class ReportController extends Controller
      */
     public function update(Request $request, Company $company, Report $report)
     {
+        $reportService = App::make(ReportService::class);
+
         $validator = $this->getDateFilterValidator($request->input(), [
             'name'          => 'bail|max:64',
             'module'        => 'bail|in:calls',
             'type'          => 'bail|in:timeframe,count',
-            'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($this->conditionFields) ]
+            'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($reportService->conditionFields) ]
         ]);
 
         $validator->sometimes('start_date', 'required|date', function($input){
@@ -161,7 +141,7 @@ class ReportController extends Controller
         $validator->sometimes('last_n_days', 'required|numeric|min:1|max:730', function($input){
             return $input->date_type === 'LAST_N_DAYS';
         });
-        $validator->sometimes('group_by', 'required|in:' . implode(',', $this->conditionFields), function($input){
+        $validator->sometimes('group_by', 'required|in:' . implode(',', $reportService->conditionFields), function($input){
             return $input->type === 'count';
         });
 
@@ -335,8 +315,10 @@ class ReportController extends Controller
      */
     public function callSources(Request $request, Company $company)
     {
+        $reportService = App::make(ReportService::class);
+
         $validator = $this->getDateFilterValidator($request->input(), [
-            'group_by' => 'required|in:' . implode(',', $this->conditionFields)
+            'group_by' => 'required|in:' . implode(',', $reportService->conditionFields)
         ]);
 
         if( $validator->fails() ){

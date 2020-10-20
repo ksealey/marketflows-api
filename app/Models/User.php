@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use \App\Models\EmailVerification;
 use \App\Models\Company;
 use \App\Models\BlockedPhoneNumber;
 use \App\Models\BlockedCall;
@@ -16,9 +15,6 @@ use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Models\Company\Webhook;
-use \App\Jobs\BatchDeleteAudioJob;
-use \App\Jobs\BatchDeletePhoneNumbersJob;
-use \App\Jobs\BatchDeleteCallRecordingsJob;
 use Mail;
 use DateTime;
 use Cache;
@@ -30,8 +26,6 @@ class User extends Authenticatable
 
     const ROLE_ADMIN     = 'ADMIN';
     const ROLE_SYSTEM    = 'SYSTEM';
-
-    private $emailVerification;
 
     protected $fillable = [
         'id',
@@ -46,7 +40,6 @@ class User extends Authenticatable
         'password_reset_token',
         'password_reset_expires_at',
         'auth_token',
-        'email_verified_at',
         'last_login_at',
         'login_attempts',
         'created_at',
@@ -90,6 +83,7 @@ class User extends Authenticatable
             'first_name'        => 'First Name',
             'last_name'         => 'Last Name',
             'email'             => 'Email',
+            'role'              => 'Role',
             'created_at_local'  => 'Created'
         ];
     }
@@ -184,47 +178,5 @@ class User extends Authenticatable
     public function isOnline()
     {
         return Cache::has('websockets.users.' . $this->id);
-    }
-
-    /**
-     * Remove a company from the system along with all traces of it
-     * 
-     */
-    public function deleteCompany(Company $company)
-    {
-        Webhook::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-        
-        Call::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-        
-        PhoneNumberConfig::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-
-        BlockedCall::whereIn('blocked_phone_number_id', function($q) use($company){
-                        $q->select('id')
-                            ->from('blocked_phone_numbers')
-                            ->where('blocked_phone_numbers.company_id', $company->id);
-                    })->delete();
-
-        BlockedPhoneNumber::where('company_id', $company->id)->update([
-            'deleted_by' => $this->id,
-            'deleted_at' => now()
-        ]);
-
-        //
-        //  Batch delete items with remote resources
-        //
-        BatchDeletePhoneNumbersJob::dispatch($this, $company);
-        BatchDeleteAudioJob::dispatch($this, $company);
-        BatchDeleteCallRecordingsJob::dispatch($this, $company);
-
-        $company->delete();
     }
 }

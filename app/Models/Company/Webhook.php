@@ -9,6 +9,7 @@ class Webhook extends Model
     use \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $fillable = [
+        'account_id',
         'company_id',
         'action',
         'method',
@@ -41,7 +42,6 @@ class Webhook extends Model
     }
 
     const ACTION_CALL_START   = 'call_start';
-    const ACTION_CALL_UPDATED = 'call_update';
     const ACTION_CALL_END     = 'call_end';
 
     const ACTION_LIMIT = 3;
@@ -50,7 +50,6 @@ class Webhook extends Model
     {
         return [
             self::ACTION_CALL_START,
-            self::ACTION_CALL_UPDATED,
             self::ACTION_CALL_END
         ];
     }

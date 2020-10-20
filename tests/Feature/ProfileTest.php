@@ -4,11 +4,10 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use App\Models\Auth\EmailVerification;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Alert;
-use App\Models\Auth\EmailVerification;
-use App\Mail\Auth\EmailVerification as EmailVerificationMail;
 use Mail;
 
 class MeTest extends TestCase
@@ -43,8 +42,6 @@ class MeTest extends TestCase
      */
     public function testCanUpdateSelf()
     {
-        Mail::fake();
-
         $user     = factory(User::class)->make();
         $response = $this->json('PUT', route('update-me'), [
             'timezone'  => $user->timezone,
@@ -59,11 +56,39 @@ class MeTest extends TestCase
             'role'      => $this->user->role,
             'timezone'  => $user->timezone,
             'first_name'=> $user->first_name,
-            'last_name' => $user->last_name,
-            'email'     => $user->email
+            'last_name' => $user->last_name
+        ]);
+    }
+
+    /**
+     * Test can update email
+     * 
+     * @group me
+     */
+    public function testCanUpdateEmail()
+    {
+        $emailVerification = factory(EmailVerification::class)->create([
+            'verified_at' => now()
         ]);
 
-        Mail::assertSent(EmailVerificationMail::class);
+        $response = $this->json('PUT', route('update-my-email'), [
+            'email' => $emailVerification->email
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJSON([
+            'id'        => $this->user->id,
+            'email'     => $emailVerification->email
+        ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'email'=> $emailVerification->email
+        ]);
+
+        $this->assertDatabaseMissing('email_verifications', [
+            'id' => $emailVerification->id
+        ]);
     }
 
     /**
@@ -75,6 +100,7 @@ class MeTest extends TestCase
     {
         $alertCount = mt_rand(1, 20);
         factory(Alert::class, $alertCount)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
         $response = $this->json('GET', route('list-alerts'), [
@@ -109,6 +135,7 @@ class MeTest extends TestCase
     public function testCanDeleteAlert()
     {
         $alerts = factory(Alert::class, 3)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
 
@@ -135,6 +162,7 @@ class MeTest extends TestCase
     public function testOtherUserCannotSeeMyAlerts()
     {
         $alerts = factory(Alert::class, 3)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
 
@@ -163,10 +191,12 @@ class MeTest extends TestCase
     public function testICannotSeeHiddenAlerts()
     {
         $alerts = factory(Alert::class, 3)->create([
+            'account_id' => $this->account->id,
             'user_id' => $this->user->id
         ]);
 
         $alerts = factory(Alert::class, 10)->create([
+            'account_id' => $this->account->id,
             'user_id'      => $this->user->id,
             'hidden_after' => now()->subMinutes(5)
         ]);
@@ -193,23 +223,5 @@ class MeTest extends TestCase
             'next_page'     => null,
             'total_pages'   => 1
         ]);
-    }
-
-    /**
-     * Test resending a verification email
-     * 
-     * @group me
-     */
-    public function testResendVerificationEmail()
-    {
-        Mail::fake();
-
-        $response = $this->json('POST', route('resend-verification-email'));
-        $response->assertStatus(200);
-        $response->assertJSON([
-            'message' => 'Sent'
-        ]);
-
-        Mail::assertSent(EmailVerificationMail::class);
     }
 }

@@ -92,11 +92,21 @@ class ExportService
     public function exportAsOutput($user, $input, $query, $exports, $fileName)
     {
         $writer = $this->export($user, $input, $query, $exports, $fileName);
+    
+        return $this->save($writer, $fileName);
+    }
 
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="'.$fileName.'.xlsx"');
-        header('Cache-Control: max-age=0');
-
+    public function save($writer, $fileName)
+    {
+        ob_start();
+        
         $writer->save('php://output');
+        
+        return response(ob_get_clean())->withHeaders([
+            'X-Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Type'   => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment;filename="'.$fileName.'.xlsx"',
+            'Cache-Control' => 'max-age=0'
+        ]);
     }
 }

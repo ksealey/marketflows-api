@@ -2,10 +2,10 @@ FROM marketflows/ubuntu18-php7:latest
 
 # Copy app files
 COPY . /var/www/app
-COPY .env.prod /var/www/app/.env
-COPY laravel-cron /etc/cron.d/laravel-cron
-COPY laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf 
-COPY laravel-websockets.conf /etc/supervisor/conf.d/laravel-websockets.conf 
+COPY build/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+COPY build/laravel-cron /etc/cron.d/laravel-cron
+COPY build/laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf 
+COPY build/laravel-websockets.conf /etc/supervisor/conf.d/laravel-websockets.conf 
 
 # Install dependencies
 WORKDIR /var/www/app
@@ -19,12 +19,8 @@ RUN chmod 0644 /etc/cron.d/laravel-cron && \
 
 # Install and setup supervisor to manage queue workers
 RUN apt-get update && \
-    apt-get install -y supervisor&& \
-    service supervisor start && \
-    supervisorctl reread && \
-    supervisorctl update && \
-    supervisorctl start laravel-worker:* && \
-    supervisorctl start laravel-websockets:* && \
-    service supervisor stop
+    apt-get install -y supervisor
 
-CMD service supervisor start && apachectl -D FOREGROUND
+CMD /bin/bash /var/www/app/startup.sh
+
+

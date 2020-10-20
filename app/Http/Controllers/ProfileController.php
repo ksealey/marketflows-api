@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use App\Mail\Auth\EmailVerification as UserEmailVerificationMail;
+use App\Rules\UniqueEmailRule;
+use App\Models\Auth\EmailVerification;
 use \App\Models\User;
 use \Carbon\Carbon;
 use Mail;
@@ -23,14 +23,7 @@ class ProfileController extends Controller
             'timezone'   => 'timezone',
             'first_name' => 'min:1',
             'last_name'  => 'min:1',
-            'email'      => [
-                'email',
-                'max:128',
-                Rule::unique('users')->where(function ($query) use($me){
-                    $query->where('account_id', '!=', $me->account_id);
-                })
-            ],
-            'phone' => 'nullable|digits_between:10,13'
+            'phone'      => 'numeric:digits_between:10,13'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -48,31 +41,43 @@ class ProfileController extends Controller
 
         if( $request->filled('last_name') )
             $me->last_name = $request->last_name;
-  
-        if( $request->filled('email') && $request->email != $me->email ){
-            $me->email             = $request->email;
-            $me->email_verified_at = null;
-            Mail::to($me)->send(new UserEmailVerificationMail($me));
-        }
 
-        if( $request->has('phone') && $request->phone != $me->phone ){
-            $me->phone = preg_replace('/[^0-9]+/', '', $request->phone) ?: null;
-            $me->phone_verified_at = null;
-        }
+        if( $request->has('phone') )
+            $me->phone = $request->phone;
 
         $me->save();
 
         return response($me);
     }
 
-    public function resendVerificationEmail(Request $request)
+    public function updateEmail(Request $request)
     {
-        $me = $request->user();
-        
-        Mail::to($me)->send(new UserEmailVerificationMail($me));
-
-        return response([
-            'message' => 'Sent'
+        $validator = validator($request->input(), [
+            'email' => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule(null)],
         ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+        
+        //  Make sure the email was verified
+        $emailVerification = EmailVerification::where('email', $request->email)
+                                              ->whereNotNull('verified_at')
+                                              ->first();
+        if( ! $emailVerification ){
+            return response([
+                'error' => 'You must verify this email address before updating'
+            ], 400);
+        }
+
+        $emailVerification->delete();
+
+        $me        = $request->user();
+        $me->email = $request->email;
+        $me->save();
+
+        return response($me);
     }
 }

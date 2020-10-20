@@ -26,8 +26,10 @@ class SupportTicketController extends Controller
 
     public function list(Request $request)
     {
+        $user  = $request->user();
         $query = SupportTicket::select(['support_tickets.*', DB::raw("TRIM(CONCAT(agents.first_name, ' ', agents.last_name)) as agent_name")])
-                                ->where('created_by_user_id', $request->user()->id)
+                                ->where('account_id', $user->account_id)
+                                ->where('created_by_user_id', $user->id)
                                 ->leftJoin('agents', 'agents.id', 'support_tickets.agent_id');
 
         //  Pass along to parent for listing
@@ -61,6 +63,7 @@ class SupportTicketController extends Controller
 
         try{
             $supportTicket = SupportTicket::create([
+                'account_id'         => $user->account_id,
                 'created_by_user_id' => $user->id,
                 'urgency'            => $request->urgency,
                 'subject'            => $request->subject,
@@ -78,13 +81,15 @@ class SupportTicketController extends Controller
                 ]);
 
                 //  Log in database
+                $user = $request->user();
                 $attachment = SupportTicketAttachment::create([
+                    'account_id'            => $user->account_id,
                     'support_ticket_id'     => $supportTicket->id,
                     'file_name'             => $file->getClientOriginalName(),
                     'file_size'             => $file->getSize(),
                     'file_mime_type'        => $file->getMimeType(),
                     'path'                  => $filePath,
-                    'created_by_user_id'    => $request->user()->id
+                    'created_by_user_id'    => $user->id
                 ]);
 
                 $supportTicket->attachments = [$attachment];
@@ -103,6 +108,8 @@ class SupportTicketController extends Controller
         Mail::to($user)
             ->cc(config('mail.to.support.address'))
             ->queue(new SupportTicketCreatedMail($user, $supportTicket));
+
+        $supportTicket->comments = [];
 
         return response($supportTicket, 201);
     }
@@ -148,6 +155,7 @@ class SupportTicketController extends Controller
 
         $user    = $request->user();
         $comment = SupportTicketComment::create([
+            'account_id'         => $user->account_id,
             'support_ticket_id'  => $supportTicket->id,
             'comment'            => $request->comment,
             'created_by_user_id' => $user->id
@@ -178,6 +186,8 @@ class SupportTicketController extends Controller
         DB::beginTransaction();
         
         try{
+            $user = $request->user();
+            
             //  Upload file
             $file     = $request->file;
             $filePath = Storage::putFile('accounts/' . $user->account_id .  '/support_tickets/' . $supportTicket->id . '/attachments' , $file, [
@@ -188,12 +198,13 @@ class SupportTicketController extends Controller
 
             //  Log in database
             $attachment = SupportTicketAttachment::create([
+                'account_id'            => $user->account_id,
                 'support_ticket_id'     => $supportTicket->id,
                 'file_name'             => $file->getClientOriginalName(),
                 'file_size'             => $file->getSize(),
                 'file_mime_type'        => $file->getMimeType(),
                 'path'                  => $filePath,
-                'created_by_user_id'    => $request->user()->id
+                'created_by_user_id'    => $user->id
             ]);
         }catch(Exception $e){
             DB::rollBack();

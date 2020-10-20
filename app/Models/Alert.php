@@ -20,6 +20,7 @@ class Alert extends Model
     const CATEGORY_PAYMENT = 'PAYMENT';
     
     protected $fillable = [
+        'account_id',
         'user_id',
         'category',
         'type',

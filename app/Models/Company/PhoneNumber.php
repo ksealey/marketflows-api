@@ -9,8 +9,8 @@ use \App\Models\Company\Call;
 use \App\Models\Company\PhoneNumberConfig;
 use \App\Contracts\Exportable;
 use \App\Services\PhoneNumberService;
-
 use Twilio\Rest\Client as TwilioClient;
+use App\Traits\CanSwapNumbers;
 use App;
 use DB;
 use Exception;
@@ -18,7 +18,7 @@ use Carbon\Carbon;
 
 class PhoneNumber extends Model implements Exportable
 {
-    use SoftDeletes; 
+    use SoftDeletes, CanSwapNumbers;
 
     const ERROR_CODE_INVALID     = 21421;
     const ERROR_CODE_UNAVAILABLE = 21422;
@@ -67,6 +67,11 @@ class PhoneNumber extends Model implements Exportable
         'medium',
         'content',
         'campaign',
+        'is_paid',
+        'is_organic',
+        'is_direct',
+        'is_referral',
+        'is_search',
         'swap_rules',
         'total_assignments',
         'last_assigned_at',
@@ -99,22 +104,22 @@ class PhoneNumber extends Model implements Exportable
     static public function exports() : array
     {
         return [
-            'id'                => 'Id',
-            'company_id'        => 'Company Id',
-            'category'          => 'Category',
-            'sub_category'      => 'Sub-Category',
-            'name'              => 'Name',
-            'country_code'      => 'Country Code',
-            'number'            => 'Number',
-            'type'              => 'Type',
-            'source'            => 'Source',
-            'medium'            => 'Medium',
-            'campaign'          => 'Campaign',
-            'content'           => 'Content',
-            'total_assignments' => 'Total Assignments',
-            'call_count'        => 'Calls',
-            'last_call_at_local' => 'Last Call Date',
-            'created_at_local'  => 'Created',
+            'id'                         => 'Id',
+            'company_name'               => 'Company',
+            'name'                       => 'Name',
+            'country_code'               => 'Country Code',
+            'number'                     => 'Number',
+            'call_count'                 => 'Calls',
+            'last_call_at_local'         => 'Last Call',
+            'type'                       => 'Type',
+            'category'                   => 'Category',
+            'sub_category'               => 'Sub-Category',
+            'source'                     => 'Source',
+            'medium'                     => 'Medium',
+            'campaign'                   => 'Campaign',
+            'content'                    => 'Content',
+            'status'                     => 'Status',
+            'created_at_local'           => 'Purchase Date',
         ];
     }
 
@@ -127,14 +132,24 @@ class PhoneNumber extends Model implements Exportable
     {
         return PhoneNumber::select([
                                 'phone_numbers.*',
-                                DB::raw('(SELECT COUNT(*) FROM calls WHERE phone_number_id = phone_numbers.id) AS call_count'),
-                                DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local"),
-                                DB::raw("DATE_FORMAT(CONVERT_TZ((SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id), 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS last_call_at_local")
+                                DB::raw("
+                                    CASE WHEN phone_numbers.disabled_at IS NULL
+                                        THEN 'Enabled'
+                                    ELSE
+                                        'Disabled'
+                                    END AS status
+                                "),
+                                'companies.name AS company_name',
+                                'phone_number_call_count.call_count',
+                                DB::raw("DATE_FORMAT(CONVERT_TZ(phone_numbers.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS created_at_local"),
+                                DB::raw("(SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id) AS last_call_at"),
+                                DB::raw("DATE_FORMAT(CONVERT_TZ((SELECT MAX(calls.created_at) FROM calls WHERE phone_number_id = phone_numbers.id), 'UTC','" . $user->timezone . "'), '%b %d, %Y %r') AS last_call_at_local")
                           ])
-                          ->leftJoin('calls', function($join){
-                             $join->on('calls.phone_number_id', '=', 'phone_numbers.id')
-                                  ->whereNull('calls.deleted_at');
-                          })
+                          ->leftJoin('companies', function($join){
+                            $join->on('phone_numbers.company_id', '=', 'companies.id');
+                         })
+                         ->leftJoin('phone_number_call_count', 'phone_number_call_count.phone_number_id', 'phone_numbers.id')
+                          ->whereNull('phone_numbers.keyword_tracking_pool_id')
                           ->where('phone_numbers.company_id', $input['company_id']);
     }
 
@@ -181,6 +196,16 @@ class PhoneNumber extends Model implements Exportable
     public function getKindAttribute()
     {
         return 'PhoneNumber';
+    }
+
+    public function getCallCountAttribute()
+    {
+        return DB::table('phone_number_call_count')
+                 ->select('phone_number_call_count.call_count')
+                 ->from('phone_number_call_count')
+                 ->where('phone_number_id', $this->id)
+                 ->first()
+                 ->call_count;
     }
 
     /**

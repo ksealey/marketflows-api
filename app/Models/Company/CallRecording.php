@@ -18,6 +18,8 @@ class CallRecording extends Model
     use HandlesStorage, SoftDeletes;
 
     protected $fillable = [
+        'account_id',
+        'company_id',
         'call_id',
         'external_id',
         'path',

@@ -2,6 +2,7 @@
 /public/hot
 /public/storage
 /vendor
+worker.log
 .env
 .env.*
 .phpunit.result.cache

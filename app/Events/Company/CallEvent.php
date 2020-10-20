@@ -16,19 +16,15 @@ class CallEvent
 
     public $name;
     public $call;
-    public $contact;
-    public $company;
 
     /**
      * Create a new event instance.
      *
      * @return void
      */
-    public function __construct($name, $call, $contact = null, $company = null)
+    public function __construct($name, $call)
     {
         $this->name     = $name;
         $this->call     = $call;
-        $this->contact  = $contact;
-        $this->company  = $company;
     }
 }

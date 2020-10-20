@@ -15,11 +15,12 @@ class CreateEmailVerificationsTable extends Migration
     {
         Schema::create('email_verifications', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->bigInteger('user_id')->unsigned();
-            $table->string('key', 64);
+            $table->string('email', 128);
+            $table->string('code', 8);
             $table->dateTime('expires_at');
+            $table->dateTime('verified_at')->nullable();
+            $table->smallInteger('failed_attempts')->unsigned()->default(0);
             $table->timestamps();
-            $table->foreign('user_id')->references('id')->on('users');
         });
     }
 

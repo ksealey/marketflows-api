@@ -26,8 +26,22 @@ class KeywordTrackingPoolSession extends Model
         'landing_url',
         'last_url',
         'token',
-        'ended_at'
+        'active',
+        'last_activity_at',
+        'end_after',
+        'ended_at',
+        'created_at',
+        'updated_at',
     ];
+
+    protected $appends = [
+        'kind'
+    ];
+
+    public function getKindAttribute()
+    {
+        return 'KeywordTrackingPoolSession';
+    }
 
     public function phone_number()
     {
@@ -91,5 +105,10 @@ class KeywordTrackingPoolSession extends Model
     public function getIsReferral()
     {
         return $this->isReferral($this->http_referrer);
+    }
+
+    public function getIsSearch()
+    {
+        return $this->isSearch($this->http_referrer);
     }
 }

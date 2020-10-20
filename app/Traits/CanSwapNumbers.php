@@ -41,7 +41,7 @@ trait CanSwapNumbers
          //  If it fails for device type stop here
          if( count($swapRules->device_types) && $swapRules->device_types[0] !== 'ALL' && ! in_array($deviceType, $swapRules->device_types) )
             return false;
-
+        
         $aRuleGroupPassed = false;
         foreach( $swapRules->inclusion_rules as $ruleGroup ){
             if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer, $mediumCsvList) )
@@ -56,7 +56,7 @@ trait CanSwapNumbers
         //
         if( empty($swapRules->exclusion_rules) )
             return true;
-        
+
         foreach( $swapRules->exclusion_rules as $ruleGroup ){
             if( $this->ruleGroupPasses($ruleGroup, $entryURL, $httpReferrer, $mediumCsvList) )
                 return false;
@@ -106,6 +106,10 @@ trait CanSwapNumbers
         //  Referrer google, yahoo or bing
         if( $rule->type === 'SEARCH' )
             return $this->isSearch($httpReferrer); 
+
+        if( $rule->type === 'PAID_SEARCH' ){
+            return $this->isPaid($entryURL, $mediumCsvList) && $this->isSearch($httpReferrer); 
+        }
 
         //  TODO: Add SOCIAL. Facebook, Instagram, Youtube, etc
         
@@ -245,7 +249,7 @@ trait CanSwapNumbers
      */
     public function normalizeDeviceType($deviceType)
     {
-        return $deviceType;
+        return strtoupper($deviceType);
     }
 
     /**
@@ -279,7 +283,7 @@ trait CanSwapNumbers
 
         if( ! $medium ) return false;
 
-        return in_array($medium, ['cpc', 'ppc', 'cpa', 'cpm', 'cpv', 'cpp']);
+        return in_array(strtolower($medium), ['cpc', 'ppc', 'cpa', 'cpm', 'cpv', 'cpp']);
     }
 
     /**
@@ -291,7 +295,24 @@ trait CanSwapNumbers
      */
     public function isSearch($httpReferrer = '')
     {
-        return preg_match('/^(http(s)?:\/\/)?((www.)?google.com|((search|www).)?yahoo.com|(www.)?bing.com)/i', strtolower($httpReferrer));
+        $searchDomains = [
+            'google.com',
+            'www.google.com',
+            'yahoo.com',
+            'www.yahoo.com',
+            'search.yahoo.com',
+            'bing.com',
+            'www.bing.com',
+            'duckduckgo.com',
+            'www.duckduckgo.com',
+            'yandex.com',
+            'www.yandex.com'
+        ];
+
+        $referrer = trim(strtolower($httpReferrer));
+        $host     = parse_url($referrer, PHP_URL_HOST);
+        
+        return in_array($host, $searchDomains);
     }
 
     /**

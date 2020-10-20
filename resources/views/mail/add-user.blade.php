@@ -6,8 +6,7 @@
     <p>
         Welcome to MarketFlows {{$user->first_name}},
         <br/><br/>
-        
-        You have been added to the account "{{$creator->account->name}}" by {{$creator->full_name}}.
+        {{$creator->full_name}} has added you to the account "{{$creator->account->name}}".
         <br/><br/>
 
         To create your new password, click the button below. If the button does not work, copy and paste the following url into your browser.

@@ -51,9 +51,12 @@ class ProcessCallRecordingJob implements ShouldQueue
         //
 
         //  Download recording
+        $content    = null;
         $httpClient = App::make('HTTPClient');
-        $response   = $httpClient->request('GET', $this->recordingURL . '.mp3');
-        $content    = (string)$response->getBody();
+        try{
+            $response   = $httpClient->request('GET', $this->recordingURL . '.mp3');
+            $content    = (string)$response->getBody();
+        }catch(\Exception $e){}
 
         if( ! $content ) throw new Exception('Unable to download file ' . $this->recordingURL);
 
@@ -64,6 +67,8 @@ class ProcessCallRecordingJob implements ShouldQueue
 
         //  Create record
         $recording = CallRecording::create([
+            'account_id'    => $call->account_id,
+            'company_id'    => $call->company_id,
             'call_id'       => $call->id,
             'external_id'   => $this->recordingSid,
             'path'          => $storagePath,
@@ -71,11 +76,6 @@ class ProcessCallRecordingJob implements ShouldQueue
             'file_size'     => strlen($content),
             'transcription_path' => '/'
         ]);
-
-        //  Delete original
-        $twilio = App::make(TwilioClient::class);
-        $twilio->recordings($this->recordingSid)
-               ->delete();
         
         //  Transcribe if enabled
         if( $call->transcription_enabled ){
@@ -94,5 +94,10 @@ class ProcessCallRecordingJob implements ShouldQueue
             $transcriber->deleteTranscription($jobId);
             $recording->save();
         }
+
+         //  Delete original
+         $twilio = App::make(TwilioClient::class);
+         $twilio->recordings($this->recordingSid)
+                ->delete();
     }
 }

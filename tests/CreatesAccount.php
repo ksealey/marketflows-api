@@ -40,7 +40,6 @@ trait CreatesAccount
 
         $this->user = factory(User::class)->create([
             'account_id' => $this->account->id,
-            'email_verified_at' => now()
         ]);
 
         $this->paymentMethod = factory(PaymentMethod::class)->create([
@@ -165,10 +164,14 @@ trait CreatesAccount
                 $path = '/to-recording/' . str_random(10) . '.mp3';
                 Storage::put($path, 'foobar');
                 factory(CallRecording::class)->create([
+                    'account_id' => $call->account_id,
+                    'company_id' => $call->company_id,
                     'call_id' => $call->id,
                     'path'     => $path
                 ]);
                 factory(CallRecording::class)->create([
+                    'account_id' => $call->account_id,
+                    'company_id' => $call->company_id,
                     'call_id' => $call->id,
                     'path'    => $path
                 ]);
@@ -176,13 +179,13 @@ trait CreatesAccount
         });
         
 
-        //  Blocked Numbers (Company)
+        //  Blocked Numbers
         factory(BlockedPhoneNumber::class, 2)->create([
-            'account_id' => $this->account->id,
-            'company_id' => $company->id,
+            'account_id' => $this->user->account_id,
             'created_by' => $this->user->id
         ])->each(function($blockedNumber) use($phoneNumber){
             factory(BlockedCall::class, 2)->create([
+                'account_id' => $this->user->account_id,
                 'blocked_phone_number_id' => $blockedNumber->id,
                 'phone_number_id'         => $phoneNumber->id,
             ]);
@@ -190,7 +193,7 @@ trait CreatesAccount
         
         //  Report
         $report = factory(Report::class)->create([
-            'account_id' => $this->account->id,
+            'account_id' => $this->user->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id
         ]);
@@ -250,14 +253,19 @@ trait CreatesAccount
                         'phone_number_name' => $phoneNumber->name,
                         'duration'        => mt_rand(0, 59),
                         'type'            => 'Local',
-                        'created_at'      => now()->subMinutes(5)
+                        'created_at'      => now()->subMinutes(5),
+                        'recording_enabled' => 1
                     ])->each(function($call){
                         $path = '/to-recording/' . str_random(10) . '.mp3';
                         Storage::put($path, 'foobar');
 
                         factory(CallRecording::class)->create([
+                            'account_id' => $call->account_id,
+                            'company_id' => $call->company_id,
+                            'duration'   => $call->duration,
                             'call_id' => $call->id,
                             'path'     => $path,
+                            'transcription_path' => str_replace('recording/', 'transciption/', $path),
                             'file_size' => 1024 * 1024 * 10
                         ]);
                     });
@@ -284,14 +292,19 @@ trait CreatesAccount
                         'phone_number_name'=> $phoneNumber->name,
                         'duration'        => mt_rand(0, 59),
                         'type'            => 'Toll-Free',
+                        'recording_enabled' => 1,
                         'created_at'      => now()->subMinutes(5)
                     ])->each(function($call){
                         $path = '/to-recording/' . str_random(10) . '.mp3';
                         Storage::put($path, 'foobar');
 
                         factory(CallRecording::class)->create([
+                            'account_id' => $call->account_id,
+                            'company_id' => $call->company_id,
                             'call_id' => $call->id,
+                            'duration'  => $call->duration,
                             'path'     => $path,
+                            'transcription_path' => str_replace('recording/', 'transciption/', $path),
                             'file_size' => 1024 * 1024 * 10
                         ]);
                     });
@@ -332,7 +345,7 @@ trait CreatesAccount
                         ]
                     ]
                 ],
-                'exclusion_rules' => []
+                'exclusion_rules' => [],
             ],  $with));
     }
 

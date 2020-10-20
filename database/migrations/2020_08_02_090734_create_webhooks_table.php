@@ -15,6 +15,7 @@ class CreateWebhooksTable extends Migration
     {
         Schema::create('webhooks', function (Blueprint $table) {
             $table->id();
+            $table->bigInteger('account_id')->unsigned();
             $table->bigInteger('company_id')->unsigned();
             $table->string('action', 32);
             $table->string('method', 16);
@@ -26,6 +27,7 @@ class CreateWebhooksTable extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('company_id')->references('id')->on('companies');
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('updated_by')->references('id')->on('users');
