@@ -24,8 +24,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        //  Bill accounts every 5 minutes
-        $schedule->command('push-bill-accounts')
+        //  Create statements every 5 minutes
+        $schedule->command('create-statements')
                  ->everyFiveMinutes()
                  ->onOneServer();
 

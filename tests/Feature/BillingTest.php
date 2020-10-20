@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Queue;
 use App\Models\Alert;
 use App\Models\Account;
 use App\Models\Billing;
-use App\Jobs\BillAccountJob;
 use App\Models\BillingStatement;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
@@ -19,6 +18,7 @@ use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
 use App\Mail\AccountUnsuspended;
 use App\Helpers\PaymentManager;
+use App\Jobs\PayStatementJob;
 use Artisan;
 use Mail;
 
@@ -78,31 +78,31 @@ class BillingTest extends TestCase
     }
 
     /**
-     * Test that billing jobs are dispatched
+     * Test that statements are created and payment jobs are dispatched
      * 
      * @group billing
      */
-    public function testBillingJobsDispatched()
+    public function testBillingStatementsAreCreatedAndPaymentJobDispatched()
     {
+        Queue::fake();
+
         $this->billing->billing_period_starts_at = now()->subDays(7);
         $this->billing->billing_period_ends_at   = now()->subMinutes(2);
         $this->billing->save();
 
-        Queue::fake();
+        Artisan::call('create-statements');
 
-        Artisan::call('push-bill-accounts');
-
-        Queue::assertPushed(BillAccountJob::class, function($job){
-            return $job->billing->id == $this->billing->id;
+        Queue::assertPushed(PayStatementJob::class, function($job){
+            return $job->statement->billing_id === $this->billing->id;
         });
     }
 
     /**
-     * Test that billing jobs are not dispatched when billing is locked
+     * Test that payment jobs are not dispatched when locked
      * 
      * @group billing
      */
-    public function testBillingJobsNotDispatchedWhenLocked()
+    public function testPaymentJobNotDispatchedWhenLocked()
     {
         $this->billing->billing_period_starts_at = now()->subDays(7);
         $this->billing->billing_period_ends_at   = now()->subMinutes(2);
@@ -111,17 +111,17 @@ class BillingTest extends TestCase
 
         Queue::fake();
 
-        Artisan::call('push-bill-accounts');
+        Artisan::call('create-statements');
 
-        Queue::assertNotPushed(BillAccountJob::class);
+        Queue::assertNotPushed(PayStatementJob::class);
     }
 
     /**
-     * Test billing job
+     * Test create statements
      * 
      * @group billing
      */
-    public function testBillingJobWorks()
+    public function testCreateStatementsJob()
     {
         Mail::fake();
 
@@ -132,7 +132,7 @@ class BillingTest extends TestCase
 
         //  Set billing period
         $this->billing->billing_period_starts_at = now()->subDays(7)->startOfDay();
-        $this->billing->billing_period_ends_at   = now()->endOfDay();
+        $this->billing->billing_period_ends_at   = now()->subMinutes(1);
         $this->billing->save();
 
         //  Get payment method to use
@@ -164,7 +164,7 @@ class BillingTest extends TestCase
                  ]));
         });
         
-        BillAccountJob::dispatch($this->billing);
+        Artisan::call('create-statements');
 
         //  
         //  Make sure a statement was created and paid
@@ -189,7 +189,7 @@ class BillingTest extends TestCase
      * 
      * @group billing
      */
-    public function testBillingJobFailsGracefully()
+    public function testCreateStatementFailsGracefully()
     {
         Mail::fake();
         $companyCount = 5;
@@ -210,7 +210,7 @@ class BillingTest extends TestCase
                  ->andReturn(false);
         });
         
-        BillAccountJob::dispatch($this->billing);
+        Artisan::call('create-statements');
 
         //  
         //  Make sure a statement was created and not paid
@@ -231,7 +231,7 @@ class BillingTest extends TestCase
     /**
      * Test that the billing calculates properly
      * 
-     * @group billing--
+     * @group billing
      */
     public function testBillingCalculatesProperly()
     {

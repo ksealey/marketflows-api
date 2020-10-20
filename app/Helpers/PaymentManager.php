@@ -70,9 +70,9 @@ class PaymentManager
         }catch(Exception $e){
             $paymentMethod->error = substr($e->getMessage(), 0, 255);
             $paymentMethod->save();
-
-            return false;
         }
+
+        return null;
     }
 
     public function createCharge(PaymentMethod $paymentMethod, float $amount, string $description)
