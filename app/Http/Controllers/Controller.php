@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -147,7 +146,7 @@ class Controller extends BaseController
             $query = $this->applyConditions($query,  json_decode($request->conditions));
 
         $query->orderBy($orderBy, $orderDir);
-
+       
         return $this->exportService
                     ->exportAsOutput($user, $input, $query, $model::exports(), $model::exportFileName($user, $input));
     }

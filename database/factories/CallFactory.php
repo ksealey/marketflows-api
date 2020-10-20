@@ -18,14 +18,15 @@ $factory->define(\App\Models\Company\Call::class, function (Faker $faker) {
 
         'duration'    => mt_rand(30, 500),
 
-        'source'            => $faker->realText(40),
-        'medium'            => $faker->realText(40),
-        'content'           => $faker->realText(40),
-        'campaign'          => $faker->realText(40),
-        'source'            => $faker->realText(40),
-        'medium'            => $faker->realText(40),
-        'content'           => $faker->realText(40),
-        'campaign'          => $faker->realText(40),
+        'source'      => $faker->realText(40),
+        'medium'      => $faker->realText(40),
+        'content'     => $faker->realText(40),
+        'campaign'    => $faker->realText(40),
+        'is_paid'     => mt_rand(0,1),
+        'is_organic'  => mt_rand(0,1),
+        'is_direct'   => mt_rand(0,1),
+        'is_referral' => mt_rand(0,1),
+        'is_search'   => mt_rand(0,1),
         
 
         'recording_enabled' => mt_rand(0,1) ? 1 : 0,

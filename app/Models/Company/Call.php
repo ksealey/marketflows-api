@@ -66,9 +66,14 @@ class Call extends Model
     ];
 
     protected $casts = [
-        'recording_enabled' => 'boolean',
+        'recording_enabled'     => 'boolean',
         'transcription_enabled' => 'boolean',
-        'first_call' => 'boolean'
+        'first_call'            => 'boolean',
+        'is_paid'               => 'boolean',
+        'is_organic'            => 'boolean',
+        'is_referral'           => 'boolean',
+        'is_direct'             => 'boolean',
+        'is_search'             => 'boolean'
     ];
 
     protected $dateFormat = 'Y-m-d H:i:s.u';  
@@ -92,7 +97,11 @@ class Call extends Model
             'campaign'              => 'Campaign',
             'content'               => 'Content',
             'keywords'              => 'Keyword',
-            
+            'is_paid'               => 'Paid',
+            'is_organic'            => 'Organic',
+            'is_referral'           => 'Referral',
+            'is_direct'             => 'Direct',
+            'is_search'             => 'Search',
             'recording_enabled'     => 'Recording Enabled',
             'transcription_enabled' => 'Transcription Enabled',
             'first_call'            => 'First Call',
@@ -113,7 +122,7 @@ class Call extends Model
                         'CASE WHEN phone_numbers.keyword_tracking_pool_id IS NOT NULL
                             THEN keyword_tracking_pools.name
                         ELSE
-                            phone_number.name
+                            phone_numbers.name
                         END AS phone_number_name'
                     ),
                     'companies.id AS company_id',

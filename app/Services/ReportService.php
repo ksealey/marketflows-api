@@ -19,6 +19,7 @@ class ReportService
         'calls.duration',
         'calls.is_paid',
         'calls.is_organic',
+        'calls.is_direct',
         'calls.is_search',
         'calls.is_referral',
         'calls.first_call',
@@ -50,6 +51,7 @@ class ReportService
             'calls.is_paid'             => 'call_is_paid',
             'calls.is_organic'          => 'call_is_organic',
             'calls.is_referral'         => 'call_is_referral',
+            'calls.is_direct'           => 'call_is_direct',
             'calls.is_search'           => 'call_is_search',
             'contacts.first_name'       => 'contact_first_name',
             'contacts.last_name'        => 'contact_last_name',
@@ -80,6 +82,7 @@ class ReportService
             'call_is_paid'             => 'Is Paid',
             'call_is_organic'          => 'Is Organic',
             'call_is_referral'         => 'Is Referral',
+            'call_is_direct'           => 'Is Direct',
             'call_is_search'           => 'Is Search',
             'call_date'                => 'Call Date',
             'contact_first_name'       => 'Caller First Name',
@@ -110,6 +113,7 @@ class ReportService
             'calls.is_paid'             => 'boolean',
             'calls.is_organic'          => 'boolean',
             'calls.is_referral'         => 'boolean',
+            'calls.is_direct'           => 'boolean',
             'calls.is_search'           => 'boolean',
             'contacts.first_name'       => 'string',
             'contacts.last_name'        => 'string',
@@ -128,7 +132,12 @@ class ReportService
     public $booleanFields = [
         'calls' => [
             'call_recording_enabled',
-            'call_first_call'
+            'call_first_call',
+            'call_is_paid',
+            'call_is_organic',
+            'call_is_referral',
+            'call_is_direct',
+            'call_is_search'
         ]
     ];
 

@@ -628,7 +628,7 @@ Route::prefix('/')->group(function(){
 
                             Route::get('/export', 'Company\CallController@export')
                                 ->middleware('can:list,\App\Models\Company\Call,company')
-                                ->name('list-calls');
+                                ->name('export-calls');
 
                             Route::get('/{call}', 'Company\CallController@read')
                                 ->middleware('can:read,call,company')
