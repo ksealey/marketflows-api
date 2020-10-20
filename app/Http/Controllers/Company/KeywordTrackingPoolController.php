@@ -337,10 +337,10 @@ class KeywordTrackingPoolController extends Controller
                     'mms'                       => $purchasedPhone->capabilities['mms'],
                     'name'                      => $purchasedPhone->phoneNumber,
                     'swap_rules'                => json_encode($keywordTrackingPool->swap_rules),
-                    'is_paid'                   => 0,
+                    'is_paid'                   => 1,
                     'is_organic'                => 0,
                     'is_direct'                 => 0,
-                    'is_referral'               => 0,
+                    'is_referral'               => 1,
                     'is_search'                 => 0,
                     'purchased_at'              => now(),
                     'created_by'                => $user->id
