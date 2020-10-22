@@ -11,7 +11,6 @@
         Payment Method: <span class="bold">{{ $paymentMethod->brand }} ending in {{ $paymentMethod->last_4 }}</span><br/><br/> 
 
         You can view the full statement  <a href="{{ $statementUrl }}">here</a>.
-        <br/><br/>
     </p>
     <span class="closing">
         Thank you,<br/>

@@ -50,7 +50,7 @@ class BillingStatementController extends Controller
         $billingStatement->total           = $billingStatement->total;
         $billingStatement->total_formatted = $billingStatement->total_formatted;
 
-        if( $billingStatement->payment_at ){
+        if( $billingStatement->paid_at ){
             $payment                   = $billingStatement->payment;
             $payment->payment_method   = $payment->payment_method;
             $billingStatement->payment = $payment;
