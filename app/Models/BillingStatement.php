@@ -26,7 +26,9 @@ class BillingStatement extends Model
 
     protected $hidden = [
         'locked_at',
-        'failed_intent_id'
+        'failed_intent_id',
+        'payment_attempts',
+        'next_payment_attempt_at'
     ];
 
     public function getKindAttribute()
@@ -66,6 +68,6 @@ class BillingStatement extends Model
 
     public function payment()
     {
-        return $this->belongsTo('App\Models\Payment');
+        return $this->hasOne('App\Models\Payment');
     }
 }

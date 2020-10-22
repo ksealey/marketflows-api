@@ -32,7 +32,7 @@ class BillingReceipt extends Mailable
         $this->statement        = $statement;
         $this->paymentMethod    = $paymentMethod;
         $this->payment          = $payment;
-        $this->statementUrl     = config('app.frontend_app_url') . '/statements/' . $this->statement->id;
+        $this->statementUrl     = config('app.frontend_app_url') . '/billing/statements/' . $this->statement->id;
     }
 
     /**
