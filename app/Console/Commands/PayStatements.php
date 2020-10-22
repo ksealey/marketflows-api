@@ -43,7 +43,7 @@ class PayStatements extends Command
                                       ->where('next_payment_attempt_at', '<=', now())
                                       ->whereNull('locked_at')
                                       ->get();
-
+        
         if( ! count($statements) ) return;
 
         foreach( $statements as $statement ){

@@ -275,7 +275,7 @@ class RegisterController extends Controller
                          ->createCustomer($request->email);
 
         $intent = $this->paymentManager
-                       ->createIntent($customer->id);
+                       ->createSetupIntent($customer->id);
 
         $setup = PaymentSetup::create([
             'customer_id'   => $customer->id,

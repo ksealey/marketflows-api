@@ -21,7 +21,7 @@ class PaymentMethodTest extends TestCase
      * 
      * @group payment-methods
      */
-    public function testCreateIntent()
+    public function testCreateSetupIntent()
     {
         Stripe::setApiKey(config('services.stripe.secret'));
         $customer = Customer::create([
@@ -251,6 +251,14 @@ class PaymentMethodTest extends TestCase
         ]);
 
         // Make sure the statement was paid
+        $this->assertDatabaseHas('payment_methods', [
+            'id'                    => $paymentMethod->id,
+            'last_error'            => null,
+            'last_error_code'       => null,
+            'last_error_intent_id'  => null,
+            'last_error_intent_secret' => null
+        ]);
+
         $this->assertDatabaseMissing('billing_statements', [
             'id'            => $statement->id,
             'paid_at'       => null,

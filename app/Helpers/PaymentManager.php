@@ -42,10 +42,23 @@ class PaymentManager
         return $stripe->customers->delete( $customerId, [] );
     }
 
-    public function createIntent($customerId)
+    public function createSetupIntent($customerId)
     {
         return StripeSetupIntent::create([
             'customer' => $customerId
+        ]);
+    }
+
+    public function createPaymentIntent($customerId, $paymentMethodId, $total, $description = 'MarketFlows, LLC')
+    {
+        return StripePaymentIntent::create([
+            'currency'          => 'usd',
+            'customer'          => $customerId,
+            'payment_method'    => $paymentMethodId,
+            'off_session'       => true,
+            'confirm'           => true,
+            'amount'            => $total * 100,
+            'description'       => $description
         ]);
     }
 
@@ -82,23 +95,20 @@ class PaymentManager
         ];
 
         $total = $statement->total;
-
+        
         if( $attempts >= 3 || ! $total )
             return $result;
         
         DB::beginTransaction();
 
         try {
-            $paymentIntent = \Stripe\PaymentIntent::create([
-                'currency'          => 'usd',
-                'customer'          => $paymentMethod->account->billing->external_id,
-                'payment_method'    => $paymentMethod->external_id,
-                'off_session'       => true,
-                'confirm'           => true,
-                'amount'            => $total * 100,
-                'description'       => $description
-            ]);
-
+            $paymentIntent = $this->createPaymentIntent(
+                $paymentMethod->account->billing->external_id,
+                $paymentMethod->external_id,
+                $total,
+                $description
+            );
+            
             $paymentMethod->last_error           = null;
             $paymentMethod->last_error_code      = null;
             $paymentMethod->last_error_intent_id = null;
@@ -113,8 +123,9 @@ class PaymentManager
                 'total'                 => $total
             ]);
 
-            $statement->intent_id = $paymentIntent->id;
-            $statement->paid_at   = now();
+            $statement->intent_id               = $paymentIntent->id;
+            $statement->next_payment_attempt_at = null;
+            $statement->paid_at                 = now();
             $statement->payment_attempts++;
             $statement->save();
 
@@ -135,8 +146,10 @@ class PaymentManager
             $paymentMethod->last_error_intent_secret = $paymentIntent->client_secret;
             $paymentMethod->save();
 
-            $statement->intent_id = $paymentIntent->id;
+            $statement->intent_id               = $paymentIntent->id;
+            $statement->next_payment_attempt_at = now()->addDays(3);
             $statement->payment_attempts++;
+            $statement->locked_at = null;
             $statement->save();
 
             $result['intent'] = $paymentIntent;
@@ -146,7 +159,7 @@ class PaymentManager
 
             return (object)$result;
         }
-
+        
         DB::commit();
 
         return (object)$result;

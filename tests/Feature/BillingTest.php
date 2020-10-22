@@ -6,10 +6,13 @@ use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Queue;
+use \Stripe\Stripe;
+use \Stripe\Customer;
 use App\Models\Alert;
 use App\Models\Account;
 use App\Models\Billing;
 use App\Models\BillingStatement;
+use App\Models\BillingStatementItem;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Company\PhoneNumber;
@@ -78,11 +81,11 @@ class BillingTest extends TestCase
     }
 
     /**
-     * Test that statements are created and payment jobs are dispatched
+     * Test creating statements
      * 
      * @group billing
      */
-    public function testBillingStatementsAreCreatedAndPaymentJobDispatched()
+    public function testBillingStatementsAreCreated()
     {
         Queue::fake();
 
@@ -92,113 +95,99 @@ class BillingTest extends TestCase
 
         Artisan::call('create-statements');
 
-        Queue::assertPushed(PayStatementJob::class, function($job){
-            return $job->statement->billing_id === $this->billing->id;
-        });
+        $statementCount = BillingStatement::where('billing_id', $this->billing->id)
+                                      ->whereNull('paid_at')
+                                      ->count();
+        $this->assertEquals($statementCount, 1);
     }
 
     /**
-     * Test create statements
+     * Test paying statements successfully
      * 
      * @group billing
      */
-    public function testCreateStatementsJob()
+    public function testBillingStatementsArePaid()
     {
+        BillingStatementItem::where('id', '>', 0)->delete();
+        BillingStatement::where('id', '>', 0)->delete();
         Mail::fake();
 
-        $companyCount = 5;
-        for( $i = 0; $i < $companyCount; $i++ ){
-            $company = $this->createCompany();
-        }
+        $statement = $this->createBillableStatement();
+        $intent    = (object)[
+            'id'            => str_random(20),
+            'client_secret' => str_random(20),
+            'status'        => 'succeeded'
+        ];
 
-        //  Set billing period
-        $this->billing->billing_period_starts_at = now()->subDays(7)->startOfDay();
-        $this->billing->billing_period_ends_at   = now()->subMinutes(1);
-        $this->billing->save();
-
-        //  Get payment method to use
-        $paymentMethod = $this->account->primary_payment_method;
-        $totalOwed     = $this->billing->currentTotal();
-
-        $this->partialMock('App\Helpers\PaymentManager', function($mock) use($paymentMethod, $totalOwed){
-            $charge = (object)[
-                'id'            => str_random(10),
-                'customer'      => $this->billing->external_id,
-                'source'        => $paymentMethod->external_id,
-                'amount'        => $totalOwed,
-                'currency'      => 'usd',
-                'description'   => 'MarketFlows, LLC'
-            ];
-
-            $mock->shouldReceive('charge')
-                 ->once()
-                 ->with(PaymentMethod::class, $totalOwed)
-                 ->andReturn(factory(Payment::class)->create([
-                    'payment_method_id' => $paymentMethod->id,
-                    'external_id'       => $charge->id,
-                    'total'             => $totalOwed
-                 ]));
+        $this->partialMock(PaymentManager::class, function($mock) use($statement, $intent){
+            $mock->shouldReceive('createPaymentIntent')
+                 ->with($this->billing->external_id, $this->paymentMethod->external_id, $statement->total, 'MarketFlows, LLC')
+                 ->andReturn($intent);
         });
-        
-        Artisan::call('create-statements');
 
-        //  
-        //  Make sure a statement was created and paid
-        //
-        $statement = BillingStatement::where('billing_id', $this->billing->id)->first();
+        Artisan::call('pay-statements');
 
-        $this->assertNotNull($statement);
-        $this->assertEquals($statement->total, $this->billing->currentTotal());
-        $this->assertEquals($statement->total, $statement->payment->total);
+        $statement = BillingStatement::find($statement->id);
+
         $this->assertNotNull($statement->paid_at);
+        $this->assertEquals($statement->payment_attempts, 1);
+        $this->assertNull($statement->next_payment_attempt_at);
+        $this->assertNotNull($statement->locked_at);
 
-        //
-        //  Make sure the mail was sent
-        //  
+        $this->assertDatabaseHas('payments', [
+            'billing_statement_id' => $statement->id,
+            'payment_method_id'    => $this->paymentMethod->id,
+            'total'                => $statement->total
+        ]);
+
         Mail::assertQueued(BillingReceipt::class, function($mail){
             return $mail->hasTo($this->user->email);
         });
     }
 
     /**
-     * Test billing job fails gracefully
+     * Test paying statements fails gracefully
      * 
      * @group billing
      */
-    public function testCreateStatementFailsGracefully()
+    public function testBillingStatementsFailGracefully()
     {
+        BillingStatementItem::where('id', '>', 0)->delete();
+        BillingStatement::where('id', '>', 0)->delete();
+        
         Mail::fake();
-        $companyCount = 5;
-        for( $i = 0; $i < $companyCount; $i++ ){
-            $company = $this->createCompany();
-        }
 
-        $this->paymentMethod->external_id = 'tok_chargeDeclined';
-        $this->paymentMethod->save();
+        Stripe::setApiKey(config('services.stripe.secret'));
+        $customer = Customer::create([
+            'description' => str_random(40)
+        ]);
 
-        $this->billing->billing_period_starts_at = now()->subDays(7);
-        $this->billing->billing_period_ends_at   = now()->subMinutes(2);
+        $this->billing->external_id = $customer->id;
         $this->billing->save();
 
-        $this->mock('App\Helpers\PaymentManager', function($mock){
-            $mock->shouldReceive('charge')
-                 ->once()
-                 ->andReturn(false);
-        });
-        
-        Artisan::call('create-statements');
+        $this->paymentMethod->external_id = 'pm_card_authenticationRequired';
+        $this->paymentMethod->save();
 
-        //  
-        //  Make sure a statement was created and not paid
-        //
-        $statement = BillingStatement::where('billing_id', $this->billing->id)->first();
-        $this->assertNotNull($statement);
-        $this->assertNull($statement->payment_id);
-        $this->assertNull($statement->paid_at);
+        $statement = $this->createBillableStatement();
+        $intent    = (object)[
+            'id'            => str_random(20),
+            'client_secret' => str_random(20),
+            'status'        => 'succeeded'
+        ];
 
-        //
-        //  Make sure the payment failure mail was sent
-        //  
+        Artisan::call('pay-statements');
+
+        $statement = BillingStatement::find($statement->id);
+        $this->assertNotNull($statement->intent_id);
+        $this->assertNull($statement->paid_id);
+        $this->assertNotNull($statement->next_payment_attempt_at);
+        $this->assertNull($statement->locked_at);
+
+        $this->assertDatabaseMissing('payments', [
+            'billing_statement_id' => $statement->id,
+            'payment_method_id'    => $this->paymentMethod->id
+        ]);
+       
         Mail::assertQueued(PaymentMethodFailed::class, function($mail){
             return $mail->hasTo($this->user->email);
         });
@@ -325,36 +314,46 @@ class BillingTest extends TestCase
 
         $paymentMethod = $this->createPaymentMethod();
 
-        $payment = factory(Payment::class)->create([
-            'payment_method_id' => $paymentMethod->id,
-            'external_id'       => str_random(16),
-            'total'             => 100.50
-        ]);
-
-        $this->mock(PaymentManager::class, function($mock) use($payment){
-            $mock->shouldReceive('charge')
-                 ->once()
-                 ->andReturn($payment);
-        });
-
         $statement = $this->createBillableStatement([
             'billing_id'               => $this->billing->id,
             'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
             'billing_period_ends_at'   => now()->endOfDay()
         ]);
+        
+        $this->partialMock(PaymentManager::class, function($mock){
+            $mock->shouldReceive('createPaymentIntent')
+                 ->once()
+                 ->andReturn((object)[
+                    'id' => str_random(20),
+                    'client_secret' => str_random(20)
+                 ]);
+        });
 
         $response = $this->json('POST', route('pay-statement', [
             'billingStatement' => $statement->id,
+        ]), [
             'payment_method_id'=> $paymentMethod->id
-        ]));
-
+        ]);
+        
         $response->assertStatus(201);
-        $response->assertJSON(Payment::find($payment->id)->toArray());
+        $response->assertJSON([
+            'kind' => 'Payment',
+            'billing_statement_id' => $statement->id,
+            'payment_method_id'    => $paymentMethod->id
+        ]);
 
         //  Make sure statement is paid
         $statement = BillingStatement::find($statement->id);
-        $this->assertEquals($statement->payment_id, $payment->id);
+    
+        $this->assertEquals($statement->id, $response['billing_statement_id']);
         $this->assertNotNull($statement->paid_at);
+        $this->assertNull($statement->next_payment_attempt_at);
+
+        $this->assertDatabaseHas('payments', [
+            'payment_method_id'    => $paymentMethod->id,
+            'billing_statement_id' => $statement->id,
+            'total'                => $statement->total
+        ]);
 
         //  Make sure receipt was sent
         Mail::assertQueued(BillingReceipt::class, function($mail) use($statement){
@@ -385,11 +384,11 @@ class BillingTest extends TestCase
     }
 
     /**
-     * Test paying a statement fails when billing is locked
+     * Test paying a statement fails when statment is locked
      * 
-     * @group billing--
+     * @group billing
      */
-    public function testPayStatementFailsWhenBillingLocked()
+    public function testPayStatementFailsWhenStatementLocked()
     {
         $paymentMethod = $this->createPaymentMethod();
 
@@ -415,35 +414,6 @@ class BillingTest extends TestCase
     }
 
     /**
-     * Test paying a statement fails gracefully
-     * 
-     * @group billing
-     */
-    public function testPayStatementFailsGracefully()
-    {
-        $paymentMethod = $this->createPaymentMethod();
-
-        $this->mock(PaymentManager::class, function($mock){
-            $mock->shouldReceive('charge')
-                 ->once()
-                 ->andReturn(null);
-        });
-
-        $statement = $this->createBillableStatement([
-            'billing_id'               => $this->billing->id,
-            'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
-            'billing_period_ends_at'   => now()->endOfDay()
-        ]);
-
-        $response = $this->json('POST', route('pay-statement', [
-            'billingStatement' => $statement->id,
-            'payment_method_id'=> $paymentMethod->id
-        ]));
-
-        $response->assertStatus(400);
-    }
-
-    /**
      * Test fetching current total
      * 
      * @group billing
@@ -459,7 +429,6 @@ class BillingTest extends TestCase
         $tollFreeCallsPerNumber = 10;// 20/20 ($1.40) 
         // Transcriptions 240/240 ($7.20)
         //  Storage 2400MB(2.34G)/2400MB(1.34G) (0.13)
-
 
         $this->populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber);
         

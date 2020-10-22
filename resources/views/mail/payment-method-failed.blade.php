@@ -12,7 +12,7 @@
         Payment Method: <span class="bold">{{ $paymentMethod->brand }} ending in {{ $paymentMethod->last_4 }}</span>
         <br/>
 
-        Total: <span class="bold">${{ number_format($statement->total(), 2) }}</span>
+        Total: <span class="bold">${{ number_format($statement->total, 2) }}</span>
         <br/>
         <br/>
 

@@ -111,11 +111,6 @@ class BillingStatementController extends Controller
             ], 400);
         }
 
-        //  Pay bill
-        $billingStatement->payment_id = $payment->id;
-        $billingStatement->paid_at    = now();
-        $billingStatement->save();
-
         //  Unsuspend account if suspended
         $account = $paymentMethod->account;
         if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE )

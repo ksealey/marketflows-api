@@ -316,7 +316,8 @@ trait CreatesAccount
     public function createBillableStatement($with = [])
     {
         $statement = factory(BillingStatement::class)->create(array_merge([
-            'billing_id' => $this->billing->id
+            'billing_id' => $this->billing->id,
+            'next_payment_attempt_at' => now()->subMinutes(5)
         ], $with));
 
         for( $i = 0; $i < 4; $i++ ){

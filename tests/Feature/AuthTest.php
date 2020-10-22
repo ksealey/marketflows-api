@@ -540,7 +540,7 @@ class AuthTest extends TestCase
                  ->with($email)
                  ->andReturn($customer);
 
-            $mock->shouldReceive('createIntent')
+            $mock->shouldReceive('createSetupIntent')
                  ->with($customer->id)
                  ->andReturn($intent);
         });

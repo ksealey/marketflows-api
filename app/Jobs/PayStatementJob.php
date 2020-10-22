@@ -11,7 +11,6 @@ use App\Models\Account;
 use App\Models\Alert;
 use App\Models\Billing;
 use App\Models\BillingStatement;
-use App\Models\BillingStatementItem;
 use App\Models\User;
 use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
@@ -63,12 +62,7 @@ class PayStatementJob implements ShouldQueue
         $user    = User::find($paymentMethod->created_by);
         $results = $paymentManager->charge($paymentMethod, $statement);
         $payment = $results->payment;
-        
         if( $payment ){
-            $statement->next_payment_attempt_at = null;
-            $statement->payment_id              = $payment->id;
-            $statement->paid_at                 = now();
-
             Mail::to($user)
                 ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
 
@@ -76,8 +70,6 @@ class PayStatementJob implements ShouldQueue
             if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE && ! $billing->past_due )
                 $account->unsuspend();
         }else{
-            $statement->next_payment_attempt_at = now()->addDays(3);
-
             Alert::create([
                 'account_id'    => $user->account_id,
                 'user_id'       => $user->id,  
@@ -90,9 +82,5 @@ class PayStatementJob implements ShouldQueue
             Mail::to($user)
                 ->queue(new PaymentMethodFailed($user, $paymentMethod, $statement));
         }
-        
-        $statement->payment_attempts++;
-        $statement->locked_at = null;
-        $statement->save();
     }
 }

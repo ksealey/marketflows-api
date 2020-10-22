@@ -55,7 +55,7 @@ class PaymentMethodController extends Controller
     {
         $paymentManager = App::make(PaymentManager::class);
         $billing        = $request->user()->account->billing;
-        $intent         = $paymentManager->createIntent($billing->external_id);
+        $intent         = $paymentManager->createSetupIntent($billing->external_id);
 
         return response($intent);
     }
