@@ -9,6 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use \App\Services\PhoneNumberService;
 use \App\Models\Account;
+use \App\Models\Company\KeywordTrackingPool;
 use \App\Models\Company\PhoneNumber;
 use App;
 
@@ -43,5 +44,8 @@ class ReleaseAccountNumbersJob implements ShouldQueue
                         $numberService->releaseNumber($phoneNumber);
                         $phoneNumber->delete();
                     }); 
+
+        KeywordTrackingPool::where('account_id', $this->account->id)
+                           ->delete();
     }
 }

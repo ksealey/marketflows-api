@@ -47,6 +47,9 @@ Route::prefix('/')->group(function(){
                 Route::post('/verify-email', 'Auth\RegisterController@verifyEmail')
                     ->name('auth-verify-email');
 
+                Route::post('/payment-setup','Auth\RegisterController@paymentSetup')
+                     ->name('create-payment-setup');
+
                 Route::post('/register', 'Auth\RegisterController@register')
                     ->name('auth-register');
 
@@ -190,6 +193,10 @@ Route::prefix('/')->group(function(){
                         ->middleware('can:list,\App\Models\PaymentMethod')
                         ->name('export-payment-methods'); 
 
+                    Route::post('/create-intent', 'PaymentMethodController@createIntent')
+                        ->middleware('can:create,\App\Models\PaymentMethod')
+                        ->name('create-payment-intent');
+
                     Route::post('/', 'PaymentMethodController@create')
                         ->middleware('can:create,\App\Models\PaymentMethod')
                         ->name('create-payment-method');
@@ -201,6 +208,10 @@ Route::prefix('/')->group(function(){
                     Route::put('/{paymentMethod}/make-primary', 'PaymentMethodController@makePrimary')
                         ->middleware('can:update,paymentMethod')
                         ->name('make-default-payment-method');
+
+                    Route::put('/{paymentMethod}/authenticate', 'PaymentMethodController@authenticate')
+                        ->middleware('can:update,paymentMethod')
+                        ->name('authenticate-payment-method');
 
                     Route::delete('/{paymentMethod}', 'PaymentMethodController@delete')
                         ->middleware('can:delete,paymentMethod')

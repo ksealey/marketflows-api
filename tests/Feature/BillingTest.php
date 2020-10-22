@@ -98,25 +98,6 @@ class BillingTest extends TestCase
     }
 
     /**
-     * Test that payment jobs are not dispatched when locked
-     * 
-     * @group billing
-     */
-    public function testPaymentJobNotDispatchedWhenLocked()
-    {
-        $this->billing->billing_period_starts_at = now()->subDays(7);
-        $this->billing->billing_period_ends_at   = now()->subMinutes(2);
-        $this->billing->locked_at                = now();
-        $this->billing->save();
-
-        Queue::fake();
-
-        Artisan::call('create-statements');
-
-        Queue::assertNotPushed(PayStatementJob::class);
-    }
-
-    /**
      * Test create statements
      * 
      * @group billing
@@ -149,14 +130,9 @@ class BillingTest extends TestCase
                 'description'   => 'MarketFlows, LLC'
             ];
 
-            $mock->shouldReceive('createCharge')
+            $mock->shouldReceive('charge')
                  ->once()
-                 ->with(PaymentMethod::class, $totalOwed, 'MarketFlows, LLC')
-                 ->andReturn($charge);
-
-            $mock->shouldReceive('createPayment')
-                 ->once()
-                 ->with($charge, PaymentMethod::class, $totalOwed)
+                 ->with(PaymentMethod::class, $totalOwed)
                  ->andReturn(factory(Payment::class)->create([
                     'payment_method_id' => $paymentMethod->id,
                     'external_id'       => $charge->id,
@@ -411,13 +387,10 @@ class BillingTest extends TestCase
     /**
      * Test paying a statement fails when billing is locked
      * 
-     * @group billing
+     * @group billing--
      */
     public function testPayStatementFailsWhenBillingLocked()
     {
-        $this->billing->locked_at = now();
-        $this->billing->save();
-
         $paymentMethod = $this->createPaymentMethod();
 
         $this->mock(PaymentManager::class, function($mock){
@@ -427,7 +400,8 @@ class BillingTest extends TestCase
         $statement = $this->createBillableStatement([
             'billing_id'               => $this->billing->id,
             'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
-            'billing_period_ends_at'   => now()->endOfDay()
+            'billing_period_ends_at'   => now()->endOfDay(),
+            'locked_at'                => now()
         ]);
 
         $response = $this->json('POST', route('pay-statement', [

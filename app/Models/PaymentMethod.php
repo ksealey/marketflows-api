@@ -29,14 +29,16 @@ class PaymentMethod extends Model
         'type',
         'primary_method',
         'last_used_at',
-        'error',
+        'last_error',
+        'last_error_code',
+        'last_error_intent_id',
+        'last_error_intent_secret',
         'created_by',
         'updated_by',
         'deleted_by'
     ];
 
     protected $hidden = [
-        'external_id',
         'deleted_by',
         'deleted_at',
     ];
@@ -101,46 +103,6 @@ class PaymentMethod extends Model
     public function getKindAttribute()
     {
         return 'PaymentMethod';
-    }
-
-    /**
-     * Create a payment method using a token
-     * 
-     */
-    static public function createFromToken(string $stripeToken, User $user, $primaryMethod = false)
-    {
-        //
-        //  Create remote resources
-        //
-        $account = $user->account;
-        $billing = $account->billing;
-
-        Stripe::setApiKey(config('services.stripe.secret'));
-        
-        $card = Customer::createSource(
-            $billing->external_id,
-            ['source' => $stripeToken]
-        );
-
-        //  If this is the new primary method, unset existing
-        if( $primaryMethod ){
-            PaymentMethod::where('account_id', $user->account_id)
-                         ->update([ 'primary_method' => false ]);
-        }
-
-        $expiration = new DateTime($card->exp_year . '-' . $card->exp_month . '-01 00:00:00'); 
-        $expiration->modify('last day of this month');
-    
-        return PaymentMethod::create([
-            'account_id'     => $user->account_id,
-            'created_by'     => $user->id,
-            'external_id'    => $card->id,
-            'last_4'         => $card->last4,
-            'expiration'     => $expiration->format('Y-m-d'),
-            'type'           => $card->funding,
-            'brand'          => ucfirst($card->brand),
-            'primary_method' => $primaryMethod
-        ]);
     }
 
     /**

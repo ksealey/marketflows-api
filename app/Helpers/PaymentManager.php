@@ -5,10 +5,14 @@ use App;
 use \Stripe\Stripe;
 use \Stripe\Customer as StripeCustomer;
 use \Stripe\Charge as StripeCharge;
+use \Stripe\SetupIntent as StripeSetupIntent;
+use \Stripe\PaymentIntent as StripePaymentIntent;
 use \Stripe\PaymentMethod as StripePaymentMethod;
 use App\Models\Account;
 use App\Models\PaymentMethod;
 use App\Models\Payment;
+use App\Models\BillingStatement;
+use DB;
 
 class PaymentManager
 {
@@ -25,12 +29,29 @@ class PaymentManager
      * 
      * @return \Stripe\Customer
      */
-    public function createCustomer(string $name, string $token)
+    public function createCustomer(string $description)
     {
         return StripeCustomer::create([
-            'description'    => $name,
-            'payment_method' => $token
+            'description' => $description
         ]);
+    }
+
+    public function deleteCustomer($customerId)
+    {
+        $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+        return $stripe->customers->delete( $customerId, [] );
+    }
+
+    public function createIntent($customerId)
+    {
+        return StripeSetupIntent::create([
+            'customer' => $customerId
+        ]);
+    }
+
+    public function getIntent($intentId)
+    {
+        return StripePaymentIntent::retrieve($intentId);
     }
 
     /**
@@ -52,52 +73,82 @@ class PaymentManager
      * Charge a payment method
      * 
      */
-    public function charge(PaymentMethod $paymentMethod, float $amount, string $description = 'MarketFlows, LLC', $attempts = 1)
+    public function charge(PaymentMethod $paymentMethod, BillingStatement $statement, string $description = 'MarketFlows, LLC', $attempts = 1)
     {
-        if( $attempts >= 3 )
-            return null;
+        $result = [
+            'payment' => null,
+            'intent'  => null,
+            'error'   => null
+        ];
 
-        try{
-            $stripeCharge = $this->createCharge($paymentMethod, $amount, $description);
+        $total = $statement->total;
 
-            return $this->createPayment($stripeCharge, $paymentMethod, $amount);
+        if( $attempts >= 3 || ! $total )
+            return $result;
+        
+        DB::beginTransaction();
+
+        try {
+            $paymentIntent = \Stripe\PaymentIntent::create([
+                'currency'          => 'usd',
+                'customer'          => $paymentMethod->account->billing->external_id,
+                'payment_method'    => $paymentMethod->external_id,
+                'off_session'       => true,
+                'confirm'           => true,
+                'amount'            => $total * 100,
+                'description'       => $description
+            ]);
+
+            $paymentMethod->last_error           = null;
+            $paymentMethod->last_error_code      = null;
+            $paymentMethod->last_error_intent_id = null;
+            $paymentMethod->last_error_intent_secret = null;
+            $paymentMethod->last_used_at         = now();
+            $paymentMethod->save();
+
+            $payment = Payment::create([
+                'payment_method_id'     => $paymentMethod->id,
+                'billing_statement_id'  => $statement->id,
+                'external_id'           => $paymentIntent->id,
+                'total'                 => $total
+            ]);
+
+            $statement->intent_id = $paymentIntent->id;
+            $statement->paid_at   = now();
+            $statement->payment_attempts++;
+            $statement->save();
+
+            $result['payment'] = $payment;
+            $result['intent']  = $paymentIntent;
         }catch(\Stripe\Exception\RateLimitException $e){
             //  We hit a rate limit
             //  Wait a second and try again
             usleep(1);
 
-            return $this->charge($paymentMethod, $amount, $description, $attempts + 1);
-        }catch(Exception $e){
-            $paymentMethod->error = substr($e->getMessage(), 0, 255);
+            return $this->charge($paymentMethod, $statement, $description, $attempts + 1);
+        }catch (\Stripe\Exception\CardException $e) {
+            $error                               = $e->getError();
+            $paymentIntent                       = $error->payment_intent;
+            $paymentMethod->last_error           = $error->message;
+            $paymentMethod->last_error_code      = $error->code;
+            $paymentMethod->last_error_intent_id = $paymentIntent->id;
+            $paymentMethod->last_error_intent_secret = $paymentIntent->client_secret;
             $paymentMethod->save();
+
+            $statement->intent_id = $paymentIntent->id;
+            $statement->payment_attempts++;
+            $statement->save();
+
+            $result['intent'] = $paymentIntent;
+            $result['error']  = $error;
+        }catch(\Exception $e){
+            DB::rollBack();
+
+            return (object)$result;
         }
 
-        return null;
-    }
+        DB::commit();
 
-    public function createCharge(PaymentMethod $paymentMethod, float $amount, string $description)
-    {
-        $charge = StripeCharge::create([
-            'customer'      => $paymentMethod->account->billing->external_id,
-            'source'        => $paymentMethod->external_id,
-            'amount'        => $amount * 100,
-            'currency'      => 'usd',
-            'description'   => $description
-        ]);
-
-        $paymentMethod->last_used_at = now();
-        $paymentMethod->error        = null;
-        $paymentMethod->save();
-
-        return $charge;
-    }
-
-    public function createPayment($stripeCharge, $paymentMethod, $amount)
-    {
-        return Payment::create([
-            'payment_method_id' => $paymentMethod->id,
-            'external_id'       => $stripeCharge->id,
-            'total'             => $amount
-        ]);
+        return (object)$result;
     }
 }

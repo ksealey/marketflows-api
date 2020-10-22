@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Company\PhoneNumber;
 use App\Models\PaymentMethod;
 use App\Models\Auth\EmailVerification;
+use App\Models\Auth\PaymentSetup;
 use App\Helpers\PaymentManager;
 use App\Mail\Auth\EmailVerification as EmailVerificationMail;
 use \App\Rules\CountryRule;
@@ -39,6 +40,9 @@ class RegisterController extends Controller
     public function register(Request $request)
     {
         $rules = [
+            'intent_id'             => 'bail|required',
+            'intent_client_secret'  => 'bail|required',
+            'payment_method_id'     => 'bail|required',
             'account_name'          => 'bail|required|min:4|max:64',
             'first_name'            => 'bail|required|min:2|max:32',
             'last_name'             => 'bail|required|min:2|max:32',
@@ -51,7 +55,6 @@ class RegisterController extends Controller
                 'regex:/(?=.*[0-9])(?=.*[A-Z])/'
             ],
             'timezone'              => 'bail|required|timezone',
-            'payment_token'         => 'required' 
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -84,35 +87,30 @@ class RegisterController extends Controller
                 'error' => 'You must verify your email address before creating an account'
             ], 400);
         }
-        
 
-        //
-        //  Try to add customer with payment method
-        //
-        $customer = null;
-        $card     = null;
-
-        try{
-            $customer = $this->paymentManager->createCustomer(
-                $request->account_name,
-                $request->payment_token
-            );
-        }catch(\Stripe\Exception\CardException $e){
+        $paymentSetup = PaymentSetup::where('email', $request->email)
+                                    ->where('expires_at', '>=', now())
+                                    ->where('intent_id', $request->intent_id)
+                                    ->where('intent_client_secret', $request->intent_client_secret)
+                                    ->first();
+        if( ! $paymentSetup ){
             return response([
-                'error' => $e->getMessage()
-            ], 400);
-        }catch(\Stripe\Exception\RateLimitException $e){
-            return response([
-                'error' => 'We can\'t complete this request right now. Please try again shortly.'
+                'error' => 'No payment setup not found'
             ], 400);
         }
 
         DB::beginTransaction();
 
         try{
-            $paymentMethods = $this->paymentManager->getPaymentMethods($customer->id);
-            $paymentMethod  = $paymentMethods->data[0];
-            $card           = $paymentMethod->card;
+            $paymentMethods = $this->paymentManager
+                                   ->getPaymentMethods($paymentSetup->customer_id);
+
+            $paymentMethod = null;
+            foreach( $paymentMethods as $pm ){
+                if( $request->payment_method_id == $pm->id )
+                    $paymentMethod = $pm;
+            }
+            $card = $paymentMethod->card;
 
             //  Create account
             $account = Account::create([
@@ -132,7 +130,7 @@ class RegisterController extends Controller
                 'account_id'                => $account->id,
                 'billing_period_starts_at'  => now()->startOfDay(),// Start of the next day
                 'billing_period_ends_at'    => now()->addDays(7)->endOfDay(),
-                'external_id'               => $customer->id
+                'external_id'               => $paymentSetup->customer_id
             ]);
 
             //  Create this user
@@ -162,6 +160,8 @@ class RegisterController extends Controller
                 'expiration'     => $expiration->format('Y-m-d'),
                 'primary_method' => true
             ]);
+
+            $paymentSetup->delete();
         }catch(Exception $e){
             DB::rollBack();
             
@@ -172,7 +172,6 @@ class RegisterController extends Controller
 
         $account->payment_methods = [];
         $account->past_due_amount = number_format(0.00, 2);
-        $account->in_demo         = true;
         
         return response([
             'auth_token'    => $user->auth_token,
@@ -252,5 +251,42 @@ class RegisterController extends Controller
         return response([
             'error' => 'Code invalid'
         ], 400);
+    }
+
+    public function paymentSetup(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'email' => ['bail', 'required', 'email', 'max:128', new UniqueEmailRule(null)]
+        ]);
+
+        if( $validator->fails() )
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400); 
+
+        $existingSetup = PaymentSetup::where('email', $request->email)->first();
+        if( $existingSetup ){
+            $existingSetup->delete();
+            $this->paymentManager
+                 ->deleteCustomer($existingSetup->customer_id);
+        }
+
+        $customer = $this->paymentManager
+                         ->createCustomer($request->email);
+
+        $intent = $this->paymentManager
+                       ->createIntent($customer->id);
+
+        $setup = PaymentSetup::create([
+            'customer_id'   => $customer->id,
+            'intent_id'     => $intent->id,
+            'intent_client_secret' => $intent->client_secret,
+            'email'       => $request->email,
+            'expires_at'  => now()->addHours(1)
+        ]);
+
+        $setup->intent = $intent;
+
+        return response($setup, 201);
     }
 }

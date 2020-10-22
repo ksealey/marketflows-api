@@ -16,7 +16,7 @@ class CreatePaymentMethodsTable extends Migration
         Schema::create('payment_methods', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->bigInteger('account_id')->unsigned();
-            $table->string('external_id', 64);
+            $table->string('external_id', 128);
             $table->integer('last_4')->unsigned();
             $table->date('expiration');
             $table->string('brand', 64);
@@ -24,7 +24,10 @@ class CreatePaymentMethodsTable extends Migration
             $table->boolean('primary_method')->default(0);
             $table->dateTime('last_used_at')->nullable();
             $table->dateTime('disabled_at')->nullable();
-            $table->string('error', 255)->nullable();
+            $table->string('last_error', 255)->nullable();
+            $table->string('last_error_code', 64)->nullable();
+            $table->string('last_error_intent_id', 128)->nullable();
+            $table->string('last_error_intent_secret', 128)->nullable();
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->bigInteger('deleted_by')->unsigned()->nullable();

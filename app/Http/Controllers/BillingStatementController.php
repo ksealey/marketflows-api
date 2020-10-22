@@ -78,8 +78,7 @@ class BillingStatementController extends Controller
             ], 400);
         }
 
-
-        if( $billingStatement->billing->locked_at ){
+        if( $billingStatement->locked_at ){ // Currently being processed
             return response([
                 'error' => 'Cannot complete payment at this time - Please try again later'
             ], 400);
@@ -103,7 +102,9 @@ class BillingStatementController extends Controller
             ], 400);
 
         $paymentManager = App::make(PaymentManager::class);
-        $payment        = $paymentManager->charge($paymentMethod, $billingStatement->total);
+        $results        = $paymentManager->charge($paymentMethod, $billingStatement);
+        $payment        = $results->payment;
+        
         if( ! $payment ){
             return response([
                 'error' => 'Unable to process payment - please try another payment method'

@@ -6,7 +6,6 @@ use Illuminate\Console\Command;
 use App\Models\Billing;
 use App\Models\BillingStatement;
 use App\Models\BillingStatementItem;
-use App\Jobs\PayStatementJob;
 use Carbon\Carbon;
 use Mail;
 use App;
@@ -46,14 +45,9 @@ class CreateStatements extends Command
     {
         //  Find Billable accounts
         $billings = Billing::where('billing_period_ends_at', '<=', now())
-                         ->whereNull('locked_at')
-                         ->get();
+                           ->get();
 
         if( ! count($billings) ) return;
-        
-        //  Lock billing for these accounts
-        Billing::whereIn('id', array_column($billings->toArray(), 'id'))
-               ->update(['locked_at' => now()]);
                
         foreach( $billings as $billing ){
             //
@@ -62,7 +56,9 @@ class CreateStatements extends Command
             $statement = BillingStatement::create([
                 'billing_id'               => $billing->id,
                 'billing_period_starts_at' => $billing->billing_period_starts_at,
-                'billing_period_ends_at'   => $billing->billing_period_ends_at
+                'billing_period_ends_at'   => $billing->billing_period_ends_at,
+                'payment_attempts'         => 0,
+                'next_payment_attempt_at'  => now()
             ]);
 
             $billingPeriodStart     = new Carbon($billing->billing_period_starts_at);
@@ -88,20 +84,26 @@ class CreateStatements extends Command
 
             $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB, $billingPeriodStart, $billingPeriodEnd);
             $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
+            $now = now();
+
             $items = [
                 [
                     'billing_statement_id' => $statement->id,
                     'label'                => $billing->label(Billing::ITEM_SERVICE),
                     'quantity'             => $serviceQuantity,
                     'price'                => $billing->price(Billing::ITEM_SERVICE),
-                    'total'                => $serviceTotal
+                    'total'                => $serviceTotal,
+                    'created_at'           => $now,
+                    'updated_at'           => $now
                 ],
                 [
                     'billing_statement_id' => $statement->id,
                     'label'                => $billing->label(Billing::ITEM_NUMBERS_LOCAL),
                     'quantity'             => $localNumberQuantity,
                     'price'                => $billing->price(Billing::ITEM_NUMBERS_LOCAL),
-                    'total'                => $localNumberTotal
+                    'total'                => $localNumberTotal,
+                    'created_at'           => $now,
+                    'updated_at'           => $now
                 ],
                 [
                     'billing_statement_id' => $statement->id,
@@ -109,6 +111,8 @@ class CreateStatements extends Command
                     'quantity'             => $tollFreeNumberQuantity,
                     'price'                => $billing->price(Billing::ITEM_NUMBERS_TOLL_FREE),
                     'total'                => $tollFreeNumberTotal,
+                    'created_at'           => $now,
+                    'updated_at'           => $now
                 ],
                 [
                     'billing_statement_id' => $statement->id,
@@ -116,6 +120,8 @@ class CreateStatements extends Command
                     'quantity'             => $localMinutesQuantity,
                     'price'                => $billing->price(Billing::ITEM_MINUTES_LOCAL),
                     'total'                => $localMinutesTotal,
+                    'created_at'           => $now,
+                    'updated_at'           => $now
                 ],
                 [
                     'billing_statement_id' => $statement->id,
@@ -123,20 +129,26 @@ class CreateStatements extends Command
                     'quantity'             => $tollFreeMinutesQuantity,
                     'price'                => $billing->price(Billing::ITEM_MINUTES_TOLL_FREE),
                     'total'                => $tollFreeMinutesTotal,
+                    'created_at'           => $now,
+                    'updated_at'           => $now
                 ],
                 [
                     'billing_statement_id' => $statement->id,
                     'label'                => $billing->label(Billing::ITEM_MINUTES_TRANSCRIPTION),
                     'quantity'             => $transMinutesQuantity,
                     'price'                => $billing->price(Billing::ITEM_MINUTES_TRANSCRIPTION),
-                    'total'                => $transMinutesTotal
+                    'total'                => $transMinutesTotal,
+                    'created_at'           => $now,
+                    'updated_at'           => $now
                 ],
                 [
                     'billing_statement_id' => $statement->id,
                     'label'                => $billing->label(Billing::ITEM_STORAGE_GB),
                     'quantity'             => $storageQuantity,
                     'price'                => $billing->price(Billing::ITEM_STORAGE_GB),
-                    'total'                => $storageTotal
+                    'total'                => $storageTotal,
+                    'created_at'           => $now,
+                    'updated_at'           => $now
                 ],
             ];
 
@@ -152,12 +164,9 @@ class CreateStatements extends Command
 
             BillingStatementItem::insert($items);
 
-            $billing->locked_at                = null;
             $billing->billing_period_starts_at = (new Carbon($billing->billing_period_ends_at))->addDays(1)->startOfDay(); // Start of the next day
             $billing->billing_period_ends_at   = (new Carbon($billing->billing_period_starts_at))->addDays(30)->endOfDay(); // End of day, 30 days from now
             $billing->save();
-
-            PayStatementJob::dispatch($statement);
         }
     }
 }

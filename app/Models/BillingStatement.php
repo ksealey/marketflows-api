@@ -12,12 +12,21 @@ class BillingStatement extends Model
     protected $fillable = [
         'billing_id',
         'billing_period_starts_at',
-        'billing_period_ends_at'
+        'billing_period_ends_at',
+        'payment_attempts',
+        'next_payment_attempt_at',
+        'locked_at',
+        'failed_intent_id'
     ];
 
     protected $appends = [
         'kind',
         'link'
+    ];
+
+    protected $hidden = [
+        'locked_at',
+        'failed_intent_id'
     ];
 
     public function getKindAttribute()

@@ -24,16 +24,21 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        //  Create statements every 5 minutes
+        //  Create statements every hour
         $schedule->command('create-statements')
-                 ->everyFiveMinutes()
+                 ->hourly()
+                 ->onOneServer();
+
+        //  Pay statements every hour
+        $schedule->command('pay-statements')
+                 ->hourly()
                  ->onOneServer();
 
         //  Push scheduled export jobs
         $schedule->command('push-scheduled-exports')
                  ->hourly()
                  ->onOneServer();
-
+                         
         //  Push account suspension jobs
         $schedule->command('send-account-suspension-warnings')
                  ->everyFiveMinutes()
@@ -46,6 +51,11 @@ class Kernel extends ConsoleKernel
 
         //  Clear expired email verifications
         $schedule->command('clear-expired-email-verifications')
+                 ->everyFiveMinutes()
+                 ->onOneServer();
+
+        //  Clear expired payment setups
+        $schedule->command('clear-expired-payment-setups')
                  ->everyFiveMinutes()
                  ->onOneServer();
     }

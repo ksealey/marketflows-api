@@ -516,5 +516,50 @@ class AuthTest extends TestCase
         $this->assertNull($user->password_reset_token);
         $this->assertNull($user->password_reset_expires_at);
     }
+
+    /**
+     * Test creating a payment setup
+     * 
+     * @group auth--
+     */
+    public function testCreatePaymentSetup()
+    {   
+        $email    = $this->faker()->email;
+        $customer = (object)[
+            'id' => 'cus_' . str_random(14)
+        ];
+
+        $intent = (object)[
+            "id"                => "seti_" . str_random(32),
+            "object"            => "setup_intent",
+            "client_secret"     => "seti_" . str_random(32),
+        ];
+
+       $this->mock(PaymentManager::class, function($mock) use($email, $customer, $intent){
+            $mock->shouldReceive('createCustomer')
+                 ->with($email)
+                 ->andReturn($customer);
+
+            $mock->shouldReceive('createIntent')
+                 ->with($customer->id)
+                 ->andReturn($intent);
+        });
+
+        $response = $this->json('POST', route('create-payment-setup'), [
+            'email' => $email
+        ]);
+
+        $response->assertJSON([
+            "customer_id"   => $customer->id,
+            "email"         => $email,
+            "kind"          => "PaymentSetup",
+            "intent"        => [
+                'id' => $intent->id,
+                'client_secret' => $intent->client_secret,
+            ]
+        ]);
+
+        $response->assertStatus(201);
+    }
 }
 

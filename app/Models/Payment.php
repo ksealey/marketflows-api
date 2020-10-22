@@ -9,6 +9,7 @@ class Payment extends Model
 {
     protected $fillable = [
         'payment_method_id',
+        'billing_statement_id',
         'total',
         'external_id'
     ];
@@ -38,14 +39,9 @@ class Payment extends Model
         return Payment::select([
             'payments.*',
             DB::raw('CONVERT(FORMAT(ROUND(total, 2), 2), CHAR) AS total_formatted'),
-            DB::raw('billing_statements.id AS billing_statement_id'),
             DB::raw("DATE_FORMAT(CONVERT_TZ(payments.created_at, 'UTC','" . $user->timezone . "'), '%b %d, %Y') AS created_at_local") 
         ])
-        ->where('payment_method_id', $input['payment_method_id'])
-        ->leftJoin('billing_statements', function($join){
-            $join->on('payments.id', '=', 'billing_statements.payment_id')
-                 ->whereNull('billing_statements.deleted_at');
-        });
+        ->where('payment_method_id', $input['payment_method_id']);
     }
 
     public function getKindAttribute()

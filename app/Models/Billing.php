@@ -25,7 +25,6 @@ class Billing extends Model
     ];
 
     protected $hidden = [
-        'locked_at',
         'suspension_warnings',
         'next_suspension_warning_at',
         'external_id',

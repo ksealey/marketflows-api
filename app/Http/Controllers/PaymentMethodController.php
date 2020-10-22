@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use \App\Models\PaymentMethod;
-use \App\Jobs\PayUnpaidStatementsJob;
 use \App\Models\Payment;
+use \App\Helpers\PaymentManager;
+use App\Models\BillingStatement;
+use \Carbon\Carbon;
 use Validator;
 use Exception;
 use DB;
+use App;
 
 class PaymentMethodController extends Controller
 {
@@ -48,6 +51,15 @@ class PaymentMethodController extends Controller
         );
     }
 
+    public function createIntent(Request $request)
+    {
+        $paymentManager = App::make(PaymentManager::class);
+        $billing        = $request->user()->account->billing;
+        $intent         = $paymentManager->createIntent($billing->external_id);
+
+        return response($intent);
+    }
+
     /**
      * Create a record
      * 
@@ -56,8 +68,9 @@ class PaymentMethodController extends Controller
      */
     public function create(Request $request)
     {
-        $rules = [ 
-            'token'          => 'required',
+        $rules  = [
+            'payment_method_id' => 'required',// stripe payment method id
+            'primary_method'    => 'boolean'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -67,26 +80,36 @@ class PaymentMethodController extends Controller
             ], 400);
         }
 
-        try{
-            $paymentMethod = PaymentMethod::createFromToken(
-                $request->token, 
-                $request->user(), 
-                true 
-            );
-        }catch(\Stripe\Exception\CardException $e){
-            return response([
-                'error' => $e->getMessage()
-            ], 400);
-        }catch(\Stripe\Exception\RateLimitException $e){
-            return response([
-                'error' => 'We can\'t complete this request right now. Please try again shortly.'
-            ], 400);
+        $user           = $request->user();
+        $paymentManager = App::make(PaymentManager::class);
+        $paymentMethods = $paymentManager->getPaymentMethods($user->account->billing->external_id);
+
+        $paymentMethod = null;
+        foreach( $paymentMethods as $pm ){
+            if( $request->payment_method_id == $pm->id )
+                $paymentMethod = $pm;
+        }
+        $card = $paymentMethod->card;
+        
+        //  Add initial payment method
+        $expiration = new Carbon($card->exp_year . '-' . $card->exp_month . '-01 00:00:00'); 
+        $expiration->endOfMonth();
+        
+        if( $request->primary_method ){
+            PaymentMethod::where('account_id', $user->account->id)
+                         ->update(['primary_method' => false]);
         }
 
-        //  
-        //  If there are unpaid statements, add job
-        //
-        PayUnpaidStatementsJob::dispatch($paymentMethod);
+        $paymentMethod = PaymentMethod::create([
+            'account_id'     => $user->account_id,
+            'created_by'     => $user->id,
+            'external_id'    => $paymentMethod->id,
+            'last_4'         => $card->last4,
+            'type'           => $card->funding,
+            'brand'          => ucfirst($card->brand),
+            'expiration'     => $expiration->format('Y-m-d'),
+            'primary_method' => !!$request->primary_method
+        ]);
 
         return response($paymentMethod, 201);
     }
@@ -125,6 +148,50 @@ class PaymentMethodController extends Controller
 
         $paymentMethod->primary_method = true;
         $paymentMethod->save();
+
+        return response($paymentMethod);
+    }
+
+    /**
+     * Handle authentication for a payment method
+     * 
+     * @param Request $request
+     * @param \App\Models\PaymentMethod $paymentMethod
+     * 
+     * @return Response
+     */
+    public function authenticate(Request $request, PaymentMethod $paymentMethod)
+    {
+        if( ! $paymentMethod->last_error_intent_id ){
+            return response([
+                'error' => 'No authentication required'
+            ], 400);
+        }
+
+        $paymentManager = App::make(PaymentManager::class);
+        $intent         = $paymentManager->getIntent($paymentMethod->last_error_intent_id);
+        if( $intent ){
+            if( $intent->status === 'succeeded' ){
+                $paymentMethod->last_error = null;
+                $paymentMethod->last_error_code = null;
+                $paymentMethod->last_error_intent_id = null;
+                $paymentMethod->last_error_intent_secret = null;
+                $paymentMethod->save();
+
+                $failedStatement = BillingStatement::where('intent_id', $intent->id)->first();
+                if( $failedStatement ){
+                    Payment::create([
+                        'payment_method_id'     => $paymentMethod->id,
+                        'billing_statement_id'  => $failedStatement->id,
+                        'external_id'           => $intent->id,
+                        'total'                 => $failedStatement->total
+                    ]);
+                    $failedStatement->paid_at = now();
+                    $failedStatement->save();
+                }
+
+            }
+        }
 
         return response($paymentMethod);
     }
@@ -176,14 +243,9 @@ class PaymentMethodController extends Controller
     {
         $query  = Payment::select([
                             'payments.*',
-                            DB::raw('CONVERT(FORMAT(ROUND(total, 2), 2), CHAR) AS total_formatted'),
-                            DB::raw('billing_statements.id AS billing_statement_id')
+                            DB::raw('CONVERT(FORMAT(ROUND(total, 2), 2), CHAR) AS total_formatted')
                         ])
-                        ->where('payment_method_id', $paymentMethod->id)
-                        ->leftJoin('billing_statements', function($join){
-                            $join->on('payments.id', '=', 'billing_statements.payment_id')
-                                 ->whereNull('billing_statements.deleted_at');
-                        });
+                        ->where('payment_method_id', $paymentMethod->id);
 
         //  Pass along to parent for listing
         return parent::results(

@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Models\Account;
 use App\Models\Alert;
 use App\Models\Billing;
 use App\Models\BillingStatement;
@@ -24,15 +25,17 @@ class PayStatementJob implements ShouldQueue
 
     public $tries = 1;
     public $statement;
+    public $paymentMethod = null;
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct(BillingStatement $statement)
+    public function __construct(BillingStatement $statement, $paymentMethod = null)
     {
-        $this->statement = $statement;
+        $this->statement     = $statement;
+        $this->paymentMethod = $paymentMethod;
     }
 
     /**
@@ -42,23 +45,39 @@ class PayStatementJob implements ShouldQueue
      */
     public function handle()
     {
+        $statement            = $this->statement;
+        $statement->locked_at = now();
+        $statement->save();
+
         $paymentManager = App::make('App\Helpers\PaymentManager');
-        $statement      = $this->statement;
+        
         $billing        = $statement->billing;
         $account        = $billing->account;
-        $paymentMethod  = $account->primary_payment_method; 
         
-        $payment = $paymentManager->charge($paymentMethod, $statement->total);
-        $user    = User::find($paymentMethod->created_by);
+        if( $this->paymentMethod ){
+            $paymentMethod = $this->paymentMethod;
+        }else{
+            $paymentMethod  = $account->primary_payment_method; 
+        }
 
+        $user    = User::find($paymentMethod->created_by);
+        $results = $paymentManager->charge($paymentMethod, $statement);
+        $payment = $results->payment;
+        
         if( $payment ){
-            $statement->payment_id = $payment->id;
-            $statement->paid_at    = now();
-            $statement->save();
-            
+            $statement->next_payment_attempt_at = null;
+            $statement->payment_id              = $payment->id;
+            $statement->paid_at                 = now();
+
             Mail::to($user)
                 ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
+
+            //  Unsuspend accounts that were suspsended for past due payments if paid in full
+            if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE && ! $billing->past_due )
+                $account->unsuspend();
         }else{
+            $statement->next_payment_attempt_at = now()->addDays(3);
+
             Alert::create([
                 'account_id'    => $user->account_id,
                 'user_id'       => $user->id,  
@@ -71,5 +90,9 @@ class PayStatementJob implements ShouldQueue
             Mail::to($user)
                 ->queue(new PaymentMethodFailed($user, $paymentMethod, $statement));
         }
+        
+        $statement->payment_attempts++;
+        $statement->locked_at = null;
+        $statement->save();
     }
 }
