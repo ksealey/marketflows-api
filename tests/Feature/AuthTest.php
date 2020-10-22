@@ -6,6 +6,7 @@ use Tests\TestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\CreatesAccount;
+use App\Models\Auth\PaymentSetup;
 use App\Mail\Auth\EmailVerification as EmailVerificationEmail;
 use App\Models\Auth\EmailVerification;
 use App\Mail\Auth\PasswordReset as PasswordResetEmail;
@@ -148,8 +149,6 @@ class AuthTest extends TestCase
         ]);
     }
 
-
-
     /**
      * Test creating an account successfully
      * 
@@ -172,6 +171,11 @@ class AuthTest extends TestCase
         $customer     = new \stdClass();
         $customer->id = str_random(10);
 
+        $paymentSetup  = factory(PaymentSetup::class)->create([
+            'email' => $emailVerification->email,
+            'customer_id' => $customer->id
+        ]);
+
         $paymentMethod = (object)[
             'id'   => str_random(10),
             'card' => (object)[
@@ -183,18 +187,11 @@ class AuthTest extends TestCase
             ]
         ];
 
-        $paymentMethods = (object)[
-            'data' => [
-                $paymentMethod
-            ]
+        $paymentMethods = [
+            $paymentMethod
         ];
 
         $this->mock(PaymentManager::class, function($mock) use($account, $paymentToken, $customer, $paymentMethods){
-            $mock->shouldReceive('createCustomer')
-                 ->once()
-                 ->with($account->name, $paymentToken)
-                 ->andReturn($customer);
-
             $mock->shouldReceive('getPaymentMethods')
                  ->once()
                  ->with($customer->id)
@@ -210,6 +207,9 @@ class AuthTest extends TestCase
             'phone'         => $user->phone,
             'password'      => $user->password,
             'timezone'      => $user->timezone,
+            'intent_id'     => $paymentSetup->intent_id,
+            'intent_client_secret' => $paymentSetup->intent_client_secret,
+            'payment_method_id'    => $paymentMethod->id
         ]);
         $response->assertStatus(201);
         $response->assertJSON([
@@ -520,7 +520,7 @@ class AuthTest extends TestCase
     /**
      * Test creating a payment setup
      * 
-     * @group auth--
+     * @group auth
      */
     public function testCreatePaymentSetup()
     {   
