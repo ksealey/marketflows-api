@@ -37,10 +37,10 @@ class ProfileController extends Controller
             $me->timezone = $request->timezone;
 
         if( $request->filled('first_name') )
-            $me->first_name = $request->first_name;
+            $me->first_name = ucfirst(strtolower($request->first_name));
 
         if( $request->filled('last_name') )
-            $me->last_name = $request->last_name;
+            $me->last_name = ucfirst(strtolower($request->last_name));
 
         if( $request->has('phone') )
             $me->phone = $request->phone;
@@ -75,7 +75,7 @@ class ProfileController extends Controller
         $emailVerification->delete();
 
         $me        = $request->user();
-        $me->email = $request->email;
+        $me->email = strtolower($request->email);
         $me->save();
 
         return response($me);

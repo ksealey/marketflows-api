@@ -84,10 +84,20 @@ class Contact extends Model
                         ->where('contacts.company_id', $input['company_id']);
     }
 
-    public function sessions()
+    public function getSessionsAttribute()
     {
-        return $this->hasMany(KeywordTrackingPoolSession::class)
-                    ->orderBy('updated_at', 'DESC');
+        $sessions = KeywordTrackingPoolSession::select([
+                                                    'keyword_tracking_pool_sessions.*',
+                                                    'keyword_tracking_pools.name AS keyword_tracking_pool_name',
+                                                    'phone_numbers.name AS phone_number_name'
+                                                ])
+                                              ->where('contact_id', $this->id)
+                                              ->leftJoin('keyword_tracking_pools', 'keyword_tracking_pools.id', '=','keyword_tracking_pool_sessions.keyword_tracking_pool_id')
+                                              ->leftJoin('phone_numbers', 'phone_numbers.id', '=','keyword_tracking_pool_sessions.phone_number_id')
+                                              
+                                              ->orderBy('updated_at', 'DESC')
+                                              ->get();
+        return $sessions;
     }
 
     public function activeSession($phoneNumberId = null)

@@ -56,15 +56,14 @@ class UserController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
         }
-
        
         $user = User::create([
             'account_id'                => $creator->account_id,
             'role'                      => $request->role,
             'timezone'                  => $request->timezone,
-            'first_name'                => $request->first_name,
-            'last_name'                 => $request->last_name,
-            'email'                     => $request->email,
+            'first_name'                => ucfirst(strtolower($request->first_name)),
+            'last_name'                 => ucfirst(strtolower($request->last_name)),
+            'email'                     => strtolower($request->email),
             'password_reset_token'      => str_random(128), // To allow password reset
             'password_hash'             => str_random(64), // Jibberish
             'auth_token'                => str_random(255),
