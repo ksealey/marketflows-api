@@ -1,4 +1,9 @@
 pipeline {
+    agent {
+        docker {
+            image ubuntu:latest
+        }
+    }
     environment {
         AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
@@ -7,12 +12,6 @@ pipeline {
         STRIPE_KEY = credentials('STRIPE_KEY')
         STRIPE_SECRET = credentials('STRIPE_SECRET')
     }
-
-    agent { 
-        docker { 
-            image 'marketflows/ubuntu18-php7:latest'
-        } 
-    }
     
     stages {
         stage('Build') {
@@ -20,26 +19,15 @@ pipeline {
                 sh 'composer install'
             }
         }
-        
-        stage('Test') {
-            when {
-                branch 'master'  
-            }
-            steps {
-                sh 'scripts/start-test-db.sh'
-                sh 'vendor/bin/phpunit'
-            }
-        }
 
-        stage('Deploy Image') {
-            when {
-                branch 'master'  
-            }
+        stage('Test') {
             steps {
-                sh 'scripts/deploy-image.sh production'
+                sh './scripts/start-test-db.sh'
+                sh './vendor/bin/phpunit'
             }
         }
     }
+
     post {
        
         success {
