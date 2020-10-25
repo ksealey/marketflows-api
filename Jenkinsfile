@@ -26,8 +26,8 @@ pipeline {
                 branch 'master'  
             }
             steps {
-                sh './scripts/start-test-db.sh'
-                sh './vendor/bin/phpunit'
+                sh 'scripts/start-test-db.sh'
+                sh 'vendor/bin/phpunit'
             }
         }
 
@@ -36,7 +36,7 @@ pipeline {
                 branch 'master'  
             }
             steps {
-                sh './scripts/deploy-image.sh production'
+                sh 'scripts/deploy-image.sh production'
             }
         }
     }
