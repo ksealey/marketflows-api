@@ -63,13 +63,13 @@ class WebSessionController extends Controller
 
         $gUUID             = $request->guuid ?: Str::uuid();
         $expirationMinutes = $company->tracking_expiration_days * 60 * 24;
-        
+        $sessionService    = App::make(SessionService::class);
         //
         //  Determine if we should swap numbers at all
         //
         $httpReferrer = $request->http_referrer;
         $landingURL   = $request->landing_url;
-        $browserType  = $this->normalizeBrowserType($agent->browser());
+        $browserType  = $sessionService->normalizeBrowserType($agent->browser());
 
         if( $agent->isDesktop() ){
             $deviceType = 'DESKTOP';
@@ -104,6 +104,27 @@ class WebSessionController extends Controller
                                           ]);
             }
 
+            $source = $sessionService->getSource($company->source_param, $httpReferrer, $landingURL, $company->source_referrer_when_empty);
+            $source = $source ? substr($source, 0, 512) : null;
+
+            $medium = $sessionService->getMedium($company->medium_param, $landingURL);
+            $medium = $medium ? substr($medium, 0, 128) : null;
+
+            $content = $session->getContent($company->content_param, $landingURL);
+            $content = $content ? substr($content, 0, 128) : null;
+
+            $campaign = $session->getCampaign($company->campaign_param, $landingURL);
+            $campaign = $campaign ? substr($campaign, 0, 128) : null;
+
+            $keyword = $session->getKeyword($company->keyword_param, $landingURL);
+            $keyword = $keyword ? substr($keyword, 0, 128) : null;
+
+            $isOrganic  = $session->getIsOrganic($company->medium_param, $httpReferrer, $landingURL);
+            $isPaid     = $session->getIsPaid($company->medium_param, $landingURL);
+            $isDirect   = $session->getIsDirect($httpReferrer);
+            $isReferral = $session->getIsReferral($httpReferrer);
+            $isSearch   = $session->getIsSearch($httpReferrer);
+
             $session = KeywordTrackingPoolSession::create([
                 'contact_id'                => $contactId, // Preclaim session
                 'guuid'                     => $gUUID,
@@ -119,6 +140,16 @@ class WebSessionController extends Controller
                 'landing_url'               => substr($landingURL, 0, 1024),
                 'last_url'                  => substr($landingURL, 0, 1024),
                 'token'                     => bcrypt($sessionToken),
+                'source'                    => $source,
+                'medium'                    => $medium,
+                'content'                   => $content,
+                'campaign'                  => $campaign,
+                'keyword'                   => $keyword,
+                'is_organic'                => $isOrganic,
+                'is_paid'                   => $isPaid,
+                'is_direct'                 => $isDirect,
+                'is_referral'               => $isReferral,
+                'is_search'                 => $isSearch,
                 'created_at'                => now()->format('Y-m-d H:i:s.u'),
                 'last_activity_at'          => now(),
                 'active'                    => 1,

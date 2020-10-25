@@ -9,6 +9,7 @@ use App\Services\PhoneNumberService;
 use App\Services\ReportService;
 use App\Services\TranscribeService;
 use App\Services\WebhookService;
+use App\Services\SessionService;
 use App\Helpers\TextToSpeech;
 use \GuzzleHttp\Client as HTTPClient;
 use Aws\TranscribeService\TranscribeServiceClient;
@@ -53,11 +54,15 @@ class AppServiceProvider extends ServiceProvider
             return new ReportService();
         });
 
-        //  Register report service
+        //  Register webhook service
         $this->app->bind(WebhookService::class, function($app){
             return new WebhookService();
         });
 
+        //  Register session service
+        $this->app->bind(SessionService::class, function($app){
+            return new SessionService();
+        });
 
         //  Register AWS Text to Speach
         $this->app->bind(TextToSpeech::class, function($app){

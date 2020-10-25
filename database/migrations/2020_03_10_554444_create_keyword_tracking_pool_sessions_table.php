@@ -28,6 +28,16 @@ class CreateKeywordTrackingPoolSessionsTable extends Migration
             $table->string('http_referrer', 1024)->nullable();
             $table->string('landing_url', 1024);
             $table->string('last_url', 1024);
+            $table->string('source', 512)->nullable();
+            $table->string('medium', 128)->nullable();
+            $table->string('content', 128)->nullable();
+            $table->string('campaign', 128)->nullable();
+            $table->string('keyword', 128)->nullable();
+            $table->boolean('is_organic')->nullable();
+            $table->boolean('is_paid')->nullable();
+            $table->boolean('is_direct')->nullable();
+            $table->boolean('is_referral')->nullable();
+            $table->boolean('is_search')->nullable();
             $table->string('token', 64);
             $table->boolean('active');
             $table->dateTime('last_activity_at', 6)->index();

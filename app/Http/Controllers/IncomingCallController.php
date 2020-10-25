@@ -526,26 +526,16 @@ class IncomingCallController extends Controller
         //  
         if( $keywordTrackingPool ){
             if( $session ){
-                $source = $session->getSource($company->source_param, $company->source_referrer_when_empty);
-                $source = $source ? substr($source, 0, 512) : null;
-
-                $medium = $session->getMedium($company->medium_param);
-                $medium = $medium ? substr($medium, 0, 128) : null;
-
-                $content = $session->getContent($company->content_param);
-                $content = $content ? substr($content, 0, 128) : null;
-
-                $campaign = $session->getCampaign($company->campaign_param);
-                $campaign = $campaign ? substr($campaign, 0, 128) : null;
-
-                $keyword = $session->getKeyword($company->keyword_param);
-                $keyword = $keyword ? substr($keyword, 0, 128) : null;
-
-                $isOrganic  = $session->getIsOrganic($company->medium_param);
-                $isPaid     = $session->getIsPaid($company->medium_param);
-                $isDirect   = $session->getIsDirect();
-                $isReferral = $session->getIsReferral();
-                $isSearch   = $session->getIsSearch();
+                $source     = $session->source;
+                $medium     = $session->medium;
+                $content    = $session->content;
+                $campaign   = $session->campaign;
+                $keyword    = $session->keyword;
+                $isOrganic  = $session->is_organic;
+                $isPaid     = $session->is_paid;
+                $isDirect   = $session->is_direct;
+                $isReferral = $session->is_referral;
+                $isSearch   = $session->is_search;
             }else{
                 $source     = 'Unknown';
                 $medium     = null;
