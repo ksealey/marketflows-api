@@ -41,7 +41,6 @@ $factory->define(PhoneNumber::class, function (Faker $faker) {
         'is_direct'                 => mt_rand(0,1),
         'is_referral'               => mt_rand(0,1),
         'is_search'                 => mt_rand(0,1),
-        'total_assignments'         => 0,
         'last_assigned_at'          => null,
         'purchased_at'              => now(),
         'swap_rules'                => json_encode([

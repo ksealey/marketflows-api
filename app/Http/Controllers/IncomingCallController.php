@@ -117,16 +117,17 @@ class IncomingCallController extends Controller
             //
             //  If this is a keyword tracking pool number, there are no unclaimed active sessions for this number and this contact does not exist, end now
             //
-            $contact = Contact::where('company_id', $company->id)
-                                ->where('country_code', $callerCountryCode)
-                                ->where('number', $callerNumber)
-                                ->first();
-            
             $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id);
-            if( ! count($sessions) && ! $contact ){ 
-                $response->reject();
-                
-                return Response::xmlResponse($response);
+            if( ! count($sessions) ){
+                $contact = Contact::where('company_id', $company->id)
+                                    ->where('country_code', $callerCountryCode)
+                                    ->where('number', $callerNumber)
+                                    ->first();
+                if( ! $contact ){
+                    $response->reject();
+                    
+                    return Response::xmlResponse($response);
+                }
             }
         }else{
             //  

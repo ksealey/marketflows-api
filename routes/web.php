@@ -40,6 +40,6 @@ Route::prefix('web')->group(function(){
                ->name('web-number-status');
 
           Route::post('/pause-session', 'WebSessionController@pauseSession')
-               ->name('web-keep-alive');
+               ->name('web-pause-session');
      });
 });

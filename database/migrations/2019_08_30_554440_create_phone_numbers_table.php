@@ -46,7 +46,6 @@ class CreatePhoneNumbersTable extends Migration
 
             $table->json('swap_rules')->nullable();
 
-            $table->bigInteger('total_assignments')->unsigned()->default(0);
             $table->dateTime('last_assigned_at', 6)->nullable();
 
             $table->dateTime('purchased_at');

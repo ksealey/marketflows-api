@@ -32,7 +32,6 @@ class PhoneNumberController extends Controller
         'phone_numbers.medium',
         'phone_numbers.campaign',
         'phone_numbers.content',
-        'phone_numbers.total_assignments',
         'phone_numbers.company_id',
         'phone_numbers.disabled_at',
         'phone_numbers.created_at',

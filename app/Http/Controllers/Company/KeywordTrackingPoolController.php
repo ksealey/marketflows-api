@@ -165,7 +165,6 @@ class KeywordTrackingPoolController extends Controller
 
         $keywordTrackingPool->phone_numbers     = $keywordTrackingPool->phone_numbers;
         $keywordTrackingPool->call_count        = $keywordTrackingPool->call_count;
-        $keywordTrackingPool->total_assignments = $keywordTrackingPool->total_assignments;
 
         return response($keywordTrackingPool);
     }
@@ -232,7 +231,6 @@ class KeywordTrackingPoolController extends Controller
 
         $keywordTrackingPool->phone_numbers     = $keywordTrackingPool->phone_numbers;
         $keywordTrackingPool->call_count        = $keywordTrackingPool->call_count;
-        $keywordTrackingPool->total_assignments = $keywordTrackingPool->total_assignments;
 
         return response($keywordTrackingPool);
     }
@@ -364,7 +362,6 @@ class KeywordTrackingPoolController extends Controller
 
         $keywordTrackingPool->phone_numbers     = $keywordTrackingPool->phone_numbers;
         $keywordTrackingPool->call_count        = $keywordTrackingPool->call_count;
-        $keywordTrackingPool->total_assignments = $keywordTrackingPool->total_assignments;
 
         return response($keywordTrackingPool, 201);
     }
@@ -394,8 +391,7 @@ class KeywordTrackingPoolController extends Controller
             $phoneNumber->deleted_at = now();   
         }
 
-        $phoneNumber->keyword_tracking_pool_id = null;
-        $phoneNumber->total_assignments = 0;
+        $phoneNumber->keyword_tracking_pool_id  = null;
         $phoneNumber->last_assigned_at  = null;
         $phoneNumber->save();
 
@@ -413,7 +409,6 @@ class KeywordTrackingPoolController extends Controller
 
         $keywordTrackingPool->phone_numbers     = $keywordTrackingPool->phone_numbers;
         $keywordTrackingPool->call_count        = $keywordTrackingPool->call_count;
-        $keywordTrackingPool->total_assignments = $keywordTrackingPool->total_assignments;
 
         return response($keywordTrackingPool);
     }

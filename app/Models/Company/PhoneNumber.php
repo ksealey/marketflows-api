@@ -73,7 +73,6 @@ class PhoneNumber extends Model implements Exportable
         'is_referral',
         'is_search',
         'swap_rules',
-        'total_assignments',
         'last_assigned_at',
         'purchased_at'
     ];

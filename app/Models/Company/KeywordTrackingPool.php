@@ -85,17 +85,6 @@ class KeywordTrackingPool extends Model
         return Call::where('keyword_tracking_pool_id', $this->id)->count();
     }
 
-    public function getTotalAssignmentsAttribute()
-    {
-        return DB::table('phone_numbers')
-                 ->select([
-                     DB::raw('SUM(phone_numbers.total_assignments) AS _total_assignments')
-                 ])
-                 ->where('phone_numbers.keyword_tracking_pool_id', $this->id)
-                 ->first()
-                 ->_total_assignments;
-    }
-
     public static function accessibleFields()
     {
         return [
@@ -127,7 +116,6 @@ class KeywordTrackingPool extends Model
         if( ! $phoneNumber ) return null;
 
         $phoneNumber->last_assigned_at = now()->format('Y-m-d H:i:s.u');
-        $phoneNumber->total_assignments++;
         $phoneNumber->save();
 
         return $phoneNumber;
@@ -156,7 +144,7 @@ class KeywordTrackingPool extends Model
             $query->orderBy('updated_at', 'DESC');
             $query->orderBy('created_at', 'DESC');
         }
-        
+
         return $query->get();
     }
 }

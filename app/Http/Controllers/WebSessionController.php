@@ -9,6 +9,7 @@ use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\KeywordTrackingPool;
 use App\Models\Company\KeywordTrackingPoolSession;
+use App\Services\SessionService;
 use Jenssegers\Agent\Agent;
 use App;
 
@@ -110,20 +111,20 @@ class WebSessionController extends Controller
             $medium = $sessionService->getMedium($company->medium_param, $landingURL);
             $medium = $medium ? substr($medium, 0, 128) : null;
 
-            $content = $session->getContent($company->content_param, $landingURL);
+            $content = $sessionService->getContent($company->content_param, $landingURL);
             $content = $content ? substr($content, 0, 128) : null;
 
-            $campaign = $session->getCampaign($company->campaign_param, $landingURL);
+            $campaign = $sessionService->getCampaign($company->campaign_param, $landingURL);
             $campaign = $campaign ? substr($campaign, 0, 128) : null;
 
-            $keyword = $session->getKeyword($company->keyword_param, $landingURL);
+            $keyword = $sessionService->getKeyword($company->keyword_param, $landingURL);
             $keyword = $keyword ? substr($keyword, 0, 128) : null;
 
-            $isOrganic  = $session->getIsOrganic($company->medium_param, $httpReferrer, $landingURL);
-            $isPaid     = $session->getIsPaid($company->medium_param, $landingURL);
-            $isDirect   = $session->getIsDirect($httpReferrer);
-            $isReferral = $session->getIsReferral($httpReferrer);
-            $isSearch   = $session->getIsSearch($httpReferrer);
+            $isOrganic  = $sessionService->getIsOrganic($company->medium_param, $httpReferrer, $landingURL);
+            $isPaid     = $sessionService->getIsPaid($company->medium_param, $landingURL);
+            $isDirect   = $sessionService->getIsDirect($httpReferrer);
+            $isReferral = $sessionService->getIsReferral($httpReferrer);
+            $isSearch   = $sessionService->getIsSearch($httpReferrer);
 
             $session = KeywordTrackingPoolSession::create([
                 'contact_id'                => $contactId, // Preclaim session
