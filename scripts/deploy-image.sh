@@ -19,6 +19,7 @@ if sh smoke-test.sh $1; then
     docker push $PROD_REPO_URL/$IMAGE:$1
 else
     echo "Smoke test failed"
+    exit 1
 fi
 
 

@@ -21,6 +21,6 @@ RUN chmod 0644 /etc/cron.d/laravel-cron && \
 RUN apt-get update && \
     apt-get install -y supervisor
 
-CMD /bin/bash /var/www/app/startup.sh
+CMD /bin/bash /var/www/app/scripts/startup.sh
 
 
