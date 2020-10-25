@@ -1197,30 +1197,20 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'source'                => $session->getSource($company->source_param, $company->source_referrer_when_empty),
-            'medium'                => $session->getMedium($company->medium_param),
-            'content'               => $session->getContent($company->content_param),
-            'campaign'              => $session->getCampaign($company->campaign_param),
-            'keyword'               => $session->getKeyword($company->keyword_param),
-            'is_paid'               => $session->getIsPaid($company->medium_param),
-            'is_organic'            => $session->getIsOrganic($company->medium_param),
-            'is_direct'             => $session->getIsDirect(),
-            'is_referral'           => $session->getIsReferral(),
-            'is_search'             => $session->getIsSearch(),
+            'source'                => $session->source,
+            'medium'                => $session->medium,
+            'content'               => $session->content,
+            'campaign'              => $session->campaign,
+            'keyword'               => $session->keyword,
+            'is_paid'               => $session->is_paid,
+            'is_organic'            => $session->is_organic,
+            'is_direct'             => $session->is_direct,
+            'is_referral'           => $session->is_referral,
+            'is_search'             => $session->is_search,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
             'duration'              => null,
         ]);
-
-        $this->assertEquals($params['utm_source'],  $session->getSource($company->source_param, $company->source_referrer_when_empty));
-        $this->assertEquals($params['utm_medium'], $session->getMedium($company->medium_param));
-        $this->assertEquals($params['utm_content'], $session->getContent($company->content_param));
-        $this->assertEquals($params['utm_campaign'], $session->getCampaign($company->campaign_param));
-        $this->assertEquals($params['utm_term'], $session->getKeyword($company->keyword_param));
-        $this->assertFalse($session->getIsOrganic($company->medium_param));
-        $this->assertFalse($session->getIsPaid($company->medium_param));
-        $this->assertFalse($session->getIsDirect());
-        $this->assertTrue($session->getIsReferral());
 
         $this->assertDatabaseHas('keyword_tracking_pool_sessions', [
             'id'         => $session->id,
@@ -1319,30 +1309,20 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'source'                => $session2->getSource($company->source_param, $company->source_referrer_when_empty),
-            'medium'                => $session2->getMedium($company->medium_param),
-            'content'               => $session2->getContent($company->content_param),
-            'campaign'              => $session2->getCampaign($company->campaign_param),
-            'keyword'               => $session2->getKeyword($company->keyword_param),
-            'is_paid'               => $session2->getIsPaid($company->medium_param),
-            'is_organic'            => $session2->getIsOrganic($company->medium_param),
-            'is_direct'             => $session2->getIsDirect(),
-            'is_referral'           => $session2->getIsReferral(),
-            'is_search'             => $session2->getIsSearch(),
+            'source'                => $session2->source,
+            'medium'                => $session2->medium,
+            'content'               => $session2->content,
+            'campaign'              => $session2->campaign,
+            'keyword'               => $session2->keyword,
+            'is_paid'               => $session2->is_paid,
+            'is_organic'            => $session2->is_organic,
+            'is_direct'             => $session2->is_direct,
+            'is_referral'           => $session2->is_referral,
+            'is_search'             => $session2->is_search,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
             'duration'              => null,
         ]);
-
-        $this->assertEquals($params2['utm_source'],  $session2->getSource($company->source_param, $company->source_referrer_when_empty));
-        $this->assertEquals($params2['utm_medium'], $session2->getMedium($company->medium_param));
-        $this->assertEquals($params2['utm_content'], $session2->getContent($company->content_param));
-        $this->assertEquals($params2['utm_campaign'], $session2->getCampaign($company->campaign_param));
-        $this->assertEquals($params2['utm_term'], $session2->getKeyword($company->keyword_param));
-        $this->assertFalse($session2->getIsOrganic($company->medium_param));
-        $this->assertFalse($session2->getIsPaid($company->medium_param));
-        $this->assertFalse($session2->getIsDirect());
-        $this->assertTrue($session2->getIsReferral());
 
         $this->assertDatabaseHas('keyword_tracking_pool_sessions', [
             'id'         => $session2->id,
@@ -1411,11 +1391,18 @@ class IncomingCallTest extends TestCase
             'utm_campaign'  => str_random(40), 
             'utm_term'      => str_random(40),
         ];
+
+        $response = 
         $session2 = factory(KeywordTrackingPoolSession::class)->create([
             'contact_id'                => null,
             'keyword_tracking_pool_id'  => $pool->id,
             'phone_number_id'           => $phoneNumber->id,
             'landing_url'               => 'http://' . str_random(10) . '.com?' . http_build_query($params2),
+            'source'                    => $params2['utm_source'],
+            'medium'                    => $params2['utm_medium'],
+            'content'                   => $params2['utm_content'],
+            'campaign'                  => $params2['utm_campaign'],
+            'keyword'                   => $params2['utm_term'],
         ]);
 
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
@@ -1441,29 +1428,20 @@ class IncomingCallTest extends TestCase
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
             'status'                => ucfirst($incomingCall->CallStatus),
-            'source'                => $session2->getSource($company->source_param, $company->source_referrer_when_empty),
-            'medium'                => $session2->getMedium($company->medium_param),
-            'content'               => $session2->getContent($company->content_param),
-            'campaign'              => $session2->getCampaign($company->campaign_param),
-            'keyword'               => $session2->getKeyword($company->keyword_param),
-            'is_paid'               => $session2->getIsPaid($company->medium_param),
-            'is_organic'            => $session2->getIsOrganic($company->medium_param),
-            'is_direct'             => $session2->getIsDirect(),
-            'is_referral'           => $session2->getIsReferral(),
+            'source'                => $session2->source,
+            'medium'                => $session2->medium,
+            'content'               => $session2->content,
+            'campaign'              => $session2->campaign,
+            'keyword'               => $session2->keyword,
+            'is_paid'               => $session2->is_paid,
+            'is_organic'            => $session2->is_organic,
+            'is_direct'             => $session2->is_direct,
+            'is_referral'           => $session2->is_referral,
+            'is_search'             => $session2->is_search,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
             'duration'              => null,
         ]);
-
-        $this->assertEquals($params2['utm_source'],  $session2->getSource($company->source_param, $company->source_referrer_when_empty));
-        $this->assertEquals($params2['utm_medium'], $session2->getMedium($company->medium_param));
-        $this->assertEquals($params2['utm_content'], $session2->getContent($company->content_param));
-        $this->assertEquals($params2['utm_campaign'], $session2->getCampaign($company->campaign_param));
-        $this->assertEquals($params2['utm_term'], $session2->getKeyword($company->keyword_param));
-        $this->assertFalse($session2->getIsOrganic($company->medium_param));
-        $this->assertFalse($session2->getIsPaid($company->medium_param));
-        $this->assertFalse($session2->getIsDirect());
-        $this->assertTrue($session2->getIsReferral());
 
         $this->assertDatabaseHas('keyword_tracking_pool_sessions', [
             'id'         => $session2->id,
