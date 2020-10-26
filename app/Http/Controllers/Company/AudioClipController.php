@@ -115,7 +115,7 @@ class AudioClipController extends Controller
 
         if( $request->hasFile('audio_clip') ){
             $filePath = Storage::putFile($audioClip->path, $request->audio_clip, [
-                'visibility' => 'public',
+                'visibility'               => 'public',
                 'AccessControlAllowOrigin' => '*'
             ]);
         }
