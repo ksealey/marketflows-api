@@ -63,7 +63,10 @@ class ProcessCallRecordingJob implements ShouldQueue
         //  Store remotely
         $call        = $this->call;
         $storagePath = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/recordings/Call-' . $call->id . '.mp3';
-        Storage::put($storagePath, $content, 'public');
+        Storage::put($storagePath, $content, [
+            'visibility' => 'public',
+            'AccessControlAllowOrigin' => '*'
+        ]);
 
         //  Create record
         $recording = CallRecording::create([
@@ -89,7 +92,10 @@ class ProcessCallRecordingJob implements ShouldQueue
             if( ! $content ) throw new Exception('Unable to download transcript for job ' . $jobId);
 
             $recording->transcription_path = str_replace('recordings/Call-' . $recording->call_id . '.mp3', 'transcriptions/Transcription-' . $recording->call_id . '.json', $recording->path);
-            Storage::put($recording->transcription_path, json_encode($transcriber->transformContent($content)), 'public');
+            Storage::put($recording->transcription_path, json_encode($transcriber->transformContent($content)), [
+                'visibility'    => 'public',
+                'AccessControlAllowOrigin' => '*'
+            ]);
 
             $transcriber->deleteTranscription($jobId);
             $recording->save();

@@ -64,7 +64,8 @@ class AudioClipController extends Controller
             //  Upload file
             $path     = 'accounts/' . $company->account_id . '/companies/' . $company->id . '/audio_clips';
             $filePath = Storage::putFile($path, $request->audio_clip, [
-                'visibility' => 'public',
+                'visibility'               => 'public',
+                'AccessControlAllowOrigin' => '*'
             ]);
 
             //  Log in database
@@ -115,6 +116,7 @@ class AudioClipController extends Controller
         if( $request->hasFile('audio_clip') ){
             $filePath = Storage::putFile($audioClip->path, $request->audio_clip, [
                 'visibility' => 'public',
+                'AccessControlAllowOrigin' => '*'
             ]);
         }
 

@@ -77,7 +77,8 @@ class SupportTicketController extends Controller
                 $filePath = Storage::putFile('accounts/' . $user->account_id . '/support_tickets/' . $supportTicket->id . '/attachments' , $file, [
                     'visibility'          => 'public',
                     'ContentDisposition' => 'attachment; filename=' . $file->getClientOriginalName(),
-                    'ContentType'        => 'application/octet-stream'
+                    'ContentType'        => 'application/octet-stream',
+                    'AccessControlAllowOrigin' => '*'
                 ]);
 
                 //  Log in database
@@ -193,7 +194,8 @@ class SupportTicketController extends Controller
             $filePath = Storage::putFile('accounts/' . $user->account_id .  '/support_tickets/' . $supportTicket->id . '/attachments' , $file, [
                 'visibility'         => 'public',
                 'ContentDisposition' => 'attachment; filename=' . $file->getClientOriginalName(),
-                'ContentType'        => 'application/octet-stream'
+                'ContentType'        => 'application/octet-stream',
+                'AccessControlAllowOrigin' => '*'
             ]);
 
             //  Log in database
