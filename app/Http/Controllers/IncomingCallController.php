@@ -507,6 +507,9 @@ class IncomingCallController extends Controller
                 $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id, $contact->id, false);
                 $session  = count($sessions) ? $sessions->first() : null;
                 
+                //  Look for the last session this user had that isn't expired
+                $session = $keywordTrackingPool->lastUnexpiredSession($phoneNumber->id, $contact->id);
+                
                 //  Look for unclaimed session
                 if( ! $session ){
                     $sessions = $keywordTrackingPool->activeSessions($phoneNumber->id);

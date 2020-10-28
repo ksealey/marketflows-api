@@ -1543,4 +1543,97 @@ class IncomingCallTest extends TestCase
 
         Event::assertDispatched(CallEvent::class);
     }
+
+    /**
+     * Test calling a pool with a contact that exists but calling with old unexpired session
+     *
+     * @group incoming-calls
+     */
+    public function testSecondPoolCallWithOldSession()
+    {
+        Event::fake();
+
+        $company     = $this->createCompany();
+        $audioClip   = $this->createAudioClip($company);
+        $config      = $this->createConfig($company,[
+            'keypress_enabled' => 0
+        ]);
+
+        $pool = factory(KeywordTrackingPool::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'created_by'    => $this->user->id
+        ]);
+
+        $phoneNumber = factory(PhoneNumber::class, 10)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'created_by'    => $this->user->id,
+            'keyword_tracking_pool_id' => $pool->id
+        ])->first();
+
+        $contact = factory(Contact::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+        ]);
+
+        $params1 = [
+            'utm_source'    => str_random(40), 
+            'utm_medium'    => str_random(40), 
+            'utm_content'   => str_random(40), 
+            'utm_campaign'  => str_random(40), 
+            'utm_term'      => str_random(40), 
+        ];
+
+        $session1 = factory(KeywordTrackingPoolSession::class)->create([
+            'keyword_tracking_pool_id'  => $pool->id,
+            'phone_number_id'           => $phoneNumber->id,
+            'contact_id'                => $contact->id,
+            'landing_url'               => 'http://' . str_random(10) . '.com?' . http_build_query($params1),
+            'active'                    => 0,
+            'ended_at'                  => null
+        ]);
+
+        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
+            'From' => $contact->e164PhoneFormat(),
+            'To'   => $phoneNumber->e164Format()
+        ]);
+ 
+        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/xml');
+        
+        $this->assertDatabaseHas('calls', [
+            'keyword_tracking_pool_id' => $pool->id,
+            'keyword_tracking_pool_name' => $pool->name,
+            'account_id'            => $this->account->id,
+            'company_id'            => $company->id,
+            'contact_id'            => $contact->id,
+            'phone_number_id'       => $phoneNumber->id,
+            'phone_number_name'     => $phoneNumber->name,
+            'type'                  => $phoneNumber->type,
+            'category'              => $phoneNumber->category,
+            'sub_category'          => $phoneNumber->sub_category,
+            'external_id'           => $incomingCall->CallSid,
+            'direction'             => ucfirst($incomingCall->Direction),
+            'status'                => ucfirst($incomingCall->CallStatus),
+            'source'                => $session1->source,
+            'medium'                => $session1->medium,
+            'content'               => $session1->content,
+            'campaign'              => $session1->campaign,
+            'keyword'               => $session1->keyword,
+            'is_paid'               => $session1->is_paid,
+            'is_organic'            => $session1->is_organic,
+            'is_direct'             => $session1->is_direct,
+            'is_referral'           => $session1->is_referral,
+            'is_search'             => $session1->is_search,
+            'recording_enabled'     => $config->recording_enabled,
+            'forwarded_to'          => $config->forwardToPhoneNumber(),
+            'duration'              => null,
+        ]);
+
+        Event::assertDispatched(CallEvent::class);
+    }
 }

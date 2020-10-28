@@ -147,4 +147,14 @@ class KeywordTrackingPool extends Model
 
         return $query->get();
     }
+
+    public function lastUnexpiredSession($phoneNumberId, $contactId)
+    {
+        return KeywordTrackingPoolSession::where('keyword_tracking_pool_id', $this->id)
+                                         ->where('phone_number_id', $phoneNumberId)
+                                         ->where('contact_id', $contactId)
+                                         ->whereNull('ended_at')
+                                         ->orderBy('created_at', 'DESC')
+                                         ->first();
+    }
 }
