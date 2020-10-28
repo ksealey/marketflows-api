@@ -56,8 +56,8 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS'),
-        'name'    => env('MAIL_FROM_NAME', 'Market Flows'),
+        'address' => env('MAIL_FROM_ADDRESS', 'notifications@marketflows.io'),
+        'name'    => env('MAIL_FROM_NAME', 'MarketFlows'),
     ],
 
     'to' => [
