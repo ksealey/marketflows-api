@@ -56,7 +56,7 @@ class KeywordTrackingPool extends Model
     {
         $query = PhoneNumber::select([
             'phone_numbers.*',
-            DB::raw('(SELECT COUNT(*) FROM keyword_tracking_pool_sessions WHERE keyword_tracking_pool_sessions.phone_number_id = phone_numbers.id AND ended_at IS NULL) AS active_assignments')
+            DB::raw('(SELECT COUNT(*) FROM keyword_tracking_pool_sessions WHERE keyword_tracking_pool_sessions.phone_number_id = phone_numbers.id AND active=1) AS active_assignments')
         ])->where('keyword_tracking_pool_id', $this->id);
         
         return $query->get();
