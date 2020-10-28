@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Account;
 use App\Models\PaymentMethod;
+use App\Models\Billing;
 use App\Models\BillingStatement;
 use App\Models\Company;
 use App\Models\Company\Call;
@@ -107,7 +108,8 @@ class AccountController extends Controller
         $statements = BillingStatement::where('billing_id',  $account->billing->id)
                                         ->whereNull('paid_at')
                                         ->get();
-        if( count($statements) ){
+        $accountAgeDays = $account->created_at->diff(now())->days;
+        if( $accountAgeDays >= Billing::DAYS_FREE && count($statements) ){
             return response([
                 'error' => 'You must first pay all unpaid statements to close your account'
             ], 400);

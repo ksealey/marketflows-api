@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
+use App\Models\Billing;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Company\ScheduledExport;
@@ -78,6 +79,9 @@ class AccountTest extends TestCase
      */
     public function testClosingAccountFailsForPastDueStatement()
     {
+        $this->account->created_at = now()->subDays(Billing::DAYS_FREE)->subSeconds(5);
+        $this->account->save();
+
         $statement = $this->createBillableStatement([
             'billing_id'               => $this->billing->id,
             'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
@@ -198,6 +202,7 @@ class AccountTest extends TestCase
         $response = $this->json('DELETE', route('delete-account', [
             'confirm_close' => 1
         ]));
+        $response->dump();
         $response->assertStatus(200);
         $response->assertJSON([
             'message' => 'Bye'
