@@ -977,7 +977,9 @@ class IncomingCallTest extends TestCase
 
         $this->mock('HTTPClient', function($mock) use($url, $recordingContent){
             $mock->shouldReceive('request')
-                 ->with('GET', $url . '.mp3')
+                 ->with('GET', $url . '.mp3', [
+                     'connection_timeout' => 900
+                 ])
                  ->andReturn($mock);
 
             $mock->shouldReceive('getBody')

@@ -9,7 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Company\Call;
 use App\Models\Company\CallRecording;
-use App\Services\TranscribeService;
+use App\Jobs\TranscribeRecordingJob;
 use Twilio\Rest\Client as TwilioClient;
 use App;
 use Exception;
@@ -51,13 +51,15 @@ class ProcessCallRecordingJob implements ShouldQueue
         //
         // Move recording to storage and remove from Twilio
         //
-
+        
         //  Download recording
         $content    = null;
         $httpClient = App::make('HTTPClient');
         try{
-            $response   = $httpClient->request('GET', $this->recordingURL . '.mp3');
-            $content    = (string)$response->getBody();
+            $response = $httpClient->request('GET', $this->recordingURL . '.mp3', [
+                'connection_timeout' => 900
+            ]);
+            $content = (string)$response->getBody();
         }catch(\Exception $e){}
 
         if( ! $content ) throw new Exception('Unable to download file ' . $this->recordingURL);
@@ -71,9 +73,8 @@ class ProcessCallRecordingJob implements ShouldQueue
         ]);
 
         DB::beginTransaction();
-
+        
         try{
-
             //  Create record
             $recording = CallRecording::create([
                 'account_id'    => $call->account_id,
@@ -82,36 +83,19 @@ class ProcessCallRecordingJob implements ShouldQueue
                 'external_id'   => $this->recordingSid,
                 'path'          => $storagePath,
                 'duration'      => intval($this->recordingDuration),
-                'file_size'     => strlen($content),
-                'transcription_path' => '/'
+                'file_size'     => strlen($content)
             ]);
-            
-            //  Transcribe if enabled
-            if( $call->transcription_enabled ){
-                $company        = $call->company;
-                $language       = config('services.transcribe.languages')[$company->tts_language] ?? 'en-US';
-                $transcriber    = App::make(TranscribeService::class);
-
-                $jobId   = $transcriber->startTranscription($recording, $language);
-                $fileUrl = $transcriber->waitForUrl($jobId);
-                $content = $transcriber->downloadFromUrl($fileUrl);
-                if( ! $content ) throw new Exception('Unable to download transcript for job ' . $jobId);
-
-                $recording->transcription_path = str_replace('recordings/Call-' . $recording->call_id . '.mp3', 'transcriptions/Transcription-' . $recording->call_id . '.json', $recording->path);
-                Storage::put($recording->transcription_path, json_encode($transcriber->transformContent($content)), [
-                    'visibility'    => 'public',
-                    'AccessControlAllowOrigin' => '*'
-                ]);
-
-                $transcriber->deleteTranscription($jobId);
-                $recording->save();
-            }
 
             //  Delete original
             $twilio = App::make(TwilioClient::class);
             $twilio->recordings($this->recordingSid)
-                    ->delete();
-        }catch(\Exception $e){
+                ->delete();
+
+            //  Transcribe if enabled
+            if( $call->transcription_enabled ){
+                TranscribeRecordingJob::dispatch($call->company, $recording);
+            }
+        }catch(Exception $e){
             DB::rollBack();
 
             throw $e;
