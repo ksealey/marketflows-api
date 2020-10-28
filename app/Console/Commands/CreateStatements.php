@@ -152,14 +152,18 @@ class CreateStatements extends Command
                 ],
             ];
 
-            foreach( $billing->account->services as $service ){
-                $items[] = [
-                    'billing_statement_id' => $statement->id,
-                    'label'                => $service->label(),
-                    'quantity'             => $service->quantity(),
-                    'price'                => $service->price(),
-                    'total'                => $service->total()
-                ];
+            foreach( $billing->account->companies as $company ){
+                foreach( $company->plugins as $companyPlugin ){
+                    if( $plugin->price ){
+                        $items[] = [
+                            'billing_statement_id' => $statement->id,
+                            'label'                => $companyPlugin->label,
+                            'quantity'             => 1,
+                            'price'                => $companyPlugin->price,
+                            'total'                => $companyPlugin->price
+                        ];
+                    }
+                }
             }
 
             BillingStatementItem::insert($items);

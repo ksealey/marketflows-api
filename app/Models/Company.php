@@ -12,6 +12,8 @@ use \App\Models\Company\CallRecording;
 use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\KeywordTrackingPool;
 use \App\Models\Company\PhoneNumberConfig;
+use \App\Models\Plugin;
+use \App\Models\Company\CompanyPlugin;
 use Exception;
 use DB;
 
@@ -101,6 +103,21 @@ class Company extends Model implements Exportable
         $countryCodes = config('app.country_codes');
         
         return $countryCodes[$this->country] ?? null;
+    }
+
+    public function getPluginsAttribute()
+    {
+        return CompanyPlugin::select([
+                                'company_plugins.*',
+                                'plugins.name',
+                                'plugins.details',
+                                'plugins.image_path',
+                                'plugins.billing_label',
+                                'plugins.price'
+                            ])
+                            ->where('company_plugins.company_id', $this->id)
+                            ->leftJoin('plugins', 'plugins.key', 'company_plugins.plugin_key')
+                            ->get();
     }
 
     public function account()

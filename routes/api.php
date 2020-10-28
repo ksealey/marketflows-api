@@ -389,6 +389,33 @@ Route::prefix('/')->group(function(){
                     Route::prefix('/{company}')->group(function(){
                         /*
                         |--------------------------------
+                        | Handle plugins
+                        |--------------------------------
+                        */
+                        Route::prefix('plugins')->group(function(){
+                            Route::get('/', 'Company\CompanyPluginController@list')
+                                 ->middleware('can:list,\App\Models\Company\CompanyPlugin,company')
+                                 ->name('list-plugins');
+
+                            Route::post('/install', 'Company\CompanyPluginController@install')
+                                 ->middleware('can:install,\App\Models\Company\CompanyPlugin,company')
+                                 ->name('install-plugin');
+
+                            Route::get('/{companyPlugin}', 'Company\CompanyPluginController@read')
+                                 ->middleware('can:read,companyPlugin,company')
+                                 ->name('read-plugin');
+
+                            Route::put('/{companyPlugin}', 'Company\CompanyPluginController@update')
+                                 ->middleware('can:update,companyPlugin,company')
+                                 ->name('update-plugin');
+
+                            Route::delete('/{companyPlugin}', 'Company\CompanyPluginController@uninstall')
+                                 ->middleware('can:uninstall,companyPlugin,company')
+                                 ->name('uninstall-plugin');
+                        });
+
+                        /*
+                        |--------------------------------
                         | Handle audio clips
                         |--------------------------------
                         */

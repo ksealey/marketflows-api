@@ -392,20 +392,24 @@ class Billing extends Model
             ],
         ];
         
-        foreach( $this->account->services as $service ){
-            $_serviceTotal = $service->total();
-            $_servicePrice = $service->price();
-            $items[] = [
-                'type'                 => 'SERVICE',
-                'label'                => $service->label(),
-                'quantity'             => $service->quantity(),
-                'price'                => $_servicePrice,
-                'price_formatted'      => number_format($_servicePrice, 2),
-                'total'                => $_serviceTotal,
-                'total_formatted'      => number_format($_serviceTotal, 2)
-            ];
-
-            $total += $_serviceTotal;
+        foreach( $this->account->companies as $company ){
+            foreach( $company->plugins as $companyPlugin ){
+                if( $plugin->price ){
+                    $_serviceTotal = $companyPlugin->price;
+                    $_servicePrice = $companyPlugin->price;
+                    $items[] = [
+                        'type'                 => 'SERVICE',
+                        'label'                => $companyPlugin->label,
+                        'quantity'             => 1,
+                        'price'                => $_servicePrice,
+                        'price_formatted'      => number_format($_servicePrice, 2),
+                        'total'                => $_serviceTotal,
+                        'total_formatted'      => number_format($_serviceTotal, 2)
+                    ];
+        
+                    $total += $_serviceTotal;
+                }
+            }
         }
 
         return [
