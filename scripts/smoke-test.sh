@@ -15,7 +15,7 @@ docker run --name=temp_api -p 9777:80 -itd $PROD_REPO_URL/marketflows-api:$1
 sleep 10
 
 # Smoke it! (with assertions)
-. smoke.sh
+. scripts/smoke.sh
 smoke_url_ok localhost:9777
 smoke_url_ok localhost:9777/api
 smoke_url_ok localhost:9777/api/v1

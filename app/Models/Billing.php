@@ -50,7 +50,7 @@ class Billing extends Model
     const TIER_MINUTES_LOCAL            = 500;
     const TIER_MINUTES_TOLL_FREE        = 0;
     const TIER_MINUTES_TRANSCRIPTION    = 0;
-    const TIER_STORAGE_GB               = 1;
+    const TIER_STORAGE_GB               = 5;
 
     const COST_SERVICE              = 39.99;
     const COST_NUMBERS_LOCAL        = 2.50;
@@ -59,6 +59,8 @@ class Billing extends Model
     const COST_MINUTES_TOLL_FREE    = 0.07;
     const COST_MINUTES_TRANSCRIPTION= 0.05;
     const COST_STORAGE_GB           = 0.10;
+
+    const DAYS_FREE                 = 7;
 
     public function getPastDueAttribute()
     {
