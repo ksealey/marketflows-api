@@ -80,7 +80,9 @@ class TranscribeService
 
     public function downloadFromUrl($url)
     {
-        $response = $this->httpClient->request('GET', $url);
+        $response = $this->httpClient->request('GET', $url, [
+            'connect_timeout' => 120
+        ]);
 
         return json_decode($response->getBody());
     }

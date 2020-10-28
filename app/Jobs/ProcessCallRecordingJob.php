@@ -14,6 +14,7 @@ use Twilio\Rest\Client as TwilioClient;
 use App;
 use Exception;
 use Storage;
+use DB;
 
 class ProcessCallRecordingJob implements ShouldQueue
 {
@@ -24,7 +25,8 @@ class ProcessCallRecordingJob implements ShouldQueue
     public $recordingSid;
     public $recordingDuration;
 
-    public $tries = 3;
+    public $tries   = 3;
+    public $timeout = 900; // 15 minutes
 
     /**
      * Create a new job instance.
@@ -68,42 +70,53 @@ class ProcessCallRecordingJob implements ShouldQueue
             'AccessControlAllowOrigin' => '*'
         ]);
 
-        //  Create record
-        $recording = CallRecording::create([
-            'account_id'    => $call->account_id,
-            'company_id'    => $call->company_id,
-            'call_id'       => $call->id,
-            'external_id'   => $this->recordingSid,
-            'path'          => $storagePath,
-            'duration'      => intval($this->recordingDuration),
-            'file_size'     => strlen($content),
-            'transcription_path' => '/'
-        ]);
-        
-        //  Transcribe if enabled
-        if( $call->transcription_enabled ){
-            $company        = $call->company;
-            $language       = config('services.transcribe.languages')[$company->tts_language] ?? 'en-US';
-            $transcriber    = App::make(TranscribeService::class);
+        DB::beginTransaction();
 
-            $jobId   = $transcriber->startTranscription($recording, $language);
-            $fileUrl = $transcriber->waitForUrl($jobId);
-            $content = $transcriber->downloadFromUrl($fileUrl);
-            if( ! $content ) throw new Exception('Unable to download transcript for job ' . $jobId);
+        try{
 
-            $recording->transcription_path = str_replace('recordings/Call-' . $recording->call_id . '.mp3', 'transcriptions/Transcription-' . $recording->call_id . '.json', $recording->path);
-            Storage::put($recording->transcription_path, json_encode($transcriber->transformContent($content)), [
-                'visibility'    => 'public',
-                'AccessControlAllowOrigin' => '*'
+            //  Create record
+            $recording = CallRecording::create([
+                'account_id'    => $call->account_id,
+                'company_id'    => $call->company_id,
+                'call_id'       => $call->id,
+                'external_id'   => $this->recordingSid,
+                'path'          => $storagePath,
+                'duration'      => intval($this->recordingDuration),
+                'file_size'     => strlen($content),
+                'transcription_path' => '/'
             ]);
+            
+            //  Transcribe if enabled
+            if( $call->transcription_enabled ){
+                $company        = $call->company;
+                $language       = config('services.transcribe.languages')[$company->tts_language] ?? 'en-US';
+                $transcriber    = App::make(TranscribeService::class);
 
-            $transcriber->deleteTranscription($jobId);
-            $recording->save();
+                $jobId   = $transcriber->startTranscription($recording, $language);
+                $fileUrl = $transcriber->waitForUrl($jobId);
+                $content = $transcriber->downloadFromUrl($fileUrl);
+                if( ! $content ) throw new Exception('Unable to download transcript for job ' . $jobId);
+
+                $recording->transcription_path = str_replace('recordings/Call-' . $recording->call_id . '.mp3', 'transcriptions/Transcription-' . $recording->call_id . '.json', $recording->path);
+                Storage::put($recording->transcription_path, json_encode($transcriber->transformContent($content)), [
+                    'visibility'    => 'public',
+                    'AccessControlAllowOrigin' => '*'
+                ]);
+
+                $transcriber->deleteTranscription($jobId);
+                $recording->save();
+            }
+
+            //  Delete original
+            $twilio = App::make(TwilioClient::class);
+            $twilio->recordings($this->recordingSid)
+                    ->delete();
+        }catch(\Exception $e){
+            DB::rollBack();
+
+            throw $e;
         }
 
-         //  Delete original
-         $twilio = App::make(TwilioClient::class);
-         $twilio->recordings($this->recordingSid)
-                ->delete();
+        DB::commit();
     }
 }
