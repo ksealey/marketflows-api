@@ -1,5 +1,8 @@
 FROM marketflows/ubuntu18-php7:latest
 
+# Copy required extension 
+COPY build/php/pcntl.so /usr/lib/php/20190902
+
 # Copy app files
 COPY . /var/www/app
 COPY build/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
