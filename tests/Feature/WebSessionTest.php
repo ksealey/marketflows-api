@@ -6,7 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
-use App\Models\Company\Webhook;
+use App\Models\Plugin;
 use App\Models\Company\Call;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\KeywordTrackingPool;
@@ -414,7 +414,7 @@ class WebSessionTest extends TestCase
                 'medium'                        => $phoneNumber->medium,
             ]);
             Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+                return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
             });
 
             //  Update the call
@@ -443,7 +443,7 @@ class WebSessionTest extends TestCase
             ]);
 
             Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_END;
+                return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_END;
             });
 
             $url                = $this->faker()->url;
@@ -713,7 +713,7 @@ class WebSessionTest extends TestCase
                 ]);
                 
                 Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                    return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+                    return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
                 });
                 
                 //  Update the call
@@ -766,7 +766,7 @@ class WebSessionTest extends TestCase
                 ]);
 
                 Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                    return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_END;
+                    return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_END;
                 });
                 
                 $url                = $this->faker()->url;
@@ -1004,7 +1004,7 @@ class WebSessionTest extends TestCase
                 ]);
                 
                 Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                    return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+                    return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
                 });
                 
                 //  Update the call
@@ -1057,7 +1057,7 @@ class WebSessionTest extends TestCase
                 ]);
 
                 Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-                    return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_END;
+                    return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_END;
                 });
                 
                 $url                = $this->faker()->url;

@@ -4,14 +4,12 @@ namespace App\Listeners\Company;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
-use App\Models\Company\Webhook;
-use App\Services\WebhookService;
+use App\Models\Plugin;
 use App;
 
 class CallListener implements ShouldQueue
 {
     protected $analytics;
-    protected $webhookService;
 
     /**
      * Create the event listener.
@@ -20,8 +18,7 @@ class CallListener implements ShouldQueue
      */
     public function __construct()
     {
-        $this->analytics      = App::make('Analytics');
-        $this->webhookService = App::make(WebhookService::class);
+
     }
 
     /**
@@ -32,60 +29,26 @@ class CallListener implements ShouldQueue
      */
     public function handle($event)
     {
-        $eventName = $event->name;
-        $call      = $event->call;
-        
-        $contact = $call->contact;
+        $call    = $event->call;
         $company = $call->company;
-         
-        $call->session = null;
-
+        $contact = $call->contact;
         if( $call->keyword_tracking_pool_id )
             $call->session = $call->session;
 
-        //
-        //  Fire webhooks
-        //
-        $webhooks = Webhook::where('company_id', $call->company_id)
-                           ->where('action', $eventName)
-                           ->whereNotNull('enabled_at')
-                           ->get();
+        $hook = (object)[
+            'event' => $event->name,
+            'data'  => (object)[
+                'call'    => $call,
+                'company' => $company,
+                'contact' => $contact
+            ]
+        ];
 
-        foreach( $webhooks as $webhook ){
-            $params      = $webhook->params ? (array)$webhook->params : [];
-            $params      = array_merge($call->toArray(), $params);
+        foreach( $company->plugins as $companyPlugin ){
+            if( ! $companyPlugin->enabled_at ) continue;
 
-            $this->webhookService->sendWebhook($webhook->method, $webhook->url, $params);  
-        }
-
-        //
-        //  Push ended calls to GA
-        //
-        if( $company->ga_id && $eventName === Webhook::ACTION_CALL_END ){
-            $analytics = $this->analytics
-                            ->setProtocolVersion('1')
-                            ->setTrackingId($company->ga_id)
-                            ->setUserId($contact->uuid) 
-                            ->setEventCategory('call')
-                            ->setEventAction('called')
-                            ->setEventLabel($contact->e164PhoneFormat())
-                            ->setEventValue(1)
-                            ->setAnonymizeIp(1)
-                            ->setGeographicalOverride($contact->country);
-            if( $call->campaign ){
-                $analytics->setCampaignName($call->campaign);
-            }
-            if( $call->source ){
-                $analytics->setCampaignSource($call->source);
-            }
-            if( $call->medium ){
-                $analytics->setCampaignMedium($call->medium);
-            }
-            if( $call->content ){
-                $analytics->setCampaignContent($call->content);
-            }
-            
-            $analytics->sendEvent();
+            $plugin = Plugin::generate($companyPlugin->plugin_key);
+            $plugin->onHook($hook, $companyPlugin);
         }
     }
 }

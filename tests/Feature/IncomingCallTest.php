@@ -14,7 +14,7 @@ use \App\Models\Company\PhoneNumber;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
 use \App\Events\Company\CallEvent;
-use \App\Models\Company\Webhook;
+use \App\Models\Plugin;
 use App\Services\TranscribeService;
 use Twilio\Rest\Client as TwilioClient;
 use App\Jobs\ProcessCallRecordingJob;
@@ -56,7 +56,7 @@ class IncomingCallTest extends TestCase
         $webhook = factory(Webhook::class)->create([
             'account_id' => $company->account_id,
             'company_id' => $company->id,
-            'action'     => Webhook::ACTION_CALL_START,
+            'action'     => Plugin::EVENT_CALL_START,
             'created_by' => $this->user->id
         ]);
 
@@ -104,7 +104,7 @@ class IncomingCallTest extends TestCase
         $response->assertSee('<Response><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="do-not-record"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
 
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
         });
     }
 
@@ -170,7 +170,7 @@ class IncomingCallTest extends TestCase
         $response->assertSee('<Response><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
             
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
         });
     }
 
@@ -238,7 +238,7 @@ class IncomingCallTest extends TestCase
         $response->assertSee('<Response><Say language="' . $company->tts_language . '" voice="Polly.'  . $company->tts_voice . '">' . $config->greetingMessage() . '</Say><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
 
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
         });
     }
 
@@ -307,7 +307,7 @@ class IncomingCallTest extends TestCase
         $response->assertSee('<Response><Play>' . $audioClip->url . '</Play><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
         
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
         });
     }
 
@@ -444,7 +444,7 @@ class IncomingCallTest extends TestCase
                     , false);
 
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
         }); 
     }
 
@@ -602,7 +602,7 @@ class IncomingCallTest extends TestCase
         $this->assertNull($call->duration);
         
         Event::assertNotDispatched(CallEvent::class, function(CallEvent $event){
-            return $event->name === Webhook::ACTION_CALL_END;    
+            return $event->name === Plugin::EVENT_CALL_END;    
         });
     }
 
@@ -638,7 +638,7 @@ class IncomingCallTest extends TestCase
         $this->assertEquals($call->duration, $incomingCall->CallDuration);
         
         Event::assertDispatched(CallEvent::class, function(CallEvent $event){
-            return $event->name === Webhook::ACTION_CALL_END;    
+            return $event->name === Plugin::EVENT_CALL_END;    
         });
     }
 
@@ -731,7 +731,7 @@ class IncomingCallTest extends TestCase
                     , false);
 
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Webhook::ACTION_CALL_START;
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
         }); 
     }
 
@@ -1220,7 +1220,7 @@ class IncomingCallTest extends TestCase
         ]);
 
         Event::assertDispatched(CallEvent::class, function ($event){
-            return $event->name == Webhook::ACTION_CALL_START;
+            return $event->name == Plugin::EVENT_CALL_START;
         });
     }
 
@@ -1332,7 +1332,7 @@ class IncomingCallTest extends TestCase
         ]);
 
         Event::assertDispatched(CallEvent::class, function ($event){
-            return $event->name == Webhook::ACTION_CALL_START;
+            return $event->name == Plugin::EVENT_CALL_START;
         });
     }
 

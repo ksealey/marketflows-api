@@ -10,7 +10,6 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\Company\ScheduledExport;
 use App\Models\Company\Report;
-use App\Models\Company\Webhook;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\KeywordTrackingPool;
@@ -115,12 +114,6 @@ class AccountTest extends TestCase
             'paid_at'                  => now()
         ]);
 
-        $webhook = factory(Webhook::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id
-        ]);
-
         $audioClip = factory(AudioClip::class)->create([
             'account_id' => $company->account_id,
             'company_id' => $company->id,
@@ -223,11 +216,6 @@ class AccountTest extends TestCase
 
         $this->assertDatabaseMissing('companies', [
             'account_id'  => $this->account->id,
-            'deleted_at' => null
-        ]);
-
-        $this->assertDatabaseMissing('webhooks', [
-            'account_id' => $this->account->id,
             'deleted_at' => null
         ]);
 

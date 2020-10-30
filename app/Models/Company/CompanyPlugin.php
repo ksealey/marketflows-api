@@ -52,7 +52,6 @@ class CompanyPlugin extends Model
         ])->where('company_plugins.id', $this->id)
           ->leftJoin('plugins', 'plugins.key', 'company_plugins.plugin_key')
           ->first();
-
     }
 
 }

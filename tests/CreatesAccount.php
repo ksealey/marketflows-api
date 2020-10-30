@@ -266,7 +266,7 @@ trait CreatesAccount
                             'call_id' => $call->id,
                             'path'     => $path,
                             'transcription_path' => str_replace('recording/', 'transciption/', $path),
-                            'file_size' => 1024 * 1024 * 10
+                            'file_size' => 1024 * 1024 * 1024 // 1 GB 
                         ]);
                     });
                 });
@@ -305,7 +305,7 @@ trait CreatesAccount
                             'duration'  => $call->duration,
                             'path'     => $path,
                             'transcription_path' => str_replace('recording/', 'transciption/', $path),
-                            'file_size' => 1024 * 1024 * 10
+                            'file_size' => 1024 * 1024 * 1024 // 1 GB
                         ]);
                     });
                 });

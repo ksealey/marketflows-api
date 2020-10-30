@@ -14,6 +14,7 @@ class DropServicesTable extends Migration
     public function up()
     {
         Schema::dropIfExists('services');
+        Schema::dropIfExists('webhooks');
     }
 
     /**

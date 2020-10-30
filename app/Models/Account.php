@@ -64,9 +64,9 @@ class Account extends Model
         return $this->hasOne('App\Models\Billing');
     }
 
-    public function services()
+    public function companies()
     {
-        return $this->hasMany('App\Models\Service');
+        return $this->hasMany('App\Models\Company');
     }
 
     /**

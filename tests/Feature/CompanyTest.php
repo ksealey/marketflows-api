@@ -8,7 +8,6 @@ use Tests\TestCase;
 use App\Models\Company;
 use App\Models\Company\ScheduledExport;
 use App\Models\Company\Report;
-use App\Models\Company\Webhook;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\KeywordTrackingPool;
@@ -380,12 +379,6 @@ class CompanyTest extends TestCase
 
         $company = $this->createCompany();
 
-        $webhook = factory(Webhook::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'created_by' => $this->user->id
-        ]);
-
         $audioClip = factory(AudioClip::class)->create([
             'account_id' => $company->account_id,
             'company_id' => $company->id,
@@ -477,11 +470,6 @@ class CompanyTest extends TestCase
         //
         $this->assertDatabaseMissing('companies', [
             'id'         => $company->id,
-            'deleted_at' => null
-        ]);
-
-        $this->assertDatabaseMissing('webhooks', [
-            'id'         => $webhook->id,
             'deleted_at' => null
         ]);
 

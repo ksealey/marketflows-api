@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\Account;
+use App\Models\Plugin;
 use App\Models\Company;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
@@ -16,7 +17,6 @@ use App\Models\BlockedPhoneNumber;
 use App\Models\BlockedCall;
 use App\Models\Company\Call;
 use App\Models\Company\KeywordTrackingPoolSession;
-use App\Models\Company\Webhook;
 use App\Events\Company\CallEvent;
 use Twilio\TwiML\VoiceResponse;
 use Twilio\Rest\Client as Twilio;
@@ -181,7 +181,7 @@ class IncomingCallController extends Controller
             $this->getNumberConfig($config, $call)
         );
 
-        event(new CallEvent(Webhook::ACTION_CALL_START, $call));
+        event(new CallEvent(Plugin::EVENT_CALL_START, $call));
 
         return Response::xmlResponse($response);
     }
@@ -272,7 +272,7 @@ class IncomingCallController extends Controller
             $this->getNumberConfig($config, $call)
         );
 
-        event(new CallEvent(Webhook::ACTION_CALL_START, $call));
+        event(new CallEvent(Plugin::EVENT_CALL_START, $call));
 
         return Response::xmlResponse($response);
     }
@@ -348,7 +348,7 @@ class IncomingCallController extends Controller
         $call->duration = intval($request->CallDuration);
         $call->save();
 
-        event(new CallEvent(Webhook::ACTION_CALL_END, $call));
+        event(new CallEvent(Plugin::EVENT_CALL_END, $call));
 
         return Response::xmlResponse(new VoiceResponse());
     }

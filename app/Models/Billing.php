@@ -188,7 +188,7 @@ class Billing extends Model
                             ->where('calls.created_at', '<', $endDate);
 
                 $sizeBytes = $query->first()->total_storage ?: 0;
-                $sizeGB    = $sizeBytes ? round($sizeBytes / 1024 / 1024 / 1024, 2, PHP_ROUND_HALF_UP) : 0;
+                $sizeGB    = $sizeBytes ? round($sizeBytes / 1024 / 1024 / 1024, 0, PHP_ROUND_HALF_DOWN) : 0;
 
                 return $sizeGB;
 

@@ -7,10 +7,14 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\Plugin;
 use App\Models\Company\CompanyPlugin;
+use \App\Models\Company\Contact;
+use \App\Models\Company\PhoneNumber;
+use \App\Models\Company\Call;
+use \App\Services\WebhookService;
 
 class CompanyPluginTest extends TestCase
 {
-    use \Tests\CreatesAccount;
+    use \Tests\CreatesAccount, WithFaker;
     
     /**
      * Test listing available plugins
@@ -44,7 +48,11 @@ class CompanyPluginTest extends TestCase
                 'installed' => [
                     'total' => 1,
                     'results' => [
-                        $companyPlugin->toArray()
+                        [
+                            'id'         => $companyPlugin->id,
+                            'name'       => $installed->name,
+                            'plugin_key' => $installed->key
+                        ]
                     ]
                 ]
             ]
@@ -209,7 +217,7 @@ class CompanyPluginTest extends TestCase
     /**
      * Test uninstall
      * 
-     * @group company-plugins--
+     * @group company-plugins
      */
     public function testUninstall()
     {
@@ -237,5 +245,218 @@ class CompanyPluginTest extends TestCase
         $this->assertDatabaseMissing('company_plugins', [
             'id' => $companyPlugin->id
         ]);
+    }
+
+    /**
+     * Test webhook plugin
+     * 
+     * @group company-plugins
+     */
+    public function testWebhookPlugin()
+    {
+        //
+        //  Setup and install plugin
+        //
+        CompanyPlugin::where('id', '>', 0)->delete();
+        Plugin::where('id', '>', 0)->delete();
+
+        $company = $this->createCompany();
+        $plugin = factory(Plugin::class)->create([
+            'key' => 'webhooks'
+        ]);
+
+        $settings = (object)[
+            'webhooks' => [
+                Plugin::EVENT_CALL_START => (object)[
+                    'method'=> 'POST',
+                    'url'   => $this->faker()->url
+                ],
+                Plugin::EVENT_CALL_END => (object)[
+                    'method'=> 'POST',
+                    'url'   => $this->faker()->url
+                ]
+            ]
+        ];
+
+        $companyPlugin = factory(CompanyPlugin::class)->create([
+            'company_id' => $company->id,
+            'plugin_key' => $plugin->key,
+            'enabled_at' => now(),
+            'settings'   => json_encode($settings)
+        ]);
+
+        $audioClip   = $this->createAudioClip($company);
+        $config      = $this->createConfig($company, [
+            'recording_enabled'      => false,
+            'greeting_enabled'       => false,
+            'keypress_enabled'       => false,
+            'whisper_enabled'        => false
+        ]);
+
+        $phoneNumber = $this->createPhoneNumber($company, $config);
+
+        $contact = factory(Contact::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id
+        ]);
+
+        //
+        //  Setup expectations
+        //
+        $this->mock(WebhookService::class,  function($mock){
+            $mock->shouldReceive('sendWebhook')
+                    ->times(2)
+                    ->andReturn((object)[
+                        'ok'          => true,
+                        'status_code' => 200,
+                        'error'       => null
+                    ]);
+        });
+
+        //  
+        //  Make call
+        //
+        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
+            'To' => $phoneNumber->e164Format()
+        ]);
+        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
+
+        //
+        //  Complete call
+        //
+        $response = $this->json('POST', route('incoming-call-duration', $incomingCall->toArray()));
+    }
+
+    /**
+     * Test webhook plugin
+     * 
+     * @group company-plugins
+     */
+    public function testAnalyticsPlugin()
+    {
+        //
+        //  Setup and install plugin
+        //
+        CompanyPlugin::where('id', '>', 0)->delete();
+        Plugin::where('id', '>', 0)->delete();
+
+        $company = $this->createCompany();
+        $plugin = factory(Plugin::class)->create([
+            'key' => 'google_analytics'
+        ]);
+
+        $settings = (object)[
+            'ga_id' => 'UA-' . mt_rand(111111,999999) . '-' . mt_rand(1,8)
+        ];
+
+        $companyPlugin = factory(CompanyPlugin::class)->create([
+            'company_id' => $company->id,
+            'plugin_key' => $plugin->key,
+            'enabled_at' => now(),
+            'settings'   => json_encode($settings)
+        ]);
+
+        $audioClip   = $this->createAudioClip($company);
+        $config      = $this->createConfig($company, [
+            'recording_enabled'      => false,
+            'greeting_enabled'       => false,
+            'keypress_enabled'       => false,
+            'whisper_enabled'        => false
+        ]);
+
+        $phoneNumber = $this->createPhoneNumber($company, $config);
+
+        $contact = factory(Contact::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id
+        ]);
+
+        //
+        //  Setup expectations
+        //
+        $this->mock('Analytics',  function($mock) use($settings, $contact, $phoneNumber){
+            $mock->shouldReceive('setProtocolVersion')
+                    ->with('1')
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setTrackingId')
+                    ->with($settings->ga_id)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setUserId')
+                    ->with($contact->uuid)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setEventCategory')
+                    ->with('call')
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setEventAction')
+                    ->with('called')
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setEventLabel')
+                    ->with($contact->e164PhoneFormat())
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setEventValue')
+                    ->with(1)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setAnonymizeIp')
+                    ->with(1)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setGeographicalOverride')
+                    ->with($contact->country)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setCampaignName')
+                    ->with($phoneNumber->campaign)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setCampaignContent')
+                    ->with($phoneNumber->content)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setCampaignSource')
+                    ->with($phoneNumber->source)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('setCampaignMedium')
+                    ->with($phoneNumber->medium)
+                    ->once()
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('sendEvent')
+                    ->once()
+                    ->andReturn($mock);
+        });
+
+        //  
+        //  Make call
+        //
+        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
+            'From' => $contact->e164PhoneFormat(),
+            'To' => $phoneNumber->e164Format()
+        ]);
+        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
+
+        //
+        //  Complete call
+        //
+        $response = $this->json('POST', route('incoming-call-duration', $incomingCall->toArray()));
     }
 }

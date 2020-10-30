@@ -214,6 +214,7 @@ class BillingTest extends TestCase
         $tollFreeNumberCount    = 1;
         $localCallsPerNumber    = 10;
         $tollFreeCallsPerNumber = 10;
+        $expectedStorageGB      = 240; //   @ 2 companies * 12 numbers * 10 calls per number with 1GB each call
 
         $this->populateUsage($companyCount, $localNumberCount, $tollFreeNumberCount, $localCallsPerNumber, $tollFreeCallsPerNumber);
         
@@ -249,8 +250,8 @@ class BillingTest extends TestCase
 
         $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB, $billingPeriodStart, $billingPeriodEnd);
         $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
-        $this->assertEquals($storageQuantity, 2.34);
-        $this->assertEquals($storageTotal, round((2.34 - Billing::TIER_STORAGE_GB) * Billing::COST_STORAGE_GB, 2));
+        $this->assertEquals($storageQuantity, $expectedStorageGB);
+        $this->assertEquals($storageTotal, ($expectedStorageGB - Billing::TIER_STORAGE_GB) * Billing::COST_STORAGE_GB);
 
         $intialTotal = $serviceTotal + $localNumberTotal + $tollFreeNumberTotal + $localMinutesTotal + $tollFreeMinutesTotal + $transMinutesTotal + $storageTotal;
         $this->assertEquals($billing->currentTotal(), $intialTotal);

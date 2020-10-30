@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Models\Company;
 use App\Models\Company\ScheduledExport;
 use App\Models\Company\Report;
-use App\Models\Company\Webhook;
+use App\Models\Company\CompanyPlugin;
 use App\Models\Company\Contact;
 use App\Models\Company\PhoneNumberConfig;
 use App\Models\Company\KeywordTrackingPool;
@@ -64,10 +64,7 @@ class DeleteCompanyJob implements ShouldQueue
         ]);
 
         //  Remove webhooks
-        Webhook::where('company_id', $company->id)->update([
-            'deleted_by' => $user->id,
-            'deleted_at' => now()
-        ]);
+        CompanyPlugin::where('company_id', $company->id)->delete();
 
         //  Remove contacts
         Contact::where('company_id', $company->id)->update([

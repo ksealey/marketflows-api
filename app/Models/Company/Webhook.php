@@ -41,9 +41,8 @@ class Webhook extends Model
         ]);
     }
 
-    const ACTION_CALL_START   = 'call_start';
-    const ACTION_CALL_END     = 'call_end';
-
+    const ACTION_CALL_START = 'call_start';
+    const ACTION_CALL_END   = 'call_end';
     const ACTION_LIMIT = 3;
 
     static public function actions()

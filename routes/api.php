@@ -680,33 +680,6 @@ Route::prefix('/')->group(function(){
                                 ->middleware('can:delete,call,company')
                                 ->name('delete-call-recording');
                         });
-
-                        /*
-                        |--------------------------------
-                        | Handle webhooks
-                        |--------------------------------
-                        */
-                        Route::prefix('webhooks')->group(function(){
-                            Route::post('/', 'Company\WebhookController@create')
-                                ->middleware('can:read,company')
-                                ->name('create-webhook');
-
-                            Route::get('/{webhook}', 'Company\WebhookController@read')
-                                ->middleware('can:read,webhook,company')
-                                ->name('read-webhook');
-
-                            Route::put('/{webhook}', 'Company\WebhookController@update')
-                                ->middleware('can:update,webhook,company')
-                                ->name('update-webhook');
-
-                            Route::delete('/{webhook}', 'Company\WebhookController@delete')
-                                ->middleware('can:delete,webhook,company')
-                                ->name('delete-webhook');
-
-                            Route::get('/', 'Company\WebhookController@list')
-                                ->middleware('can:read,company')
-                                ->name('list-webhooks');
-                        });
                     }); 
                 });
 
