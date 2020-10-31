@@ -6,13 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class CompanyPlugin extends Model
 {
-    public $hidden = [
-        'billing_label'
-    ];
-
     protected $appends = [
         'kind',
-        'link'
+        'link',
+        'image_url'
     ];
 
     public $fillable = [
@@ -36,8 +33,13 @@ class CompanyPlugin extends Model
     {
         return route('read-plugin', [
             'company'       => $this->company_id,
-            'companyPlugin' => $this->id
+            'pluginKey'     => $this->plugin_key
         ]);
+    }
+
+    public function getImageUrlAttribute()
+    {
+        return  config('app.cdn_url') . $this->image_path;
     }
 
     public function withPluginDetails()
@@ -47,7 +49,6 @@ class CompanyPlugin extends Model
             'plugins.name',
             'plugins.details',
             'plugins.image_path',
-            'plugins.billing_label',
             'plugins.price'
         ])->where('company_plugins.id', $this->id)
           ->leftJoin('plugins', 'plugins.key', 'company_plugins.plugin_key')

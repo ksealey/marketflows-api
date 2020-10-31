@@ -10,11 +10,9 @@ use App;
 
 class WebhooksPlugin implements PluginContract
 {
-    public function onRules(Request $request)
+    public function onValidateSettings(object $settings)
     {
-        return [
-
-        ];
+        return true;
     }
 
     public function onHook(object $hook, CompanyPlugin $companyPlugin)

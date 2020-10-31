@@ -30,7 +30,6 @@ class CompanyPluginController extends Controller
             'plugins.name',
             'plugins.details',
             'plugins.image_path',
-            'plugins.billing_label',
             'plugins.price'
         ])->where('company_id', $company->id);
         if( $request->installed_search ){
@@ -69,21 +68,17 @@ class CompanyPluginController extends Controller
         ]);
     }
 
-    public function install(Request $request, Company $company)
+    public function install(Request $request, Company $company, string $pluginKey)
     {
-        $rules = [
-            'plugin_key' => 'bail|required|exists:plugins,key',
-        ];
-
-        $validator = validator($request->input(), $rules);
-        if( $validator->fails() ){
+        $plugin = Plugin::where('key', $pluginKey)->first();
+        if( ! $plugin ){
             return response([
-                'error' => $validator->errors()->first()
-            ], 400);
+                'error' => 'Not found'
+            ], 404);
         }
 
         $companyPlugin = CompanyPlugin::where('company_id', $company->id)
-                                        ->where('plugin_key', $request->plugin_key)
+                                        ->where('plugin_key', $pluginKey)
                                         ->first();
         if( $companyPlugin ){
             return response([
@@ -93,7 +88,7 @@ class CompanyPluginController extends Controller
 
         $companyPlugin = CompanyPlugin::create([
             'company_id' => $company->id,
-            'plugin_key' => $request->plugin_key,
+            'plugin_key' => $pluginKey,
             'settings'   => json_encode([]),
             'enabled_at' => null
         ]);
@@ -101,15 +96,37 @@ class CompanyPluginController extends Controller
         return response($companyPlugin->withPluginDetails(), 201);
     }
 
-    public function read(Request $request, Company $company, CompanyPlugin $companyPlugin)
+    public function read(Request $request, Company $company, string $pluginKey)
     {
+        //  Make sure it's installed for this company
+        $companyPlugin = CompanyPlugin::where('company_id', $company->id)
+                                      ->where('plugin_key', $pluginKey)
+                                      ->first();
+
+        if( ! $companyPlugin ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
         return response($companyPlugin->withPluginDetails());
     }
 
-    public function update(Request $request, Company $company, CompanyPlugin $companyPlugin)
+    public function update(Request $request, Company $company, string $pluginKey)
     {
+        //  Make sure it's installed for this company
+        $companyPlugin = CompanyPlugin::where('company_id', $company->id)
+                                      ->where('plugin_key', $pluginKey)
+                                      ->first();
+
+        if( ! $companyPlugin ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
         $rules = [
-            'settings' => ['bail', 'json', new PluginSettingsRule($companyPlugin->plugin_key)],
+            'settings' => ['bail', 'required', 'json'],
             'enabled'  => 'bail|boolean'
         ];
 
@@ -118,6 +135,16 @@ class CompanyPluginController extends Controller
             return response([
                 'error' => $validator->errors()->first()
             ], 400);
+        }
+
+        $plugin        = Plugin::generate($pluginKey);
+        $settingsValid = $plugin->onValidateSettings(json_decode($request->settings));
+        if( ! $settingsValid ){
+            if( $validator->fails() ){
+                return response([
+                    'error' => 'Settings invalid'
+                ], 400);
+            }
         }
 
         if( $request->filled('settings') ){
@@ -134,8 +161,19 @@ class CompanyPluginController extends Controller
     }
 
 
-    public function uninstall(Request $request, Company $company, CompanyPlugin $companyPlugin)
+    public function uninstall(Request $request, Company $company, string $pluginKey)
     {
+        //  Make sure it's installed for this company
+        $companyPlugin = CompanyPlugin::where('company_id', $company->id)
+                                      ->where('plugin_key', $pluginKey)
+                                      ->first();
+
+        if( ! $companyPlugin ){
+            return response([
+                'error' => 'Not found'
+            ], 404);
+        }
+
         $companyPlugin->delete();
 
         return response([

@@ -126,9 +126,9 @@ class CompanyPluginTest extends TestCase
         $plugin  = factory(Plugin::class, 5)->create()->first();
 
         $response = $this->json('POST', route('install-plugin', [
-            'company' => $company->id,
+            'company'   => $company->id,
+            'pluginKey' => $plugin->key
         ]), [
-           'plugin_key' => $plugin->key,
            'settings'   => json_encode([])
         ]);
         $response->assertJSON([
@@ -166,8 +166,8 @@ class CompanyPluginTest extends TestCase
 
         $response = $this->json('POST', route('install-plugin', [
             'company' => $company->id,
+            'pluginKey' => $plugin->key,
         ]), [
-           'plugin_key' => $plugin->key,
            'settings'   => json_encode([])
         ]);
         $response->assertJSONStructure([
@@ -187,7 +187,12 @@ class CompanyPluginTest extends TestCase
         Plugin::where('id', '>', 0)->delete();
 
         $company = $this->createCompany();
-        $plugin  = factory(Plugin::class, 5)->create()->first();
+
+        factory(Plugin::class, 4)->create()->first();
+
+        $plugin  = factory(Plugin::class)->create([
+            'key' => 'google-analytics'
+        ]);
         $companyPlugin = factory(CompanyPlugin::class)->create([
             'company_id' => $company->id,
             'plugin_key' => $plugin->key,
@@ -200,7 +205,7 @@ class CompanyPluginTest extends TestCase
         ];
         $response = $this->json('PUT', route('update-plugin', [
             'company'       => $company->id,
-            'companyPlugin' => $companyPlugin->id,
+            'pluginKey'     => $companyPlugin->plugin_key,
         ]), [
            'settings'   => json_encode($settings)
         ]);
@@ -225,7 +230,13 @@ class CompanyPluginTest extends TestCase
         Plugin::where('id', '>', 0)->delete();
 
         $company = $this->createCompany();
-        $plugin  = factory(Plugin::class, 5)->create()->first();
+
+        factory(Plugin::class, 5)->create()->first();
+
+        $plugin = factory(Plugin::class)->create([
+            'key' => 'google-analytics'
+        ]);
+
         $companyPlugin = factory(CompanyPlugin::class)->create([
             'company_id' => $company->id,
             'plugin_key' => $plugin->key,
@@ -234,7 +245,7 @@ class CompanyPluginTest extends TestCase
 
         $response = $this->json('DELETE', route('uninstall-plugin', [
             'company'       => $company->id,
-            'companyPlugin' => $companyPlugin->id,
+            'pluginKey'     => $companyPlugin->plugin_key,
         ]));
 
         $response->assertJSON([
@@ -342,7 +353,7 @@ class CompanyPluginTest extends TestCase
 
         $company = $this->createCompany();
         $plugin = factory(Plugin::class)->create([
-            'key' => 'google_analytics'
+            'key' => 'google-analytics'
         ]);
 
         $settings = (object)[

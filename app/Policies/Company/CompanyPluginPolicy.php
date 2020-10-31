@@ -23,24 +23,21 @@ class CompanyPluginPolicy
             && $user->canViewCompany($company);
     }
 
-    public function read(User $user, CompanyPlugin $companyPlugin, Company $company)
+    public function read(User $user, Company $company)
     {
         return $user->canDoAction('read')
-            && $user->canViewCompany($company)
-            && $company->id === $companyPlugin->company_id;
+            && $user->canViewCompany($company);
     }
 
-    public function update(User $user, CompanyPlugin $companyPlugin, Company $company)
+    public function update(User $user, Company $company)
     {
         return $user->canDoAction('update')
-            && $user->canViewCompany($company)
-            && $company->id === $companyPlugin->company_id;
+            && $user->canViewCompany($company);
     }
 
-    public function uninstall(User $user, CompanyPlugin $companyPlugin, Company $company)
+    public function uninstall(User $user, Company $company)
     {
         return $user->canDoAction('delete')
-            && $user->canViewCompany($company)
-            && $company->id === $companyPlugin->company_id;
+            && $user->canViewCompany($company);
     }
 }

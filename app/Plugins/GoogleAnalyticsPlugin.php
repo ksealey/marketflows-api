@@ -10,9 +10,9 @@ use App;
 
 class GoogleAnalyticsPlugin implements PluginContract
 {
-    public function onRules(Request $request)
+    public function onValidateSettings(object $settings)
     {
-
+        return true;
     }
 
     public function onHook(object $hook, CompanyPlugin $companyPlugin)

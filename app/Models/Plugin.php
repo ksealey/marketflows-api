@@ -12,17 +12,14 @@ class Plugin extends Model
     const EVENT_CALL_END     = 'CALL_END';
 
     public static $plugins = [
-        'google_analytics' => GoogleAnalyticsPlugin::class,
+        'google-analytics' => GoogleAnalyticsPlugin::class,
         'webhooks'         => WebhooksPlugin::class
     ];
 
     protected $appends = [
         'kind',
-        'link'
-    ];
-
-    protected $hidden = [
-        'rules'
+        'link',
+        'image_url'
     ];
 
     public function getKindAttribute()
@@ -35,9 +32,9 @@ class Plugin extends Model
         return '';
     }
 
-    public function getRulesAttribute($rules)
+    public function getImageUrlAttribute()
     {
-        return $rules ? (json_decode($rules) ?: []) : []; 
+        return  config('app.cdn_url') . $this->image_path;
     }
 
     public static function generate($pluginKey)

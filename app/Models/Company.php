@@ -112,7 +112,6 @@ class Company extends Model implements Exportable
                                 'plugins.name',
                                 'plugins.details',
                                 'plugins.image_path',
-                                'plugins.billing_label',
                                 'plugins.price'
                             ])
                             ->where('company_plugins.company_id', $this->id)

@@ -154,7 +154,7 @@ class CreateStatements extends Command
 
             foreach( $billing->account->companies as $company ){
                 foreach( $company->plugins as $companyPlugin ){
-                    if( $plugin->price ){
+                    if( $plugin->price > 0 ){
                         $items[] = [
                             'billing_statement_id' => $statement->id,
                             'label'                => $companyPlugin->label,

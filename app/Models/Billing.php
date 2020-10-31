@@ -394,12 +394,12 @@ class Billing extends Model
         
         foreach( $this->account->companies as $company ){
             foreach( $company->plugins as $companyPlugin ){
-                if( $plugin->price ){
+                if( $companyPlugin->price > 0 ){
                     $_serviceTotal = $companyPlugin->price;
                     $_servicePrice = $companyPlugin->price;
                     $items[] = [
                         'type'                 => 'SERVICE',
-                        'label'                => $companyPlugin->label,
+                        'label'                => $companyPlugin->name,
                         'quantity'             => 1,
                         'price'                => $_servicePrice,
                         'price_formatted'      => number_format($_servicePrice, 2),

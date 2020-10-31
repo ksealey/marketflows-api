@@ -19,8 +19,6 @@ class CreatePluginsTable extends Migration
             $table->string('name', 64);
             $table->text('details');
             $table->string('image_path');
-            $table->json('rules');
-            $table->string('billing_label', 64);
             $table->decimal('price', 6, 2);
             $table->timestamps();
         });
