@@ -121,9 +121,12 @@ class CompanyPluginTest extends TestCase
         CompanyPlugin::where('id', '>', 0)->delete();
         Plugin::where('id', '>', 0)->delete();
 
-        //  Install a few
         $company = $this->createCompany();
-        $plugin  = factory(Plugin::class, 5)->create()->first();
+        factory(Plugin::class, 5)->create()->first();
+        
+        $plugin = factory(Plugin::class)->create([
+            'key' => 'google-analytics'
+        ]);
 
         $response = $this->json('POST', route('install-plugin', [
             'company'   => $company->id,
@@ -136,7 +139,9 @@ class CompanyPluginTest extends TestCase
             'name'       => $plugin->name,
             'company_id' => $company->id,
             'enabled_at' => null,
-            'settings'   => []
+            'settings'   => [
+                'ga_id'  => null
+            ]
         ]);
         $response->assertStatus(201);
 
@@ -200,8 +205,7 @@ class CompanyPluginTest extends TestCase
         ]);
 
         $settings = [
-            'foo' => str_random(),
-            'bar' => str_random(),
+            'ga_id' => 'UA-' . mt_rand(111111,999999) . '-' . mt_rand(2, 9)
         ];
         $response = $this->json('PUT', route('update-plugin', [
             'company'       => $company->id,
@@ -259,6 +263,74 @@ class CompanyPluginTest extends TestCase
     }
 
     /**
+     * Test update webhook plugin
+     * 
+     * @group company-plugins
+     */
+    public function testUpdateWebhookPlugin()
+    {
+        CompanyPlugin::where('id', '>', 0)->delete();
+        Plugin::where('id', '>', 0)->delete();
+
+        $company = $this->createCompany();
+
+        factory(Plugin::class, 4)->create()->first();
+
+        $plugin  = factory(Plugin::class)->create([
+            'key' => 'webhooks'
+        ]);
+
+        $companyPlugin = factory(CompanyPlugin::class)->create([
+            'company_id' => $company->id,
+            'plugin_key' => $plugin->key,
+            'enabled_at' => null
+        ]);
+
+       $settings = (object)[
+            'webhooks' => [
+                (object)[
+                    'event' => Plugin::EVENT_CALL_START,
+                    'method'=> 'POST',
+                    'url'   => $this->faker()->url
+                ],
+                (object)[
+                    'event' => Plugin::EVENT_CALL_END,
+                    'method'=> 'POST',
+                    'url'   => $this->faker()->url
+                ],
+            ]
+        ];
+
+        $response = $this->json('PUT', route('update-plugin', [
+            'company'       => $company->id,
+            'pluginKey'     => $companyPlugin->plugin_key,
+        ]), [
+           'settings'   => json_encode($settings)
+        ]);
+        $response->assertJSON([
+            'plugin_key' => $plugin->key,
+            'name'       => $plugin->name,
+            'company_id' => $company->id,
+            'enabled_at' => null,
+            'settings'   => [
+                'webhooks' => [
+                    [
+                        'event' => $settings->webhooks[0]->event,
+                        'method'=> $settings->webhooks[0]->method,
+                        'url'   => $settings->webhooks[0]->url,
+                    ],
+                    [
+                        'event' => $settings->webhooks[1]->event,
+                        'method'=> $settings->webhooks[1]->method,
+                        'url'   => $settings->webhooks[1]->url,
+                    ]
+                ]
+            ]
+        ]);
+        $response->assertStatus(200);
+    }
+
+    /**
      * Test webhook plugin
      * 
      * @group company-plugins
@@ -278,14 +350,16 @@ class CompanyPluginTest extends TestCase
 
         $settings = (object)[
             'webhooks' => [
-                Plugin::EVENT_CALL_START => (object)[
+                (object)[
+                    'event' => Plugin::EVENT_CALL_START,
                     'method'=> 'POST',
                     'url'   => $this->faker()->url
                 ],
-                Plugin::EVENT_CALL_END => (object)[
+                (object)[
+                    'event' => Plugin::EVENT_CALL_END,
                     'method'=> 'POST',
                     'url'   => $this->faker()->url
-                ]
+                ],
             ]
         ];
 

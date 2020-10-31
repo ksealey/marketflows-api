@@ -10,8 +10,18 @@ use App;
 
 class GoogleAnalyticsPlugin implements PluginContract
 {
+    public function onDefaultSettings()
+    {
+        return (object)[
+            'ga_id' => null
+        ];
+    }
+
     public function onValidateSettings(object $settings)
     {
+        if( ! isset($settings->ga_id ) )
+            return false;
+
         return true;
     }
 

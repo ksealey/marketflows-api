@@ -12,16 +12,20 @@ class WebhookService
         $statusCode = 0;
         $error      = null;
         
+        $components = parse_url($url);
+        $params     = parse_str($components['query']);
+        $data       = array_merge($params, $data);
+
         try{
             $client      = App::make('HTTPClient');
             $fieldsKey   = $method == 'GET' ? 'query' : 'form_params';
             $contentType = $method == 'GET' ? 'application/text' : 'application/x-www-form-urlencoded';  
-            $response    = $client->request($method, $url, [
+            $response    = $client->request($method, $components['scheme'] . '://' . $components['host'] . $components['path'], [
                 'headers' => [
                     'X-Sender'     => 'MarketFlows',
                     'Content-Type' => $contentType
                 ],
-                $fieldsKey => $data,
+                $fieldsKey        => $data,
                 'connect_timeout' => 5
             ]);
             $ok         = true;
@@ -43,5 +47,10 @@ class WebhookService
             'status_code'   => $statusCode,
             'error'         => $error, 
         ];
+    }
+
+    public function isValidWebhookURL($url)
+    {
+        return preg_match('/^http(s)?:\/\/([0-9A-z\-]+\.)?[0-9A-z\.\-]+\.[0-9A-z]{2,10}/i', $url);
     }
 }

@@ -17,7 +17,7 @@ class CreateCompanyPluginsTable extends Migration
             $table->id();
             $table->bigInteger('company_id')->unsigned();
             $table->string('plugin_key', 64);
-            $table->json('settings', 2048);
+            $table->json('settings', 2048)->nullable();
             $table->dateTime('enabled_at')->nullable();
             $table->timestamps();
 

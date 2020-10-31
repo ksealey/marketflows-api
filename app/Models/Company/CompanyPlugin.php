@@ -3,6 +3,7 @@
 namespace App\Models\Company;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Plugin;
 
 class CompanyPlugin extends Model
 {
@@ -21,7 +22,15 @@ class CompanyPlugin extends Model
 
     public function getSettingsAttribute($settings)
     {
-        return $settings ? (json_decode($settings) ?: []) : []; 
+        if( ! $settings ){
+            $plugin = Plugin::generate($this->plugin_key);
+
+            return $plugin->onDefaultSettings();
+        }
+
+        $settings = (object)json_decode($settings);
+
+        return $settings;
     }
 
     public function getKindAttribute()

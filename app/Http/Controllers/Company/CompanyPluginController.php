@@ -89,7 +89,7 @@ class CompanyPluginController extends Controller
         $companyPlugin = CompanyPlugin::create([
             'company_id' => $company->id,
             'plugin_key' => $pluginKey,
-            'settings'   => json_encode([]),
+            'settings'   => null,
             'enabled_at' => null
         ]);
 
@@ -138,13 +138,11 @@ class CompanyPluginController extends Controller
         }
 
         $plugin        = Plugin::generate($pluginKey);
-        $settingsValid = $plugin->onValidateSettings(json_decode($request->settings));
+        $settingsValid = $plugin->onValidateSettings((object)json_decode($request->settings));
         if( ! $settingsValid ){
-            if( $validator->fails() ){
-                return response([
-                    'error' => 'Settings invalid'
-                ], 400);
-            }
+            return response([
+                'error' => 'Settings invalid'
+            ], 400);
         }
 
         if( $request->filled('settings') ){
@@ -152,7 +150,7 @@ class CompanyPluginController extends Controller
         }
 
         if( $request->filled('enabled') ){
-            $companyPlugin->enabled_at = $request->enabled ? now() : null;
+            $companyPlugin->enabled_at = $request->enabled ? ($companyPlugin->enabled_at ?: now()) : null;
         }
 
         $companyPlugin->save();

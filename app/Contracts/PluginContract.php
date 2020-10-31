@@ -8,4 +8,5 @@ interface PluginContract
 {
     public function onValidateSettings(object $settings);
     public function onHook(object $hook, CompanyPlugin $companyPlugin);
+    public function onDefaultSettings();
 }
