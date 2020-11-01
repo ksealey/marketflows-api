@@ -284,8 +284,8 @@ class WebSessionTest extends TestCase
                     'keyword'                   => $sessionService->getKeyword($company->keyword_param, $browser->landing_url),
                     'is_organic'                => $sessionService->getIsOrganic($company->medium_param, $browser->http_referrer, $browser->landing_url),
                     'is_paid'                   => $sessionService->getIsPaid($company->medium_param, $browser->landing_url),
-                    'is_direct'                 => $sessionService->getIsDirect($browser->http_referrer),
-                    'is_referral'               => $sessionService->getIsReferral($browser->http_referrer),
+                    'is_direct'                 => $sessionService->getIsDirect($browser->http_referrer, $browser->landing_url),
+                    'is_referral'               => $sessionService->getIsReferral($browser->http_referrer, $browser->landing_url),
                     'is_search'                 => $sessionService->getIsSearch($browser->http_referrer),
                 ]);
             });

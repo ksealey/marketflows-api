@@ -41,9 +41,11 @@ class SwapRuleTest extends TestCase
         $faker          = FakerFactory::create();
 
         //  Test Direct
-        $this->assertTrue($sessionService->isDirect(''));
-        $this->assertTrue($sessionService->isDirect(null));
-        $this->assertFalse($sessionService->isDirect($faker->url));
+        $this->assertTrue($sessionService->isDirect('', $faker->url));
+        $this->assertTrue($sessionService->isDirect(null, $faker->url));
+        $this->assertTrue($sessionService->isDirect('https://something.com/', 'https://something.com'));
+        $this->assertFalse($sessionService->isDirect($faker->url, $faker->url));
+        
 
          //  Test Organic
         $this->assertTrue($sessionService->isOrganic('https://search.yahoo.com', $faker->url, $company->medium_param));

@@ -44,11 +44,20 @@ class CallListener implements ShouldQueue
             ]
         ];
 
+        $exceptions = [];
         foreach( $company->plugins as $companyPlugin ){
             if( ! $companyPlugin->enabled_at ) continue;
 
-            $plugin = Plugin::generate($companyPlugin->plugin_key);
-            $plugin->onHook($hook, $companyPlugin);
+            try{
+                $plugin = Plugin::generate($companyPlugin->plugin_key);
+                $plugin->onHook($hook, $companyPlugin);
+            }catch(\Exception $e){
+                $exceptions[] = $e;
+            }
+        }
+        
+        if( count($exceptions) ){
+            throw $exceptions[0];
         }
     }
 }

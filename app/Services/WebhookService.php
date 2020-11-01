@@ -8,24 +8,35 @@ class WebhookService
 {
     public function sendWebhook($method, $url, $data = [])
     {
+        if( ! $this->isValidWebhookURL($url) ){
+            return (object)[
+                'ok'            => false,
+                'status_code'   => 500,
+                'error'         => 'Invalid url structure', 
+            ];
+        }
+        
         $ok         = false;
         $statusCode = 0;
         $error      = null;
         
-        $components = parse_url($url);
-        $params     = parse_str($components['query']);
-        $data       = array_merge($params, $data);
+        $components = parse_url($url); 
+
+        parse_str($components['query']??'', $params);
+
+        $data = array_merge($params, $data);
+        $url  = $components['scheme'] . '://' . $components['host'] . ($components['path']??'');
 
         try{
             $client      = App::make('HTTPClient');
             $fieldsKey   = $method == 'GET' ? 'query' : 'form_params';
             $contentType = $method == 'GET' ? 'application/text' : 'application/x-www-form-urlencoded';  
-            $response    = $client->request($method, $components['scheme'] . '://' . $components['host'] . $components['path'], [
+            $response    = $client->request($method, $url, [
                 'headers' => [
                     'X-Sender'     => 'MarketFlows',
                     'Content-Type' => $contentType
                 ],
-                $fieldsKey        => $data,
+                $fieldsKey         => $data,
                 'connect_timeout' => 5
             ]);
             $ok         = true;

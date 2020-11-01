@@ -122,8 +122,8 @@ class WebSessionController extends Controller
 
             $isOrganic  = $sessionService->getIsOrganic($company->medium_param, $httpReferrer, $landingURL);
             $isPaid     = $sessionService->getIsPaid($company->medium_param, $landingURL);
-            $isDirect   = $sessionService->getIsDirect($httpReferrer);
-            $isReferral = $sessionService->getIsReferral($httpReferrer);
+            $isDirect   = $sessionService->getIsDirect($httpReferrer, $landingURL);
+            $isReferral = $sessionService->getIsReferral($httpReferrer, $landingURL);
             $isSearch   = $sessionService->getIsSearch($httpReferrer);
 
             $session = KeywordTrackingPoolSession::create([

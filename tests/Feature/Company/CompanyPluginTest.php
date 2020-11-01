@@ -388,14 +388,14 @@ class CompanyPluginTest extends TestCase
         //
         //  Setup expectations
         //
-        $this->mock(WebhookService::class,  function($mock){
-            $mock->shouldReceive('sendWebhook')
+        $this->mock('HTTPClient',  function($mock){
+            $mock->shouldReceive('request')
                     ->times(2)
-                    ->andReturn((object)[
-                        'ok'          => true,
-                        'status_code' => 200,
-                        'error'       => null
-                    ]);
+                    ->andReturn($mock);
+
+            $mock->shouldReceive('getStatusCode')
+                 ->andReturn(200)
+                 ->times(2);
         });
 
         //  

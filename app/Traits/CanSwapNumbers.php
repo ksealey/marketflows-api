@@ -93,7 +93,7 @@ trait CanSwapNumbers
 
         //  No referrer
         if( $rule->type === 'DIRECT' )
-            return $this->isDirect($httpReferrer);
+            return $this->isDirect($httpReferrer, $entryURL);
 
         //  ! is paid
         if( $rule->type === 'ORGANIC' )
@@ -115,7 +115,7 @@ trait CanSwapNumbers
         
         // Is a referral
         if( $rule->type === 'REFERRAL' )
-            return $this->isReferral($httpReferrer);
+            return $this->isReferral($httpReferrer, $entryURL);
 
         if( $rule->type === 'REFERRER' ){
             $value = $this->normalizeReferrer($httpReferrer);
@@ -256,7 +256,7 @@ trait CanSwapNumbers
      * Determine if a visitor came in directy
      * 
      */
-    public function isDirect($httpReferrer = '')
+    public function isDirect($httpReferrer, $landingUrl)
     {
         return ! $httpReferrer;
     }
@@ -320,9 +320,9 @@ trait CanSwapNumbers
      *
      * @param string $httpReferrer      The http referrer of the visitor 
      */
-    public function isReferral($httpReferrer = '')
+    public function isReferral($httpReferrer, $landingUrl)
     {
-        return ! $this->isDirect($httpReferrer) && ! $this->isSearch($httpReferrer);
+        return ! $this->isDirect($httpReferrer, $landingUrl) && ! $this->isSearch($httpReferrer);
     }
 
     public function getParam($landingUrl, $csvList)

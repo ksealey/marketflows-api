@@ -53,14 +53,14 @@ class SessionService
         return $this->isPaid($landingUrl, $mediumCsvFieldList);
     }
 
-    public function getIsDirect($httpReferrer)
+    public function getIsDirect($httpReferrer, $landingUrl)
     {
-        return $this->isDirect($httpReferrer);
+        return $this->isDirect($httpReferrer, $landingUrl);
     }
 
-    public function getIsReferral($httpReferrer)
+    public function getIsReferral($httpReferrer, $landingUrl)
     {
-        return $this->isReferral($httpReferrer);
+        return $this->isReferral($httpReferrer, $landingUrl);
     }
 
     public function getIsSearch($httpReferrer)
