@@ -229,7 +229,7 @@ class ScheduledExportTest extends TestCase
     /**
      * Test that the scheduled report jobs are dispatched when called
      * 
-     * @group scheduled-exports--
+     * @group scheduled-exports
      */
     public function testScheduledReportDispatched()
     {
@@ -259,8 +259,8 @@ class ScheduledExportTest extends TestCase
         Artisan::call('push-scheduled-exports');
 
         Queue::assertPushed(ExecuteScheduledExportJob::class, function($job) use($report, $schedule){
-            return $job->scheduledExport->id == $schedule->id 
-                && $job->scheduledExport->report_id === $report->id;
+            return $job->scheduledExport->id        == $schedule->id 
+                && $job->scheduledExport->report_id == $report->id;
         });
     }
 

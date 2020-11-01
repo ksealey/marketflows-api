@@ -43,7 +43,9 @@ class SwapRuleTest extends TestCase
         //  Test Direct
         $this->assertTrue($sessionService->isDirect('', $faker->url));
         $this->assertTrue($sessionService->isDirect(null, $faker->url));
-        $this->assertTrue($sessionService->isDirect('https://something.com/', 'https://something.com'));
+        $this->assertTrue($sessionService->isDirect('https://www.something.com/', 'https://www.something.com'));
+        $this->assertFalse($sessionService->isDirect('https://app.something.com/', 'https://www.something.com'));
+        $this->assertTrue($sessionService->isDirect('/', 'https://www.something.com'));
         $this->assertFalse($sessionService->isDirect($faker->url, $faker->url));
         
 

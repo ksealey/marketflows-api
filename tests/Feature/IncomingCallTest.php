@@ -52,13 +52,6 @@ class IncomingCallTest extends TestCase
         ]);
 
         $phoneNumber = $this->createPhoneNumber($company, $config);
-         
-        $webhook = factory(Webhook::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id,
-            'action'     => Plugin::EVENT_CALL_START,
-            'created_by' => $this->user->id
-        ]);
 
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
             'To' => $phoneNumber->e164Format()

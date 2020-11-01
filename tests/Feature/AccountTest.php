@@ -195,7 +195,6 @@ class AccountTest extends TestCase
         $response = $this->json('DELETE', route('delete-account', [
             'confirm_close' => 1
         ]));
-        $response->dump();
         $response->assertStatus(200);
         $response->assertJSON([
             'message' => 'Bye'

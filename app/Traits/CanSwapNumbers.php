@@ -258,7 +258,14 @@ trait CanSwapNumbers
      */
     public function isDirect($httpReferrer, $landingUrl)
     {
-        return ! $httpReferrer;
+        if( ! $httpReferrer ) return true;
+
+        $referrerHost = parse_url(trim($httpReferrer), PHP_URL_HOST);
+        if( ! $referrerHost ) return true;
+
+        $landingHost = parse_url(trim($landingUrl), PHP_URL_HOST);
+        
+        return strtolower($referrerHost) === strtolower($landingHost) ;
     }
 
     /**
