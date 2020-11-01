@@ -32,15 +32,17 @@ class CallListener implements ShouldQueue
         $call    = $event->call;
         $company = $call->company;
         $contact = $call->contact;
+        $session = null;
         if( $call->keyword_tracking_pool_id )
-            $call->session = $call->session;
+            $session = $call->session;
 
         $hook = (object)[
             'event' => $event->name,
             'data'  => (object)[
                 'call'    => $call,
                 'company' => $company,
-                'contact' => $contact
+                'contact' => $contact,
+                'session' => $session
             ]
         ];
 
