@@ -139,6 +139,7 @@ class Report extends Model
         return json_decode($conditions);
     }
 
+
     public function run($condense = true)
     {   
         $this->reportService = App::make(ReportService::class);
@@ -182,12 +183,12 @@ class Report extends Model
             //  Add selects
             //
             
-            if( $this->type === 'count' ){
+            if( $this->type === 'bar' ){
                 list($table, $column) =  explode('.', $this->group_by);
 
                 $groupBy        = $this->group_by;
                 $groupByType    = $this->reportService->fieldType($this->module, $this->group_by);
-            }elseif( $this->type === 'timeframe' ){
+            }elseif( $this->type === 'line' ){
                 $dbDateFormat   = $this->getDBDateFormat($_startDate, $_endDate);
                 $groupBy        = "(DATE_FORMAT(CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "'), '" . $dbDateFormat . "'))";
                 $groupByType    = "datetime";
@@ -216,10 +217,10 @@ class Report extends Model
             
             $callData   = $query->get();  
             $data       = [];
-            if( $this->type === 'count' ){
+            if( $this->type === 'bar' ){
                 $groupKeys = array_column($callData->toArray(), 'group_by');
                 $data      = $this->reportService->barDatasetData($callData, $groupKeys, $condense);
-            }elseif( $this->type === 'timeframe' ){
+            }elseif( $this->type === 'line' ){
                 $data = $this->reportService->lineDatasetData($callData, $_startDate, $_endDate);
             }   
             
@@ -231,11 +232,11 @@ class Report extends Model
         }
 
         $labels = [];
-        if( $this->type === 'count' ){
+        if( $this->type === 'bar' ){
             $labels = $this->reportService->countLabels($callData, $condense);
             $alias  = $this->reportService->fieldAlias($this->module, $this->group_by);
             $title  = $this->reportService->fieldLabel($this->module, $alias); 
-        }elseif( $this->type === 'timeframe' ){
+        }elseif( $this->type === 'line' ){
             $labels = $this->reportService->timeframeLabels($startDate, $endDate);
             $title  = $this->reportService->moduleLabel($this->module);
         } 
@@ -248,6 +249,7 @@ class Report extends Model
         ];
     }
 
+    
     public function runDetailed()
     {   
         $this->reportService = App::make(ReportService::class);
@@ -258,15 +260,7 @@ class Report extends Model
         //
         //  Get dates
         //
-        if( $dateType === 'ALL_TIME' ){
-            $dates = $this->getAllTimeDates($this->company->created_at, $timezone);
-        }elseif($dateType === 'LAST_N_DAYS' ){
-            $dates = $this->getLastNDaysDates($this->last_n_days, $timezone);
-        }else{
-            $dates = $this->getDateFilterDates($dateType, $timezone, $this->start_date, $this->end_date);
-        }
-
-        list($_startDate, $_endDate) = $dates;
+        list($_startDate, $_endDate) =  $this->getReportDates();
 
         //
         //  Set table and initial filters
@@ -299,6 +293,114 @@ class Report extends Model
         return $query->get(); 
     }
 
+    public function reportData($condense = true)
+    {
+        $this->reportService = App::make(ReportService::class);
+
+        $timezone = $this->user->timezone;
+        $dateType = $this->date_type;
+        $datasets = [];
+
+        //
+        //  Get dates
+        //
+        list($startDate, $endDate) =  $this->getReportDates();
+
+        $dateRangeSets   = [];
+        $dateRangeSets[] = [$startDate, $endDate];
+        if( $this->type === 'line' && $this->vs_previous_period ){
+            $dateRangeSets[] = $this->getPreviousDateFilterPeriod($startDate, $endDate);
+        }
+        
+        foreach( $dateRangeSets as $dateRangeSet ){
+            list($_startDate, $_endDate) = $dateRangeSet;
+
+            //
+            //  Set table and initial filters
+            //
+            $query = DB::table($this->module)
+                        ->where($this->module . '.company_id', $this->company_id)
+                        ->where(DB::raw("CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "')"), '>=', $_startDate->format('Y-m-d H:i:s'))
+                        ->where(DB::raw("CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "')"), '<=', $_endDate->format('Y-m-d H:i:s'))
+                        ->whereNull($this->module . '.deleted_at');
+
+            //
+            //  Add selects
+            //
+            if( $this->type === 'bar' ){
+                //  Bar
+                list($table, $column) =  explode('.', $this->group_by);
+
+                $groupBy        = $this->group_by;
+                $groupByType    = $this->reportService->fieldType($this->module, $this->group_by);
+            }elseif( $this->type === 'line' ){
+                //  Line
+                $dbDateFormat   = $this->getDBDateFormat($_startDate, $_endDate);
+                $groupBy        = "(DATE_FORMAT(CONVERT_TZ(" . $this->module . ".created_at, 'UTC', '" . $timezone . "'), '" . $dbDateFormat . "'))";
+                $groupByType    = "datetime";
+            }
+            
+            $query->select([
+                DB::raw("COUNT(*) AS count"),
+                DB::raw($groupBy . " AS group_by"),
+                DB::raw("'" . $groupByType . "'". " AS group_by_type")
+            ])
+            ->groupBy('group_by');
+
+            //
+            //  Add conditions
+            //
+            if( $this->conditions )
+                $query = $this->applyConditions($query, $this->conditions);
+
+            //
+            //  Add joining tables 
+            //
+            if( $this->module === 'calls' ){
+                $query->leftJoin('contacts', 'contacts.id', '=', 'calls.contact_id');
+                $query->leftJoin('phone_numbers', 'phone_numbers.id', '=', 'calls.phone_number_id');
+            }
+
+            $callData   = $query->get();
+
+            //  Move empty values to the end while ordering alphabetically
+            $callData   = $callData->sort(function($a, $b){
+                if( ! $a->group_by ) return 1;
+                if( ! $b->group_by ) return -1;
+
+                return $a->group_by > $b->group_by ? 1 : -1;
+            });
+
+            $labels     = []; 
+            $data       = [];
+            if( $this->type === 'bar' ){
+                $labels = $this->reportService->countLabels($callData, $condense);
+                $alias  = $this->reportService->fieldAlias($this->module, $this->group_by);
+                $title  = $this->reportService->fieldLabel($this->module, $alias); 
+            }elseif( $this->type === 'line' ){
+                $labels = $this->reportService->timeframeLabels($startDate, $endDate);
+                $title  = $this->reportService->moduleLabel($this->module);
+            }  
+            
+            $datasets[] = [
+                'label' => $_startDate->format('M j, Y') . ($_startDate->diff($_endDate)->days ? (' - ' . $_endDate->format('M j, Y')) : ''),
+                'data'  => $this->reportService->formatData($this->type, $callData, $_startDate, $_endDate),
+                'total' => $this->reportService->total($callData)
+            ];
+        }
+
+        return [
+            'type'      => $this->type,
+            'title'     => $title,
+            'render_id' => str_random(40),
+            'labels'    => $labels,
+            'datasets'  => $datasets
+           
+        ];
+    }
+
+
+
     public function export($toFile = false)
     {
         $this->reportService = App::make(ReportService::class);
@@ -315,7 +417,7 @@ class Report extends Model
 
         list($startDate, $endDate) = $this->getReportDates();
 
-        if( $this->type === 'count' ){
+        if( $this->type === 'bar' ){
             /**
              * --------------
              * M j, Y - M j, Y
@@ -348,7 +450,7 @@ class Report extends Model
             $row = 4;
             $labels = $results['labels'];
             $totals = array_map(function($dataPiece){
-                return $dataPiece['value'];
+                return $dataPiece['y'];
             }, $results['datasets'][0]['data']);
 
             foreach( $labels as $idx => $label ){
@@ -361,7 +463,7 @@ class Report extends Model
             //  Space out cells
             $sheet->getColumnDimension('A')->setAutoSize(true);
             $sheet->getColumnDimension('B')->setAutoSize(true);
-        }elseif( $this->type === 'timeframe' ){
+        }elseif( $this->type === 'line' ){
             /**
              * -------------------
              * HEADERS
@@ -429,6 +531,7 @@ class Report extends Model
 
         return $this;
     }
+
 
     public function getReportDates()
     {

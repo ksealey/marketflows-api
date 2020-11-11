@@ -88,8 +88,8 @@ class ReportTest extends TestCase
             'link'  => route('report-total-calls', [ 
                 'company' => $company->id
             ]),
-            'data'  => [
-                'type'     => 'timeframe',
+            'report_data'  => [
+                'type'     => 'line',
                 'title'    => 'Calls',
                 'datasets' => [
                     [
@@ -116,8 +116,8 @@ class ReportTest extends TestCase
             'link'   => route('report-total-calls', [ 
                 'company' => $company->id
             ]),
-            'data'  => [
-                'type'     => 'timeframe',
+            'report_data'  => [
+                'type'     => 'line',
                 'title'    => 'Calls',
                 'datasets' => [
                     [
@@ -143,8 +143,8 @@ class ReportTest extends TestCase
             'link'   => route('report-total-calls', [ 
                 'company' => $company->id
             ]),
-            'data'  => [
-                'type'     => 'timeframe',
+            'report_data'  => [
+                'type'     => 'line',
                 'title'    => 'Calls',
                 'datasets' => [
                     [
@@ -238,8 +238,8 @@ class ReportTest extends TestCase
             'link'   => route('report-call-sources', [ 
                 'company' => $company->id
             ]),
-            'data'  => [
-                'type'     => 'count',
+            'report_data'  => [
+                'type'     => 'bar',
                 'datasets' => [
                     [ 'total' => 8 ]
                 ],
@@ -264,8 +264,8 @@ class ReportTest extends TestCase
             'link'   => route('report-call-sources', [ 
                 'company' => $company->id
             ]),
-            'data'  => [
-                'type'     => 'count',
+            'report_data'  => [
+                'type'     => 'bar',
                 'datasets' => [
                     [
                         'total' => 16
@@ -277,11 +277,11 @@ class ReportTest extends TestCase
     }
 
     /**
-     * Test creating a timeframe report
+     * Test creating a line report
      * 
      * @group reports
      */
-    public function testCreateTimeframeReport()
+    public function testCreateLineReport()
     {
         $company  = $this->createCompany();
         $reportService = App::make(ReportService::class);
@@ -295,7 +295,7 @@ class ReportTest extends TestCase
                 'module'      => 'calls',
                 'date_type'   => 'LAST_N_DAYS',
                 'last_n_days' => $days,
-                'type'        => 'timeframe',
+                'type'        => 'line',
                 'conditions'  => json_encode([
                     [
                         [
@@ -315,7 +315,7 @@ class ReportTest extends TestCase
                 "created_by" => $this->user->id,
                 "name"       => "Report 1",
                 "module"     => "calls",
-                "type"        => "timeframe",
+                "type"        => "line",
                 "date_type"   => "LAST_N_DAYS",
                 "group_by"    => null,
                 "last_n_days" => $days,
@@ -346,7 +346,7 @@ class ReportTest extends TestCase
                 'module'    => 'calls',
                 'date_type' => 'LAST_N_DAYS',
                 'last_n_days' => $days,
-                'type'      => 'count',
+                'type'      => 'bar',
                 'group_by'  => $field
             ]);
             $response->assertStatus(201);
@@ -356,7 +356,7 @@ class ReportTest extends TestCase
                 "created_by" => $this->user->id,
                 "name"       => "Report 1",
                 "module"     => "calls",
-                "type"       => "count",
+                "type"       => "bar",
                 "date_type"  => "LAST_N_DAYS",
                 "group_by"   => $field,
                 "last_n_days" => $days,
@@ -382,7 +382,7 @@ class ReportTest extends TestCase
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
-            'type'       => 'count',
+            'type'       => 'bar',
             'group_by'   => 'calls.source',
             'date_type'  => 'LAST_N_DAYS',
             'last_n_days'=> 7
@@ -413,7 +413,7 @@ class ReportTest extends TestCase
                 'company' => $company->id,
                 'report' => $report->id
             ]),
-            "data" => [
+            "report_data" => [
                 'type'     => $report->type,
                 'title'    => 'Source',
                 'labels'   => [],
@@ -423,11 +423,11 @@ class ReportTest extends TestCase
     }  
     
     /**
-     * Test reading a timeframe report
+     * Test reading a line report
      * 
      * @group reports
      */
-    public function testReadTimeFrameReport()
+    public function testReadLineReport()
     {
         $this->user->timezone = 'America/New_York';
         $this->user->save();
@@ -436,7 +436,7 @@ class ReportTest extends TestCase
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
-            'type'       => 'timeframe',
+            'type'       => 'line',
             'group_by'   => null,
             'date_type'  => 'LAST_N_DAYS',
             'last_n_days'=> 7
@@ -467,7 +467,7 @@ class ReportTest extends TestCase
                 'company' => $company->id,
                 'report' => $report->id
             ]),
-            "data" => [
+            "report_data" => [
                 'type'     => $report->type,
                 'title'    => ucfirst($report->module),
                 'labels'   => [],
@@ -488,11 +488,11 @@ class ReportTest extends TestCase
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
-            'type'       => 'count'
+            'type'       => 'bar'
         ]);
 
         $updatedReport = factory(Report::class)->make([
-            'type'       => 'timeframe',
+            'type'       => 'line',
             'date_type'  => 'CUSTOM',
             'group_by'   => null,
             'start_date' => today()->subDays(1)->format('Y-m-d'),

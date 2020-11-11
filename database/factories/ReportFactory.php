@@ -9,7 +9,7 @@ $factory->define(\App\Models\Company\Report::class, function (Faker $faker) {
     return [
         'name'  => $faker->company,
         'module'=> 'calls',
-        'type'  => 'count',
+        'type'  => 'bar',
         'group_by' => 'calls.source',
         'date_type' => 'LAST_N_DAYS',
         'last_n_days' => mt_rand(1, 730),

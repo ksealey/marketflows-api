@@ -13,11 +13,11 @@ class ReportTest extends TestCase
     use \Tests\CreatesAccount, WithFaker;
 
     /**
-     * Test count report can run
+     * Test bar report can run
      * 
      * @group reports
      */
-    public function testCountReportCanRun()
+    public function testBarReportCanRun()
     {
         $company        = $this->createCompany([
             'created_at'    => now()->subDays(50)
@@ -74,7 +74,7 @@ class ReportTest extends TestCase
             'created_by' => $this->user->id,
             'date_type'  => 'LAST_N_DAYS',
             'last_n_days' => 7,
-            'type'        => 'count',
+            'type'        => 'bar',
             'group_by'    => 'calls.source'
         ]);
 
@@ -90,11 +90,11 @@ class ReportTest extends TestCase
     }
 
     /**
-     * Test timeframe report can run
+     * Test line report can run
      * 
      * @group reports
      */
-    public function testTimeframeReportCanRun()
+    public function testLineReportCanRun()
     {
         $company        = $this->createCompany([
             'created_at'    => now()->subDays(50)
@@ -149,7 +149,7 @@ class ReportTest extends TestCase
             'account_id' => $this->account->id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
-            'type'       => 'timeframe', 
+            'type'       => 'line', 
             'date_type'  => 'LAST_N_DAYS',
             'group_by'   => null,
             'last_n_days' => 7
@@ -167,11 +167,11 @@ class ReportTest extends TestCase
     }
 
     /**
-     * Test exporting count report
+     * Test exporting bar report
      * 
      * @group reports
      */
-    public function testExportCountReport()
+    public function testExportBarReport()
     {
         $company        = $this->createCompany([
             'created_at'    => now()->subDays(50)
@@ -225,7 +225,7 @@ class ReportTest extends TestCase
             'account_id' => $this->account->id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
-            'type'       => 'count', 
+            'type'       => 'bar', 
             'group_by'   => 'calls.source',
             'date_type'  => 'ALL_TIME'
         ]);
@@ -237,11 +237,11 @@ class ReportTest extends TestCase
     }
 
     /**
-     * Test exporting timeframe report
+     * Test exporting line report
      * 
      * @group reports
      */
-    public function testExportTimeframeReport()
+    public function testExportLineReport()
     {
         $company        = $this->createCompany([
             'created_at'    => now()->subDays(50)
@@ -295,7 +295,7 @@ class ReportTest extends TestCase
             'account_id' => $this->account->id,
             'company_id' => $company->id,
             'created_by' => $this->user->id,
-            'type'       => 'timeframe',
+            'type'       => 'line',
             'group_by'   => null, 
             'date_type'  => 'ALL_TIME'
         ]);

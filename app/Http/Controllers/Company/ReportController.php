@@ -62,13 +62,13 @@ class ReportController extends Controller
         $validator = $this->getDateFilterValidator($request->input(), [
             'name'          => 'bail|required|max:64',
             'module'        => 'bail|required|in:calls',
-            'type'          => 'bail|required|in:timeframe,count',
+            'type'          => 'bail|required|in:line,bar',
             'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($reportService->conditionFields) ],
             'vs_previous_period' => 'bail|boolean'
         ]);
 
         $validator->sometimes('group_by', 'required|in:' . implode(',', $reportService->conditionFields), function($input){
-            return $input->type === 'count';
+            return $input->type === 'bar';
         });
 
         if( $validator->fails() ){
@@ -87,7 +87,7 @@ class ReportController extends Controller
             'module'        => $request->module,
             'type'          => $request->type,
             'date_type'     => $dateType,
-            'group_by'      => $request->type == 'count' ? $request->group_by : null,
+            'group_by'      => $request->type == 'bar' ? $request->group_by : null,
             'last_n_days'   => $dateType == 'LAST_N_DAYS' ? $request->last_n_days : null,
             'start_date'    => $dateType == 'CUSTOM' ? $request->start_date : null,
             'end_date'      => $dateType == 'CUSTOM' ? $request->end_date : null,
@@ -108,7 +108,7 @@ class ReportController extends Controller
     public function read(Request $request, Company $company, Report $report)
     {
         if( $request->with_data ){
-            $report->data = $report->run();
+            $report->report_data = $report->reportData();
         }
 
         return response($report);
@@ -128,7 +128,7 @@ class ReportController extends Controller
         $validator = $this->getDateFilterValidator($request->input(), [
             'name'          => 'bail|max:64',
             'module'        => 'bail|in:calls',
-            'type'          => 'bail|in:timeframe,count',
+            'type'          => 'bail|in:line,bar',
             'conditions'    => ['bail', 'nullable', 'json', new ConditionsRule($reportService->conditionFields) ]
         ]);
 
@@ -142,7 +142,7 @@ class ReportController extends Controller
             return $input->date_type === 'LAST_N_DAYS';
         });
         $validator->sometimes('group_by', 'required|in:' . implode(',', $reportService->conditionFields), function($input){
-            return $input->type === 'count';
+            return $input->type === 'bar';
         });
 
         if( $validator->fails() ){
@@ -191,11 +191,11 @@ class ReportController extends Controller
             $report->vs_previous_period = $request->vs_previous_period;
         }
 
-        if( $report->type === 'count' ){
+        if( $report->type === 'bar' ){
             $report->vs_previous_period = 0;
         }
 
-        if( $report->type === 'timeframe' ){
+        if( $report->type === 'line' ){
             $report->group_by = null;
         }
 
@@ -211,7 +211,7 @@ class ReportController extends Controller
         $report->save();
 
         if( $request->with_data ){
-            $report->data = $report->run();
+            $report->report_data = $report->reportData();
         }
 
         return response($report);
@@ -290,7 +290,7 @@ class ReportController extends Controller
             'created_by'            => $user->id,
             'name'                  => 'Calls',
             'module'                => 'calls',
-            'type'                  => 'timeframe',
+            'type'                  => 'line',
             'date_type'             => $request->date_type,
             'group_by'              => null,
             'last_n_days'           => $request->date_type == 'LAST_N_DAYS' ? $request->last_n_days : null,
@@ -303,7 +303,7 @@ class ReportController extends Controller
             ])
         ]);
        
-        $report->data = $report->run();
+        $report->report_data = $report->reportData();
 
         return response($report);
     }
@@ -335,7 +335,7 @@ class ReportController extends Controller
             'created_by'            => $user->id,
             'name'                  => 'Call Sourcing',
             'module'                => 'calls',
-            'type'                  => 'count',
+            'type'                  => 'bar',
             'date_type'             => $request->date_type,
             'group_by'              => $request->group_by,
             'last_n_days'           => $request->date_type == 'LAST_N_DAYS' ? $request->last_n_days : null,
@@ -348,7 +348,7 @@ class ReportController extends Controller
             ])
         ]);
        
-        $report->data = $report->run();
+        $report->report_data = $report->reportData();
 
         return response($report);
     }

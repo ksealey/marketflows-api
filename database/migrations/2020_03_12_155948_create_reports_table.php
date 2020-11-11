@@ -20,7 +20,7 @@ class CreateReportsTable extends Migration
             $table->string('name', 64);
             $table->string('module', 32);
             $table->string('type', 32); 
-            $table->string('group_by')->nullable(); // Only for "count" type
+            $table->string('group_by')->nullable(); // Only for "bar" type
             $table->string('date_type');
             $table->integer('last_n_days')->unsigned()->nullable();
             $table->dateTime('start_date')->nullable();

@@ -145,7 +145,21 @@ class ReportService
         'calls' => 'Calls'
     ];
 
-    public function lineDatasetData(iterable $callData, $startDate, $endDate)
+    public function formatData($reportType, $reportData, $startDate, $endDate)
+    {
+        $data = [];
+
+        if( $reportType === 'line' ){
+            $data = $this->lineDatasetData($reportData, $startDate, $endDate);
+        }elseif( $reportType === 'bar' ){
+            $groupKeys = array_column($reportData->toArray(), 'group_by');
+            $data      = $this->barDatasetData($reportData, $groupKeys);
+        }
+
+        return $data;
+    }
+
+    public function lineDatasetData(iterable $reportData, $startDate, $endDate)
     {
         $dataset = [];
         $diff    = $startDate->diff($endDate);
@@ -158,13 +172,14 @@ class ReportService
         $end             = clone $endDate;
 
         $data = [];
-        foreach($callData as $call){
-            $data[$call->group_by] = $call->count;
+        foreach($reportData as $d){
+            $data[$d->group_by] = $d->count;
         }
         
         while( $dateIncrementor->format($comparisonFormat) <= $endDate->format($comparisonFormat) ){
             $dataset[] = [
-                'value' => $data[$dateIncrementor->format($comparisonFormat)] ?? 0
+                'label' => $dateIncrementor->format($displayFormat),
+                'y'     => $data[$dateIncrementor->format($comparisonFormat)] ?? 0
             ];
             $dateIncrementor->modify('+1 ' . $timeIncrement);
         }
@@ -172,22 +187,29 @@ class ReportService
         return $dataset;
     }
 
-    public function barDatasetData(iterable $inputData, iterable $groupKeys, $condense = true)
+    public function barDatasetData(iterable $reportData, iterable $groupKeys, $condense = true)
     {
         $dataset   = [];
         $lookupMap = [];
-        foreach($inputData as $data){
+        $dataType  = '';
+        foreach($reportData as $data){
+            $dataType = $data->group_by_type;
             $lookupMap[$data->group_by] = $data->count;
         }
 
+        
         if( ! $condense ){
             foreach($groupKeys as $idx => $groupKey){
+                $label = $groupKey;
+                if( $dataType == 'boolean' ){
+                    $label = $label ? 'Yes' : 'No';
+                }
                 $value     = $lookupMap[$groupKey] ?? 0;
                 $dataset[] = [
-                    'value' => $lookupMap[$groupKey] ?? 0
+                    'label' => $label,
+                    'y'     => $lookupMap[$groupKey] ?? 0
                 ];
             }
-
             return $dataset;
         }
 
@@ -195,20 +217,26 @@ class ReportService
         $hasOthers  = false;
         foreach($groupKeys as $idx => $groupKey){
             $value = $lookupMap[$groupKey] ?? 0;
+            $label = $groupKey;
+            if( $dataType == 'boolean' ){
+                $label = $label === null ? 'Not Set' : ($label ? 'Yes' : 'No');
+            }
             
             if( $idx >= 9 ){
                 $otherCount += $value;
                 $hasOthers  = true;
             }else{
                 $dataset[] = [
-                    'value' => $lookupMap[$groupKey] ?? 0
+                    'label' => $label,
+                    'y'     => $lookupMap[$groupKey] ?? 0
                 ];
             }
         }
 
         if( $hasOthers ){
             $dataset[] = [
-                'value' => $otherCount
+                'label' => 'Other',
+                'y'     => $otherCount
             ];
         }
  
@@ -222,17 +250,13 @@ class ReportService
                 return strval($input->group_by);
             }
             if( $input->group_by_type === 'boolean' ){
-                return $input->group_by ? 'Yes' : 'No';
+                return $input->group_by === null ? 'Not Set' : ($input->group_by ? 'Yes' : 'No');
             }
             return  strval($input->group_by);
         }, $inputData->toArray());
 
-        $labels = [];
-
-        if( ! $condense || count($values) <= 10 ){
-            $labels = $values;
-        }else{
-            $labels   = $values;
+        $labels = array_values($values);
+        if( $condense && count($values) > 10 ){
             $labels   = array_splice($labels, 0, 9);
             $labels[] = 'Other';
         }
