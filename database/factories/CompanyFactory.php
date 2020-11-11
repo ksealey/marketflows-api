@@ -11,7 +11,6 @@ $factory->define(\App\Models\Company::class, function (Faker $faker) {
         'country'        => 'US',
         'tts_language'   => 'en-US',
         'tts_voice'      => 'Joanna',
-        'ga_id'          => 'UA-147271162-1',
         'source_param'   => 'utm_source,source',
         'medium_param'   => 'utm_medium,medium',
         'content_param'  => 'utm_content,content',

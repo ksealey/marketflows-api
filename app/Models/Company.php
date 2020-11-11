@@ -36,7 +36,6 @@ class Company extends Model implements Exportable
         'campaign_param',
         'keyword_param',
         'source_referrer_when_empty',
-        'ga_id',
         'tracking_expiration_days',
         'created_by',
         'updated_by'
@@ -65,7 +64,6 @@ class Company extends Model implements Exportable
             'name'              => 'Name',
             'industry'          => 'Industry',
             'country'           => 'Country',
-            'ga_id'             => 'Google Analytics Id',
             'created_at_local'  => 'Created'
         ];
     }

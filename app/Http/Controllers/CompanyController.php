@@ -25,7 +25,6 @@ class CompanyController extends Controller
         'companies.name',
         'companies.industry',
         'companies.country',
-        'companies.ga_id',
         'companies.created_at',
         'companies.updated_at'
     ];
@@ -71,7 +70,6 @@ class CompanyController extends Controller
             'name'                       => 'bail|required|max:64',
             'industry'                   => 'bail|required|max:64',
             'country'                    => ['bail', 'required', new CountryRule()],
-            'ga_id'                      => ['bail', 'nullable', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
             'tts_language'               => 'bail|in:' . implode(',', $languages),
             'tts_voice'                  => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)],
             'source_param'               => ['bail', new ParamNameRule()],
@@ -99,7 +97,6 @@ class CompanyController extends Controller
             'name'                          => $request->name,
             'industry'                      => $request->industry,
             'country'                       => $request->country,
-            'ga_id'                         => $request->ga_id ?: null,
             'tts_voice'                     => $request->tts_voice ?: $account->tts_voice,
             'tts_language'                  => $request->tts_language ?: $account->tts_language,
             'source_param'                  => $request->source_param ?: $account->source_param,
@@ -147,7 +144,6 @@ class CompanyController extends Controller
             'name'          => 'min:1|max:64',
             'industry'      => 'min:1|max:64',
             'country'       => [new CountryRule()],
-            'ga_id'         => ['bail', 'nullable', 'regex:/^\bUA-\b[0-9]{6,10}\-[0-9]{1,4}$/'],
             'tts_language'  => 'bail|in:' . implode(',', $languages),
             'tts_voice'     => ['bail', 'required_with:tts_language', 'in:' . implode(',', $voices)],
             'source_param'  => ['bail', new ParamNameRule()],
@@ -171,8 +167,6 @@ class CompanyController extends Controller
             $company->industry = $request->industry;
         if( $request->filled('country') )
             $company->country = $request->country;
-        if( $request->has('ga_id') )
-            $company->ga_id = $request->ga_id ?: null;
         if( $request->filled('tts_voice') )
             $company->tts_voice = $request->tts_voice;
         if( $request->filled('tts_language') )
