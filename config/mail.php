@@ -64,6 +64,10 @@ return [
         'support'   => [
             'address' => 'support@marketflows.io',
             'name'    => 'Customer Support'
+        ],
+        'development' => [
+            'address' => 'development@marketflows.io',
+            'name'    => 'Development'
         ]
     ],
 

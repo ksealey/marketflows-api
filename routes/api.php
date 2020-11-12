@@ -74,6 +74,19 @@ Route::prefix('/')->group(function(){
             Route::middleware(['auth:api', 'api'])->group(function(){
                 /*
                 |--------------------------------
+                | Handle development
+                |--------------------------------
+                */
+                Route::prefix('development')->group(function(){
+                    Route::post('suggest-feature', 'DevelopmentController@suggestFeature')
+                         ->name('suggest-feature');
+                         
+                    Route::post('report-bug', 'DevelopmentController@reportBug')
+                         ->name('report-bug');
+                });
+
+                /*
+                |--------------------------------
                 | Handle account
                 |--------------------------------
                 */
