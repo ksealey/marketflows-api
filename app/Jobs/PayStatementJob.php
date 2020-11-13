@@ -14,6 +14,7 @@ use App\Models\BillingStatement;
 use App\Models\User;
 use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
+use App\Mail\NoPaymentMethodFound;
 use Carbon\Carbon;
 use Mail;
 use App;
@@ -24,17 +25,15 @@ class PayStatementJob implements ShouldQueue
 
     public $tries = 1;
     public $statement;
-    public $paymentMethod = null;
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct(BillingStatement $statement, $paymentMethod = null)
+    public function __construct(BillingStatement $statement)
     {
         $this->statement     = $statement;
-        $this->paymentMethod = $paymentMethod;
     }
 
     /**
@@ -44,43 +43,71 @@ class PayStatementJob implements ShouldQueue
      */
     public function handle()
     {
-        $statement            = $this->statement;
-        $statement->locked_at = now();
-        $statement->save();
-
-        $paymentManager = App::make('App\Helpers\PaymentManager');
-        
+        $statement      = $this->statement;
         $billing        = $statement->billing;
         $account        = $billing->account;
-        
-        if( $this->paymentMethod ){
-            $paymentMethod = $this->paymentMethod;
-        }else{
-            $paymentMethod  = $account->primary_payment_method; 
+        $adminUsers     = $account->admin_users;
+        $paymentMethods = $account->payment_methods;
+
+        if( ! count($paymentMethods) ){
+            // 
+            // Let the user know they need to add a payment method 
+            // 
+            $statement->next_payment_attempt_at = now()->addDays(3);
+            $statement->save();
+            
+            foreach( $adminUsers as $user ){
+                Alert::create([
+                    'account_id'    => $user->account_id,
+                    'user_id'       => $user->id,  
+                    'category'      => Alert::CATEGORY_PAYMENT,
+                    'type'          => Alert::TYPE_DANGER,
+                    'title'         => 'No payment method found',
+                    'message'       => 'No payment method was found on your account. Please add a payment method to avoid any disruptions in service.',
+                ]);
+
+                Mail::to($user)->send(new NoPaymentMethodFound($user));
+            }
+
+            return;
         }
 
-        $user    = User::find($paymentMethod->created_by);
-        $results = $paymentManager->charge($paymentMethod, $statement);
-        $payment = $results->payment;
-        if( $payment ){
-            Mail::to($user)
-                ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
+        $paymentManager = App::make('App\Helpers\PaymentManager');
+        foreach( $paymentMethods  as $paymentMethod ){
+            $results = $paymentManager->charge($paymentMethod, $statement);
+            $payment = $results->payment;
+            if( $payment ){
+                if( ! $billing->past_due ){
+                    $account->removePaymentAlerts();
 
-            //  Unsuspend accounts that were suspsended for past due payments if paid in full
-            if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE && ! $billing->past_due )
-                $account->unsuspend();
-        }else{
-            Alert::create([
-                'account_id'    => $user->account_id,
-                'user_id'       => $user->id,  
-                'category'      => Alert::CATEGORY_PAYMENT,
-                'type'          => Alert::TYPE_DANGER,
-                'title'         => 'Payment method failed',
-                'message'       => 'Payment method ' . $paymentMethod->brand . ' ending in ' . $paymentMethod->last_4 . ' has failed. Please update your payment method to avoid any disruptions in service.',
-            ]);
+                    //  Unsuspend accounts that were suspended for past due payments if paid in full
+                    if( $account->suspension_code && $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE )
+                        $account->unsuspend();
+                }
 
-            Mail::to($user)
-                ->queue(new PaymentMethodFailed($user, $paymentMethod, $statement));
+                foreach( $adminUsers as $user ){
+                    Mail::to($user)
+                        ->queue(new BillingReceipt($user, $statement, $paymentMethod, $payment));
+                }
+
+                return;
+            }else{
+                if( $paymentMethod->primary_method ){
+                    foreach( $adminUsers as $user ){
+                        Alert::create([
+                            'account_id'    => $user->account_id,
+                            'user_id'       => $user->id,  
+                            'category'      => Alert::CATEGORY_PAYMENT,
+                            'type'          => Alert::TYPE_DANGER,
+                            'title'         => 'Payment failed',
+                            'message'       => 'Payment method ' . $paymentMethod->brand . ' ending in ' . $paymentMethod->last_4 . ' has failed. Please update your payment method to avoid any disruptions in service.',
+                        ]);
+
+                        Mail::to($user)
+                            ->queue(new PaymentMethodFailed($user, $paymentMethod, $statement));
+                    }
+                }
+            }
         }
     }
 }

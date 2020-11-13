@@ -78,14 +78,8 @@ class BillingStatementController extends Controller
             ], 400);
         }
 
-        if( $billingStatement->locked_at ){ // Currently being processed
-            return response([
-                'error' => 'Cannot complete payment at this time - Please try again later'
-            ], 400);
-        }
-
         $validator = validator($request->input(), [
-            'payment_method_id' => 'bail|required|exists:payment_methods,id'
+            'payment_method_id' => 'bail|required|numeric'
         ]);
         
         if( $validator->fails() ){
@@ -96,7 +90,7 @@ class BillingStatementController extends Controller
 
         $paymentMethod = PaymentMethod::find($request->payment_method_id);
         $user          = $request->user();
-        if( $paymentMethod->account_id !== $user->account_id )
+        if( ! $paymentMethod || $paymentMethod->account_id !== $user->account_id )
             return response([
                 'error' => 'Payment method does not exist'
             ], 400);
@@ -111,10 +105,15 @@ class BillingStatementController extends Controller
             ], 400);
         }
 
-        //  Unsuspend account if suspended
         $account = $paymentMethod->account;
-        if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE )
-            $account->unsuspend();
+        $billing = $account->billing;
+        if( ! $billing->past_due ){
+            $account->removePaymentAlerts();
+
+            //  Unsuspend accounts that were suspended for past due payments if paid in full
+            if( $account->suspension_code && $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE )
+                $account->unsuspend();
+        }
 
         //  Mail reciept
         Mail::to($user)

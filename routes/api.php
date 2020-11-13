@@ -47,9 +47,6 @@ Route::prefix('/')->group(function(){
                 Route::post('/verify-email', 'Auth\RegisterController@verifyEmail')
                     ->name('auth-verify-email');
 
-                Route::post('/payment-setup','Auth\RegisterController@paymentSetup')
-                     ->name('create-payment-setup');
-
                 Route::post('/register', 'Auth\RegisterController@register')
                     ->name('auth-register');
 

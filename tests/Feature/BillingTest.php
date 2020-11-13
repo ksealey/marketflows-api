@@ -20,6 +20,7 @@ use App\Models\Company\CallRecording;
 use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
 use App\Mail\AccountUnsuspended;
+use App\Mail\NoPaymentMethodFound;
 use App\Helpers\PaymentManager;
 use App\Jobs\PayStatementJob;
 use Artisan;
@@ -108,6 +109,24 @@ class BillingTest extends TestCase
      */
     public function testBillingStatementsArePaid()
     {
+        $this->account->suspended_at        = now();
+        $this->account->suspension_code     = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->suspension_message  = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->save();
+
+        $this->billing->suspension_warnings = 3;
+        $this->billing->next_suspension_warning_at = now();
+        $this->billing->save();
+
+        $alert = Alert::create([
+            'account_id'    => $this->account->id,
+            'user_id'       => $this->user->id,  
+            'category'      => Alert::CATEGORY_PAYMENT,
+            'type'          => Alert::TYPE_DANGER,
+            'title'         => 'No payment method found',
+            'message'       => 'No payment method was found on your account. Please add a payment method to avoid any disruptions in service.',
+        ]);
+
         BillingStatementItem::where('id', '>', 0)->delete();
         BillingStatement::where('id', '>', 0)->delete();
         Mail::fake();
@@ -126,13 +145,14 @@ class BillingTest extends TestCase
         });
 
         Artisan::call('pay-statements');
+        Artisan::call('pay-statements');
+        Artisan::call('pay-statements');
 
         $statement = BillingStatement::find($statement->id);
 
         $this->assertNotNull($statement->paid_at);
         $this->assertEquals($statement->payment_attempts, 1);
         $this->assertNull($statement->next_payment_attempt_at);
-        $this->assertNotNull($statement->locked_at);
 
         $this->assertDatabaseHas('payments', [
             'billing_statement_id' => $statement->id,
@@ -140,7 +160,66 @@ class BillingTest extends TestCase
             'total'                => $statement->total
         ]);
 
+        $this->assertDatabaseHas('accounts', [
+            'id' => $this->account->id,
+            'suspension_code' => null,
+            'suspended_at'    => null  
+        ]);
+
+        $this->assertDatabaseHas('billing', [
+            'id' => $this->billing->id,
+            'suspension_warnings' => 0,
+            'next_suspension_warning_at' => null
+        ]);
+
+        $this->assertDatabaseMissing('alerts', [
+            'id'         => $alert->id,
+            'deleted_at' => null
+        ]);
+
+        Mail::assertQueued(BillingReceipt::class, 1);
         Mail::assertQueued(BillingReceipt::class, function($mail){
+            return $mail->hasTo($this->user->email);
+        });
+    }
+
+    /**
+     * Test paying a statement without a payment method fails gracefully
+     * 
+     * @group billing
+     */
+    public function testBillingStatementsFailGracefullyWithoutPaymentMethod()
+    {
+        BillingStatementItem::where('id', '>', 0)->delete();
+        BillingStatement::where('id', '>', 0)->delete();
+        
+        Mail::fake();
+
+        $this->paymentMethod->delete();
+
+        $statement = $this->createBillableStatement();
+        $intent    = (object)[
+            'id'            => str_random(20),
+            'client_secret' => str_random(20),
+            'status'        => 'succeeded'
+        ];
+
+        Artisan::call('pay-statements');
+        Artisan::call('pay-statements');
+        Artisan::call('pay-statements');
+
+        $statement = BillingStatement::find($statement->id);
+
+        $this->assertNull($statement->intent_id);
+        $this->assertNull($statement->paid_id);
+        $this->assertNotNull($statement->next_payment_attempt_at);
+
+        $this->assertDatabaseMissing('payments', [
+            'billing_statement_id' => $statement->id
+        ]);
+       
+        Mail::assertSent(NoPaymentMethodFound::class, 1);
+        Mail::assertSent(NoPaymentMethodFound::class, function($mail){
             return $mail->hasTo($this->user->email);
         });
     }
@@ -148,7 +227,7 @@ class BillingTest extends TestCase
     /**
      * Test paying statements fails gracefully
      * 
-     * @group billing
+     * @group billing--
      */
     public function testBillingStatementsFailGracefully()
     {
@@ -176,12 +255,13 @@ class BillingTest extends TestCase
         ];
 
         Artisan::call('pay-statements');
+        Artisan::call('pay-statements');
+        Artisan::call('pay-statements');
 
         $statement = BillingStatement::find($statement->id);
         $this->assertNotNull($statement->intent_id);
         $this->assertNull($statement->paid_id);
         $this->assertNotNull($statement->next_payment_attempt_at);
-        $this->assertNull($statement->locked_at);
 
         $this->assertDatabaseMissing('payments', [
             'billing_statement_id' => $statement->id,
@@ -191,6 +271,7 @@ class BillingTest extends TestCase
         Mail::assertQueued(PaymentMethodFailed::class, function($mail){
             return $mail->hasTo($this->user->email);
         });
+        Mail::assertQueued(PaymentMethodFailed::class, 1);
     }
 
     /**
@@ -382,36 +463,6 @@ class BillingTest extends TestCase
             'id' => $alert->id,
             'deleted_at' => null
         ]);
-    }
-
-    /**
-     * Test paying a statement fails when statment is locked
-     * 
-     * @group billing
-     */
-    public function testPayStatementFailsWhenStatementLocked()
-    {
-        $paymentMethod = $this->createPaymentMethod();
-
-        $this->mock(PaymentManager::class, function($mock){
-            $mock->shouldNotReceive('charge');
-        });
-
-        $statement = $this->createBillableStatement([
-            'billing_id'               => $this->billing->id,
-            'billing_period_starts_at' => now()->subDays(30)->startOfDay(),
-            'billing_period_ends_at'   => now()->endOfDay(),
-            'locked_at'                => now()
-        ]);
-
-        $response = $this->json('POST', route('pay-statement', [
-            'billingStatement' => $statement->id,
-            'payment_method_id'=> $paymentMethod->id
-        ]));
-        $response->assertJSON([
-            'error' => 'Cannot complete payment at this time - Please try again later'
-        ]);
-        $response->assertStatus(400);
     }
 
     /**

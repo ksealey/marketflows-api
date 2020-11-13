@@ -152,7 +152,7 @@ class AuthTest extends TestCase
     /**
      * Test creating an account successfully
      * 
-     * @group auth
+     * @group auth--
      */
     public function testRegister()
     {
@@ -167,49 +167,25 @@ class AuthTest extends TestCase
             'password'     => 'Password1!',
             'email'        => $emailVerification->email
         ]);
-        $paymentToken = 'tok_bypassPending';
+
         $customer     = new \stdClass();
         $customer->id = str_random(10);
 
-        $paymentSetup  = factory(PaymentSetup::class)->create([
-            'email' => $emailVerification->email,
-            'customer_id' => $customer->id
-        ]);
-
-        $paymentMethod = (object)[
-            'id'   => str_random(10),
-            'card' => (object)[
-                'exp_year'  => now()->addYears(1)->format('Y'),
-                'exp_month' => now()->format('m'),
-                'last4'     => mt_rand(0001, 9999),
-                'funding'   => 'credit',
-                'brand'     => 'visa',
-            ]
-        ];
-
-        $paymentMethods = [
-            $paymentMethod
-        ];
-
-        $this->mock(PaymentManager::class, function($mock) use($account, $paymentToken, $customer, $paymentMethods){
-            $mock->shouldReceive('getPaymentMethods')
+        $this->mock(PaymentManager::class, function($mock) use($account, $customer){
+            $mock->shouldReceive('createCustomer')
                  ->once()
-                 ->with($customer->id)
-                 ->andReturn($paymentMethods);
+                 ->with(Account::class)
+                 ->andReturn($customer);
         });
 
         $response = $this->json('POST', route('auth-register'), [
-            'payment_token' => $paymentToken,
             'account_name'  => $account->name,
             'first_name'    => $user->first_name,
             'last_name'     => $user->last_name,
             'email'         => $user->email,
             'phone'         => $user->phone,
             'password'      => $user->password,
-            'timezone'      => $user->timezone,
-            'intent_id'     => $paymentSetup->intent_id,
-            'intent_client_secret' => $paymentSetup->intent_client_secret,
-            'payment_method_id'    => $paymentMethod->id
+            'timezone'      => $user->timezone
         ]);
         $response->assertStatus(201);
         $response->assertJSON([
@@ -237,10 +213,10 @@ class AuthTest extends TestCase
             'external_id' => $customer->id 
         ]);
 
-        $this->assertDatabaseHas('payment_methods', [
-            'account_id' => $account['id'],
-            'created_by' => $response['user']['id'],
-            'external_id'=> $paymentMethod->id
+        $this->assertDatabaseHas('users', [
+            'email' => $user->email,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name
         ]);
     }
 
@@ -515,51 +491,6 @@ class AuthTest extends TestCase
         $user = User::find($user->id);
         $this->assertNull($user->password_reset_token);
         $this->assertNull($user->password_reset_expires_at);
-    }
-
-    /**
-     * Test creating a payment setup
-     * 
-     * @group auth
-     */
-    public function testCreatePaymentSetup()
-    {   
-        $email    = $this->faker()->email;
-        $customer = (object)[
-            'id' => 'cus_' . str_random(14)
-        ];
-
-        $intent = (object)[
-            "id"                => "seti_" . str_random(32),
-            "object"            => "setup_intent",
-            "client_secret"     => "seti_" . str_random(32),
-        ];
-
-       $this->mock(PaymentManager::class, function($mock) use($email, $customer, $intent){
-            $mock->shouldReceive('createCustomer')
-                 ->with($email)
-                 ->andReturn($customer);
-
-            $mock->shouldReceive('createSetupIntent')
-                 ->with($customer->id)
-                 ->andReturn($intent);
-        });
-
-        $response = $this->json('POST', route('create-payment-setup'), [
-            'email' => $email
-        ]);
-
-        $response->assertJSON([
-            "customer_id"   => $customer->id,
-            "email"         => $email,
-            "kind"          => "PaymentSetup",
-            "intent"        => [
-                'id' => $intent->id,
-                'client_secret' => $intent->client_secret,
-            ]
-        ]);
-
-        $response->assertStatus(201);
     }
 }
 

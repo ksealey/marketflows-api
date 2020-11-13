@@ -9,6 +9,8 @@ use App\Models\BillingStatementItem;
 use Carbon\Carbon;
 use Mail;
 use App;
+use DB;
+use Log;
 
 class CreateStatements extends Command
 {
@@ -50,127 +52,138 @@ class CreateStatements extends Command
         if( ! count($billings) ) return;
                
         foreach( $billings as $billing ){
-            //
-            //  Create statement. This includes monthly service fees, usage and any additional services
-            //
-            $statement = BillingStatement::create([
-                'billing_id'               => $billing->id,
-                'billing_period_starts_at' => $billing->billing_period_starts_at,
-                'billing_period_ends_at'   => $billing->billing_period_ends_at,
-                'payment_attempts'         => 0,
-                'next_payment_attempt_at'  => now()
-            ]);
+            try{
+                DB::beginTransaction();
 
-            $billingPeriodStart     = new Carbon($billing->billing_period_starts_at);
-            $billingPeriodEnd       = new Carbon($billing->billing_period_ends_at);
+                //
+                //  Create statement. This includes monthly service fees, usage and any additional services
+                //
+                $statement = BillingStatement::create([
+                    'billing_id'               => $billing->id,
+                    'billing_period_starts_at' => $billing->billing_period_starts_at,
+                    'billing_period_ends_at'   => $billing->billing_period_ends_at,
+                    'payment_attempts'         => 0,
+                    'next_payment_attempt_at'  => now()->addMinutes(5) // Give the system some to to add all records
+                ]);
 
-            $serviceQuantity        = $billing->quantity(Billing::ITEM_SERVICE, $billingPeriodStart, $billingPeriodEnd);
-            $serviceTotal           = $billing->total(Billing::ITEM_SERVICE, $serviceQuantity);
+                $billingPeriodStart     = new Carbon($billing->billing_period_starts_at);
+                $billingPeriodEnd       = new Carbon($billing->billing_period_ends_at);
 
-            $localNumberQuantity    = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL, $billingPeriodStart, $billingPeriodEnd);
-            $localNumberTotal       = $billing->total(Billing::ITEM_NUMBERS_LOCAL, $localNumberQuantity);
+                $serviceQuantity        = $billing->quantity(Billing::ITEM_SERVICE, $billingPeriodStart, $billingPeriodEnd);
+                $serviceTotal           = $billing->total(Billing::ITEM_SERVICE, $serviceQuantity);
 
-            $tollFreeNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
-            $tollFreeNumberTotal    = $billing->total(Billing::ITEM_NUMBERS_TOLL_FREE, $tollFreeNumberQuantity);
+                $localNumberQuantity    = $billing->quantity(Billing::ITEM_NUMBERS_LOCAL, $billingPeriodStart, $billingPeriodEnd);
+                $localNumberTotal       = $billing->total(Billing::ITEM_NUMBERS_LOCAL, $localNumberQuantity);
 
-            $localMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_LOCAL, $billingPeriodStart, $billingPeriodEnd);
-            $localMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_LOCAL, $localMinutesQuantity);
+                $tollFreeNumberQuantity = $billing->quantity(Billing::ITEM_NUMBERS_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
+                $tollFreeNumberTotal    = $billing->total(Billing::ITEM_NUMBERS_TOLL_FREE, $tollFreeNumberQuantity);
 
-            $tollFreeMinutesQuantity= $billing->quantity(Billing::ITEM_MINUTES_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
-            $tollFreeMinutesTotal   = $billing->total(Billing::ITEM_MINUTES_TOLL_FREE, $tollFreeMinutesQuantity);
+                $localMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_LOCAL, $billingPeriodStart, $billingPeriodEnd);
+                $localMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_LOCAL, $localMinutesQuantity);
 
-            $transMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION, $billingPeriodStart, $billingPeriodEnd);
-            $transMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $transMinutesQuantity);
+                $tollFreeMinutesQuantity= $billing->quantity(Billing::ITEM_MINUTES_TOLL_FREE, $billingPeriodStart, $billingPeriodEnd);
+                $tollFreeMinutesTotal   = $billing->total(Billing::ITEM_MINUTES_TOLL_FREE, $tollFreeMinutesQuantity);
 
-            $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB, $billingPeriodStart, $billingPeriodEnd);
-            $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
-            $now = now();
+                $transMinutesQuantity   = $billing->quantity(Billing::ITEM_MINUTES_TRANSCRIPTION, $billingPeriodStart, $billingPeriodEnd);
+                $transMinutesTotal      = $billing->total(Billing::ITEM_MINUTES_TRANSCRIPTION, $transMinutesQuantity);
 
-            $items = [
-                [
-                    'billing_statement_id' => $statement->id,
-                    'label'                => $billing->label(Billing::ITEM_SERVICE),
-                    'quantity'             => $serviceQuantity,
-                    'price'                => $billing->price(Billing::ITEM_SERVICE),
-                    'total'                => $serviceTotal,
-                    'created_at'           => $now,
-                    'updated_at'           => $now
-                ],
-                [
-                    'billing_statement_id' => $statement->id,
-                    'label'                => $billing->label(Billing::ITEM_NUMBERS_LOCAL),
-                    'quantity'             => $localNumberQuantity,
-                    'price'                => $billing->price(Billing::ITEM_NUMBERS_LOCAL),
-                    'total'                => $localNumberTotal,
-                    'created_at'           => $now,
-                    'updated_at'           => $now
-                ],
-                [
-                    'billing_statement_id' => $statement->id,
-                    'label'                => $billing->label(Billing::ITEM_NUMBERS_TOLL_FREE),
-                    'quantity'             => $tollFreeNumberQuantity,
-                    'price'                => $billing->price(Billing::ITEM_NUMBERS_TOLL_FREE),
-                    'total'                => $tollFreeNumberTotal,
-                    'created_at'           => $now,
-                    'updated_at'           => $now
-                ],
-                [
-                    'billing_statement_id' => $statement->id,
-                    'label'                => $billing->label(Billing::ITEM_MINUTES_LOCAL),
-                    'quantity'             => $localMinutesQuantity,
-                    'price'                => $billing->price(Billing::ITEM_MINUTES_LOCAL),
-                    'total'                => $localMinutesTotal,
-                    'created_at'           => $now,
-                    'updated_at'           => $now
-                ],
-                [
-                    'billing_statement_id' => $statement->id,
-                    'label'                => $billing->label(Billing::ITEM_MINUTES_TOLL_FREE),
-                    'quantity'             => $tollFreeMinutesQuantity,
-                    'price'                => $billing->price(Billing::ITEM_MINUTES_TOLL_FREE),
-                    'total'                => $tollFreeMinutesTotal,
-                    'created_at'           => $now,
-                    'updated_at'           => $now
-                ],
-                [
-                    'billing_statement_id' => $statement->id,
-                    'label'                => $billing->label(Billing::ITEM_MINUTES_TRANSCRIPTION),
-                    'quantity'             => $transMinutesQuantity,
-                    'price'                => $billing->price(Billing::ITEM_MINUTES_TRANSCRIPTION),
-                    'total'                => $transMinutesTotal,
-                    'created_at'           => $now,
-                    'updated_at'           => $now
-                ],
-                [
-                    'billing_statement_id' => $statement->id,
-                    'label'                => $billing->label(Billing::ITEM_STORAGE_GB),
-                    'quantity'             => $storageQuantity,
-                    'price'                => $billing->price(Billing::ITEM_STORAGE_GB),
-                    'total'                => $storageTotal,
-                    'created_at'           => $now,
-                    'updated_at'           => $now
-                ],
-            ];
+                $storageQuantity        = $billing->quantity(Billing::ITEM_STORAGE_GB, $billingPeriodStart, $billingPeriodEnd);
+                $storageTotal           = $billing->total(Billing::ITEM_STORAGE_GB, $storageQuantity);
 
-            foreach( $billing->account->companies as $company ){
-                foreach( $company->plugins as $companyPlugin ){
-                    if( $plugin->price > 0 ){
-                        $items[] = [
-                            'billing_statement_id' => $statement->id,
-                            'label'                => $companyPlugin->label,
-                            'quantity'             => 1,
-                            'price'                => $companyPlugin->price,
-                            'total'                => $companyPlugin->price
-                        ];
+                $now = now();
+
+                $items = [
+                    [
+                        'billing_statement_id' => $statement->id,
+                        'label'                => $billing->label(Billing::ITEM_SERVICE),
+                        'quantity'             => $serviceQuantity,
+                        'price'                => $billing->price(Billing::ITEM_SERVICE),
+                        'total'                => $serviceTotal,
+                        'created_at'           => $now,
+                        'updated_at'           => $now
+                    ],
+                    [
+                        'billing_statement_id' => $statement->id,
+                        'label'                => $billing->label(Billing::ITEM_NUMBERS_LOCAL),
+                        'quantity'             => $localNumberQuantity,
+                        'price'                => $billing->price(Billing::ITEM_NUMBERS_LOCAL),
+                        'total'                => $localNumberTotal,
+                        'created_at'           => $now,
+                        'updated_at'           => $now
+                    ],
+                    [
+                        'billing_statement_id' => $statement->id,
+                        'label'                => $billing->label(Billing::ITEM_NUMBERS_TOLL_FREE),
+                        'quantity'             => $tollFreeNumberQuantity,
+                        'price'                => $billing->price(Billing::ITEM_NUMBERS_TOLL_FREE),
+                        'total'                => $tollFreeNumberTotal,
+                        'created_at'           => $now,
+                        'updated_at'           => $now
+                    ],
+                    [
+                        'billing_statement_id' => $statement->id,
+                        'label'                => $billing->label(Billing::ITEM_MINUTES_LOCAL),
+                        'quantity'             => $localMinutesQuantity,
+                        'price'                => $billing->price(Billing::ITEM_MINUTES_LOCAL),
+                        'total'                => $localMinutesTotal,
+                        'created_at'           => $now,
+                        'updated_at'           => $now
+                    ],
+                    [
+                        'billing_statement_id' => $statement->id,
+                        'label'                => $billing->label(Billing::ITEM_MINUTES_TOLL_FREE),
+                        'quantity'             => $tollFreeMinutesQuantity,
+                        'price'                => $billing->price(Billing::ITEM_MINUTES_TOLL_FREE),
+                        'total'                => $tollFreeMinutesTotal,
+                        'created_at'           => $now,
+                        'updated_at'           => $now
+                    ],
+                    [
+                        'billing_statement_id' => $statement->id,
+                        'label'                => $billing->label(Billing::ITEM_MINUTES_TRANSCRIPTION),
+                        'quantity'             => $transMinutesQuantity,
+                        'price'                => $billing->price(Billing::ITEM_MINUTES_TRANSCRIPTION),
+                        'total'                => $transMinutesTotal,
+                        'created_at'           => $now,
+                        'updated_at'           => $now
+                    ],
+                    [
+                        'billing_statement_id' => $statement->id,
+                        'label'                => $billing->label(Billing::ITEM_STORAGE_GB),
+                        'quantity'             => $storageQuantity,
+                        'price'                => $billing->price(Billing::ITEM_STORAGE_GB),
+                        'total'                => $storageTotal,
+                        'created_at'           => $now,
+                        'updated_at'           => $now
+                    ],
+                ];
+
+                foreach( $billing->account->companies as $company ){
+                    foreach( $company->plugins as $companyPlugin ){
+                        if( $plugin->price > 0 ){
+                            $items[] = [
+                                'billing_statement_id' => $statement->id,
+                                'label'                => $companyPlugin->label . ' (Company ' . $company->id .')',
+                                'quantity'             => 1,
+                                'price'                => $companyPlugin->price,
+                                'total'                => $companyPlugin->price
+                            ];
+                        }
                     }
                 }
+
+                BillingStatementItem::insert($items);
+
+                $billing->billing_period_starts_at = (new Carbon($billing->billing_period_ends_at))->addDays(1)->startOfDay(); // Start of the next day
+                $billing->billing_period_ends_at   = (new Carbon($billing->billing_period_starts_at))->addDays(30)->endOfDay(); // End of day, 30 days from now
+                $billing->save();
+
+                DB::commit();
+            }catch(\Exception $e){
+                DB::rollBack();
+
+                Log::error($e->getTraceAsString());
             }
-
-            BillingStatementItem::insert($items);
-
-            $billing->billing_period_starts_at = (new Carbon($billing->billing_period_ends_at))->addDays(1)->startOfDay(); // Start of the next day
-            $billing->billing_period_ends_at   = (new Carbon($billing->billing_period_starts_at))->addDays(30)->endOfDay(); // End of day, 30 days from now
-            $billing->save();
         }
     }
 }

@@ -15,7 +15,6 @@ class BillingStatement extends Model
         'billing_period_ends_at',
         'payment_attempts',
         'next_payment_attempt_at',
-        'locked_at',
         'failed_intent_id'
     ];
 
@@ -25,7 +24,6 @@ class BillingStatement extends Model
     ];
 
     protected $hidden = [
-        'locked_at',
         'failed_intent_id',
         'payment_attempts',
         'next_payment_attempt_at'

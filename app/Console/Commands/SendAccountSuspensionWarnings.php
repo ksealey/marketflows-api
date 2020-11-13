@@ -90,7 +90,6 @@ class SendAccountSuspensionWarnings extends Command
             } 
         }
 
-
         //
         //  7 days past due
         //
@@ -218,8 +217,7 @@ class SendAccountSuspensionWarnings extends Command
                     'category'      => Alert::CATEGORY_PAYMENT,
                     'type'          => Alert::TYPE_DANGER,
                     'title'         => 'Account suspended - phone numbers released',
-                    'message'       => 'Your account has been suspended for past due statements. All phone numbers associated with your account has been released. To re-enable your account please pay all past due statements.',
-                    'hidden_after'  => now()->addDays(1)
+                    'message'       => 'Your account has been suspended for past due statements. All phone numbers associated with your account has been released. To re-enable your account please pay all past due statements.'
                 ]);
 
                 Mail::to($user->email)

@@ -56,7 +56,8 @@ class Account extends Model
     public function payment_methods()
     {
         return $this->hasMany('\App\Models\PaymentMethod')
-                    ->orderBy('primary_method', 'desc');
+                    ->orderBy('primary_method', 'desc')
+                    ->orderBy('created_at', 'desc');
     }
 
     public function billing()
@@ -137,18 +138,18 @@ class Account extends Model
         $this->suspension_code    = null;
         $this->save();
 
-        //  Remove alerts for users
-        Alert::where('category', Alert::CATEGORY_PAYMENT)
-                  ->whereIn('user_id', function($query){
-                        $query->select('id')
-                              ->from('users')
-                              ->where('account_id', $this->id);
-                    })
-                    ->delete();
+        $this->removePaymentAlerts();
                     
         foreach( $this->admin_users as $user ){
             Mail::to($user->email)
                 ->queue(new AccountUnsuspended($user));
         }
+    }
+
+    public function removePaymentAlerts()
+    {
+        Alert::where('category', Alert::CATEGORY_PAYMENT)
+             ->where('account_id', $this->id)
+             ->delete();
     }
 }

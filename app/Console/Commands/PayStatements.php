@@ -41,7 +41,7 @@ class PayStatements extends Command
     {
         $statements = BillingStatement::whereNotNull('next_payment_attempt_at')
                                       ->where('next_payment_attempt_at', '<=', now())
-                                      ->whereNull('locked_at')
+                                      ->whereNull('paid_at')
                                       ->get();
         
         if( ! count($statements) ) return;

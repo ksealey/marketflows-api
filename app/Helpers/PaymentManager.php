@@ -29,10 +29,15 @@ class PaymentManager
      * 
      * @return \Stripe\Customer
      */
-    public function createCustomer(string $description)
+    public function createCustomer(Account $account)
     {
         return StripeCustomer::create([
-            'description' => $description
+            'name'        => $account->name,
+            'description' => $account->name . ' (' . $account->id . ')',
+            'metadata'    => [
+                'AccountName' => $account->name, 
+                'AccountID'   => $account->id
+            ]
         ]);
     }
 
@@ -99,8 +104,10 @@ class PaymentManager
         if( $attempts >= 3 || ! $total )
             return $result;
         
-        DB::beginTransaction();
-
+        $statement->next_payment_attempt_at = now()->addDays(3);
+        $statement->payment_attempts++;
+        $statement->save();
+        
         try {
             $paymentIntent = $this->createPaymentIntent(
                 $paymentMethod->account->billing->external_id,
@@ -126,7 +133,6 @@ class PaymentManager
             $statement->intent_id               = $paymentIntent->id;
             $statement->next_payment_attempt_at = null;
             $statement->paid_at                 = now();
-            $statement->payment_attempts++;
             $statement->save();
 
             $result['payment'] = $payment;
@@ -146,21 +152,12 @@ class PaymentManager
             $paymentMethod->last_error_intent_secret = $paymentIntent->client_secret;
             $paymentMethod->save();
 
-            $statement->intent_id               = $paymentIntent->id;
-            $statement->next_payment_attempt_at = now()->addDays(3);
-            $statement->payment_attempts++;
-            $statement->locked_at = null;
+            $statement->intent_id = $paymentIntent->id;
             $statement->save();
 
             $result['intent'] = $paymentIntent;
             $result['error']  = $error;
-        }catch(\Exception $e){
-            DB::rollBack();
-
-            return (object)$result;
         }
-        
-        DB::commit();
 
         return (object)$result;
     }
