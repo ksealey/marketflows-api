@@ -33,6 +33,25 @@ class KeywordTrackingPoolController extends Controller
             ], 400);
         }
 
+        $user    = $request->user(); 
+        $account = $company->account;
+
+        //  Block suspended accounts
+        if( $account->suspended_at ){
+            return response([
+                'error' => 'Your account is suspended. Please resolve outstanding issues and try again.'
+            ], 403);
+        }
+
+        //  Block accounts from purchasing more that 10 numbers when they have no payment method added
+        if( ! $account->hasValidPaymentMethod() ){
+            if( $account->phoneNumberCount() + intval($request->pool_size) > 10 ){ // Min for pool is 5, 10 max numbers without payment method
+                return response([
+                    'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
+                ], 403);
+            }
+        }
+
         $rules = [
             'name'                => 'bail|required|max:64',
             'phone_number_config_id' => [
@@ -55,8 +74,6 @@ class KeywordTrackingPoolController extends Controller
                 'error' => $validator->errors()->first()
             ], 400);
         }
-
-        $user = $request->user();
 
         //
         //  Create pool
@@ -139,14 +156,14 @@ class KeywordTrackingPoolController extends Controller
              DB::rollBack();
 
              return response([
-                 'error' => 'No phone numbers could be allocated for your search at this time - Please try again later'
+                 'error' => 'No phone numbers could be allocated for your search at this time - Please try again later.'
              ], 500);
         }
 
         DB::commit();
 
         if( $purchaseCount < $poolSize ){
-            $keywordTrackingPool->error = 'Your keyword tracking pool has been created but only ' . $purchaseCount . ' numbers were available - You can add additional numbers at any time';
+            $keywordTrackingPool->error = 'Your keyword tracking pool has been created but only ' . $purchaseCount . ' numbers were available - You can add additional numbers at any time.';
         }
 
         $keywordTrackingPool->phone_numbers = $keywordTrackingPool->phone_numbers;
@@ -270,6 +287,24 @@ class KeywordTrackingPoolController extends Controller
             ], 404);
         }
 
+        //  Block suspended accounts
+        $user    = $request->user(); 
+        $account = $company->account;
+        if( $account->suspended_at ){
+            return response([
+                'error' => 'Your account is suspended. Please resolve outstanding issues and try again.'
+            ], 403);
+        }
+
+        //  Block accounts from purchasing more that 10 numbers when they have no payment method added
+        if( ! $account->hasValidPaymentMethod() ){
+            if( $account->phoneNumberCount() + intval($request->count) > 10 ){ // Min for pool is 5, 10 max numbers without payment method
+                return response([
+                    'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
+                ], 403);
+            }
+        }
+
         $rules = [
             'type'       => 'bail|required|in:Toll-Free,Local',
             'count'      => 'required|numeric|min:1|max:20',
@@ -286,7 +321,6 @@ class KeywordTrackingPoolController extends Controller
             ], 400);
         }
 
-        $user = $request->user();
         //
         //  Purchase phone numbers
         //

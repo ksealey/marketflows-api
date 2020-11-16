@@ -76,6 +76,144 @@ class KeywordTrackingPoolTest extends TestCase
     }
 
     /**
+     * Test suspended accounts cannot create numbers
+     *
+     * @group keyword-tracking-pools
+     */
+    public function testCreateFailsWhenAccountSuspended()
+    {
+        $this->account->suspended_at = now();
+        $this->account->save();
+        
+        $company = $this->createCompany();
+        $config  = $this->createConfig($company);
+        $pool    = factory(KeywordTrackingPool::class)->make();
+
+        $response = $this->json('POST', route('create-keyword-tracking-pool', [
+            'company' => $company->id
+        ]),[
+            'name'                   => $pool->name,
+            'phone_number_config_id' => $config->id,
+            'type'                   => PhoneNumber::TYPE_TOLL_FREE,
+            'swap_rules'             => json_encode($pool->swap_rules),
+            'pool_size'              => 5,
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJSON([
+            'error' => 'Your account is suspended. Please resolve outstanding issues and try again.'
+        ]);
+    }
+
+    /**
+     * Test creating more than 10 numbers fail when no payment method added
+     *
+     * @group keyword-tracking-pools
+     */
+    public function testCreateOverTenFailsWhenNoPaymentMethodAdded()
+    {
+        $this->paymentMethod->delete();
+
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $numbers     = factory(PhoneNumber::class, 6)->create([
+            'account_id'                => $this->account->id,
+            'company_id'                => $company->id,
+            'phone_number_config_id'    => $config->id,
+            'created_by'                => $this->user->id
+        ]);
+
+        $pool    = factory(KeywordTrackingPool::class)->make();
+        $response = $this->json('POST', route('create-keyword-tracking-pool', [
+            'company' => $company->id
+        ]),[
+            'name'                   => $pool->name,
+            'phone_number_config_id' => $config->id,
+            'type'                   => PhoneNumber::TYPE_TOLL_FREE,
+            'swap_rules'             => json_encode($pool->swap_rules),
+            'pool_size'              => 5,
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJSON([
+            'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
+        ]);
+    }
+
+    /**
+     * Test suspended accounts cannot add numbers
+     *
+     * @group keyword-tracking-pools
+     */
+    public function testAddFailsWhenAccountSuspended()
+    {
+        $this->account->suspended_at = now();
+        $this->account->save();
+        
+        $company = $this->createCompany();
+        $config  = $this->createConfig($company);
+        $pool        = factory(KeywordTrackingPool::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $response = $this->json('POST', route('add-keyword-tracking-pool-numbers', [
+            'company'             => $company->id,
+            'keywordTrackingPool' => $pool->id
+        ]), [
+            'type'          => PhoneNumber::TYPE_LOCAL,
+            'starts_with'   => '813',
+            'count'         => 5
+        ]);
+        $response->assertStatus(403);
+        $response->assertJSON([
+            'error' => 'Your account is suspended. Please resolve outstanding issues and try again.'
+        ]);
+    }
+
+    /**
+     * Test creating more than 10 numbers fail when no payment method added
+     *
+     * @group keyword-tracking-pools
+     */
+    public function testAddOverTenFailsWhenNoPaymentMethodAdded()
+    {
+        $this->paymentMethod->delete();
+
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $numbers     = factory(PhoneNumber::class, 6)->create([
+            'account_id'                => $this->account->id,
+            'company_id'                => $company->id,
+            'phone_number_config_id'    => $config->id,
+            'created_by'                => $this->user->id
+        ]);
+
+        $pool = factory(KeywordTrackingPool::class)->create([
+            'account_id' => $company->account_id,
+            'company_id' => $company->id,
+            'phone_number_config_id' => $config->id,
+            'created_by' => $this->user->id
+        ]);
+
+        $response = $this->json('POST', route('add-keyword-tracking-pool-numbers', [
+            'company'             => $company->id,
+            'keywordTrackingPool' => $pool->id
+        ]), [
+            'type'          => PhoneNumber::TYPE_LOCAL,
+            'starts_with'   => '813',
+            'count'         => 5
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJSON([
+            'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
+        ]);
+    }
+
+    /**
      * Test create toll free phone nnumber pool
      * 
      * @group keyword-tracking-pools 
@@ -382,7 +520,7 @@ class KeywordTrackingPoolTest extends TestCase
     /**
      * Test adding numbers
      * 
-     * @group keyword-tracking-pools
+     * @group keyword-tracking-pools--
      */
     public function testAddNumbers()
     {

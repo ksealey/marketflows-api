@@ -439,6 +439,89 @@ class PhoneNumberTest extends TestCase
      | 
      */
 
+     /**
+     * Test suspended accounts cannot create numbers
+     *
+     * @group phone-numbers
+     */
+    public function testCreateFailsWhenAccountSuspended()
+    {
+        $this->account->suspended_at = now();
+        $this->account->save();
+        
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $numbers     = factory(PhoneNumber::class, 10)->create([
+            'account_id'                => $this->account->id,
+            'company_id'                => $company->id,
+            'phone_number_config_id'    => $config->id,
+            'created_by'                => $this->user->id
+        ]);
+
+        $numberData = factory(PhoneNumber::class)->make();
+        $response = $this->json('POST', route('create-phone-number', [
+            'company' => $company->id
+        ]), [
+            'name'        => $numberData->name,
+            'category'    => $numberData->category,
+            'sub_category'=> $numberData->sub_category,
+            'type'        => $numberData->type,
+            'starts_with' => '813',
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'campaign'    => $numberData->campaign,
+            'phone_number_config_id' => $config->id,
+            'swap_rules'  => json_encode($numberData->swap_rules)
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJSON([
+            'error' => 'Your account is suspended. Please resolve outstanding issues and try again.'
+        ]);
+    }
+
+    /**
+     * Test creating more than 10 numbers fail when no payment method added
+     *
+     * @group phone-numbers
+     */
+    public function testCreateOverTenFailsWhenNoPaymentMethodAdded()
+    {
+        $this->paymentMethod->delete();
+
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $numbers     = factory(PhoneNumber::class, 10)->create([
+            'account_id'                => $this->account->id,
+            'company_id'                => $company->id,
+            'phone_number_config_id'    => $config->id,
+            'created_by'                => $this->user->id
+        ]);
+
+        $numberData = factory(PhoneNumber::class)->make();
+        $response = $this->json('POST', route('create-phone-number', [
+            'company' => $company->id
+        ]), [
+            'name'        => $numberData->name,
+            'category'    => $numberData->category,
+            'sub_category'=> $numberData->sub_category,
+            'type'        => $numberData->type,
+            'starts_with' => '813',
+            'source'      => $numberData->source,
+            'medium'      => $numberData->medium,
+            'content'     => $numberData->content,
+            'campaign'    => $numberData->campaign,
+            'phone_number_config_id' => $config->id,
+            'swap_rules'  => json_encode($numberData->swap_rules)
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJSON([
+            'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
+        ]);
+    }
+
     /**
      * Test creating a local offline phone number
      * 

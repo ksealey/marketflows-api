@@ -126,6 +126,13 @@ class Account extends Model
         return false;
     }
 
+    public function phoneNumberCount()
+    {
+        return PhoneNumber::withTrashed()
+                          ->where('account_id', $this->id)
+                          ->count();
+    }
+
     public function unsuspend()
     {
         $billing = $this->billing;

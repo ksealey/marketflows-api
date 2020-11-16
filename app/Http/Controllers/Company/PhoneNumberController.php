@@ -71,11 +71,22 @@ class PhoneNumberController extends Controller
     public function create(Request $request, Company $company)
     {
         $user    = $request->user(); 
-        $account = $company->account; 
-        if( ! $account->hasValidPaymentMethod() ){
+        $account = $company->account;
+
+        //  Block suspended accounts
+        if( $account->suspended_at ){
             return response([
-                'error' => 'No valid payment method found. Add a valid payment method and try again.'
+                'error' => 'Your account is suspended. Please resolve outstanding issues and try again.'
             ], 403);
+        }
+
+        //  Block accounts from purchasing more that 5 numbers when they have no payment method added
+        if( ! $account->hasValidPaymentMethod() ){
+            if( $account->phoneNumberCount() >= 10 ){
+                return response([
+                    'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
+                ], 403);
+            }
         }
         
         $rules = [

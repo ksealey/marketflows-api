@@ -20,8 +20,7 @@ class PhoneNumberPolicy
     public function create(User $user, Company $company)
     {
         return $user->canDoAction('create')
-            && $user->canViewCompany($company)
-            && $user->account->suspended_at == null;
+            && $user->canViewCompany($company);
     }
 
     public function read(User $user, PhoneNumber $phoneNumber, Company $company)
