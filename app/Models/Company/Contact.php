@@ -173,6 +173,7 @@ class Contact extends Model
 
         $activities = array_merge([
             [
+                'id'         => $this->id,
                 'kind'       => 'ActivityCreateContact',
                 'created_at' => $this->created_at
             ],

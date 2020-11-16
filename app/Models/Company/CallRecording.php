@@ -35,6 +35,7 @@ class CallRecording extends Model
 
     protected $appends = [
         'url',
+        'transcription_url',
         'kind',
         'mimetype'
     ];
@@ -48,6 +49,15 @@ class CallRecording extends Model
         return rtrim(config('app.cdn_url'), '/') 
                 . '/' 
                 . trim($this->path, '/');
+    }
+
+    public function getTranscriptionUrlAttribute()
+    {
+        if( ! $this->transcription_path ) return null;
+
+        return rtrim(config('app.cdn_url'), '/') 
+                . '/' 
+                . trim($this->transcription_path, '/');
     }
 
     public function getStorageUrlAttribute()
