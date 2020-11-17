@@ -990,7 +990,7 @@ class IncomingCallTest extends TestCase
         });
 
         $recordingPath     = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/recordings/Call-' . $call->id . '.mp3';
-        $transcriptionPath = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/transcriptions/Transcription-' . $call->id . '.json';
+        $transcriptionPath = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/transcriptions/Transcription-' . $call->id . '.txt';
         $this->mock(TranscribeService::class, function($mock) use($recordingContent){
             $jobId   = str_random(10);
             $fileUrl = $this->faker()->url;
@@ -1009,11 +1009,10 @@ class IncomingCallTest extends TestCase
                  ->once();
 
             $mock->shouldReceive('transformContent')
-                 ->with($recordingContent)
                  ->andReturn([
                      'hello_world'
                  ])
-                 ->once();
+                 ->times(2);
 
             $mock->shouldReceive('deleteTranscription')
                  ->with($jobId)

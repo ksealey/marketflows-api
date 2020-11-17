@@ -98,7 +98,6 @@ class RegisterController extends Controller
                 'content_param'                 => 'utm_content,content',
                 'campaign_param'                => 'utm_campaign,content',
                 'keyword_param'                 => 'utm_term,term,keyword',
-                'source_referrer_when_empty'    => 1
             ]);
 
             //  Setup billing for account

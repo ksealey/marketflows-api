@@ -47,7 +47,8 @@ class SwapRuleTest extends TestCase
         $this->assertFalse($sessionService->isDirect('https://app.something.com/', 'https://www.something.com'));
         $this->assertTrue($sessionService->isDirect('/', 'https://www.something.com'));
         $this->assertFalse($sessionService->isDirect($faker->url, $faker->url));
-        
+        $this->assertEquals($sessionService->getSource($company->source_param, null, $faker->url), 'Direct');
+        $this->assertEquals($sessionService->getSource($company->source_param, 'https://www.something.com/', 'https://www.something.com'), 'Direct');
 
          //  Test Organic
         $this->assertTrue($sessionService->isOrganic('https://search.yahoo.com', $faker->url, $company->medium_param));
@@ -61,6 +62,15 @@ class SwapRuleTest extends TestCase
         $this->assertTrue($sessionService->isOrganic('https://www.bing.com', $faker->url, $company->medium_param));
 
         $this->assertFalse($sessionService->isOrganic($faker->url, $faker->url, $company->medium_param));
+
+        $this->assertEquals($sessionService->getSource($company->source_param, 'https://search.yahoo.com', $faker->url), 'Yahoo');
+        $this->assertEquals($sessionService->getSource($company->source_param, 'https://mobile.facebook.com', $faker->url), 'Facebook');
+        $this->assertEquals($sessionService->getSource($company->source_param, 'https://google.com', $faker->url), 'Google');
+        $this->assertEquals($sessionService->getSource($company->source_param, 'https://linkedin.com', $faker->url), 'LinkedIn');
+        $this->assertEquals($sessionService->getSource($company->source_param, 'https://twitter.com', $faker->url), 'Twitter');
+        
+        $referrer = $faker->url;
+        $this->assertEquals($sessionService->getSource($company->source_param, $referrer, $faker->url), $referrer);
 
         //  Test Paid
         $this->assertTrue($sessionService->isPaid($faker->url . '?utm_medium=cpc', $company->medium_param));

@@ -35,7 +35,6 @@ class Company extends Model implements Exportable
         'content_param',
         'campaign_param',
         'keyword_param',
-        'source_referrer_when_empty',
         'tracking_expiration_days',
         'created_by',
         'updated_by'
@@ -51,10 +50,6 @@ class Company extends Model implements Exportable
     protected $appends = [
         'link',
         'kind'
-    ];
-
-    public $casts = [
-        'source_referrer_when_empty' => 'boolean'
     ];
 
     static public function exports() : array

@@ -16,6 +16,5 @@ $factory->define(\App\Models\Company::class, function (Faker $faker) {
         'content_param'  => 'utm_content,content',
         'campaign_param' => 'utm_campaign,content',
         'keyword_param'  => 'utm_term,keyword,term',
-        'source_referrer_when_empty' => 1
     ]; 
 });

@@ -98,8 +98,8 @@ class UserTest extends TestCase
 
         $response->assertStatus(201);
         $response->assertJSON([
-            'first_name' => $user->first_name,
-            'last_name'  => $user->last_name,
+            'first_name' => ucfirst(strtolower($user->first_name)),
+            'last_name'  => ucfirst(strtolower($user->last_name)),
             'email'      => $user->email,
             'timezone'   => $user->timezone,
             'role'       => User::ROLE_SYSTEM

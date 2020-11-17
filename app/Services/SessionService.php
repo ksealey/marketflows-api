@@ -9,18 +9,24 @@ class SessionService
 {
     use CanSwapNumbers;
 
-    public function getSource($sourceCsvFieldList, $httpReferrer, $landingUrl, $useReferrerWhenEmpty = true)
+    public function getSource($sourceCsvFieldList, $httpReferrer, $landingUrl)
     {
+        //  Came in as param
         $source = $this->getParam($landingUrl, $sourceCsvFieldList);
         if( $source ) return $source;
 
-        if( $useReferrerWhenEmpty ){
-            $referrer = substr($httpReferrer, 0, 512);
-            
-            if( $referrer ) return $referrer;
+        // Direct hit (No referrer or referrer same as landing url)
+        if( $this->getIsDirect($httpReferrer, $landingUrl) ){
+            return 'Direct';
         }
-        
-        return null;
+
+        // See if this is in our known list of referrers
+        $knownReferrer = $this->getKnownReferrer($httpReferrer);
+        if( $knownReferrer ){
+            return $knownReferrer;
+        }
+
+        return substr($httpReferrer, 0, 512);
     }
 
     public function getMedium($mediumCsvFieldList, $landingUrl)

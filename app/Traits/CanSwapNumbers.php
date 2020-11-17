@@ -322,6 +322,31 @@ trait CanSwapNumbers
         return in_array($host, $searchDomains);
     }
 
+    public function getKnownReferrer($httpReferrer)
+    {
+        $knownDomains = [
+            'google.com'            => 'Google',
+            'yahoo.com'             => 'Yahoo',
+            'bing.com'              => 'Bing',
+            'duckduckgo.com'        => 'DuckDuckGo',
+            'yandex.com'            => 'Yandex',
+            'facebook.com'          => 'Facebook',
+            'fb.com'                => 'Facebook',
+            'instagram.com'         => 'Instagram',
+            'twitter.com'           => 'Twitter',
+            'linkedin.com'          => 'LinkedIn'
+        ];
+
+        $httpReferrer = parse_url(trim(strtolower($httpReferrer)),PHP_URL_HOST);
+        if( ! $httpReferrer ) 
+            return null;
+
+        $httpReferrer = preg_match_all('/[^.]+\.[A-z]{2,10}$/i', $httpReferrer, $matches);
+        $domain       = count($matches) ? $matches[0][0] : '';
+        
+        return $knownDomains[$domain] ?? null;
+    }
+
     /**
      * Determine if a visit is a referral
      *

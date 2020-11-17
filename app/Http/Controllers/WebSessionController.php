@@ -105,8 +105,8 @@ class WebSessionController extends Controller
                                           ]);
             }
 
-            $source = $sessionService->getSource($company->source_param, $httpReferrer, $landingURL, $company->source_referrer_when_empty);
-            $source = $source ? substr($source, 0, 512) : null;
+            $source = $sessionService->getSource($company->source_param, $httpReferrer, $landingURL);
+            $source = substr($source, 0, 512);
 
             $medium = $sessionService->getMedium($company->medium_param, $landingURL);
             $medium = $medium ? substr($medium, 0, 128) : null;

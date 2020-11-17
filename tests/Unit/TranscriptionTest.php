@@ -8,6 +8,7 @@ use \App\Services\TranscribeService;
 use \App\Models\Company\Contact;
 use \App\Models\Company\Call;
 use \App\Models\Company\CallRecording;
+use \App\Jobs\TranscribeRecordingJob;
 use \App;
 use \Storage;
 
@@ -42,38 +43,43 @@ class TranscriptionTest extends TestCase
             'created_at'        => now()->subDays(2)
         ]);
 
-        $path = '/accounts/' . $this->account->id . '/companies/' . $company->id . '/Call-' . $call->id . '.mp3';
-        Storage::put($path, 'blah blah!');
+        $storagePath   = 'accounts/' . $company->account_id . '/companies/' . $company->id;
+        $recordingPath = $storagePath . '/recordings/Call-' . $call->id . '.mp3';
+        Storage::put($recordingPath, 'Foo Bar!!');
 
         $recording = factory(CallRecording::class)->create([
             'account_id'            => $call->account_id,
             'company_id'            => $call->company_id,
             'call_id'               => $call->id,
-            'path'                  => $path,
-            'transcription_path'    => ''
+            'path'                  => $recordingPath,
+            'transcription_path'    => null
         ]);
 
         $jobId = $recording->id . '-' . date('U');
         $url   = $this->faker()->url;
-        $mock  = $this->partialMock(TranscribeService::class, function($mock) use($recording, $jobId, $url){
+        $this->partialMock(TranscribeService::class, function($mock) use($recording, $jobId, $url){
             $mock->shouldReceive('startTranscription')
-                 ->with($recording, 'en-US')
+                 ->once()
                  ->andReturn($jobId);
                  
             $mock->shouldReceive('waitForUrl')
                  ->with($jobId)
+                 ->once()
                  ->andReturn($url);
 
             $mock->shouldReceive('downloadFromUrl')
                  ->with($url)
+                 ->once()
                  ->andReturn(json_decode(file_get_contents(__DIR__ . '/../data/transcription.json')));
 
             $mock->shouldReceive('deleteTranscription')
+                 ->once()
                  ->with($jobId);
         });
 
-        $mock->transcribe($recording);
-
-        Storage::assertExists(str_replace('recordings/Call-' . $recording->call_id . '.mp3', 'transcriptions/Call-' . $recording->call_id . '.json', $path));
+        TranscribeRecordingJob::dispatch($company, $recording);
+        
+        Storage::assertExists($storagePath . '/transcriptions/Transcription-' . $recording->call_id . '.json');
+        Storage::assertExists($storagePath . '/transcriptions/Transcription-' . $recording->call_id . '.txt');
     }
 }

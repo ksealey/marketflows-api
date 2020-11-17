@@ -277,7 +277,7 @@ class WebSessionTest extends TestCase
                     'device_height'             => $browser->device_height,
                     'landing_url'               => $browser->landing_url,
                     'http_referrer'             => $browser->http_referrer,
-                    'source'                    => $sessionService->getSource($company->source_param, $browser->http_referrer, $browser->landing_url, $company->source_referrer_when_empty),
+                    'source'                    => $sessionService->getSource($company->source_param, $browser->http_referrer, $browser->landing_url),
                     'medium'                    => $sessionService->getMedium($company->medium_param, $browser->landing_url),
                     'content'                   => $sessionService->getContent($company->content_param, $browser->landing_url),
                     'campaign'                  => $sessionService->getCampaign($company->campaign_param, $browser->landing_url),
@@ -451,7 +451,7 @@ class WebSessionTest extends TestCase
             $recordingSid       = str_random(40);
             $recordingContent   = random_bytes(9999);
             $recordingPath      = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/recordings/Call-' . $call->id . '.mp3';
-            $transcriptionPath  = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/transcriptions/Transcription-' . $call->id . '.json';
+            $transcriptionPath  = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/transcriptions/Transcription-' . $call->id . '.txt';
             
             $this->mock('HTTPClient', function($mock) use($url, $recordingContent){
                 $mock->shouldReceive('request')
@@ -492,11 +492,10 @@ class WebSessionTest extends TestCase
                     ->once();
 
                 $mock->shouldReceive('transformContent')
-                    ->with($recordingContent)
                     ->andReturn([
                         'hello_world'
                     ])
-                    ->once();
+                    ->times(2);
 
                 $mock->shouldReceive('deleteTranscription')
                     ->with($jobId)
@@ -776,7 +775,7 @@ class WebSessionTest extends TestCase
                 $recordingSid       = str_random(40);
                 $recordingContent   = random_bytes(9999);
                 $recordingPath      = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/recordings/Call-' . $call->id . '.mp3';
-                $transcriptionPath  = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/transcriptions/Transcription-' . $call->id . '.json';
+                $transcriptionPath  = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/transcriptions/Transcription-' . $call->id . '.txt';
                 
                 $this->mock('HTTPClient', function($mock) use($url, $recordingContent){
                     $mock->shouldReceive('request')
@@ -817,11 +816,10 @@ class WebSessionTest extends TestCase
                         ->once();
 
                     $mock->shouldReceive('transformContent')
-                        ->with($recordingContent)
                         ->andReturn([
                             'hello_world'
                         ])
-                        ->once();
+                        ->times(2);
 
                     $mock->shouldReceive('deleteTranscription')
                         ->with($jobId)
@@ -1069,7 +1067,7 @@ class WebSessionTest extends TestCase
                 $recordingSid       = str_random(40);
                 $recordingContent   = random_bytes(9999);
                 $recordingPath      = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/recordings/Call-' . $call->id . '.mp3';
-                $transcriptionPath  = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/transcriptions/Transcription-' . $call->id . '.json';
+                $transcriptionPath  = 'accounts/' . $call->account_id . '/companies/' . $call->company_id . '/transcriptions/Transcription-' . $call->id . '.txt';
                 
                 $this->mock('HTTPClient', function($mock) use($url, $recordingContent){
                     $mock->shouldReceive('request')
@@ -1110,11 +1108,10 @@ class WebSessionTest extends TestCase
                         ->once();
 
                     $mock->shouldReceive('transformContent')
-                        ->with($recordingContent)
                         ->andReturn([
                             'hello_world'
                         ])
-                        ->once();
+                        ->times(2);
 
                     $mock->shouldReceive('deleteTranscription')
                         ->with($jobId)

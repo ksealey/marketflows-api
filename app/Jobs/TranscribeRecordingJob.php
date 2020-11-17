@@ -31,7 +31,7 @@ class TranscribeRecordingJob implements ShouldQueue
      */
     public function __construct(Company $company, CallRecording $recording)
     {
-       $this->company = $company;
+       $this->company   = $company;
        $this->recording = $recording; 
     }
 
@@ -53,12 +53,22 @@ class TranscribeRecordingJob implements ShouldQueue
         $content = $transcriber->downloadFromUrl($fileUrl); 
         if( ! $content ) throw new Exception('Unable to download transcript for job ' . $jobId);
 
-        $recording->transcription_path = str_replace('recordings/Call-' . $recording->call_id . '.mp3', 'transcriptions/Transcription-' . $recording->call_id . '.json', $recording->path);
-        Storage::put($recording->transcription_path, json_encode($transcriber->transformContent($content)), [
+        $transcriptionPath = 'accounts/' . $company->account_id . '/companies/' . $company->id . '/transcriptions';
+
+        //  JSON Version
+        Storage::put($transcriptionPath . '/Transcription-' . $recording->call_id . '.json', $transcriber->transformContent($content), [
+            'visibility'               => 'public',
+            'AccessControlAllowOrigin' => '*'
+        ]);
+
+        //  Text Version
+        $textPath = $transcriptionPath . '/Transcription-' . $recording->call_id . '.txt';
+        Storage::put($textPath, $transcriber->transformContent($content, true), [
             'visibility'               => 'public',
             'AccessControlAllowOrigin' => '*'
         ]);
         
+        $recording->transcription_path = $textPath;
         $recording->save();
 
         $transcriber->deleteTranscription($jobId);

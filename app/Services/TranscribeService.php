@@ -15,7 +15,7 @@ class TranscribeService
         $this->httpClient  = $httpClient;
     }
 
-    public function transcribe($recording, $languageCode = 'en-US')
+    public function transcribe($recording, $asText = false, $languageCode = 'en-US')
     {
         //
         //  Transcribe multi-channel
@@ -37,7 +37,7 @@ class TranscribeService
         //  Delete original
         $this->deleteTranscription($jobId);
 
-        return $this->transformContent($content);
+        return $this->transformContent($content, $asText);
     }
 
     public function startTranscription($recording, $languageCode)
@@ -87,7 +87,7 @@ class TranscribeService
         return json_decode($response->getBody());
     }
 
-    public function transformContent($content)
+    public function transformContent($content, $asText = false)
     {
         $transcript = [
             'channel_labels' => [],
@@ -122,6 +122,45 @@ class TranscribeService
             ];
         }
 
+        if( $asText ){
+            $txt = '';
+
+            //  Merge into one big dataset
+            $allItems = [];
+            foreach($transcript['channels'] as $channel){
+                $items = array_map(function($item) use($channel){
+                    $item['speaker_label'] = $channel['label'];
+                    $item['speaker_name']  = $channel['label'] == 'ch_0' ? 'Caller' : 'Agent';
+                    return $item;
+                }, $channel['content']);
+                $allItems = array_merge($allItems, $items);
+            }
+
+            //  Order
+            usort($allItems, function($a, $b){
+                return $a['start_time'] < $b['start_time'] ? -1 : 1;
+            });
+
+            //  Transform to text file
+            $lastSpeaker = null;
+            foreach( $allItems as $idx => $item ){
+                if( $item['speaker_label'] != $lastSpeaker ){
+                    $txt .= $item['speaker_name'] . ": " . $item['start_time'] . "s\n";
+                }
+                
+                $txt .= $item['text'];
+                if( isset($allItems[$idx+1]) ){
+                    $txt .= "\n";
+                    if( $item['speaker_label'] != $allItems[$idx+1]['speaker_label'] )
+                        $txt .= "\n";
+                }
+                $lastSpeaker = $item['speaker_label'];
+            }
+            $transcript = $txt;
+        }else{
+            $transcript = json_encode($transcript);
+        }
+        
         return $transcript;
     }
 

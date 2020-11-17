@@ -44,7 +44,6 @@ class AccountController extends Controller
             'content_param'                 => ['bail', new ParamNameRule()],
             'campaign_param'                => ['bail', new ParamNameRule()],
             'keyword_param'                 => ['bail', new ParamNameRule()],
-            'source_referrer_when_empty'    => 'boolean'
         ];
 
         $validator = validator($request->all(), $rules);
@@ -79,9 +78,6 @@ class AccountController extends Controller
 
         if( $request->filled('keyword_param') )
             $account->keyword_param = $request->keyword_param;
-
-        if( $request->filled('source_referrer_when_empty') )
-            $account->source_referrer_when_empty = $request->source_referrer_when_empty;
 
         $account->save();
 
