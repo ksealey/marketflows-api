@@ -488,10 +488,10 @@ class IncomingCallController extends Controller
                 'email'         => null,
                 'country_code'  => $callerCountryCode,
                 'number'        => $callerNumber,
-                'city'          => $this->fieldFormat($request->FromCity),
-                'state'         => $this->fieldFormat($request->FromState),
-                'zip'           => $this->fieldFormat($request->FromZip),
-                'country'       => $this->fieldFormat($request->FromCountry)
+                'city'          => $this->fieldFormat($request->FromCity) ?: null,
+                'state'         => strtoupper($this->fieldFormat($request->FromState)) ?: null,
+                'zip'           => $this->fieldFormat($request->FromZip) ?: null,
+                'country'       => strtoupper($this->fieldFormat($request->FromCountry)) ?: null
             ]);
 
             if( $session ){ // Claim session
