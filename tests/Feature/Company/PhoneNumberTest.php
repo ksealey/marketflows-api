@@ -779,7 +779,7 @@ class PhoneNumberTest extends TestCase
 
         $numberData = factory(PhoneNumber::class)->make([
             'category'     => 'Online',
-            'sub_category' => 'EMAIL'
+            'sub_category' => 'Email'
         ]);
 
         $areaCode   = '813'; 
