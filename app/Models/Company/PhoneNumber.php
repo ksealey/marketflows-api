@@ -26,20 +26,20 @@ class PhoneNumber extends Model implements Exportable
     const TYPE_LOCAL     = 'Local';
     const TYPE_TOLL_FREE = 'Toll-Free';
 
-    const ONLINE_SUB_CATEGORIES = [
-        'WEBSITE',
-        'SOCIAL_MEDIA',
-        'EMAIL'
+    const Online_SUB_CATEGORIES = [
+        'Website',
+        'Social Media',
+        'Email'
     ];
 
-    const OFFLINE_SUB_CATEGORIES = [
+    const Offline_SUB_CATEGORIES = [
         'TV',
-        'RADIO',
-        'NEWSPAPER',
-        'DIRECT_MAIL',
-        'FLYER',
-        'BILLBOARD',
-        'OTHER'
+        'Radio',
+        'Newspaper',
+        'Direct Mail',
+        'Flyer',
+        'Billboard',
+        'Other'
     ];
     
     private $numberService;

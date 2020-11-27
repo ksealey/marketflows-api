@@ -48,7 +48,7 @@ class KeywordTrackingPoolController extends Controller
             if( $account->phoneNumberCount() + intval($request->pool_size) > 10 ){ // Min for pool is 5, 10 max numbers without payment method
                 return response([
                     'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
-                ], 403);
+                ], 400);
             }
         }
 
@@ -127,8 +127,8 @@ class KeywordTrackingPoolController extends Controller
                     'company_id'                => $company->id,
                     'phone_number_config_id'    => $request->phone_number_config_id,
                     'keyword_tracking_pool_id'  => $keywordTrackingPool->id,
-                    'category'                  => 'ONLINE',
-                    'sub_category'              => 'WEBSITE',
+                    'category'                  => 'Online',
+                    'sub_category'              => 'Website',
                     'type'                      => $request->type,
                     'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
                     'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),
@@ -301,7 +301,7 @@ class KeywordTrackingPoolController extends Controller
             if( $account->phoneNumberCount() + intval($request->count) > 10 ){ // Min for pool is 5, 10 max numbers without payment method
                 return response([
                     'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
-                ], 403);
+                ], 400);
             }
         }
 
@@ -359,8 +359,8 @@ class KeywordTrackingPoolController extends Controller
                     'company_id'                => $company->id,
                     'phone_number_config_id'    => $keywordTrackingPool->phone_number_config_id,
                     'keyword_tracking_pool_id'  => $keywordTrackingPool->id,
-                    'category'                  => 'ONLINE',
-                    'sub_category'              => 'WEBSITE',
+                    'category'                  => 'Online',
+                    'sub_category'              => 'Website',
                     'type'                      => $request->type,
                     'country_code'              => PhoneNumber::countryCode($purchasedPhone->phoneNumber),
                     'number'                    => PhoneNumber::number($purchasedPhone->phoneNumber),

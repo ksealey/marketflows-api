@@ -516,7 +516,7 @@ class PhoneNumberTest extends TestCase
             'swap_rules'  => json_encode($numberData->swap_rules)
         ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(400);
         $response->assertJSON([
             'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
         ]);
@@ -584,7 +584,7 @@ class PhoneNumberTest extends TestCase
             'phone_number_config_id' => $config->id,
             'country_code' => PhoneNumber::countryCode($twilioNumber->phoneNumber),
             'number'       => PhoneNumber::number($twilioNumber->phoneNumber),
-            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ? json_decode(json_encode($numberData->swap_rules), true)  : null,
+            'swap_rules'   => $numberData->sub_category == 'Website' ? json_decode(json_encode($numberData->swap_rules), true)  : null,
             'call_count'   => 0,
             'link'         => route('read-phone-number', [
                 'company' => $company->id,
@@ -667,7 +667,7 @@ class PhoneNumberTest extends TestCase
             'is_referral' => $numberData->is_referral,
             'is_search'   => $numberData->is_search,
             'phone_number_config_id' => $config->id,
-            'swap_rules'   => $numberData->sub_category == 'WEBSITE' ?  json_decode(json_encode($numberData->swap_rules), true)  : null,
+            'swap_rules'   => $numberData->sub_category == 'Website' ?  json_decode(json_encode($numberData->swap_rules), true)  : null,
             'call_count'   => 0,
             'link'         => route('read-phone-number', [
                 'company' => $company->id,
@@ -684,7 +684,7 @@ class PhoneNumberTest extends TestCase
     }
 
     /**
-     * Test creating an online social phone number. When not WEBSITE, swap rules should be null.
+     * Test creating an online social phone number. When not Website, swap rules should be null.
      * 
      * @group phone-numbers
      */
@@ -694,8 +694,8 @@ class PhoneNumberTest extends TestCase
         $config     = $this->createConfig($company);
 
         $numberData = factory(PhoneNumber::class)->make([
-            'category' => 'ONLINE',
-            'sub_category' => 'SOCIAL_MEDIA'
+            'category' => 'Online',
+            'sub_category' => 'Social Media'
         ]);
 
         $areaCode   = '813'; 
@@ -768,7 +768,7 @@ class PhoneNumberTest extends TestCase
     }
 
     /**
-     * Test creating an online email number. When not WEBSITE, swap rules should be null.
+     * Test creating an online email number. When not Website, swap rules should be null.
      * 
      * @group phone-numbers
      */
@@ -778,7 +778,7 @@ class PhoneNumberTest extends TestCase
         $config     = $this->createConfig($company);
 
         $numberData = factory(PhoneNumber::class)->make([
-            'category'     => 'ONLINE',
+            'category'     => 'Online',
             'sub_category' => 'EMAIL'
         ]);
 
@@ -852,7 +852,7 @@ class PhoneNumberTest extends TestCase
     }
 
     /**
-     * Test creating an online website. When WEBSITE, swap rules should not be null.
+     * Test creating an online website. When Website, swap rules should not be null.
      * 
      * @group phone-numbers
      */
@@ -862,8 +862,8 @@ class PhoneNumberTest extends TestCase
         $config     = $this->createConfig($company);
 
         $numberData = factory(PhoneNumber::class)->make([
-            'category'     => 'ONLINE',
-            'sub_category' => 'WEBSITE'
+            'category'     => 'Online',
+            'sub_category' => 'Website'
         ]);
 
         $areaCode   = '813'; 
@@ -968,7 +968,7 @@ class PhoneNumberTest extends TestCase
         $paymentMethod = $this->createPaymentMethod();
 
         $numberData = factory(PhoneNumber::class)->make([
-            'category' => 'OFFLINE'
+            'category' => 'Offline'
         ]);
         $areaCode   = '813'; 
         if( $numberData->type === PhoneNumber::TYPE_TOLL_FREE )
@@ -978,20 +978,20 @@ class PhoneNumberTest extends TestCase
         $this->mock(PhoneNumberService::class, function ($mock) use($numberData, $areaCode, $company, $twilioNumber){
             $mock->shouldReceive('listAvailable')
                  ->with($areaCode, 1, $numberData->type, $company->country)
-                 ->times(count(PhoneNumber::OFFLINE_SUB_CATEGORIES))
+                 ->times(count(PhoneNumber::Offline_SUB_CATEGORIES))
                  ->andReturn(
                     [$twilioNumber]
                 );
 
             $mock->shouldReceive('purchase')
-                ->times(count(PhoneNumber::OFFLINE_SUB_CATEGORIES))
+                ->times(count(PhoneNumber::Offline_SUB_CATEGORIES))
                 ->with($twilioNumber->phoneNumber)
                 ->andReturn(
                    $twilioNumber
                );
         });
 
-        foreach( PhoneNumber::OFFLINE_SUB_CATEGORIES as $subCategory ){
+        foreach( PhoneNumber::Offline_SUB_CATEGORIES as $subCategory ){
             $response = $this->json('POST', route('create-phone-number', [
                 'company' => $company->id
             ]), [
@@ -1131,7 +1131,7 @@ class PhoneNumberTest extends TestCase
             'medium'                 => $updatedNumberData->medium,  
             'content'                => $updatedNumberData->content,  
             'campaign'               => $updatedNumberData->campaign,        
-            'swap_rules'             => $updatedNumberData->sub_category == 'WEBSITE' ? json_decode(json_encode($updatedNumberData->swap_rules), true) : null,
+            'swap_rules'             => $updatedNumberData->sub_category == 'Website' ? json_decode(json_encode($updatedNumberData->swap_rules), true) : null,
         ]);
 
         $this->assertDatabaseHas('phone_numbers', [

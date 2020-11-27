@@ -62,8 +62,8 @@ class WebSessionTest extends TestCase
             'swap_rules'                => $failedRules
         ]);
         factory(PhoneNumber::class, 10)->create([
-            'category'     => 'ONLINE',
-            'sub_category' => 'WEBSITE',
+            'category'     => 'Online',
+            'sub_category' => 'Website',
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
@@ -74,8 +74,8 @@ class WebSessionTest extends TestCase
 
         // Detached numbers
         factory(PhoneNumber::class, 10)->create([
-            'category'     => 'ONLINE',
-            'sub_category' => 'WEBSITE',
+            'category'     => 'Online',
+            'sub_category' => 'Website',
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
@@ -138,8 +138,8 @@ class WebSessionTest extends TestCase
             'swap_rules'                => $failedRules
         ]);
         factory(PhoneNumber::class, 10)->create([
-            'category'     => 'ONLINE',
-            'sub_category' => 'WEBSITE',
+            'category'     => 'Online',
+            'sub_category' => 'Website',
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
@@ -151,8 +151,8 @@ class WebSessionTest extends TestCase
 
         // Detached numbers
         $phoneNumber = factory(PhoneNumber::class, 10)->create([
-            'category'     => 'ONLINE',
-            'sub_category' => 'WEBSITE',
+            'category'     => 'Online',
+            'sub_category' => 'Website',
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
@@ -211,8 +211,8 @@ class WebSessionTest extends TestCase
             'created_by'                => $this->user->id,
         ]);
         $poolNumbers = factory(PhoneNumber::class, 5)->create([
-            'category'     => 'ONLINE',
-            'sub_category' => 'WEBSITE',
+            'category'     => 'Online',
+            'sub_category' => 'Website',
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
@@ -224,8 +224,8 @@ class WebSessionTest extends TestCase
 
         // Detached numbers
         $phoneNumbers = factory(PhoneNumber::class, 10)->create([
-            'category'     => 'ONLINE',
-            'sub_category' => 'WEBSITE',
+            'category'     => 'Online',
+            'sub_category' => 'Website',
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
@@ -310,8 +310,8 @@ class WebSessionTest extends TestCase
             'created_by'                => $this->user->id,
         ]);
         $poolNumbers = factory(PhoneNumber::class, 5)->create([
-            'category'     => 'ONLINE',
-            'sub_category' => 'WEBSITE',
+            'category'     => 'Online',
+            'sub_category' => 'Website',
             'account_id' => $company->account_id,
             'company_id' => $company->id,
             'phone_number_config_id' => $config->id,
@@ -374,8 +374,8 @@ class WebSessionTest extends TestCase
             'account_id'             => $company->account_id,
             'company_id'             => $company->id,
             'phone_number_config_id' => $config->id,
-            'category'               => 'ONLINE',
-            'sub_category'           => 'WEBSITE',
+            'category'               => 'Online',
+            'sub_category'           => 'Website',
             'created_by'             => $this->user->id
         ])->last();
 
@@ -556,8 +556,8 @@ class WebSessionTest extends TestCase
             'company_id'             => $company->id,
             'phone_number_config_id' => $config->id,
             'keyword_tracking_pool_id' => $pool->id,
-            'category'               => 'ONLINE',
-            'sub_category'           => 'WEBSITE',
+            'category'               => 'Online',
+            'sub_category'           => 'Website',
             'created_by'             => $this->user->id
         ]);
 

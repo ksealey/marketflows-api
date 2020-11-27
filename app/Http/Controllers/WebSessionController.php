@@ -159,7 +159,7 @@ class WebSessionController extends Controller
         }else{
             foreach($company->detached_phone_numbers as $detachedPhoneNumber){
                 if( $detachedPhoneNumber->disabled_at 
-                    || $detachedPhoneNumber->sub_category !== 'WEBSITE' 
+                    || $detachedPhoneNumber->sub_category !== 'Website' 
                     || ! $this->swapRulesPass($detachedPhoneNumber->swap_rules, $browserType, $deviceType, $httpReferrer, $landingURL, $company->medium_param)
                 ){  continue; }
 

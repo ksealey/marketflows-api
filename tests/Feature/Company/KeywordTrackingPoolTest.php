@@ -134,7 +134,7 @@ class KeywordTrackingPoolTest extends TestCase
             'pool_size'              => 5,
         ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(400);
         $response->assertJSON([
             'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
         ]);
@@ -207,7 +207,7 @@ class KeywordTrackingPoolTest extends TestCase
             'count'         => 5
         ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(400);
         $response->assertJSON([
             'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
         ]);

@@ -85,13 +85,13 @@ class PhoneNumberController extends Controller
             if( $account->phoneNumberCount() >= 10 ){
                 return response([
                     'error' => 'You have reached your limit of phone numbers. Please add a valid payment method and try again.'
-                ], 403);
+                ], 400);
             }
         }
         
         $rules = [
             'name'                => 'bail|required|max:64',
-            'category'            => 'bail|required|in:ONLINE,OFFLINE',
+            'category'            => 'bail|required|in:Online,Offline',
             'source'              => 'bail|required|max:64', 
             'medium'              => 'bail|nullable|max:64',
             'content'             => 'bail|nullable|max:64',
@@ -113,14 +113,14 @@ class PhoneNumberController extends Controller
         $validator = validator($request->input(), $rules);
 
         //  Make sure the sub_category is valid for the category
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
-            return $input->category === 'ONLINE';
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:Website,Social Media,Email'], function($input){
+            return $input->category === 'Online';
         });
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,BILLBOARD,OTHER'], function($input){
-            return $input->category === 'OFFLINE';
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,Radio,Newspaper,Direct Mail,Flyer,Billboard,Other'], function($input){
+            return $input->category === 'Offline';
         });
         $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
-            return $input->sub_category == 'WEBSITE';
+            return $input->sub_category == 'Website';
         });
         $validator->sometimes('starts_with', ['bail', 'required', 'digits_between:1,10'], function($input){
             return $input->type === 'Local';
@@ -180,7 +180,7 @@ class PhoneNumberController extends Controller
             'is_direct'                 => boolval($request->is_direct),
             'is_referral'               => boolval($request->is_referral),
             'is_search'                 => boolval($request->is_search),
-            'swap_rules'                => ($request->sub_category == 'WEBSITE') ? $request->swap_rules : null,
+            'swap_rules'                => ($request->sub_category == 'Website') ? $request->swap_rules : null,
             'purchased_at'              => now(),
             'created_by'                => $user->id
         ]);
@@ -234,16 +234,16 @@ class PhoneNumberController extends Controller
         $validator = validator($request->input(), $rules);
 
         //  Make sure the sub_category is valid for the category
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:WEBSITE,SOCIAL_MEDIA,EMAIL'], function($input){
-            return $input->category === 'ONLINE';
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:Website,Social Media,Email'], function($input){
+            return $input->category === 'Online';
         });
-        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,RADIO,NEWSPAPER,DIRECT_MAIL,FLYER,BILLBOARD,OTHER'], function($input){
-            return $input->category === 'OFFLINE';
+        $validator->sometimes('sub_category', ['bail', 'required', 'in:TV,Radio,Newspaper,Direct Mail,Flyer,Billboard,Other'], function($input){
+            return $input->category === 'Offline';
         });
 
         //  Make sure the swap rules are there and valid when it's for a website
         $validator->sometimes('swap_rules', ['bail', 'required', 'json', new SwapRulesRule()], function($input){
-            return $input->sub_category == 'WEBSITE';
+            return $input->sub_category == 'Website';
         });
 
         if( $validator->fails() )
@@ -281,7 +281,7 @@ class PhoneNumberController extends Controller
             $phoneNumber->is_search = boolval($request->is_search);
 
         if( $request->filled('swap_rules') ){
-            $phoneNumber->swap_rules = $request->sub_category == 'WEBSITE' ? $request->swap_rules : null;
+            $phoneNumber->swap_rules = $request->sub_category == 'Website' ? $request->swap_rules : null;
         }
         
         $phoneNumber->save();

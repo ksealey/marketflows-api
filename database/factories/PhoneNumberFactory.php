@@ -7,13 +7,13 @@ use Faker\Generator as Faker;
 use \App\Models\Company\PhoneNumber;
 
 $factory->define(PhoneNumber::class, function (Faker $faker) {
-    $categories = ['ONLINE', 'OFFLINE'];
+    $categories = ['Online', 'Offline'];
     $category   = $categories[mt_rand(0, 1)];
     
-    if( $category === 'ONLINE' ){
-        $subCategories = PhoneNumber::ONLINE_SUB_CATEGORIES;
+    if( $category === 'Online' ){
+        $subCategories = PhoneNumber::Online_SUB_CATEGORIES;
     }else{
-        $subCategories = PhoneNumber::OFFLINE_SUB_CATEGORIES;
+        $subCategories = PhoneNumber::Offline_SUB_CATEGORIES;
     }
     
     $subCategory = $subCategories[mt_rand(0, count($subCategories) - 1)];
