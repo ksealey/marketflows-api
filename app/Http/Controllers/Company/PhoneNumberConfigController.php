@@ -19,6 +19,7 @@ class PhoneNumberConfigController extends Controller
     static $fields = [
         'phone_number_configs.name',
         'phone_number_configs.forward_to_number',
+        'phone_number_configs.greeting_enabled',
         'phone_number_configs.recording_enabled',
         'phone_number_configs.transcription_enabled',
         'phone_number_configs.keypress_enabled',

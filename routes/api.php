@@ -681,10 +681,16 @@ Route::prefix('/')->group(function(){
                             Route::get('/{call}', 'Company\CallController@read')
                                 ->middleware('can:read,call,company')
                                 ->name('read-call');
+                                
+                            Route::put('/{call}/convert', 'Company\CallController@convert')
+                                ->middleware('can:update,call,company')
+                                ->name('convert-call');
 
                             Route::get('/{call}/recording', 'Company\CallController@readRecording')
                                 ->middleware('can:read,call,company')
                                 ->name('read-call-recording');
+
+                            
 
                             Route::delete('/{call}/recording', 'Company\CallController@deleteRecording')
                                 ->middleware('can:delete,call,company')

@@ -131,6 +131,37 @@ class CallController extends Controller
     }
 
     /**
+     * Flag a call as converted, or unconvert
+     * 
+     * @param Request $request 
+     * @param Company $company
+     * @param Call $call
+     * 
+     * @return Response
+     */
+    public function convert(Request $request, Company $company, Call $call)
+    {
+        $rules = [
+            'converted' => 'required|boolean'
+        ];
+
+        $validator = validator($request->input(), $rules);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+
+        $call->converted_at = $request->converted ? ($call->converted_at ?: now()) : null;
+        $call->save();
+
+        $call->recording = $call->recording;
+
+        return response($call);
+    }
+
+    /**
      * Read a call recording
      * 
      * @param Request $request 

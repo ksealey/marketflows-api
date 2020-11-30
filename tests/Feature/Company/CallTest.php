@@ -87,4 +87,61 @@ class CallTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee($exportData);
     }
+
+    /**
+     * Test converting call
+     *
+     * @group calls
+     */
+    public function testConvertCall()
+    {
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company);
+        $phoneNumber = $this->createPhoneNumber($company, $config);
+
+        $contact = factory(Contact::class)->create([
+            'account_id'             => $company->account_id,
+            'company_id'             => $company->id,
+        ]);
+        
+        $call = factory(Call::class)->create([
+            'account_id'             => $contact->account_id,
+            'company_id'             => $contact->company_id,
+            'contact_id'             => $contact->id,
+            'phone_number_id'        => $phoneNumber->id,
+            'phone_number_name'      => $phoneNumber->name
+        ]);
+        
+       $response = $this->json('PUT', route('convert-call', [
+            'company' => $company->id,
+            'call'    => $call->id
+       ]), [
+           'converted' => 1
+       ]);
+
+       $response->assertStatus(200);
+
+       $this->assertDatabaseMissing('calls', [
+           'id'           => $call->id,
+           'converted_at' => null
+       ]);
+
+       $response = $this->json('PUT', route('convert-call', [
+            'company' => $company->id,
+            'call'    => $call->id
+        ]), [
+            'converted' => 0
+        ]);
+
+        $response->assertJSON([
+                "converted" => false,
+                "link"      => $call->link,
+                "kind"      => "Call"
+        ]);
+
+        $this->assertDatabaseHas('calls', [
+            'id'           => $call->id,
+            'converted_at' => null
+        ]);
+    }
 }
