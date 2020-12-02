@@ -21,7 +21,7 @@ class BillingController extends Controller
         $billing->past_due_formatted = $pastDueFormatted;
 
         $billing->primary_payment_method = $account->primary_payment_method;
-        $billing->monthly_fee            = Billing::COST_SERVICE;
+        $billing->monthly_fee            = $billing->price(Billing::ITEM_SERVICE);
 
         return response($billing);
     }
