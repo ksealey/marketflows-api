@@ -60,6 +60,14 @@ class Billing extends Model
     const COST_MINUTES_TRANSCRIPTION= 0.05;
     const COST_STORAGE_GB           = 0.10;
 
+    const COST_SERVICE_BETA                 = 29.99;
+    const COST_NUMBERS_LOCAL_BETA           = 2.00;
+    const COST_NUMBERS_TOLL_FREE_BETA       = 4.00;
+    const COST_MINUTES_LOCAL_BETA           = 0.04;
+    const COST_MINUTES_TOLL_FREE_BETA       = 0.05;
+    const COST_MINUTES_TRANSCRIPTION_BETA   = 0.04;
+    const COST_STORAGE_GB_BETA              = 0.10;
+
     const DAYS_FREE                 = 7;
 
     public function getPastDueAttribute()
@@ -199,27 +207,50 @@ class Billing extends Model
 
     public function price($item)
     {
+        $isBeta = $this->account->is_beta;
+
         switch($item)
         {
             case self::ITEM_SERVICE:
+                if( $isBeta ){
+                    return self::COST_SERVICE_BETA;
+                }
                 return self::COST_SERVICE;
 
             case self::ITEM_NUMBERS_LOCAL:
+                if( $isBeta ){
+                    return self::COST_NUMBERS_LOCAL_BETA;
+                }
                 return self::COST_NUMBERS_LOCAL;
 
             case self::ITEM_NUMBERS_TOLL_FREE:
+                if( $isBeta ){
+                    return self::COST_NUMBERS_TOLL_FREE_BETA;
+                }
                 return self::COST_NUMBERS_TOLL_FREE;
 
             case self::ITEM_MINUTES_LOCAL:
+                if( $isBeta ){
+                    return self::COST_MINUTES_LOCAL_BETA;
+                }
                 return self::COST_MINUTES_LOCAL;
 
             case self::ITEM_MINUTES_TOLL_FREE:
+                if( $isBeta ){
+                    return self::COST_MINUTES_TOLL_FREE_BETA;
+                }
                 return self::COST_MINUTES_TOLL_FREE;
 
             case self::ITEM_MINUTES_TRANSCRIPTION:
+                if( $isBeta ){
+                    return self::COST_MINUTES_TRANSCRIPTION_BETA;
+                }
                 return self::COST_MINUTES_TRANSCRIPTION;
 
             case self::ITEM_STORAGE_GB:
+                if( $isBeta ){
+                    return self::COST_STORAGE_GB_BETA;
+                }
                 return self::COST_STORAGE_GB;
             
             default:
@@ -229,40 +260,42 @@ class Billing extends Model
 
     public function total($item, $quantity)
     {
+        $price = $this->price($item);
+
         switch($item)
         {
             case self::ITEM_SERVICE:
-                return $this->price($item);
+                return $price;
 
             case self::ITEM_NUMBERS_LOCAL:
                 if( ! $quantity || $quantity - self::TIER_NUMBERS_LOCAL <= 0 )
                     return 0;
-                return round(($quantity - self::TIER_NUMBERS_LOCAL) * self::COST_NUMBERS_LOCAL, 2);
+                return round(($quantity - self::TIER_NUMBERS_LOCAL) * $price, 2);
 
             case self::ITEM_NUMBERS_TOLL_FREE:
                 if( ! $quantity || $quantity - self::TIER_NUMBERS_TOLL_FREE <= 0 )
                     return 0;
-                return round(($quantity - self::TIER_NUMBERS_TOLL_FREE) * self::COST_NUMBERS_TOLL_FREE, 2);
+                return round(($quantity - self::TIER_NUMBERS_TOLL_FREE) * $price, 2);
 
             case self::ITEM_MINUTES_LOCAL:
                 if( ! $quantity || $quantity - self::TIER_MINUTES_LOCAL <= 0 )
                     return 0;
-                return round(($quantity - self::TIER_MINUTES_LOCAL) * self::COST_MINUTES_LOCAL, 2);
+                return round(($quantity - self::TIER_MINUTES_LOCAL) * $price, 2);
 
             case self::ITEM_MINUTES_TOLL_FREE:
                 if( ! $quantity || $quantity - self::TIER_MINUTES_TOLL_FREE <= 0 )
                     return 0;
-                return round(($quantity - self::TIER_MINUTES_TOLL_FREE) * self::COST_MINUTES_TOLL_FREE, 2);
+                return round(($quantity - self::TIER_MINUTES_TOLL_FREE) * $price, 2);
 
             case self::ITEM_MINUTES_TRANSCRIPTION:
                 if( ! $quantity || $quantity - self::TIER_MINUTES_TRANSCRIPTION <= 0 )
                     return 0;
-                return round(($quantity - self::TIER_MINUTES_TRANSCRIPTION) * self::COST_MINUTES_TRANSCRIPTION, 2);
+                return round(($quantity - self::TIER_MINUTES_TRANSCRIPTION) * $price, 2);
 
             case self::ITEM_STORAGE_GB:
                 if( ! $quantity || $quantity - self::TIER_STORAGE_GB <= 0 )
                     return 0;
-                return round(($quantity - self::TIER_STORAGE_GB) * self::COST_STORAGE_GB, 2);
+                return round(($quantity - self::TIER_STORAGE_GB) * $price, 2);
             
             default:
                 return 0;
@@ -276,6 +309,7 @@ class Billing extends Model
 
     public function current()
     {
+        $account = $this->account;
         $total   = 0;
 
         $billingPeriodStart     = new Carbon($this->billing_period_starts_at);

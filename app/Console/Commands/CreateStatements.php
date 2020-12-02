@@ -55,6 +55,8 @@ class CreateStatements extends Command
             try{
                 DB::beginTransaction();
 
+                $account = $billing->account;
+
                 //
                 //  Create statement. This includes monthly service fees, usage and any additional services
                 //
@@ -158,7 +160,7 @@ class CreateStatements extends Command
                     ],
                 ];
 
-                foreach( $billing->account->companies as $company ){
+                foreach( $account->companies as $company ){
                     foreach( $company->plugins as $companyPlugin ){
                         if( $plugin->price > 0 ){
                             $items[] = [

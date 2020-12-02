@@ -52,6 +52,7 @@ class RegisterController extends Controller
                 'regex:/(?=.*[0-9])(?=.*[A-Z])/'
             ],
             'timezone' => 'bail|required|timezone',
+            'reg_code' => 'in:BETAINVITE'
         ];
 
         $validator = Validator::make($request->input(), $rules);
@@ -98,6 +99,7 @@ class RegisterController extends Controller
                 'content_param'                 => 'utm_content,content',
                 'campaign_param'                => 'utm_campaign,content',
                 'keyword_param'                 => 'utm_term,term,keyword',
+                'is_beta'                       => $request->reg_code == 'BETAINVITE' ? 1 : 0
             ]);
 
             //  Setup billing for account

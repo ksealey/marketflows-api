@@ -134,7 +134,6 @@ class CallTest extends TestCase
         ]);
 
         $response->assertJSON([
-                "converted" => false,
                 "link"      => $call->link,
                 "kind"      => "Call"
         ]);

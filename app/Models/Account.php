@@ -32,11 +32,13 @@ class Account extends Model
         'keyword_param',
         'suspended_at',
         'suspension_message',
+        'is_beta'
     ];
 
     protected $hidden = [
         'deleted_by',
         'suspension_code',
+        'is_beta',
         'deleted_at'
     ];
 

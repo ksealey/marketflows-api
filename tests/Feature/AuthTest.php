@@ -152,7 +152,7 @@ class AuthTest extends TestCase
     /**
      * Test creating an account successfully
      * 
-     * @group auth--
+     * @group auth
      */
     public function testRegister()
     {
@@ -205,7 +205,8 @@ class AuthTest extends TestCase
         $account = $response['account'];
 
         $this->assertDatabaseHas('accounts', [
-            'id' => $account['id']
+            'id' => $account['id'],
+            'is_beta' => 0
         ]);
 
         $this->assertDatabaseHas('billing', [
@@ -219,6 +220,80 @@ class AuthTest extends TestCase
             'last_name' => $user->last_name
         ]);
     }
+
+    /**
+     * Test creating an account successfully with a beta registration code
+     * 
+     * @group auth
+     */
+    public function testRegisterBeta()
+    {
+        Mail::fake();
+
+        $emailVerification = factory(EmailVerification::class)->create([
+            'verified_at' => now()
+        ]);
+
+        $account = factory(Account::class)->make();
+        $user    = factory(User::class)->make([
+            'password'     => 'Password1!',
+            'email'        => $emailVerification->email
+        ]);
+
+        $customer     = new \stdClass();
+        $customer->id = str_random(10);
+
+        $this->mock(PaymentManager::class, function($mock) use($account, $customer){
+            $mock->shouldReceive('createCustomer')
+                 ->once()
+                 ->with(Account::class)
+                 ->andReturn($customer);
+        });
+
+        $response = $this->json('POST', route('auth-register'), [
+            'account_name'  => $account->name,
+            'first_name'    => $user->first_name,
+            'last_name'     => $user->last_name,
+            'email'         => $user->email,
+            'phone'         => $user->phone,
+            'password'      => $user->password,
+            'timezone'      => $user->timezone,
+            'reg_code'      => 'BETAINVITE'
+        ]);
+        $response->assertStatus(201);
+        $response->assertJSON([
+            "user" => [
+                'role'          => $user->role,
+                'timezone'      => $user->timezone,
+                'first_name'    => $user->first_name,
+                'email'         => $user->email,
+                'phone'         => $user->phone
+            ],
+            "account" => [
+                'name' => $account->name
+            ],
+            "first_login" => true
+        ]);
+
+        $account = $response['account'];
+
+        $this->assertDatabaseHas('accounts', [
+            'id' => $account['id'],
+            'is_beta'   => 1
+        ]);
+
+        $this->assertDatabaseHas('billing', [
+            'account_id'  => $account['id'],
+            'external_id' => $customer->id 
+        ]);
+
+        $this->assertDatabaseHas('users', [
+            'email' => $user->email,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name
+        ]);
+    }
+
 
      /**
      * Test creating an account with a spoof email domain fails
