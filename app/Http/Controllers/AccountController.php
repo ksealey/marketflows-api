@@ -16,6 +16,7 @@ use DateTime;
 use Validator;
 use Exception;
 use DB;
+use \Carbon\Carbon;
 
 class AccountController extends Controller
 {
@@ -133,6 +134,13 @@ class AccountController extends Controller
         ])
         ->where('id', $user->account_id)
         ->first();
+
+        $billing   = $user->account->billing;
+        $storageGB = $billing->quantity(
+            Billing::ITEM_STORAGE_GB, 
+            new Carbon($billing->billing_period_starts_at),
+            new Carbon($billing->billing_period_ends_at)
+        );
         
         return response([
             'kind'  => 'Summary',
@@ -149,6 +157,9 @@ class AccountController extends Controller
             'calls' => [
                 'count' => $summary->call_count
             ],
+            'storage' => [
+                'count' => $storageGB
+            ]
         ]);
     }
 }

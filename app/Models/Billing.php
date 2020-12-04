@@ -57,7 +57,7 @@ class Billing extends Model
     const COST_NUMBERS_TOLL_FREE    = 5.00;
     const COST_MINUTES_LOCAL        = 0.05;
     const COST_MINUTES_TOLL_FREE    = 0.07;
-    const COST_MINUTES_TRANSCRIPTION= 0.05;
+    const COST_MINUTES_TRANSCRIPTION= 0.03;
     const COST_STORAGE_GB           = 0.10;
 
     const COST_SERVICE_BETA                 = 29.99;
@@ -65,7 +65,7 @@ class Billing extends Model
     const COST_NUMBERS_TOLL_FREE_BETA       = 4.00;
     const COST_MINUTES_LOCAL_BETA           = 0.04;
     const COST_MINUTES_TOLL_FREE_BETA       = 0.05;
-    const COST_MINUTES_TRANSCRIPTION_BETA   = 0.04;
+    const COST_MINUTES_TRANSCRIPTION_BETA   = 0.025;
     const COST_STORAGE_GB_BETA              = 0.10;
 
     const DAYS_FREE                 = 7;
