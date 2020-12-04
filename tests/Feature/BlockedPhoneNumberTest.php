@@ -45,32 +45,6 @@ class BlockedPhoneNumberTest extends TestCase
     }
 
     /**
-     * Test listing blocked phone numbers with all conditions
-     * 
-     * @group blocked-phone-numbers
-     */
-    public function testListBlockedPhoneNumbersWithAllConditions()
-    {
-        $blockedNumbers = factory(BlockedPhoneNumber::class, mt_rand(1,4))->create([
-            'account_id' => $this->account->id,
-            'created_by' => $this->user->id
-        ]);
-
-        $conditions = $this->createConditions(BlockedPhoneNumber::accessibleFields(), true);
-        $response = $this->json('GET', route('list-blocked-phone-numbers', [
-            'conditions' => $conditions
-        ]));
-
-        $response->assertJSON([
-            "limit"        => 250,
-            "next_page"    => null,
-            "results"      => [],
-        ]);
-
-        $response->assertStatus(200);
-    }
-
-    /**
      * Test listing blocked phone numbers with conditions
      * 
      * @group blocked-phone-numbers

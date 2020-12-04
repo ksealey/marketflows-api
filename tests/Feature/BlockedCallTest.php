@@ -52,40 +52,6 @@ class BlockedCallTest extends TestCase
         $response->assertStatus(200);
     }
 
-
-    /**
-     * Test listing blocked calls with all conditions
-     *
-     * @group blocked-calls
-     */
-    public function testListWithAllConditions()
-    {
-        $company        = $this->createCompany();
-        $config         = $this->createConfig($company);
-        $phoneNumber    = $this->createPhoneNumber($company, $config);
-        $blockedPhoneNumber = factory(BlockedPhoneNumber::class)->create([
-            'account_id' => $this->account->id,
-            'created_by' => $this->user->id
-        ]);
-
-        $blockedCalls = factory(BlockedCall::class, 10)->create([
-            'blocked_phone_number_id'   => $blockedPhoneNumber->id,
-            'phone_number_id'           => $phoneNumber->id,
-            'account_id'                => $this->account->id
-        ]);
-
-        $response = $this->json('GET', route('list-blocked-calls'), [
-            'conditions' => $this->createConditions(BlockedCall::accessibleFields(), true)
-        ]);
-        $response->assertJSON([
-            "results"       => [],
-            "limit"         => 250,
-            "next_page"     => null
-        ]);
-
-        $response->assertStatus(200);
-    }
-
     /**
      * Test listing blocked calls with single condition
      *

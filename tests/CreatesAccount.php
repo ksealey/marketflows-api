@@ -367,6 +367,9 @@ trait CreatesAccount
     public function createConditions(array $fields, $asString = false)
     {
         $conditionGroups = [];
+        $fields = array_filter($fields, function($input){
+            return ! in_array($input, ['created_at', 'updated_at', 'deleted_at']);
+        });
 
         foreach( $fields as $key => $field ){
             $rand           = mt_rand(1, 10);

@@ -41,34 +41,6 @@ class AlertTest extends TestCase
     }
 
     /**
-     * Test listing alerts with all conditions
-     * 
-     * @group alerts
-     */
-    public function testListWithAllConditions()
-    {
-        factory(Alert::class, 10)->create([
-            'account_id' => $this->account->id,
-            'user_id' => $this->user->id
-        ]);
-
-        $conditions = $this->createConditions(Alert::accessibleFields(), true);
-        $response = $this->json('GET', route('list-alerts'), [
-            'conditions' => $conditions,
-        ]);
-
-        $response->assertJSONStructure([
-            "result_count",
-            "limit",
-            "page",
-            "total_pages",
-            "next_page",
-            "results" => []
-        ]);
-        $response->assertStatus(200);
-    }
-
-    /**
      * Test listing alerts with condition
      * 
      * @group alerts
