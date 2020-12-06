@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Queue;
 use \Stripe\Stripe;
 use \Stripe\Customer;
+use App\Models\Plugin;
 use App\Models\Alert;
 use App\Models\Account;
 use App\Models\Billing;
@@ -17,6 +18,7 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Company\PhoneNumber;
 use App\Models\Company\CallRecording;
+use App\Models\Company\CompanyPlugin;
 use App\Mail\BillingReceipt;
 use App\Mail\PaymentMethodFailed;
 use App\Mail\AccountUnsuspended;
@@ -100,6 +102,45 @@ class BillingTest extends TestCase
                                       ->whereNull('paid_at')
                                       ->count();
         $this->assertEquals($statementCount, 1);
+    }
+
+    /**
+     * Test creating statements with plugins
+     * 
+     * @group billing
+     */
+    public function testBillingStatementsAreCreatedWithPlugins()
+    {
+        Queue::fake();
+
+        $this->billing->billing_period_starts_at = now()->subDays(7);
+        $this->billing->billing_period_ends_at   = now()->subMinutes(2);
+        $this->billing->save();
+
+         //  Install a few plugins
+         $company    = $this->createCompany();
+         $available  = factory(Plugin::class,2)->create();
+         $installed  = factory(Plugin::class)->create();
+         $companyPlugin = factory(CompanyPlugin::class)->create([
+             'company_id' => $company->id,
+             'plugin_key' => $installed->key,
+             'enabled_at' => now()->format('Y-m-d H:i:s')
+         ]);
+
+        Artisan::call('create-statements');
+
+        $statementCount = BillingStatement::where('billing_id', $this->billing->id)
+                                      ->whereNull('paid_at')
+                                      ->count();
+
+        $this->assertDatabaseHas('billing_statements', [
+            'billing_id' => $this->billing->id,
+            'paid_at'    => null
+        ]);
+
+        $this->assertDatabaseHas('billing_statement_items', [
+            'label' => $companyPlugin->label . ' (Company ' . $company->id .')',
+        ]);
     }
 
     /**

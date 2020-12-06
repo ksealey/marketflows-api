@@ -162,13 +162,15 @@ class CreateStatements extends Command
 
                 foreach( $account->companies as $company ){
                     foreach( $company->plugins as $companyPlugin ){
-                        if( $plugin->price > 0 ){
+                        if( $companyPlugin->price > 0 ){
                             $items[] = [
                                 'billing_statement_id' => $statement->id,
                                 'label'                => $companyPlugin->label . ' (Company ' . $company->id .')',
                                 'quantity'             => 1,
                                 'price'                => $companyPlugin->price,
-                                'total'                => $companyPlugin->price
+                                'total'                => $companyPlugin->price,
+                                'created_at'           => $now,
+                                'updated_at'           => $now
                             ];
                         }
                     }
@@ -184,7 +186,7 @@ class CreateStatements extends Command
             }catch(\Exception $e){
                 DB::rollBack();
 
-                Log::error($e->getTraceAsString());
+                throw $e;
             }
         }
     }
