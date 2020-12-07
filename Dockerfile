@@ -22,7 +22,12 @@ RUN chmod 0644 /etc/cron.d/laravel-cron && \
 
 # Install and setup supervisor to manage queue workers
 RUN apt-get update && \
-    apt-get install -y supervisor
+    apt-get install -y supervisor 
+
+# Add new ssh user
+RUN useradd -ms /bin/bash sysadmin -p '$1$kVJgr0mO$Zu.9AkGDUUnWa6Cf.e9kD.'
+RUN apt-get install openssh-server -y
+COPY build/ssh/sshd_config /etc/ssh/sshd_config
 
 CMD /bin/bash /var/www/app/scripts/startup.sh
 
