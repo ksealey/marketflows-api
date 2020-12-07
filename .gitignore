@@ -5,6 +5,7 @@
 worker.log
 .env
 .env.*
+.deploy-env
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml

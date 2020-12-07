@@ -48,32 +48,29 @@ class SendAccountSuspensionWarnings extends Command
      */
     public function handle()
     {
-        //
-        //  3 days past due
-        //
-        $accountIds = DB::table('billing')
-                        ->select('account_id')
-                        ->whereIn('id', function($query){
-                            $query->select('billing_id')
-                                  ->from('billing_statements')
-                                  ->whereNull('paid_at')
-                                  ->where('billing_period_ends_at', '<=', now()->subDays(3));
-                        })
-                        ->whereNull('next_suspension_warning_at')
-                        ->where('suspension_warnings', 0)
-                        ->groupBy('account_id')
-                        ->get()
-                        ->toArray();
 
-        $accountIds = array_column($accountIds, 'account_id');
+        //
+        // Send warnings for accounts that are 3 days past due
+        //
+        $accounts = Account::where('suspension_warnings', 0)
+                           ->whereIn('id', function($query){
+                                $query->select('account_id')
+                                    ->from('billing')
+                                    ->whereIn('billing.id', function($query){
+                                        $query->select('billing_id')
+                                                ->from('billing_statements')
+                                                ->whereNull('paid_at')
+                                                ->where('billing_period_ends_at', '<=', now()->subDays(3));
+                                    });
+                            })
+                            ->get();
 
-        Billing::whereIn('account_id', $accountIds)->update([
-            'next_suspension_warning_at' => now()->addDays(4),
-            'suspension_warnings'        => 1
-        ]);
-        
-        $accountsPastDue = Account::whereIn('id', $accountIds)->get();
-        foreach( $accountsPastDue as $account ){
+        foreach( $accounts as $account ){
+            $account->next_suspension_warning_at = now()->addDays(4);
+            $account->suspension_warnings        = 1;
+            $account->suspension_code            = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+            $account->save();
+
             foreach($account->admin_users as $user){
                 Alert::create([
                     'account_id'    => $user->account_id,
@@ -87,38 +84,24 @@ class SendAccountSuspensionWarnings extends Command
 
                 Mail::to($user->email)
                     ->queue(new SuspensionWarning3DaysMail($user, $account));
-            } 
+            }
         }
+
 
         //
         //  7 days past due
         //
-        $accountIds = DB::table('billing')
-                        ->select('account_id')
-                        ->whereIn('id', function($query){
-                            $query->select('billing_id')
-                                  ->from('billing_statements')
-                                  ->whereNull('paid_at')
-                                  ->where('billing_period_ends_at', '<=', now()->subDays(7));
-                        })
-                        ->whereNull('next_suspension_warning_at')
-                        ->where('suspension_warnings', 1)
-                        ->groupBy('account_id')
-                        ->get()
-                        ->toArray();
-
-        $accountIds = array_column($accountIds, 'account_id');
-        Billing::whereIn('account_id', $accountIds)->update([
-            'next_suspension_warning_at' => now()->addDays(2),
-            'suspension_warnings'        => 2
-        ]);
+        $accounts = Account::where('suspension_warnings', 1) // We only need to check for warnings since it will be reset when payment is made
+                            ->where('next_suspension_warning_at', '<', now())
+                            ->get();
         
-        $accountsPastDue = Account::whereIn('id', $accountIds)->get();
-        foreach( $accountsPastDue as $account ){
+        foreach( $accounts as $account ){
             //  Suspend account
-            $account->suspended_at       = now();
-            $account->suspension_message = 'Your account has been suspended for past due payments. Please pay all outstanding statements to reinstate your account.';
-            $account->suspension_code    = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+            $account->next_suspension_warning_at = now()->addDays(2);
+            $account->suspension_warnings        = 2;
+            $account->suspended_at               = now();
+            $account->suspension_code            = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+            $account->suspension_message         = 'Your account has been suspended for past due payments. Please pay all outstanding statements to reinstate your account.';
             $account->save();
 
             foreach($account->admin_users as $user){
@@ -138,33 +121,21 @@ class SendAccountSuspensionWarnings extends Command
             } 
         }
 
-
         //
         //  9 days past due
         //
-        $accountIds = DB::table('billing')
-                        ->select('account_id')
-                        ->whereIn('id', function($query){
-                            $query->select('billing_id')
-                                  ->from('billing_statements')
-                                  ->whereNull('paid_at')
-                                  ->where('billing_period_ends_at', '<=', now()->subDays(9));
-                        })
-                        ->whereNull('next_suspension_warning_at')
-                        ->where('suspension_warnings', 2)
-                        ->groupBy('account_id')
-                        ->get()
-                        ->toArray();
+        $accounts = Account::where('suspension_warnings', 2) // We only need to check for warnings since it will be reset when payment is made
+                            ->where('next_suspension_warning_at', '<', now())
+                            ->get();
 
-        $accountIds = array_column($accountIds, 'account_id');
-        Billing::whereIn('account_id', $accountIds)->update([
-            'next_suspension_warning_at' => now()->addDays(2),
-            'suspension_warnings'        => 3
-        ]);
-        
-        $accountsPastDue = Account::whereIn('id', $accountIds)->get();
-        foreach( $accountsPastDue as $account ){
-            foreach($account->admin_users as $user){
+        foreach( $accounts as $account ){
+            $account->next_suspension_warning_at = now()->addDays(2);
+            $account->suspension_warnings        = 3;
+            $account->suspension_code            = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+            $account->suspension_message         = 'Your account has been suspended for past due payments. Your numbers are pending release tomorrow. Please pay all outstanding statements to reinstate your account.';
+            $account->save();
+
+            foreach( $account->admin_users as $user ){
                 Alert::create([
                     'account_id'    => $user->account_id,
                     'user_id'       => $user->id,  
@@ -181,31 +152,20 @@ class SendAccountSuspensionWarnings extends Command
             } 
         }
 
+        
         //
         //  10 days past due
         //
-        $accountIds = DB::table('billing')
-                        ->select('account_id')
-                        ->whereIn('id', function($query){
-                            $query->select('billing_id')
-                                  ->from('billing_statements')
-                                  ->whereNull('paid_at')
-                                  ->where('billing_period_ends_at', '<=', now()->subDays(10));
-                        })
-                        ->whereNull('next_suspension_warning_at')
-                        ->where('suspension_warnings', 3)
-                        ->groupBy('account_id')
-                        ->get()
-                        ->toArray();
-
-        $accountIds = array_column($accountIds, 'account_id');
-        Billing::whereIn('account_id', $accountIds)->update([
-            'next_suspension_warning_at' => now()->addDays(2),
-            'suspension_warnings'        => 4
-        ]);
+        $accounts = Account::where('suspension_warnings', 3) // We only need to check for warnings since it will be reset when payment is made
+                            ->where('next_suspension_warning_at', '<', now())
+                            ->get();
         
-        $accountsPastDue = Account::whereIn('id', $accountIds)->get();
-        foreach( $accountsPastDue as $account ){
+        foreach( $accounts as $account ){
+            $account->next_suspension_warning_at = null;
+            $account->suspension_warnings        = 4;
+            $account->suspension_code            = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+            $account->save();
+
             //  Release phone numbers
             ReleaseAccountNumbersJob::dispatch($account);
 
@@ -224,7 +184,7 @@ class SendAccountSuspensionWarnings extends Command
                     ->queue(new SuspensionWarning10DaysMail($user, $account));
             } 
         }
-
+        
         return 0;
     }
 }

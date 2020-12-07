@@ -19,14 +19,10 @@ class Billing extends Model
         'account_id',
         'billing_period_starts_at',
         'billing_period_ends_at',
-        'suspension_warnings',
-        'next_suspension_warning_at',
         'external_id'
     ];
 
     protected $hidden = [
-        'suspension_warnings',
-        'next_suspension_warning_at',
         'external_id',
         'deleted_at'
     ];

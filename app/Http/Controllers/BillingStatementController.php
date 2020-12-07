@@ -109,10 +109,10 @@ class BillingStatementController extends Controller
         $billing = $account->billing;
         if( ! $billing->past_due ){
             $account->removePaymentAlerts();
-
-            //  Unsuspend accounts that were suspended for past due payments if paid in full
-            if( $account->suspension_code && $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE )
+            
+            if( $account->suspension_code == Account::SUSPENSION_CODE_OUSTANDING_BALANCE ){
                 $account->unsuspend();
+            } 
         }
 
         //  Mail reciept

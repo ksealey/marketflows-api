@@ -150,14 +150,12 @@ class BillingTest extends TestCase
      */
     public function testBillingStatementsArePaid()
     {
-        $this->account->suspended_at        = now();
-        $this->account->suspension_code     = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
-        $this->account->suspension_message  = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->suspended_at                = now();
+        $this->account->next_suspension_warning_at  = now();
+        $this->account->suspension_warnings         = 3;
+        $this->account->suspension_code             = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->suspension_message          = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
         $this->account->save();
-
-        $this->billing->suspension_warnings = 3;
-        $this->billing->next_suspension_warning_at = now();
-        $this->billing->save();
 
         $alert = Alert::create([
             'account_id'    => $this->account->id,
@@ -202,15 +200,12 @@ class BillingTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('accounts', [
-            'id' => $this->account->id,
-            'suspension_code' => null,
-            'suspended_at'    => null  
-        ]);
-
-        $this->assertDatabaseHas('billing', [
-            'id' => $this->billing->id,
-            'suspension_warnings' => 0,
-            'next_suspension_warning_at' => null
+            'id'                            => $this->account->id,
+            'suspended_at'                  => null,
+            'suspension_code'               => null,
+            'suspension_message'            => null,
+            'suspension_warnings'           => 0,
+            'next_suspension_warning_at'    => null
         ]);
 
         $this->assertDatabaseMissing('alerts', [
@@ -517,13 +512,11 @@ class BillingTest extends TestCase
 
         //  Suspend
         $this->account->suspended_at        = now();
+        $this->account->suspension_warnings = 3;
+        $this->account->next_suspension_warning_at = now();
         $this->account->suspension_code     = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
         $this->account->suspension_message  = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
         $this->account->save();
-
-        $this->billing->suspension_warnings = 3;
-        $this->billing->next_suspension_warning_at = now();
-        $this->billing->save();
 
         //  Add alert
         $alert = factory(Alert::class)->create([
@@ -585,14 +578,14 @@ class BillingTest extends TestCase
             return $mail->user->id === $this->user->id;
         });
 
-        $account = Account::find($this->account->id);
-        $this->assertNull($account->suspended_at);
-        $this->assertNull($account->suspension_code);
-        $this->assertNull($account->suspension_message);
-
-        $billing = Billing::find($this->billing->id);
-        $this->assertEquals($billing->suspension_warnings, 0);
-        $this->assertNull($billing->next_suspension_warning_at);
+        $this->assertDatabaseHas('accounts', [
+            'id'                            => $this->account->id,
+            'suspended_at'                  => null,
+            'suspension_code'               => null,
+            'suspension_message'            => null,
+            'suspension_warnings'           => 0,
+            'next_suspension_warning_at'    => null
+        ]);
 
         //
         //  Make sure the alert is now missing

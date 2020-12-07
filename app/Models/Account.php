@@ -136,14 +136,11 @@ class Account extends Model
 
     public function unsuspend()
     {
-        $billing = $this->billing;
-        $billing->next_suspension_warning_at = null;
-        $billing->suspension_warnings        = 0;
-        $billing->save();
-
-        $this->suspended_at       = null;
-        $this->suspension_message = null;
-        $this->suspension_code    = null;
+        $this->next_suspension_warning_at = null;
+        $this->suspension_warnings        = 0;
+        $this->suspended_at               = null;
+        $this->suspension_message         = null;
+        $this->suspension_code            = null;
         $this->save();
 
         $this->removePaymentAlerts();

@@ -58,16 +58,27 @@ class AccountTest extends TestCase
             'billing_period_ends_at'   => $end
         ]);
 
+        //  Call 3 times to make sure it only sends the mail once
+        Artisan::call('send-account-suspension-warnings');
+        Artisan::call('send-account-suspension-warnings');
         Artisan::call('send-account-suspension-warnings');
 
         Mail::assertQueued(SuspensionWarning3DaysMail::class, function($mail){
             return $mail->user->id === $this->user->id;
         });
 
+        Mail::assertQueued(SuspensionWarning3DaysMail::class, 1);
+
         //  Make sure the warnings are incremented
-        $this->assertDatabaseHas('billing', [
-            'id'                  => $this->billing->id,
-            'suspension_warnings' => 1
+        $this->assertDatabaseHas('accounts', [
+            'id'                  => $this->account->id,
+            'suspension_warnings' => 1,
+            'suspension_code'     => Account::SUSPENSION_CODE_OUSTANDING_BALANCE
+        ]);
+
+        $this->assertDatabaseMissing('accounts', [
+            'id'                         => $this->account->id,
+            'next_suspension_warning_at' => null
         ]);
 
         $this->assertDatabaseHas('alerts', [
@@ -92,7 +103,7 @@ class AccountTest extends TestCase
         for( $i = 0; $i < 3; $i++ ){
             $account = factory(Account::class)->create();
             $billing = factory(Billing::class)->create([
-                'account_id' => $account->id
+                'account_id' => $account->id,
             ]);
             $this->createBillableStatement([
                 'billing_id'               => $billing->id,
@@ -101,9 +112,10 @@ class AccountTest extends TestCase
             ]);
         }
 
-        //  Create a statement, 7 days past due
-        $this->billing->suspension_warnings = 1;
-        $this->billing->save();
+        //  Create a statement 7 days past due
+        $this->account->suspension_warnings        = 1;
+        $this->account->next_suspension_warning_at = now()->subMinutes(1);
+        $this->account->save();
 
         $end   = now()->subDays(7);
         $start = (clone $end)->subDays(30);
@@ -112,14 +124,22 @@ class AccountTest extends TestCase
             'billing_period_ends_at'   => $end
         ]);
 
+        //  Call 3 times to make sure it's onle sent once
         Artisan::call('send-account-suspension-warnings');
+        Artisan::call('send-account-suspension-warnings');
+        Artisan::call('send-account-suspension-warnings');
+
+        Mail::assertQueued(SuspensionWarning7DaysMail::class, function($mail){
+            return $mail->user->id === $this->user->id;
+        });
 
         Mail::assertQueued(SuspensionWarning7DaysMail::class, 1);
         
         //  Make sure the warnings are incremented
-        $this->assertDatabaseHas('billing', [
-            'id'                  => $this->billing->id,
-            'suspension_warnings' => 2
+        $this->assertDatabaseHas('accounts', [
+            'id'                  => $this->account->id,
+            'suspension_warnings' => 2,
+            'suspension_code'     => Account::SUSPENSION_CODE_OUSTANDING_BALANCE
         ]);
 
         //  Make sure account is suspended
@@ -160,8 +180,10 @@ class AccountTest extends TestCase
         }
 
         //  Create a statement, 9 days past due
-        $this->billing->suspension_warnings = 2;
-        $this->billing->save();
+        $this->account->suspension_warnings        = 2;
+        $this->account->next_suspension_warning_at = now()->subMinutes(1);
+        $this->account->suspension_code            = Account::SUSPENSION_CODE_OUSTANDING_BALANCE;
+        $this->account->save();
 
         $end   = now()->subDays(9);
         $start = (clone $end)->subDays(30);
@@ -170,14 +192,22 @@ class AccountTest extends TestCase
             'billing_period_ends_at'   => $end
         ]);
 
+        //  Call 3 times to make sure it's only sending 1 email
         Artisan::call('send-account-suspension-warnings');
+        Artisan::call('send-account-suspension-warnings');
+        Artisan::call('send-account-suspension-warnings');
+
+        Mail::assertQueued(SuspensionWarning9DaysMail::class, function($mail){
+            return $mail->user->id === $this->user->id;
+        });
 
         Mail::assertQueued(SuspensionWarning9DaysMail::class, 1);
         
         //  Make sure the warnings are incremented
-        $this->assertDatabaseHas('billing', [
-            'id'                  => $this->billing->id,
-            'suspension_warnings' => 3
+        $this->assertDatabaseHas('accounts', [
+            'id'                  => $this->account->id,
+            'suspension_warnings' => 3,
+            'suspension_code'     => Account::SUSPENSION_CODE_OUSTANDING_BALANCE
         ]);
 
         $this->assertDatabaseHas('alerts', [
@@ -216,8 +246,9 @@ class AccountTest extends TestCase
         }
 
         //  Create a statement, 10 days past due
-        $this->billing->suspension_warnings = 3;
-        $this->billing->save();
+        $this->account->suspension_warnings = 3;
+        $this->account->next_suspension_warning_at = now()->subMinutes(1);
+        $this->account->save();
 
         $end   = now()->subDays(10);
         $start = (clone $end)->subDays(30);
@@ -231,14 +262,21 @@ class AccountTest extends TestCase
                  ->once();
         });
 
+        // Call 3 times to make sure emails are only sent once
+        Artisan::call('send-account-suspension-warnings');
+        Artisan::call('send-account-suspension-warnings');
         Artisan::call('send-account-suspension-warnings');
 
+        Mail::assertQueued(SuspensionWarning10DaysMail::class, function($mail){
+            return $mail->user->id === $this->user->id;
+        });
         Mail::assertQueued(SuspensionWarning10DaysMail::class, 1);
         
         //  Make sure the warnings are incremented
-        $this->assertDatabaseHas('billing', [
-            'id'                  => $this->billing->id,
-            'suspension_warnings' => 4
+        $this->assertDatabaseHas('accounts', [
+            'id'                         => $this->billing->id,
+            'suspension_warnings'        => 4,
+            'next_suspension_warning_at' => null
         ]);
 
         //  Make sure the number was deleted

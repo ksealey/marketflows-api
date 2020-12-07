@@ -1,10 +1,22 @@
 #!/usr/bin/bash
 export PROD_REPO_URL=212127452432.dkr.ecr.us-east-1.amazonaws.com
 export IMAGE=marketflows-api
+
 if [ -z "$1" ] 
     then
         echo "Tag required"
         exit
+fi
+
+export CHANGES=$(git status database/migrations/* -s);
+
+touch .deploy-env
+
+if [ ! -z "$CHANGES" ] 
+    then 
+        echo "HAS_MIGRATIONS=1" > .deploy-env
+    else 
+        echo "HAS_MIGRATIONS=0" > .deploy-env
 fi
 
 # Login to container service
