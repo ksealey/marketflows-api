@@ -91,6 +91,18 @@ class Company extends Model implements Exportable
         return 'Company';
     }
 
+    public function getCountryCodeAttribute()
+    {
+        $code = '';
+
+        switch( $this->country ){
+            default : 
+                $code = '1';
+        }
+
+        return $code;
+    }
+
     public function getCompanyCodeAttribute()
     {
         $countryCodes = config('app.country_codes');

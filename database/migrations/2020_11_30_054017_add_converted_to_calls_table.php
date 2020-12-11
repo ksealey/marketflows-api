@@ -14,7 +14,7 @@ class AddConvertedToCallsTable extends Migration
     public function up()
     {
         Schema::table('calls', function (Blueprint $table) {
-            $table->dateTime('converted_at')->nullable();
+            $table->dateTime('converted_at')->nullable()->after('first_call');
         });
     }
 

@@ -61,7 +61,7 @@ class IncomingCallController extends Controller
             ], 400);
         
         $response = new VoiceResponse();
-
+        
         //  Find out how to handle this call
         $callerCountryCode = PhoneNumber::countryCode($request->From);
         $callerNumber      = PhoneNumber::number($request->From);
@@ -175,13 +175,38 @@ class IncomingCallController extends Controller
         }
 
         $call        = $this->createCall($company, $phoneNumber, $config, $request);
-        $dialCommand = $response->dial(null, $this->getDialConfig($config));
+        $dialCommand = $response->dial(null, $this->getDialConfig($config, $call));
         $dialCommand->number(
-            $config->forwardToPhoneNumber(), 
-            $this->getNumberConfig($config, $call)
+            $config->forwardToPhoneNumber($company->country_code), 
+            $this->getDialedNumberConfig($config, $call)
         );
 
         event(new CallEvent(Plugin::EVENT_CALL_START, $call));
+
+        return Response::xmlResponse($response);
+    }
+
+     /**
+     * Handle updating the status when a call is completed
+     * 
+     * @param Request $request
+     * 
+     * @return Response
+     */
+    public function handleIncomingCallStatusUpdated(Request $request)
+    {
+        $response = new VoiceResponse();
+
+        //  If the call was canceled or it's last status was ringing, the call was abandoned
+        if( in_array($request->CallStatus, ['canceled', 'completed']) ){
+            $call = Call::where('external_id', $request->CallSid)->first();
+            if( $call ){
+                if( $request->CallStatus == 'canceled' || $call->status === 'Ringing' ){
+                    $call->status = 'Abandoned';
+                    $call->save();
+                }
+            }
+        }
 
         return Response::xmlResponse($response);
     }
@@ -266,13 +291,80 @@ class IncomingCallController extends Controller
 
         //  Valid input, forward call
         $call        = $this->createCall($company, $phoneNumber, $config, $request);
-        $dialCommand = $response->dial(null, $this->getDialConfig($config));
+        $dialCommand = $response->dial(null, $this->getDialConfig($config, $call));
         $dialCommand->number(
-            $config->forwardToPhoneNumber(), 
-            $this->getNumberConfig($config, $call)
+            $config->forwardToPhoneNumber($company->country_code), 
+            $this->getDialedNumberConfig($config, $call)
         );
 
         event(new CallEvent(Plugin::EVENT_CALL_START, $call));
+
+        return Response::xmlResponse($response);
+    }
+
+    /**
+     * Handle dialed call status
+     * 
+     * @param Request $request
+     * 
+     * @return Response
+     */
+    public function handleIncomingCallDialedCallStatusUpdated(Request $request)
+    {
+        $validator = validator($request->input(),  [
+            'ParentCallSid' => 'required|max:64'
+        ]);
+
+        if( $validator->fails() ){
+            return response([
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
+        
+        $call = Call::where('external_id', $request->ParentCallSid)->first();
+        if( ! $call )
+            return Response::xmlResponse(new VoiceResponse());
+
+        $call->status = $this->callStatus($request->CallStatus);
+        $call->save();
+
+        //
+        //  If the call was made successfully, move to a conference
+        //
+        if( $request->CallStatus === 'in-progress' || $request->CallStatus === 'answered' ){
+            $twilio = \App::make(Twilio::class);
+            $twiml  = new VoiceResponse();
+            $dial   = $twiml->dial('');
+            $dial->conference($request->ParentCallSid);
+
+            $twilio->calls($request->CallSid)
+                   ->update([ 'twiml' => $twiml]);
+        }
+
+        return Response::xmlResponse(new VoiceResponse());
+    }
+
+    /**
+     * Handle dialed call joining conference
+     * 
+     * @param Request $request
+     * 
+     * @return Response
+     */
+    public function handleIncomingCallDialedJoinConference(Request $request)
+    {
+        //  Join conference if call is in progress
+        $response = new VoiceResponse();
+
+        //  Call was not connected
+        if( $request->CallStatus !== 'in-progress' && $request->CallStatus !== 'answered' ){
+            return Response::xmlResponse($response);
+        }
+
+        $dial = $response->dial('');
+        $dial->conference($request->CallSid, [
+            'startConferenceOnEnter' => true
+        ]);
 
         return Response::xmlResponse($response);
     }
@@ -391,11 +483,11 @@ class IncomingCallController extends Controller
         );
     }
 
-    protected function getDialConfig($phoneNumberConfig)
+    protected function getDialConfig($phoneNumberConfig, $call)
     {
         $dialConfig = [
             'answerOnBridge' => 'true',
-            'action'         => route('incoming-call-completed')
+            'action'         => route('incoming-call-dialed-join-conference')
         ];
 
         //  Handle recording
@@ -410,21 +502,27 @@ class IncomingCallController extends Controller
         return $dialConfig;
     }
 
-    protected function getNumberConfig($phoneNumberConfig, $call)
+    protected function getDialedNumberConfig($phoneNumberConfig, $call)
     {
-        $numberConfig = [];
+        $dialedNumberConfig = [
+            'statusCallbackEvent' => 'answered completed',
+            'statusCallback'      => route('incoming-call-dialed-status-updated'),
+            'statusCallbackMethod'=> 'POST'
+        ];
+
         if( $phoneNumberConfig->whisper_enabled ){
             $company = $call->company;
-            $numberConfig = [
+            $dialedNumberConfig = array_merge([
                 'url' => route('incoming-call-whisper', [
                     'whisper_message'  => $phoneNumberConfig->whisperMessage($call),
                     'whisper_language' => $company->tts_language,
                     'whisper_voice'    => $company->tts_voice
                 ]),
                 'method' => 'GET'
-            ];
+            ], $dialedNumberConfig);
         }
-        return $numberConfig;
+        
+        return $dialedNumberConfig;
     }
 
     protected function fieldFormat($data)
@@ -471,27 +569,43 @@ class IncomingCallController extends Controller
             //  Create a new contact
             //
             $firstCall  = true;
-            $callerName = strtolower($request->CallerName ?: null);
+            $firstName  = '';
+            $lastName   = ''; 
+            $callerName = trim(str_replace(',', ' ', $request->CallerName ?: ''));
             if( ! $callerName ){
-                $callerName  = trim($request->FromCity  ?: '') . ' ' . ($request->FromState ?: '');
+                $callerName  = trim($request->FromState . ' ' . $request->FromCity);
             }
-            
-            $callerName       = strtolower(str_replace(',', ' ', ($callerName ? $callerName : 'Unknown Caller')));
-            $callerNamePieces = explode(' ', $callerName);
+
+            if( $callerName ){
+                $callerName = ucwords(strtolower($callerName));
+                $callerNamePieces = explode(' ', $callerName);
+                if( count($callerNamePieces) === 1 ){
+                    $firstName = $callerNamePieces[0];
+                }else{
+                    $firstName = $callerNamePieces[1];
+                    $lastName  = $callerNamePieces[0];
+                }
+            }else{
+                $firstName = 'Unknown';
+                $lastName  = 'Caller';
+            }
+
+            $firstName = substr($firstName, 0, 64);
+            $lastName = substr($lastName, 0, 64);
 
             $contact = Contact::create([
                 'uuid'          => $gUUID,
                 'account_id'    => $company->account_id,
                 'company_id'    => $company->id,
-                'first_name'    => $this->fieldFormat($callerNamePieces[1]),
-                'last_name'     => $this->fieldFormat($callerNamePieces[0] ?? ''),
+                'first_name'    => $firstName,
+                'last_name'     => $lastName ?: null,
                 'email'         => null,
                 'country_code'  => $callerCountryCode,
                 'number'        => $callerNumber,
-                'city'          => $this->fieldFormat($request->FromCity) ?: null,
-                'state'         => strtoupper($this->fieldFormat($request->FromState)) ?: null,
-                'zip'           => $this->fieldFormat($request->FromZip) ?: null,
-                'country'       => strtoupper($this->fieldFormat($request->FromCountry)) ?: null
+                'city'          => substr(ucwords(strtolower($request->FromCity?:'')), 0, 64) ?: null,
+                'state'         => substr(strtoupper($request->FromState?:''), 0, 64) ?: null,
+                'zip'           => substr($request->FromZip?:'', 0, 64) ?: null,
+                'country'       => substr(strtoupper($request->FromCountry?:''), 0, 64) ?: null,
             ]);
 
             if( $session ){ // Claim session
@@ -600,7 +714,7 @@ class IncomingCallController extends Controller
             'is_search'                         => $isSearch,
             'recording_enabled'                 => $config->recording_enabled,
             'transcription_enabled'             => $config->transcription_enabled,
-            'forwarded_to'                      => $config->forwardToPhoneNumber(),
+            'forwarded_to'                      => $config->forwardToPhoneNumber($company->country_code),
             'created_at'                        => now()->format('Y-m-d H:i:s.u'),
             'updated_at'                        => now()->format('Y-m-d H:i:s.u')
         ]);
@@ -613,6 +727,28 @@ class IncomingCallController extends Controller
 
     public function callStatus($status)
     {
-        return substr(ucwords(strtolower(str_replace('-', ' ', $status))), 0, 64);
+        switch($status)
+        {
+            case 'queued':
+                return 'Queued';
+            case 'initiated':
+                return 'Initiated';
+            case 'ringing':
+                return 'Ringing';
+            case 'answered':
+            case 'in-progress':
+                return 'In Progress';
+            case 'no-answer':
+                return 'Unanswered';
+            case 'busy':
+                return 'Busy';
+            case 'canceled':
+                return 'Abandoned';
+            case 'failed':
+                return 'Failed';
+
+            default :
+                return substr(ucwords(strtolower(str_replace('-', ' ', $status))), 0, 64);
+        }
     }
 }

@@ -37,6 +37,13 @@ class PhoneNumberConfigPolicy
             && $phoneNumberConfig->company_id === $company->id;
     }
 
+    public function clone(User $user, PhoneNumberConfig $phoneNumberConfig, Company $company)
+    {
+        return $user->canDoAction('create')
+            && $user->canViewCompany($company)
+            && $phoneNumberConfig->company_id === $company->id;
+    }
+
     public function delete(User $user, PhoneNumberConfig $phoneNumberConfig, Company $company)
     {
         return $user->canDoAction('delete')

@@ -52,7 +52,7 @@ class RegisterController extends Controller
                 'regex:/(?=.*[0-9])(?=.*[A-Z])/'
             ],
             'timezone' => 'bail|required|timezone',
-            'reg_code' => 'in:BETAINVITE'
+            'reg_code' => 'bail|nullable|in:BETAINVITE'
         ];
 
         $validator = Validator::make($request->input(), $rules);

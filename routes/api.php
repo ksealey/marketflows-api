@@ -477,6 +477,10 @@ Route::prefix('/')->group(function(){
                                 ->middleware('can:update,phoneNumberConfig,company')
                                 ->name('update-phone-number-config');
 
+                            Route::post('/{phoneNumberConfig}/clone', 'Company\PhoneNumberConfigController@clone')
+                                ->middleware('can:clone,phoneNumberConfig,company')
+                                ->name('clone-phone-number-config');
+
                             Route::delete('/{phoneNumberConfig}', 'Company\PhoneNumberConfigController@delete')
                                 ->middleware('can:delete,phoneNumberConfig,company')
                                 ->name('delete-phone-number-config');
@@ -726,6 +730,15 @@ Route::prefix('/')->group(function(){
                 Route::prefix('incoming-calls')->group(function(){
                     Route::post('/', 'IncomingCallController@handleIncomingCall')
                             ->name('incoming-call');
+
+                    Route::post('/status-updated', 'IncomingCallController@handleIncomingCallStatusUpdated')
+                            ->name('incoming-call-status-updated');
+
+                    Route::post('/dialed-call-status-updated', 'IncomingCallController@handleIncomingCallDialedCallStatusUpdated')
+                            ->name('incoming-call-dialed-status-updated');
+
+                    Route::post('/dialed-call-join-conference', 'IncomingCallController@handleIncomingCallDialedJoinConference')
+                            ->name('incoming-call-dialed-join-conference');
 
                     Route::post('/collect', 'IncomingCallController@handleCollect')
                             ->name('incoming-call-collect');

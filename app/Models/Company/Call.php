@@ -49,6 +49,10 @@ class Call extends Model
         'forwarded_to',
 
         'cost',
+
+        'lead_status',
+        'converted_at',
+
         'created_at',
         'updated_at'
     ];

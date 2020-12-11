@@ -28,12 +28,35 @@ class PhoneNumberConfig extends Model
         'keypress_key',
         'keypress_timeout',
         'keypress_attempts',
-        'keypress_message_type',
-        'keypress_audio_clip_id',
-        'keypress_message',
-
+        'keypress_directions_message',
+        'keypress_error_message',
+        'keypress_success_message',
+        'keypress_failure_message',
+        
         'whisper_enabled',
         'whisper_message',
+
+        'keypress_conversion_enabled',
+        'keypress_conversion_key_converted',
+        'keypress_conversion_key_unconverted',
+        'keypress_conversion_attempts',
+        'keypress_conversion_timeout',
+        'keypress_conversion_directions_message',
+        'keypress_conversion_error_message',
+        'keypress_conversion_success_message',
+        'keypress_conversion_failure_message',
+
+        'keypress_qualification_enabled',
+        'keypress_qualification_key_qualified',
+        'keypress_qualification_key_potential',
+        'keypress_qualification_key_customer',
+        'keypress_qualification_key_unqualified',
+        'keypress_qualification_attempts',
+        'keypress_qualification_timeout',
+        'keypress_qualification_directions_message',
+        'keypress_qualification_error_message',
+        'keypress_qualification_success_message',
+        'keypress_qualification_failure_message',
 
         'recording_enabled',
 
@@ -52,11 +75,13 @@ class PhoneNumberConfig extends Model
         'kind'
     ];
 
-    public $casts = [
+    protected $casts = [
         'recording_enabled' => 'boolean',
         'transcription_enabled' => 'boolean',
         'keypress_enabled' => 'boolean',
-        'whisper_enabled' => 'boolean'
+        'whisper_enabled' => 'boolean',
+        'keypress_conversion_enabled' => 'boolean',
+        'keypress_qualification_enabled'    => 'boolean'
     ];
 
     /**
@@ -124,11 +149,14 @@ class PhoneNumberConfig extends Model
         return false;
     }
 
-    public function forwardToPhoneNumber()
+    public function forwardToPhoneNumber($defaultCountryCode = '1')
     {
-        $number = $this->forward_to_number;
+        $number = trim($this->forward_to_number);
+
         if( strlen($number) > 10 )
             $number = '+' . $number;
+        else 
+            $number = '+' . $defaultCountryCode . $number;
             
         return $number;
     }

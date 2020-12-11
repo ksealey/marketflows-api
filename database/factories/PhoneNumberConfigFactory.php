@@ -26,5 +26,28 @@ $factory->define(\App\Models\Company\PhoneNumberConfig::class, function (Faker $
         'recording_enabled'         => 1,
 
         'transcription_enabled'      => 1,
+
+        'keypress_conversion_enabled'           => 1,
+        'keypress_conversion_key_converted'     => 1,
+        'keypress_conversion_key_unconverted'   => 2,
+        'keypress_conversion_attempts'          => 3,
+        'keypress_conversion_timeout'           => 10,
+        'keypress_conversion_directions_message'=> $faker->realText(50),
+        'keypress_conversion_error_message'     => $faker->realText(50),
+        'keypress_conversion_success_message'   => $faker->realText(50),
+        'keypress_conversion_failure_message'   => $faker->realText(50),
+
+        'keypress_qualification_enabled'        => 1,
+        'keypress_qualification_key_qualified'  => 2,
+        'keypress_qualification_key_potential'  => 3,
+        'keypress_qualification_key_customer'   => 4,
+        'keypress_qualification_key_unqualified'  => 5,
+        'keypress_qualification_attempts'  => 5,
+        'keypress_qualification_timeout'   => 20,
+        'keypress_qualification_directions_message'  => $faker->realText(50),
+        'keypress_qualification_error_message'  => $faker->realText(50),
+        'keypress_qualification_success_message'  => $faker->realText(50),
+        'keypress_qualification_failure_message'  => $faker->realText(50),
+
     ];
 });

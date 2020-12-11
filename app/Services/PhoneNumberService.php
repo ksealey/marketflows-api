@@ -40,8 +40,8 @@ class PhoneNumberService
             $client             = App::make(Twilio::class);
             $method             = 'POST';
             $voiceUrl           = route('incoming-call');
+            $statusCallback     = route('incoming-call-status-updatedstatus-updated');
             $smsUrl             = route('incoming-sms');
-            $statusCallback     = route('incoming-call-duration');
         }else{
             $client             = App::make('TestTwilio');
             $method             = '';
