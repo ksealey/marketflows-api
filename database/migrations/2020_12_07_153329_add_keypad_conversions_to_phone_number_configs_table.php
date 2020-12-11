@@ -18,7 +18,11 @@ class AddKeypadConversionsToPhoneNumberConfigsTable extends Migration
             $table->dropColumn('keypress_audio_clip_id');
             $table->dropColumn('keypress_message_type');
             
-            $table->string('keypress_directions_message',255)->after('keypress_message');
+            $table->string('keypress_directions_message',255)->nullable()->after('keypress_message');
+            $table->string('keypress_error_message', 255)->nullable()->after('keypress_directions_message');
+            $table->string('keypress_success_message', 255)->nullable()->after('keypress_error_message');
+            $table->string('keypress_failure_message', 255)->nullable()->after('keypress_success_message');
+
 
             $table->boolean('keypress_conversion_enabled')->default(0)->after('whisper_message');
             $table->tinyInteger('keypress_conversion_key_converted')->nullable()->after('keypress_conversion_enabled');
@@ -53,7 +57,6 @@ class AddKeypadConversionsToPhoneNumberConfigsTable extends Migration
             $table->dropColumn('keypress_message');
         });
         
-
         Schema::table('calls', function(Blueprint $table){
             $table->string('lead_status', 16)->nullable()->default('Unknown')->after('converted_at');
         });

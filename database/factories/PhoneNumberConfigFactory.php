@@ -17,8 +17,10 @@ $factory->define(\App\Models\Company\PhoneNumberConfig::class, function (Faker $
         'keypress_key'              => 1,
         'keypress_attempts'         => 3,
         'keypress_timeout'          => 30,
-        'keypress_message_type'     => 'TEXT',
-        'keypress_message'          => $faker->realText(64),
+        'keypress_directions_message'=> $faker->realText(50),
+        'keypress_error_message'     => $faker->realText(50),
+        'keypress_success_message'   => $faker->realText(50),
+        'keypress_failure_message'   => $faker->realText(50),
 
         'whisper_enabled'           => 1,
         'whisper_message'           => $faker->realText(64),

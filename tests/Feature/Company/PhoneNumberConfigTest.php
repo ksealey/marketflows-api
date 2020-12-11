@@ -32,8 +32,6 @@ class PhoneNumberConfigTest extends TestCase
                   'keypress_key'          => 0,
                   'keypress_attempts'     => 1,
                   'keypress_timeout'      => 5,
-                  'keypress_message_type' => 'TEXT',
-                  'keypress_message'      => 'Hello World',
 
                   'greeting_enabled'      => 1,
                   'greeting_message_type' => 'TEXT',
@@ -57,10 +55,13 @@ class PhoneNumberConfigTest extends TestCase
                   "keypress_key"          => $configData->keypress_key,
                   "keypress_attempts"     => $configData->keypress_attempts,
                   "keypress_timeout"      => $configData->keypress_timeout,
-                  "keypress_message_type" => $configData->keypress_message_type,
-                  "keypress_audio_clip_id"=> $configData->keypress_audio_clip_id,
                   "keypress_message"      => $configData->keypress_message,
                   "transcription_enabled" => $configData->transcription_enabled,
+
+                  'keypress_directions_message'=> $configData->keypress_directions_message,
+                  'keypress_error_message'     => $configData->keypress_error_message,
+                  'keypress_success_message'   => $configData->keypress_success_message,
+                  'keypress_failure_message'   => $configData->keypress_failure_message,
 
                   'keypress_conversion_enabled'           => !!$configData->keypress_conversion_enabled,
                   'keypress_conversion_key_converted'     => $configData->keypress_conversion_key_converted,
@@ -104,10 +105,12 @@ class PhoneNumberConfigTest extends TestCase
                   "keypress_key"          => $configData->keypress_key,
                   "keypress_attempts"     => $configData->keypress_attempts,
                   "keypress_timeout"      => $configData->keypress_timeout,
-                  "keypress_message_type" => $configData->keypress_message_type,
-                  "keypress_audio_clip_id"=> $configData->keypress_audio_clip_id,
-                  "keypress_message"      => $configData->keypress_message,
-                  
+
+                  'keypress_directions_message'=> $configData->keypress_directions_message,
+                  'keypress_error_message'     => $configData->keypress_error_message,
+                  'keypress_success_message'   => $configData->keypress_success_message,
+                  'keypress_failure_message'   => $configData->keypress_failure_message,
+
                   'keypress_conversion_enabled'           => !!$configData->keypress_conversion_enabled,
                   'keypress_conversion_key_converted'     => $configData->keypress_conversion_key_converted,
                   'keypress_conversion_key_unconverted'   => $configData->keypress_conversion_key_unconverted,
@@ -180,9 +183,11 @@ class PhoneNumberConfigTest extends TestCase
                   "keypress_key"          => $config->keypress_key,
                   "keypress_attempts"     => $config->keypress_attempts,
                   "keypress_timeout"      => $config->keypress_timeout,
-                  "keypress_message_type" => $config->keypress_message_type,
-                  "keypress_audio_clip_id"=> $config->keypress_audio_clip_id,
-                  "keypress_message"      => $config->keypress_message,
+                  
+                  'keypress_directions_message'=> $config->keypress_directions_message,
+                  'keypress_error_message'     => $config->keypress_error_message,
+                  'keypress_success_message'   => $config->keypress_success_message,
+                  'keypress_failure_message'   => $config->keypress_failure_message,
 
                   'keypress_conversion_enabled'           => !!$config->keypress_conversion_enabled,
                   'keypress_conversion_key_converted'     => $config->keypress_conversion_key_converted,
@@ -205,7 +210,6 @@ class PhoneNumberConfigTest extends TestCase
                   'keypress_qualification_error_message'  => $config->keypress_qualification_error_message,
                   'keypress_qualification_success_message'  => $config->keypress_qualification_success_message,
                   'keypress_qualification_failure_message'  => $config->keypress_qualification_failure_message,
-
 
                   "created_by"            => $this->user->id,
                   "link"                  => route('read-phone-number-config', [
@@ -276,8 +280,6 @@ class PhoneNumberConfigTest extends TestCase
                   'keypress_key'          => 1,
                   'keypress_attempts'     => 1,
                   'keypress_timeout'      => 5,
-                  'keypress_message_type' => 'AUDIO',
-                  'keypress_message'      => null,
 
                   'whisper_enabled'       => 1,
                   'whisper_message'       => null,
@@ -316,8 +318,11 @@ class PhoneNumberConfigTest extends TestCase
                   'keypress_key'          => 2,
                   'keypress_attempts'     => 2,
                   'keypress_timeout'      => 10,
-                  'keypress_message_type' => 'TEXT',
-                  'keypress_message'      => $configData->keypress_message,
+
+                  'keypress_directions_message'=> $configData->keypress_directions_message,
+                  'keypress_error_message'     => $configData->keypress_error_message,
+                  'keypress_success_message'   => $configData->keypress_success_message,
+                  'keypress_failure_message'   => $configData->keypress_failure_message,
 
                   'whisper_enabled'       => 0,
                   'whisper_message'       => $configData->whisper_message,
@@ -360,9 +365,12 @@ class PhoneNumberConfigTest extends TestCase
                   'keypress_key'          => 2,
                   'keypress_attempts'     => 2,
                   'keypress_timeout'      => 10,
-                  'keypress_message_type' => 'TEXT',
-                  'keypress_message'      => $configData->keypress_message,
-                  'keypress_audio_clip_id'=> null,
+
+                  'keypress_directions_message'=> $configData->keypress_directions_message,
+                  'keypress_error_message'     => $configData->keypress_error_message,
+                  'keypress_success_message'   => $configData->keypress_success_message,
+                  'keypress_failure_message'   => $configData->keypress_failure_message,
+
 
                   'whisper_enabled'       => false,
                   'whisper_message'       => $configData->whisper_message,
@@ -406,8 +414,11 @@ class PhoneNumberConfigTest extends TestCase
                   'keypress_key'          => 2,
                   'keypress_attempts'     => 2,
                   'keypress_timeout'      => 10,
-                  'keypress_message_type' => 'TEXT',
-                  'keypress_message'      => $configData->keypress_message,
+                 
+                  'keypress_directions_message'=> $configData->keypress_directions_message,
+                  'keypress_error_message'     => $configData->keypress_error_message,
+                  'keypress_success_message'   => $configData->keypress_success_message,
+                  'keypress_failure_message'   => $configData->keypress_failure_message,
 
                   'whisper_enabled'       => 0,
                   'whisper_message'       => $configData->whisper_message,
@@ -480,9 +491,12 @@ class PhoneNumberConfigTest extends TestCase
                   "keypress_key"          => $config->keypress_key,
                   "keypress_attempts"     => $config->keypress_attempts,
                   "keypress_timeout"      => $config->keypress_timeout,
-                  "keypress_message_type" => $config->keypress_message_type,
-                  "keypress_audio_clip_id"=> $config->keypress_audio_clip_id,
-                  "keypress_message"      => $config->keypress_message,
+
+                  'keypress_directions_message'=> $config->keypress_directions_message,
+                  'keypress_error_message'     => $config->keypress_error_message,
+                  'keypress_success_message'   => $config->keypress_success_message,
+                  'keypress_failure_message'   => $config->keypress_failure_message,
+
 
                   'keypress_conversion_enabled'           => !!$config->keypress_conversion_enabled,
                   'keypress_conversion_key_converted'     => $config->keypress_conversion_key_converted,
