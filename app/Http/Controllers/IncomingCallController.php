@@ -643,6 +643,7 @@ class IncomingCallController extends Controller
         //  Determine how to route this call and capture sourcing data
         //  
         if( $keywordTrackingPool ){
+            $isRemarketing = null;
             if( $session ){
                 $source     = $session->source;
                 $medium     = $session->medium;
@@ -678,6 +679,7 @@ class IncomingCallController extends Controller
             $isPaid     = $phoneNumber->is_paid;
             $isDirect   = $phoneNumber->is_direct;
             $isReferral = $phoneNumber->is_referral;
+            $isRemarketing = $phoneNumber->is_remarketing;
             $isSearch   = $phoneNumber->is_search;
 
             $config     = $phoneNumber->phone_number_config;
@@ -711,6 +713,7 @@ class IncomingCallController extends Controller
             'is_organic'                        => $isOrganic,
             'is_direct'                         => $isDirect,
             'is_referral'                       => $isReferral,
+            'is_remarketing'                    => $isRemarketing,
             'is_search'                         => $isSearch,
             'recording_enabled'                 => $config->recording_enabled,
             'transcription_enabled'             => $config->transcription_enabled,

@@ -42,6 +42,7 @@ class Call extends Model
         'is_direct',
         'is_search',
         'is_referral',
+        'is_remarketing',
 
         'recording_enabled',
         'transcription_enabled',
@@ -76,6 +77,7 @@ class Call extends Model
         'is_paid'               => 'boolean',
         'is_organic'            => 'boolean',
         'is_referral'           => 'boolean',
+        'is_remarketing'        => 'boolean',
         'is_direct'             => 'boolean',
         'is_search'             => 'boolean'
     ];
@@ -103,9 +105,10 @@ class Call extends Model
             'keywords'              => 'Keyword',
             'is_paid'               => 'Paid',
             'is_organic'            => 'Organic',
-            'is_referral'           => 'Referral',
             'is_direct'             => 'Direct',
             'is_search'             => 'Search',
+            'is_referral'           => 'Referral',
+            'is_remarketing'        => 'Remarketing',
             'recording_enabled'     => 'Recording Enabled',
             'transcription_enabled' => 'Transcription Enabled',
             'first_call'            => 'First Call',

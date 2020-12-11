@@ -29,6 +29,7 @@ class CallController extends Controller
         'calls.is_paid',
         'calls.is_organic',
         'calls.is_referral',
+        'calls.is_remarketing',
         'calls.is_direct',
         'calls.is_search',
         'calls.duration',

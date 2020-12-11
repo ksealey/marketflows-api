@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+class AddRemarketingColumn extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::table('calls', function(Blueprint $table){
+            $table->boolean('is_remarketing')->nullable()->after('is_referral');
+        });
+
+        Schema::table('phone_numbers', function(Blueprint $table){
+            $table->boolean('is_remarketing')->nullable()->after('is_referral');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        //
+    }
+}

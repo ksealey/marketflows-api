@@ -27,6 +27,7 @@ $factory->define(\App\Models\Company\Call::class, function (Faker $faker) {
         'is_direct'   => mt_rand(0,1),
         'is_referral' => mt_rand(0,1),
         'is_search'   => mt_rand(0,1),
+        'is_remarketing'   => mt_rand(0,1),
         
 
         'recording_enabled' => mt_rand(0,1) ? 1 : 0,

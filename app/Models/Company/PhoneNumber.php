@@ -70,8 +70,10 @@ class PhoneNumber extends Model implements Exportable
         'is_paid',
         'is_organic',
         'is_direct',
-        'is_referral',
         'is_search',
+        'is_referral',
+        'is_remarketing',
+        
         'swap_rules',
         'last_assigned_at',
         'purchased_at'

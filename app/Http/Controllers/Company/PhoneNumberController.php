@@ -41,6 +41,7 @@ class PhoneNumberController extends Controller
         'phone_numbers.is_paid',
         'phone_numbers.is_organic',
         'phone_numbers.is_referral',
+        'phone_numbers.is_remarketing',
         'phone_numbers.is_search',
         'phone_number_call_count.call_count'
     ];
@@ -99,7 +100,8 @@ class PhoneNumberController extends Controller
             'is_paid'             => 'bail|nullable|boolean', 
             'is_organic'          => 'bail|nullable|boolean',  
             'is_direct'           => 'bail|nullable|boolean', 
-            'is_referral'         => 'bail|nullable|boolean',   
+            'is_referral'         => 'bail|nullable|boolean', 
+            'is_remarketing'      => 'bail|nullable|boolean',   
             'is_search'           => 'bail|nullable|boolean',      
             'phone_number_config_id' => [
                 'bail',
@@ -175,11 +177,12 @@ class PhoneNumberController extends Controller
             'medium'                    => $request->medium,
             'content'                   => $request->content,
             'campaign'                  => $request->campaign,
-            'is_paid'                   => boolval($request->is_paid),
-            'is_organic'                => boolval($request->is_organic),
-            'is_direct'                 => boolval($request->is_direct),
-            'is_referral'               => boolval($request->is_referral),
-            'is_search'                 => boolval($request->is_search),
+            'is_paid'                   => !!$request->is_paid,
+            'is_organic'                => !!$request->is_organic,
+            'is_direct'                 => !!$request->is_direct,
+            'is_referral'               => !!$request->is_referral,
+            'is_remarketing'            => !!$request->is_remarketing,
+            'is_search'                 => !!$request->is_search,
             'swap_rules'                => ($request->sub_category == 'Website') ? $request->swap_rules : null,
             'purchased_at'              => now(),
             'created_by'                => $user->id
