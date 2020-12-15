@@ -12,6 +12,7 @@
         "aws/aws-sdk-php-laravel": "^3.4",
         "cache/cache": "^1.0",
         "cboden/ratchet": "^0.4.2",
+        "doctrine/dbal": "^2.10",
         "fideloper/proxy": "^4.0",
         "guzzlehttp/guzzle": "^6.3",
         "jenssegers/agent": "^2.6",

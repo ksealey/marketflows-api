@@ -367,7 +367,7 @@ trait CanSwapNumbers
         $params = [];
         parse_str(parse_url($landingUrl, PHP_URL_QUERY), $_params);
         foreach( $_params as $prop => $param ){
-            $params[strtolower(trim($prop))] = $param;
+            $params[strtolower(trim($prop))] = urldecode($param);
         }
 
         foreach( $fields as $field ){

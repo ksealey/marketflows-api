@@ -149,42 +149,25 @@ class PhoneNumberConfig extends Model
         return false;
     }
 
-    public function forwardToPhoneNumber($defaultCountryCode = '1')
-    {
+    public function forwardToPhoneNumber($country = 'US'){
         $number = trim($this->forward_to_number);
-
-        if( strlen($number) > 10 )
+        
+        if( strlen($number) > 10 ){
             $number = '+' . $number;
-        else 
-            $number = '+' . $defaultCountryCode . $number;
+        }else{
+            $countryCode = config('app.country_codes')[$country] ?? '1';
+            $number      = '+' . $countryCode . $number;
+        }
             
         return $number;
     }
 
-    public function greetingMessage()
+    /**
+     * Get a formatted version of a source
+     * 
+     */
+    public function messageSource($source)
     {
-        return $this->greeting_message ?: '';
-    }
-
-    public function keypressMessage()
-    {
-        return $this->keypress_message ?: '';
-    }
-
-    public function whisperMessage(Call $call)
-    {
-        if( ! $this->whisper_message )
-            return '';
-        
-        return $this->variableMessage($this->whisper_message, $call);
-    }
-
-    public function variableMessage(string $message, Call $call)
-    {
-        $contact = $call->contact;
-
-        //  Replace URL as source with domain 
-        $source = $call->source;
         if( preg_match('/^http(s)?:\/\//i', $source) ){
             $source = parse_url($source, PHP_URL_HOST);
             if( $source ){
@@ -197,26 +180,66 @@ class PhoneNumberConfig extends Model
                 $source = 'Website Referral';
             }
         }
+        return $source;
+    }
 
-        $variables = [
-            '${source}'             => $source,
-            '${medium}'             => $call->medium,
-            '${content}'            => $call->content,
-            '${campaign}'           => $call->campaign,
-            '${keyword}'            => $call->keyword,
-            '${caller_first_name}'  => $contact->first_name,
-            '${caller_last_name}'   => $contact->last_name,
-            '${caller_country_code}'=> $contact->country_code,
-            '${caller_number}'      => $contact->number,
-            '${caller_city}'        => $contact->city,
-            '${caller_state}'       => $contact->state,
-            '${caller_zip}'         => $contact->zip,
-            '${caller_country}'     => $contact->country,
-            '${forward_number}'     => $call->forwarded_to,
-            '${dialed_number}'      => $call->phone_number_name
-        ];
+    /**
+     * Merge variables with with message field
+     * 
+     */
+    public function message($field, $variables = [], $call = null)
+    {
+        //
+        //  Inject global variables
+        //
+        $otherVariables = $this->variables();
 
-        return str_ireplace(array_keys($variables), array_values($variables), $message);
+        if( $call ){
+            $otherVariables['source']   = $this->messageSource($call->source);
+            $otherVariables['medium']   = $call->medium;
+            $otherVariables['content']  = $call->content;
+            $otherVariables['campaign'] = $call->campaign;
+            $otherVariables['keyword']  = $call->keyword;
+        }
+
+        $variables = array_merge($otherVariables, $variables);
+
+        //
+        //  Turn keys into variable keys 
+        //
+        $vars = [];
+        foreach( $variables as $key => $value ){
+            $vars['${' . strtolower($key) . '}'] = $value;
+        }
+
+        return str_ireplace(
+            array_keys($vars), 
+            array_values($vars), 
+            $this->$field
+        );
+    }
+
+    public function variables($with = [])
+    {
+        $company = $this->company;
+
+        return array_merge([
+            'company_name'                          => $company->name,
+            'forward_number'                        => $this->forward_to_number,
+            'keypress_key'                          => $this->keypress_key,
+            'keypress_attempts'                     => $this->keypress_attempts,
+            'keypress_timeout'                      => $this->keypress_timeout,
+            'keypress_conversion_key_converted'     => $this->keypress_conversion_key_converted,
+            'keypress_conversion_key_unconverted'   => $this->keypress_conversion_key_unconverted,
+            'keypress_conversion_attempts'          => $this->keypress_conversion_attempts,
+            'keypress_conversion_timeout'           => $this->keypress_conversion_timeout,
+            'keypress_qualification_key_qualified'  => $this->keypress_qualification_key_qualified,
+            'keypress_qualification_key_potential'  => $this->keypress_qualification_key_potential,
+            'keypress_qualification_key_customer'   => $this->keypress_qualification_key_customer,
+            'keypress_qualification_key_unqualified'=> $this->keypress_qualification_key_unqualified,
+            'keypress_qualification_attempts'       => $this->keypress_qualification_attempts,
+            'keypress_qualification_timeout'        => $this->keypress_qualification_timeout
+        ], $with);
     }
     
 }

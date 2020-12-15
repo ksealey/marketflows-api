@@ -694,8 +694,6 @@ Route::prefix('/')->group(function(){
                                 ->middleware('can:read,call,company')
                                 ->name('read-call-recording');
 
-                            
-
                             Route::delete('/{call}/recording', 'Company\CallController@deleteRecording')
                                 ->middleware('can:delete,call,company')
                                 ->name('delete-call-recording');
@@ -731,6 +729,43 @@ Route::prefix('/')->group(function(){
                     Route::post('/', 'IncomingCallController@handleIncomingCall')
                             ->name('incoming-call');
 
+                    Route::post('/collect', 'IncomingCallController@handleCollect')
+                            ->name('incoming-call-collect');
+
+                    Route::prefix('dialed-call')->group(function(){
+                        Route::post('/number-status-updated', 'IncomingCallController@handleDialedCallNumberStatusUpdated')
+                            ->name('dialed-call-number-status-updated');
+
+                        Route::get('/preconnect', 'IncomingCallController@handleDialedCallPreconnect')
+                            ->name('dialed-call-preconnect');
+
+                        Route::get('/agent-join-conference', 'IncomingCallController@handleDialedCallAgentJoinConference')
+                            ->name('dialed-call-agent-join-conference');
+
+                        Route::post('/ended', 'IncomingCallController@handleDialedCallEnded')
+                            ->name('dialed-call-ended');
+
+                        Route::post('/collect-conversion', 'IncomingCallController@handleCollectConversion')
+                            ->name('incoming-call-collect-conversion');
+
+                        Route::post('/recording-available', 'IncomingCallController@handleRecordingAvailable')
+                            ->name('dialed-call-recording-available');
+                    });
+
+                    Route::post('/cleanup', 'IncomingCallController@handleCleanup')
+                            ->name('incoming-call-cleanup');
+
+                    /*
+
+                    Route::post('/start-conference', 'IncomingCallController@handleStartConference')
+                            ->name('incoming-call-start-conference');
+
+                    Route::post('/join-conference', 'IncomingCallController@handleCallerJoinConference')
+                            ->name('incoming-call-caller-join-conference');*/
+
+
+                    
+/*
                     Route::post('/status-updated', 'IncomingCallController@handleIncomingCallStatusUpdated')
                             ->name('incoming-call-status-updated');
 
@@ -740,11 +775,9 @@ Route::prefix('/')->group(function(){
                     Route::post('/dialed-call-join-conference', 'IncomingCallController@handleIncomingCallDialedJoinConference')
                             ->name('incoming-call-dialed-join-conference');
 
-                    Route::post('/collect', 'IncomingCallController@handleCollect')
-                            ->name('incoming-call-collect');
+                    
 
-                    Route::get('/whisper', 'IncomingCallController@handleCallWhisper')
-                            ->name('incoming-call-whisper');
+                    
 
                     Route::post('/completed', 'IncomingCallController@handleCompletedCall')
                             ->name('incoming-call-completed');
@@ -753,7 +786,7 @@ Route::prefix('/')->group(function(){
                             ->name('incoming-call-duration');
 
                     Route::post('/recording-available', 'IncomingCallController@handleRecordingAvailable')
-                            ->name('incoming-call-recording-available');
+                            ->name('incoming-call-recording-available');*/
                 });
 
                 /*
