@@ -29,6 +29,7 @@ class Call extends Model
         'direction',
         'status',
         'duration',
+        'billable_duration',
         'first_call',
 
         'source',

@@ -739,6 +739,9 @@ Route::prefix('/')->group(function(){
                         Route::get('/preconnect', 'IncomingCallController@handleDialedCallPreconnect')
                             ->name('dialed-call-preconnect');
 
+                        Route::post('/collect-accept', 'IncomingCallController@handleDialedCallCollectAccept')
+                            ->name('dialed-call-collect-accept');
+
                         Route::get('/agent-join-conference', 'IncomingCallController@handleDialedCallAgentJoinConference')
                             ->name('dialed-call-agent-join-conference');
 
@@ -748,6 +751,12 @@ Route::prefix('/')->group(function(){
                         Route::post('/collect-conversion', 'IncomingCallController@handleCollectConversion')
                             ->name('incoming-call-collect-conversion');
 
+                        Route::post('/collect-qualification', 'IncomingCallController@handleCollectQualification')
+                            ->name('incoming-call-collect-qualification');
+
+                        Route::post('/conference-ended', 'IncomingCallController@handleConferenceEnded')
+                            ->name('incoming-call-conference-ended');
+                            
                         Route::post('/recording-available', 'IncomingCallController@handleRecordingAvailable')
                             ->name('dialed-call-recording-available');
                     });

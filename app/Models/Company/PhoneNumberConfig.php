@@ -51,6 +51,7 @@ class PhoneNumberConfig extends Model
         'keypress_qualification_key_potential',
         'keypress_qualification_key_customer',
         'keypress_qualification_key_unqualified',
+        'keypress_qualification_key_unknown',
         'keypress_qualification_attempts',
         'keypress_qualification_timeout',
         'keypress_qualification_directions_message',
@@ -219,27 +220,25 @@ class PhoneNumberConfig extends Model
         );
     }
 
-    public function variables($with = [])
+    public function variables()
     {
-        $company = $this->company;
-
-        return array_merge([
-            'company_name'                          => $company->name,
-            'forward_number'                        => $this->forward_to_number,
-            'keypress_key'                          => $this->keypress_key,
-            'keypress_attempts'                     => $this->keypress_attempts,
-            'keypress_timeout'                      => $this->keypress_timeout,
-            'keypress_conversion_key_converted'     => $this->keypress_conversion_key_converted,
-            'keypress_conversion_key_unconverted'   => $this->keypress_conversion_key_unconverted,
-            'keypress_conversion_attempts'          => $this->keypress_conversion_attempts,
-            'keypress_conversion_timeout'           => $this->keypress_conversion_timeout,
-            'keypress_qualification_key_qualified'  => $this->keypress_qualification_key_qualified,
-            'keypress_qualification_key_potential'  => $this->keypress_qualification_key_potential,
-            'keypress_qualification_key_customer'   => $this->keypress_qualification_key_customer,
-            'keypress_qualification_key_unqualified'=> $this->keypress_qualification_key_unqualified,
-            'keypress_qualification_attempts'       => $this->keypress_qualification_attempts,
-            'keypress_qualification_timeout'        => $this->keypress_qualification_timeout
-        ], $with);
+        return [
+            'forward_number'        => $this->forward_to_number,
+            'keypress_key'          => $this->keypress_key,
+            'keypress_attempts'     => $this->keypress_attempts,
+            'keypress_timeout'      => $this->keypress_timeout,
+            'converted_key'         => $this->keypress_conversion_key_converted,
+            'unconverted_key'       => $this->keypress_conversion_key_unconverted,
+            'conversion_attempts'   => $this->keypress_conversion_attempts,
+            'conversion_timeout'    => $this->keypress_conversion_timeout,
+            'qualified_key'         => $this->keypress_qualification_key_qualified,
+            'potential_key'         => $this->keypress_qualification_key_potential,
+            'customer_key'          => $this->keypress_qualification_key_customer,
+            'unqualified_key'       => $this->keypress_qualification_key_unqualified,
+            'unqualified_key'       => $this->keypress_qualification_key_unqualified,
+            'qualification_attempts'=> $this->keypress_qualification_attempts,
+            'qualification_timeout' => $this->keypress_qualification_timeout
+        ];
     }
     
 }

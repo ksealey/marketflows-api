@@ -16,6 +16,7 @@ use \App\Models\Company\CallRecording;
 use \App\Events\Company\CallEvent;
 use \App\Models\Plugin;
 use App\Services\TranscribeService;
+use Twilio\TwiML\VoiceResponse;
 use Twilio\Rest\Client as TwilioClient;
 use App\Jobs\ProcessCallRecordingJob;
 use Storage;
@@ -35,30 +36,47 @@ class IncomingCallTest extends TestCase
         $company     = $this->createCompany();
         $config      = $this->createConfig($company, [
             'greeting_enabled'       => 0,
-            'greeting_message'       => null,
-            'greeting_audio_clip_id' => null,
-
             'keypress_enabled'       => 0,
-            'keypress_key'           => null,
-            'keypress_message_type'  => null,
-            'keypress_message'       => null,
-            'keypress_audio_clip_id' => null,
-
+            'keypress_conversion_enabled' => 0,
+            'keypress_qualification_enabled' => 0,
             'whisper_enabled'        => 0,
-            'whisper_message'        => null,
-
             'recording_enabled'      => 0,
-            'transcription_enabled'  => 0
+            'transcription_enabled'  => 0,
         ]);
 
         $phoneNumber = $this->createPhoneNumber($company, $config);
 
+        $faker = $this->faker();
+
+        $to = $phoneNumber->e164Format();
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
+            'To' => $to,
         ]);
+        $variables                 = $config->variables();
+        $variables = array_merge($variables, json_decode($incomingCall->variables, true));
+        $variables['company_name'] = $company->name;
+        
+        $variables['source']              = $phoneNumber->source;
+        $variables['medium']              = $phoneNumber->medium;
+        $variables['content']             = $phoneNumber->content;
+        $variables['campaign']            = $phoneNumber->campaign;
+        $variables['keyword']             = null;
+
+        $variables['dialed_cc']           = PhoneNumber::countryCode($to);
+        $variables['dialed_number']       = PhoneNumber::number($to);
+        
         $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
         $response->assertHeader('Content-Type', 'application/xml');
-        
+        $callEndUrl    = htmlspecialchars(route('dialed-call-ended'));
+        $preconnectUrl = htmlspecialchars(route('dialed-call-preconnect', [
+            'phone_number_config_id' => $config->id,
+            'variables'              => json_encode($variables)
+        ]));
+
+        $response->assertSee(
+            '<Response><Dial answerOnBridge="true" action="' . $callEndUrl . '" hangupOnStar="true">'
+            . '<Number url="' .  $preconnectUrl . '" method="GET">' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>'
+        , false);
         $response->assertStatus(200);
 
         $contact = Contact::where('country_code', PhoneNumber::countryCode($incomingCall->From))
@@ -77,8 +95,8 @@ class IncomingCallTest extends TestCase
             'category'                      => $phoneNumber->category,
             'sub_category'                  => $phoneNumber->sub_category,
             'external_id'                   => $incomingCall->CallSid,
-            'direction'                     => ucfirst($incomingCall->Direction),
-            'status'                        => ucfirst($incomingCall->CallStatus),
+            'direction'                     => 'Inbound',
+            'status'                        => 'Ringing',
             'source'                        => $phoneNumber->source,
             'medium'                        => $phoneNumber->medium,
             'content'                       => $phoneNumber->content,
@@ -95,39 +113,293 @@ class IncomingCallTest extends TestCase
             'duration'                      => null,
         ]);
 
-        $response->assertSee('<Response><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="do-not-record"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
+        $dialSid = str_random(40);
 
+        //  Pre-connect webhook
+        $response = $this->json('GET', $preconnectUrl, [
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+            'CallSid'       => $dialSid,
+        ]);
+        $acceptCallUrl = htmlspecialchars(route('dialed-call-collect-accept', [
+            'ParentCallSid'          => $incomingCall->CallSid,
+            'failed_attempts'        => 0,
+            'tts_language'           => $company->tts_language,
+            'tts_voice'              => $company->tts_voice,
+            'phone_number_config_id' => $config->id,
+        ]));
+        
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertSee(
+            '<Response>' .
+                '<Gather numDigits="1" timeout="10" actionOnEmptyResult="true" method="POST" action="' . $acceptCallUrl . '">' . 
+                    '<Say language="' . $company->tts_language . '" voice="Polly.' . $company->tts_voice . '">To accept this call press 1. To reject, press 2.</Say>' .
+                '</Gather>' . 
+            '</Response>', 
+        false);
+        $response->assertStatus(200);
+
+        // No selection (timeout)
+        $response = $this->json('POST', $acceptCallUrl, [
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+            'CallSid'       => $dialSid,
+            'Digits'        => ''
+        ]);
+        $acceptCallUrl = htmlspecialchars(route('dialed-call-collect-accept', [
+            'ParentCallSid'          => $incomingCall->CallSid,
+            'failed_attempts'        => 1,
+            'tts_language'           => $company->tts_language,
+            'tts_voice'              => $company->tts_voice,
+            'phone_number_config_id' => $config->id
+        ]));
+
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertSee(
+            '<Response>' .
+                '<Gather numDigits="1" timeout="10" actionOnEmptyResult="true" method="POST" action="' . $acceptCallUrl . '">' . 
+                    '<Say language="' . $company->tts_language . '" voice="Polly.' . $company->tts_voice . '">To accept this call press 1. To reject, press 2.</Say>' . 
+                '</Gather>' . 
+            '</Response>', 
+        false);
+
+        $this->assertDatabaseHas('calls', [
+            'external_id' => $incomingCall->CallSid,
+            'status'      => 'Ringing',
+        ]);
+
+        // Accept Call
+        $conferenceEndUrl = route('incoming-call-conference-ended', [ 
+            'phone_number_config_id' => $config->id,
+            'variables'              => json_encode($variables),
+            'ParentCallSid'          => $incomingCall->CallSid,
+        ]);
+        $twiml = new VoiceResponse();
+        $dial  = $twiml->dial('', [
+            'hangupOnStar' => true,
+            'action'       => $conferenceEndUrl,
+            'method'       => 'POST'
+        ]);
+
+        $dial->conference($incomingCall->CallSid, [
+            'startConferenceOnEnter' => true,
+            'endConferenceOnExit'    => true,
+            'beep'                   => false,
+            'participantLabel'       => 'Agent',
+            'waitUrl'                => '',
+        ]);
+
+        $this->mock(TwilioClient::class, function($mock) use($dialSid, $twiml){
+            $mock->shouldReceive('calls')
+                 ->with($dialSid)
+                 ->once()
+                 ->andReturn($mock);
+
+            $mock->shouldReceive('update')
+                 ->once();
+        });
+
+        $response = $this->json('POST', $acceptCallUrl, [
+            'CallSid'       => $dialSid,
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+            'Digits'        => 1,
+            'variables'     => json_encode($variables)
+        ]);
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertSee('<Response/>', false);
+
+        $this->assertDatabaseHas('calls', [
+            'external_id' => $incomingCall->CallSid,
+            'status'      => 'In Progress',
+        ]);
+
+        //  Move caller to conference
+        $response = $this->json('POST', $callEndUrl, [
+            'CallSid'       => $incomingCall->CallSid,
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+        ]);
+        $response->assertSee('<Response><Dial hangupOnStar="true"><Conference beep="false" participantLabel="Caller" endConferenceOnExit="true" startConferenceOnEnter="true" waitUrl="">' . $incomingCall->CallSid . '</Conference></Dial></Response>', false);
+        
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
             return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
         });
+        Event::assertNotDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $event->name === Plugin::EVENT_CALL_END;
+        });
+        Event::assertDispatched(CallEvent::class, 1);
+
+        //  
+        //  End Conference
+        //
+        $callDuration = mt_rand(1, 1000);
+        $response = $this->json('POST', route('incoming-call-cleanup'), [
+            'CallDuration'  => $callDuration,
+            'CallSid'       => $incomingCall->CallSid,
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+        ]);
+        
+        $this->assertDatabaseHas('calls', [
+            'external_id' => $incomingCall->CallSid,
+            'status'      => 'In Progress',
+            'duration'    => $callDuration
+        ]);
+        
+        $response = $this->json('POST', $conferenceEndUrl, [
+            'CallSid'       => $dialSid,
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+        ]);
+        
+        $this->assertDatabaseHas('calls', [
+            'external_id' => $incomingCall->CallSid,
+            'status'      => 'Completed',
+            'duration'    => $callDuration
+        ]);
+
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_END;
+        });
+
+        Event::assertDispatched(CallEvent::class, 2);
     }
 
     /**
-     * Test handling an incoming call with recording enabled
+     * Test handling an incoming call with all options
      * 
      * @group incoming-calls
      */
-    public function testValidIncomingCallWithRecordingEnabled()
+    public function testValidIncomingCallWithAllOptions()
     {
         Event::fake();
 
         $company     = $this->createCompany();
         $config      = $this->createConfig($company, [
-            'recording_enabled'      => true,
-            'greeting_enabled'       => false,
-            'keypress_enabled'       => false,
-            'whisper_enabled'        => false
+            'greeting_enabled'                  => 1,
+            'greeting_message'                  => '${Caller_First_Name} ${Caller_Last_Name} ${Caller_City} ${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Caller_CC} ${Dialed_CC} ${Dialed_Number} ${Forward_Number} ${Company_Name}',
+            'keypress_enabled'                  => 1,
+            'keypress_directions_message'       => '${Caller_First_Name} ${Caller_Last_Name} ${Caller_City} ${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Caller_CC} ${Dialed_CC} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Keypress_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            'keypress_error_message'            => 'E${Caller_First_Name} ${Caller_Last_Name} ${Caller_City} ${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Caller_CC} ${Dialed_CC} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Keypress_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            'keypress_success_message'          => 'S${Caller_First_Name} ${Caller_Last_Name} ${Caller_City} ${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Caller_CC} ${Dialed_CC} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Keypress_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            'keypress_conversion_enabled'       => 1,
+            'keypress_conversion_directions_message'    => '${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Source} ${Medium} ${Campaign} ${Content} ${Keyword} ${Converted_Key} ${Unconverted_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            'keypress_conversion_error_message'         => 'E${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Source} ${Medium} ${Campaign} ${Content} ${Keyword} ${Converted_Key} ${Unconverted_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            'keypress_conversion_success_message'       => 'S${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Source} ${Medium} ${Campaign} ${Content} ${Keyword} ${Converted_Key} ${Unconverted_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            
+            'keypress_qualification_enabled'               => 1,
+            'keypress_qualification_directions_message'    => 'Q${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Source} ${Medium} ${Campaign} ${Content} ${Keyword} ${Converted_Key} ${Unconverted_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            'keypress_qualification_error_message'         => 'EQ${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Source} ${Medium} ${Campaign} ${Content} ${Keyword} ${Converted_Key} ${Unconverted_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            'keypress_qualification_success_message'       => 'SQ${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Source} ${Medium} ${Campaign} ${Content} ${Keyword} ${Converted_Key} ${Unconverted_Key} ${Failed_Attempts} ${Remaining_Attempts}',
+            
+
+            'whisper_enabled'                   => 1,
+            'whisper_message'                   => '${Caller_First_Name} ${Caller_Last_Name} ${Caller_City} ${Caller_State} ${Caller_Zip} ${Caller_Country} ${Caller_Number} ${Caller_CC} ${Dialed_CC} ${Dialed_Number} ${Forward_Number} ${Company_Name} ${Source} ${Medium} ${Campaign} ${Content} ${Keyword}',
+            'recording_enabled'                 => 1,
+            'transcription_enabled'             => 1,
         ]);
+
         $phoneNumber = $this->createPhoneNumber($company, $config);
 
+        $faker = $this->faker();
+
+        $to = $phoneNumber->e164Format();
         $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
+            'To' => $to,
         ]);
+        $variables                 = $config->variables();
+        $variables = array_merge($variables, json_decode($incomingCall->variables, true));
+        $variables['company_name'] = $company->name;
+        
+        $variables['dialed_cc']           = PhoneNumber::countryCode($to);
+        $variables['dialed_number']       = PhoneNumber::number($to);
+        
         $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-
-        $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/xml');
+        $collectUrl = route('incoming-call-collect', [
+            'company_id'             => $company->id,
+            'phone_number_id'        => $phoneNumber->id,
+            'phone_number_config_id' => $config->id,
+            'failed_attempts'        => 0,
+            'variables'              => json_encode($variables)
+        ]);
 
+        $response->assertSee(
+            '<Response>' . 
+                '<Say language="' . $company->tts_language. '" voice="Polly.' . $company->tts_voice . '">'. 
+                    $variables['caller_first_name'] . ' ' . $variables['caller_last_name'] . ' ' . $variables['caller_city'] . ' ' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' .  $variables['caller_cc'] . ' ' . $variables['dialed_cc'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . 
+                '</Say>' . 
+               '<Gather numDigits="1" timeout="' . $config->keypress_timeout . '" actionOnEmptyResult="true" method="POST" action="' . 
+                htmlspecialchars($collectUrl) . '">' .
+                    '<Say language="' . $company->tts_language. '" voice="Polly.' . $company->tts_voice . '">' . 
+                        $variables['caller_first_name'] . ' ' . $variables['caller_last_name'] . ' ' . $variables['caller_city'] . ' ' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' .  $variables['caller_cc'] . ' ' . $variables['dialed_cc'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['keypress_key'] . ' '  . $variables['failed_attempts'] . ' ' . $variables['remaining_attempts'] .
+                    '</Say></Gather></Response>'
+        , false);
+        $response->assertStatus(200);
+
+        //
+        //  Pass in failed digits
+        //
+        $response = $this->json('POST', $collectUrl, [
+            'AccountSid' => $incomingCall->AccountSid,
+            'Digits' => 5
+        ]);
+        $response->assertHeader('Content-Type', 'application/xml');
+        
+        $variables['failed_attempts']    = 1;
+        $variables['remaining_attempts'] = 2;
+        $collectUrl = route('incoming-call-collect', [
+            'company_id'             => $company->id,
+            'phone_number_id'        => $phoneNumber->id,
+            'phone_number_config_id' => $config->id,
+            'failed_attempts'        => 1,
+            'variables'              => json_encode($variables)
+        ]);
+        
+        $response->assertSee(
+            '<Response>' .
+               '<Gather numDigits="1" timeout="' . $config->keypress_timeout . '" actionOnEmptyResult="true" method="POST" action="' . 
+                htmlspecialchars($collectUrl) . '">' .
+                    '<Say language="' . $company->tts_language. '" voice="Polly.' . $company->tts_voice . '">' . 
+                        'E' .$variables['caller_first_name'] . ' ' . $variables['caller_last_name'] . ' ' . $variables['caller_city'] . ' ' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' .  $variables['caller_cc'] . ' ' . $variables['dialed_cc'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['keypress_key'] . ' '  . $variables['failed_attempts'] . ' ' . $variables['remaining_attempts'] .
+                    '</Say></Gather></Response>'
+        , false);
+        $response->assertStatus(200);
+
+        //
+        //  Pass in valid digits
+        //
+        $callEndUrl    = htmlspecialchars(route('dialed-call-ended'));
+
+        $variables['source']              = $phoneNumber->source;
+        $variables['medium']              = $phoneNumber->medium;
+        $variables['content']             = $phoneNumber->content;
+        $variables['campaign']            = $phoneNumber->campaign;
+        $variables['keyword']             = null;
+        $preconnectUrl = htmlspecialchars(route('dialed-call-preconnect', [
+            'phone_number_config_id' => $config->id,
+            'variables'              => json_encode($variables)
+        ]));
+
+        $incomingCall->variables = json_encode($variables);
+        $response = $this->json('POST', $collectUrl, array_merge([
+            'Digits'     => $config->keypress_key
+        ], $incomingCall->toArray()));
+
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertSee(
+            '<Response>' .
+                '<Say language="' . $company->tts_language. '" voice="Polly.' . $company->tts_voice . '">' . 
+                    'S' .$variables['caller_first_name'] . ' ' . $variables['caller_last_name'] . ' ' . $variables['caller_city'] . ' ' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' .  $variables['caller_cc'] . ' ' . $variables['dialed_cc'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['keypress_key'] . ' '  . $variables['failed_attempts'] . ' ' . $variables['remaining_attempts'] .
+                '</Say>' .
+                '<Dial answerOnBridge="true" action="' . $callEndUrl . '" hangupOnStar="true">' .
+                    '<Number url="' .  $preconnectUrl . '" method="GET">' . $config->forwardToPhoneNumber() . '</Number>' .
+                '</Dial>' . 
+            '</Response>'
+        , false);
+        
+    
         $contact = Contact::where('country_code', PhoneNumber::countryCode($incomingCall->From))
                             ->where('number', PhoneNumber::number($incomingCall->From))
                             ->first();
@@ -144,8 +416,8 @@ class IncomingCallTest extends TestCase
             'category'                      => $phoneNumber->category,
             'sub_category'                  => $phoneNumber->sub_category,
             'external_id'                   => $incomingCall->CallSid,
-            'direction'                     => ucfirst($incomingCall->Direction),
-            'status'                        => ucfirst($incomingCall->CallStatus),
+            'direction'                     => 'Inbound',
+            'status'                        => 'Ringing',
             'source'                        => $phoneNumber->source,
             'medium'                        => $phoneNumber->medium,
             'content'                       => $phoneNumber->content,
@@ -162,289 +434,293 @@ class IncomingCallTest extends TestCase
             'duration'                      => null,
         ]);
 
-        $response->assertSee('<Response><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
+        $dialSid = str_random(40);
+
+        //  Pre-connect webhook
+        $response = $this->json('GET', $preconnectUrl, [
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+            'CallSid'       => $dialSid,
+        ]);
+        $acceptCallUrl = htmlspecialchars(route('dialed-call-collect-accept', [
+            'ParentCallSid'          => $incomingCall->CallSid,
+            'failed_attempts'        => 0,
+            'tts_language'           => $company->tts_language,
+            'tts_voice'              => $company->tts_voice,
+            'phone_number_config_id' => $config->id,
+        ]));
+        
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertSee(
+            '<Response>' .
+                '<Gather numDigits="1" timeout="10" actionOnEmptyResult="true" method="POST" action="' . $acceptCallUrl . '">' . 
+                    '<Say language="' . $company->tts_language . '" voice="Polly.' . $company->tts_voice . '">' .
+                        rtrim(trim($variables['caller_first_name'] . ' ' . $variables['caller_last_name'] . ' ' . $variables['caller_city'] . ' ' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' .  $variables['caller_cc'] . ' ' . $variables['dialed_cc'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['source'] . ' '  . $variables['medium'] . ' ' .  $variables['campaign'] . ' ' . $variables['content'] . ' ' . $variables['keyword']), '.') .
+                    '. To accept this call press 1. To reject, press 2.</Say>' .
+                '</Gather>' . 
+            '</Response>', 
+        false);
+        $response->assertStatus(200);
+
+        // No selection (timeout)
+        $response = $this->json('POST', $acceptCallUrl, [
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+            'CallSid'       => $dialSid,
+            'Digits'        => ''
+        ]);
+        $acceptCallUrl = htmlspecialchars(route('dialed-call-collect-accept', [
+            'ParentCallSid'          => $incomingCall->CallSid,
+            'failed_attempts'        => 1,
+            'tts_language'           => $company->tts_language,
+            'tts_voice'              => $company->tts_voice,
+            'phone_number_config_id' => $config->id
+        ]));
+
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertSee(
+            '<Response>' .
+                '<Gather numDigits="1" timeout="10" actionOnEmptyResult="true" method="POST" action="' . $acceptCallUrl . '">' . 
+                    '<Say language="' . $company->tts_language . '" voice="Polly.' . $company->tts_voice . '">To accept this call press 1. To reject, press 2.</Say>' . 
+                '</Gather>' . 
+            '</Response>', 
+        false);
+
+        $this->assertDatabaseHas('calls', [
+            'external_id' => $incomingCall->CallSid,
+            'status'      => 'Ringing',
+        ]);
+
+        // Accept Call
+        $conferenceEndUrl = route('incoming-call-conference-ended', [ 
+            'phone_number_config_id' => $config->id,
+            'variables'              => json_encode($variables),
+            'ParentCallSid'          => $incomingCall->CallSid,
+        ]);
+        $twiml = new VoiceResponse();
+        $dial  = $twiml->dial('', [
+            'hangupOnStar' => true,
+            'action'       => $conferenceEndUrl,
+            'method'       => 'POST'
+        ]);
+
+        $dial->conference($incomingCall->CallSid, [
+            'startConferenceOnEnter' => true,
+            'endConferenceOnExit'    => true,
+            'beep'                   => false,
+            'participantLabel'       => 'Agent',
+            'waitUrl'                => '',
+        ]);
+
+        $this->mock(TwilioClient::class, function($mock) use($dialSid, $twiml){
+            $mock->shouldReceive('calls')
+                 ->with($dialSid)
+                 ->once()
+                 ->andReturn($mock);
+
+            $mock->shouldReceive('update')
+                 ->once();
+        });
+
+        $response = $this->json('POST', $acceptCallUrl, [
+            'CallSid'       => $dialSid,
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+            'Digits'        => 1,
+            'variables'     => json_encode($variables)
+        ]);
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertSee('<Response/>', false);
+
+        $this->assertDatabaseHas('calls', [
+            'external_id' => $incomingCall->CallSid,
+            'status'      => 'In Progress',
+        ]);
+
+        //  Move caller to conference
+        $response = $this->json('POST', $callEndUrl, [
+            'CallSid'       => $incomingCall->CallSid,
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+        ]);
+    
+        $response->assertSee('<Response><Dial hangupOnStar="true"><Conference beep="false" participantLabel="Caller" endConferenceOnExit="true" startConferenceOnEnter="true" waitUrl="">' . $incomingCall->CallSid . '</Conference></Dial></Response>', false);
+        
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
+        });
+        Event::assertNotDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $event->name === Plugin::EVENT_CALL_END;
+        });
+        Event::assertDispatched(CallEvent::class, 1);
+
+        //  
+        //  End Conference for caller
+        //
+        $callDuration = mt_rand(1, 1000);
+        $response = $this->json('POST', route('incoming-call-cleanup'), [
+            'CallDuration'  => $callDuration,
+            'CallSid'       => $incomingCall->CallSid,
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+        ]);
+        
+        $this->assertDatabaseHas('calls', [
+            'external_id' => $incomingCall->CallSid,
+            'status'      => 'In Progress',
+            'duration'    => $callDuration
+        ]);
+        
+        $response = $this->json('POST', $conferenceEndUrl, [
+            'CallSid'       => $dialSid,
+            'AccountSid'    => $incomingCall->AccountSid,
+            'ParentCallSid' => $incomingCall->CallSid,
+        ]);
+        
+        $this->assertDatabaseHas('calls', [
+            'external_id' => $incomingCall->CallSid,
+            'status'      => 'Completed',
+            'duration'    => $callDuration
+        ]);
+
+        Event::assertNotDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $event->name === Plugin::EVENT_CALL_END;
+        });
+
+        //
+        //  Collect conversion. Invalid, then valid.
+        //
+        $variables['failed_attempts']    = 0;
+        $variables['remaining_attempts'] = $config->keypress_conversion_attempts;
+
+        $conversionKeypressUrl = route('incoming-call-collect-conversion', [
+            'phone_number_config_id' => $config->id,
+            'failed_attempts'        => 0,
+            'variables'              => json_encode($variables),
+            'ParentCallSid'          => $incomingCall->CallSid
+        ]);
+
+        $response = $this->json('POST', $conversionKeypressUrl, [
+            'AccountSid' => $incomingCall->AccountSid,
+            'Digits'     => 9
+        ]);
+
+        $variables['failed_attempts']    = 1;
+        $variables['remaining_attempts'] = $config->keypress_conversion_attempts - 1;
+        $conversionKeypressUrl = route('incoming-call-collect-conversion', [
+            'phone_number_config_id' => $config->id,
+            'failed_attempts'        => 1,
+            'variables'              => json_encode($variables),
+            'ParentCallSid'          => $incomingCall->CallSid
+        ]);
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertStatus(200);
+        $response->assertSee(
+            '<Response>' . 
+                '<Gather numDigits="1" timeout="' . $config->keypress_conversion_timeout . '" actionOnEmptyResult="true" method="POST" action="' . htmlspecialchars($conversionKeypressUrl) . '">' .
+                    '<Say language="en-US" voice="Polly.Joanna">' . 
+                        'E' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['source'] . ' ' . $variables['medium'] . ' ' . $variables['campaign'] . ' ' . $variables['content'] . ' ' . $variables['keyword'] . ' ' . $variables['converted_key'] . ' ' . $variables['unconverted_key'] . ' ' . $variables['failed_attempts'] . ' ' . $variables['remaining_attempts'] .
+                    '</Say>' . 
+                '</Gather>' . 
+            '</Response>', false);
+        
+        $response = $this->json('POST', $conversionKeypressUrl, [
+            'AccountSid' => $incomingCall->AccountSid,
+            'Digits'     => $config->keypress_conversion_key_converted
+        ]);
+
+        $failedAttempts    = $variables['failed_attempts'];
+        $remainingAttempts = $variables['remaining_attempts'];
+
+        $variables['failed_attempts']    = 0;
+        $variables['remaining_attempts'] = $config->keypress_qualification_attempts;
+        $qualificationKeypressUrl = route('incoming-call-collect-qualification', [
+            'phone_number_config_id' => $config->id,
+            'failed_attempts'        => 0,
+            'variables'              => json_encode($variables),
+            'ParentCallSid'          => $incomingCall->CallSid
+        ]);
+
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertStatus(200);
+        $response->assertSee(
+            '<Response>' . 
+                '<Say language="' . $company->tts_language . '" voice="Polly.' .$company->tts_voice . '">' .
+                    'S' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['source'] . ' ' . $variables['medium'] . ' ' . $variables['campaign'] . ' ' . $variables['content'] . ' ' . $variables['keyword'] . ' ' . $variables['converted_key'] . ' ' . $variables['unconverted_key'] . ' ' . $failedAttempts . ' ' . $remainingAttempts .
+                '</Say>' .
+                '<Gather numDigits="1" timeout="' . $config->keypress_qualification_timeout . '" actionOnEmptyResult="true" method="POST" action="' . htmlspecialchars($qualificationKeypressUrl) . '">' .
+                    '<Say language="en-US" voice="Polly.Joanna">' . 
+                        'Q' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['source'] . ' ' . $variables['medium'] . ' ' . $variables['campaign'] . ' ' . $variables['content'] . ' ' . $variables['keyword'] . ' ' . $variables['converted_key'] . ' ' . $variables['unconverted_key'] . ' ' . $variables['failed_attempts'] . ' ' . $variables['remaining_attempts'] .
+                    '</Say>' . 
+                '</Gather>' . 
+            '</Response>', false);
+
+        //
+        //  Collect qualification. Invalid, then valid.
+        //
+        $variables['failed_attempts']    = 0;
+        $variables['remaining_attempts'] = $config->keypress_qualification_attempts;
+
+        $response = $this->json('POST', $qualificationKeypressUrl, [
+            'AccountSid' => $incomingCall->AccountSid,
+            'Digits'     => ''
+        ]);
+
+        $variables['failed_attempts']    = 1;
+        $variables['remaining_attempts'] = $config->keypress_qualification_attempts - 1;
+        $qualificationKeypressUrl = route('incoming-call-collect-qualification', [
+            'phone_number_config_id' => $config->id,
+            'failed_attempts'        => 1,
+            'variables'              => json_encode($variables),
+            'ParentCallSid'          => $incomingCall->CallSid
+        ]);
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertStatus(200);
+        $response->assertSee(
+            '<Response>' . 
+                '<Gather numDigits="1" timeout="' . $config->keypress_qualification_timeout . '" actionOnEmptyResult="true" method="POST" action="' . htmlspecialchars($qualificationKeypressUrl) . '">' .
+                    '<Say language="en-US" voice="Polly.Joanna">' . 
+                        'EQ' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['source'] . ' ' . $variables['medium'] . ' ' . $variables['campaign'] . ' ' . $variables['content'] . ' ' . $variables['keyword'] . ' ' . $variables['converted_key'] . ' ' . $variables['unconverted_key'] . ' ' . $variables['failed_attempts'] . ' ' . $variables['remaining_attempts'] .
+                    '</Say>' . 
+                '</Gather>' . 
+            '</Response>', false);
+        
+        $response = $this->json('POST', $qualificationKeypressUrl, [
+            'AccountSid' => $incomingCall->AccountSid,
+            'Digits'     => $config->keypress_qualification_key_qualified
+        ]);
+
+        $failedAttempts    = $variables['failed_attempts'];
+        $remainingAttempts = $variables['remaining_attempts'];
+
+        $variables['failed_attempts']    = 0;
+        $variables['remaining_attempts'] = $config->keypress_qualification_attempts;
+        $qualificationKeypressUrl = route('incoming-call-collect-qualification', [
+            'phone_number_config_id' => $config->id,
+            'failed_attempts'        => 0,
+            'variables'              => json_encode($variables),
+            'ParentCallSid'          => $incomingCall->CallSid
+        ]);
+
+        $response->assertHeader('Content-Type', 'application/xml');
+        $response->assertStatus(200);
+        $response->assertSee(
+            '<Response>' . 
+                '<Say language="' . $company->tts_language . '" voice="Polly.' .$company->tts_voice . '">' .
+                    'SQ' . $variables['caller_state'] . ' ' . $variables['caller_zip'] . ' ' . $variables['caller_country'] . ' ' . $variables['caller_number'] . ' ' . $variables['dialed_number'] . ' ' . $variables['forward_number'] . ' ' . $variables['company_name'] . ' ' . $variables['source'] . ' ' . $variables['medium'] . ' ' . $variables['campaign'] . ' ' . $variables['content'] . ' ' . $variables['keyword'] . ' ' . $variables['converted_key'] . ' ' . $variables['unconverted_key'] . ' ' . $failedAttempts . ' ' . $remainingAttempts .
+                '</Say>' .
+            '</Response>', false);
+
             
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
+            return $event->name === Plugin::EVENT_CALL_END;
+        });
+
+        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
+            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_END;
         });
     }
 
-    /**
-     * Test handling an incoming call with recording and greeting enabled with Message
-     * 
-     * @group incoming-calls
-     */
-    public function testValidIncomingCallWithRecordingAndGreetingEnabledMessage()
-    {
-        Event::fake();
-
-        $company     = $this->createCompany();
-        $config      = $this->createConfig($company, [
-            'recording_enabled'      => true,
-            'greeting_enabled'       => true,
-            'greeting_message_type'  => 'TEXT',
-            'greeting_message'       => 'hello ${caller_first_name} ${caller_last_name}',
-            'greeting_audio_clip_id' => null,
-            'keypress_enabled'       => false,
-            'whisper_enabled'        => false
-        ]);
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
-        ]);
-        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-
-        $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'application/xml');
-        
-        $contact = Contact::where('country_code', PhoneNumber::countryCode($incomingCall->From))
-                            ->where('number', PhoneNumber::number($incomingCall->From))
-                            ->first();
-
-        $this->assertDatabaseHas('calls', [
-            'account_id'                    => $this->account->id,
-            'company_id'                    => $company->id,
-            'keyword_tracking_pool_id'      => null,
-            'keyword_tracking_pool_name'    => null,
-            'phone_number_id'               => $phoneNumber->id,
-            'phone_number_name'             => $phoneNumber->name,
-            'type'                          => $phoneNumber->type,
-            'category'                      => $phoneNumber->category,
-            'sub_category'                  => $phoneNumber->sub_category,
-            'external_id'                   => $incomingCall->CallSid,
-            'direction'                     => ucfirst($incomingCall->Direction),
-            'status'                        => ucfirst($incomingCall->CallStatus),
-            'source'                        => $phoneNumber->source,
-            'medium'                        => $phoneNumber->medium,
-            'content'                       => $phoneNumber->content,
-            'campaign'                      => $phoneNumber->campaign,
-            'keyword'                       => null,
-            'is_paid'                       => $phoneNumber->is_paid,
-            'is_organic'                    => $phoneNumber->is_organic, 
-            'is_direct'                     => $phoneNumber->is_direct,
-            'is_referral'                   => $phoneNumber->is_referral,
-            'is_remarketing'                => $phoneNumber->is_remarketing,
-            'is_search'                     => $phoneNumber->is_search,
-            'recording_enabled'             => $config->recording_enabled,
-            'forwarded_to'                  => $config->forwardToPhoneNumber(),
-            'duration'                      => null,
-        ]);
-
-        $response->assertSee('<Response><Say language="' . $company->tts_language . '" voice="Polly.'  . $company->tts_voice . '">' . $config->greetingMessage() . '</Say><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
-
-        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
-        });
-    }
-
-    /**
-     * Test handling an incoming call with recording and greeting enabled using an audio clip
-     * 
-     * @group incoming-calls
-     */
-    public function testValidIncomingCallWithRecordingAndGreetingEnabledAudioClip()
-    {
-        Event::fake();
-
-        $company     = $this->createCompany();
-        $audioClip   = $this->createAudioClip($company);
-        $config      = $this->createConfig($company, [
-            'recording_enabled'      => true,
-            'greeting_enabled'       => true,
-            'greeting_message_type'  => 'AUDIO',
-            'greeting_audio_clip_id' => $audioClip->id,
-            'keypress_enabled'       => false,
-            'whisper_enabled'        => false
-        ]);
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
-        ]);
-        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-
-        $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'application/xml');
-        
-        $contact = Contact::where('country_code', PhoneNumber::countryCode($incomingCall->From))
-                            ->where('number', PhoneNumber::number($incomingCall->From))
-                            ->first();
-
-        $this->assertDatabaseHas('calls', [
-            'account_id'                    => $this->account->id,
-            'company_id'                    => $company->id,
-            'contact_id'                    => $contact->id,
-            'keyword_tracking_pool_id'      => null,
-            'keyword_tracking_pool_name'    => null,
-            'phone_number_id'               => $phoneNumber->id,
-            'phone_number_name'             => $phoneNumber->name,
-            'type'                          => $phoneNumber->type,
-            'category'                      => $phoneNumber->category,
-            'sub_category'                  => $phoneNumber->sub_category,
-            'external_id'                   => $incomingCall->CallSid,
-            'direction'                     => ucfirst($incomingCall->Direction),
-            'status'                        => ucfirst($incomingCall->CallStatus),
-            'source'                        => $phoneNumber->source,
-            'medium'                        => $phoneNumber->medium,
-            'content'                       => $phoneNumber->content,
-            'campaign'                      => $phoneNumber->campaign,
-            'keyword'                       => null,
-            'is_paid'                       => $phoneNumber->is_paid,
-            'is_organic'                    => $phoneNumber->is_organic, 
-            'is_direct'                     => $phoneNumber->is_direct,
-            'is_referral'                   => $phoneNumber->is_referral,
-            'is_remarketing'                => $phoneNumber->is_remarketing,
-            'is_search'                     => $phoneNumber->is_search,
-            'recording_enabled'             => $config->recording_enabled,
-            'forwarded_to'                  => $config->forwardToPhoneNumber(),
-            'duration'                      => null,
-        ]);
-        
-        $response->assertSee('<Response><Play>' . $audioClip->url . '</Play><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
-        
-        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
-        });
-    }
-
-    /**
-     * Test handling an incoming call with recording, greeting and keypress
-     * 
-     * @group incoming-calls
-     */
-    public function testValidIncomingCallWithRecordingAndGreetingAndKeypressEnabled()
-    {
-        Event::fake();
-
-        $company     = $this->createCompany();
-        $audioClip   = $this->createAudioClip($company);
-        $config      = $this->createConfig($company, [
-            'recording_enabled'      => true,
-            'greeting_enabled'       => true,
-            'greeting_message_type'  => 'AUDIO',
-            'greeting_audio_clip_id' => $audioClip->id,
-            'keypress_enabled'       => true,
-            'keypress_key'           => mt_rand(0,9),
-            'keypress_message_type'  => 'TEXT',
-            'keypress_message'       => 'please press 1 to continue.'
-        ]);
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
-        ]);
-        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-        $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'application/xml');
-        
-        $this->assertDatabaseMissing('contacts', [
-            'country_code'  => PhoneNumber::countryCode($incomingCall->From),
-            'number'        =>  PhoneNumber::number($incomingCall->From)
-        ]);
-
-        $this->assertDatabaseMissing('calls', [
-            'account_id' => $this->account->id,
-            'company_id' => $company->id,
-        ]);
-
-        $response->assertSee('<Response><Play>' 
-                                . $audioClip->url 
-                                . '</Play>'
-                                .    '<Gather numDigits="1" timeout="' . $config->keypress_timeout . '" actionOnEmptyResult="true" method="POST" action="' .
-                                        htmlspecialchars(route('incoming-call-collect', [ 
-                                            'company_id'             => $company->id,
-                                            'phone_number_id'        => $phoneNumber->id,
-                                            'phone_number_config_id' => $config->id,
-                                            'failed_attempts'        => 0 
-                                        ])) 
-                                . '"/>'
-                                . '</Response>', false);
-
-        Event::assertNotDispatched(CallEvent::class);
-    }
-
-    /**
-     * Test handling an incoming call with recording, greeting and whisper
-     * 
-     * @group incoming-calls
-     */
-    public function testValidIncomingCallWithRecordingAndGreetingAndWhisperEnabled()
-    {
-        Event::fake();
-
-        $company     = $this->createCompany();
-        $audioClip   = $this->createAudioClip($company);
-        $config      = $this->createConfig($company, [
-            'recording_enabled'      => true,
-            'greeting_enabled'       => true,
-            'greeting_message_type'  => 'AUDIO',
-            'greeting_audio_clip_id' => $audioClip->id,
-            'keypress_enabled'       => false,
-            'whisper_enabled'        => true,
-            'whisper_message'        => 'call from ${caller_number}'
-        ]);
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
-        ]);
-        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
-
-        $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'application/xml');
-        
-        $this->assertDatabaseHas('contacts', [
-            'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'number' => PhoneNumber::number($incomingCall->From)
-        ]);
-
-        $this->assertDatabaseHas('calls', [
-            'account_id'            => $this->account->id,
-            'company_id'            => $company->id,
-            'phone_number_id'       => $phoneNumber->id,
-            'phone_number_name'     => $phoneNumber->name,
-            'type'                  => $phoneNumber->type,
-            'category'              => $phoneNumber->category,
-            'sub_category'          => $phoneNumber->sub_category,
-            'external_id'           => $incomingCall->CallSid,
-            'direction'             => ucfirst($incomingCall->Direction),
-            'status'                => ucfirst($incomingCall->CallStatus),
-            'source'                => $phoneNumber->source,
-            'medium'                => $phoneNumber->medium,
-            'content'               => $phoneNumber->content,
-            'campaign'              => $phoneNumber->campaign,
-            'is_paid'               => $phoneNumber->is_paid,
-            'is_organic'            => $phoneNumber->is_organic, 
-            'is_direct'             => $phoneNumber->is_direct,
-            'is_referral'           => $phoneNumber->is_referral,
-            'is_remarketing'        => $phoneNumber->is_remarketing,
-            'is_search'             => $phoneNumber->is_search,
-            'recording_enabled'     => $config->recording_enabled,
-            'forwarded_to'          => $config->forwardToPhoneNumber(),
-            'duration'              => null,
-        ]);
-
-        $call = Call::where('external_id', $incomingCall->CallSid)->first();
-
-        $response->assertSee('<Response>'
-                            .   '<Play>' 
-                            .       $audioClip->url 
-                            .   '</Play>'
-                            .   '<Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed">'
-                            .       '<Number url="'. htmlspecialchars(route('incoming-call-whisper', [
-                                        'whisper_message'  => $config->whisperMessage($call),
-                                        'whisper_language' => $company->tts_language,
-                                        'whisper_voice'    => $company->tts_voice
-                                    ])) .'" method="GET">' . $config->forwardToPhoneNumber() . '</Number>'
-                            .   '</Dial>'
-                            .'</Response>'
-                    , false);
-
-        Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
-            return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
-        }); 
-    }
 
     /**
      * Test that when a number is deleted, the call is rejected
@@ -565,81 +841,6 @@ class IncomingCallTest extends TestCase
          ]);
     }
 
-   
-    /**
-     * Test a dialed call completed
-     * 
-     * @group incoming-calls
-     */
-    public function testDialCallCompleted()
-    {
-        Event::fake();
-
-        $company      = $this->createCompany();
-        $config       = $this->createConfig($company);
-        $phoneNumber  = $this->createPhoneNumber($company, $config);
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To'               => $phoneNumber->e164Format(),
-            'DialCallStatus'   => 'completed',
-            'DialCallDuration' => mt_rand(10, 600)
-        ]);
-        $contact     = $this->createContact($company);
-        $call        = $this->createCall($company, [
-            'phone_number_id'   => $phoneNumber->id,
-            'phone_number_name' => $phoneNumber->name,
-            'contact_id'        => $contact->id,
-            'external_id'       => $incomingCall->CallSid,
-            'duration'          => null
-        ]);
-
-        $response = $this->json('POST', route('incoming-call-completed', $incomingCall->toArray()));
-        $response->assertStatus(200);
-        
-        $call = Call::find($call->id);
-        $this->assertEquals($call->status, 'Completed');
-        $this->assertNull($call->duration);
-        
-        Event::assertNotDispatched(CallEvent::class, function(CallEvent $event){
-            return $event->name === Plugin::EVENT_CALL_END;    
-        });
-    }
-
-    /**
-     * Test an incoming call duration ready
-     * 
-     * @group incoming-calls
-     */
-    public function testIncomingCallCompleted()
-    {
-        Event::fake();
-
-        $company      = $this->createCompany();
-        $config       = $this->createConfig($company);
-        $phoneNumber  = $this->createPhoneNumber($company, $config);
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To'           => $phoneNumber->e164Format(),
-            'CallDuration' => mt_rand(10, 600)
-        ]);
-        $contact     = $this->createContact($company);
-        $call        = $this->createCall($company, [
-            'phone_number_id'   => $phoneNumber->id,
-            'phone_number_name' => $phoneNumber->name,
-            'contact_id'        => $contact->id,
-            'external_id'       => $incomingCall->CallSid,
-            'duration'          => null
-        ]);
-
-        $response = $this->json('POST', route('incoming-call-duration', $incomingCall->toArray()));
-        $response->assertStatus(200);
-        
-        $call = Call::find($call->id);
-        $this->assertEquals($call->duration, $incomingCall->CallDuration);
-        
-        Event::assertDispatched(CallEvent::class, function(CallEvent $event){
-            return $event->name === Plugin::EVENT_CALL_END;    
-        });
-    }
-
     /**
      * Test call from existing contact
      * 
@@ -714,19 +915,35 @@ class IncomingCallTest extends TestCase
 
         $call = Call::where('external_id', $incomingCall->CallSid)->first();
 
-        $response->assertSee('<Response>'
-                            .   '<Play>' 
-                            .       $audioClip->url 
-                            .   '</Play>'
-                            .   '<Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed">'
-                            .       '<Number url="'. htmlspecialchars(route('incoming-call-whisper', [
-                                        'whisper_message'  => $config->whisperMessage($call),
-                                        'whisper_language' => $company->tts_language,
-                                        'whisper_voice'    => $company->tts_voice
-                                    ])) .'" method="GET">' . $config->forwardToPhoneNumber() . '</Number>'
-                            .   '</Dial>'
-                            .'</Response>'
-                    , false);
+        $variables                 = $config->variables();
+        $variables = array_merge($variables, json_decode($incomingCall->variables, true));
+        $variables['company_name'] = $company->name;
+        
+        $variables['source']              = $phoneNumber->source;
+        $variables['medium']              = $phoneNumber->medium;
+        $variables['content']             = $phoneNumber->content;
+        $variables['campaign']            = $phoneNumber->campaign;
+        $variables['keyword']             = null;
+
+        $variables['dialed_cc']           = PhoneNumber::countryCode($incomingCall->To);
+        $variables['dialed_number']       = PhoneNumber::number($incomingCall->To);
+        $variables['caller_cc']           = PhoneNumber::countryCode($incomingCall->From);
+        $variables['caller_number']       = PhoneNumber::number($incomingCall->From);
+
+        $callEndUrl    = htmlspecialchars(route('dialed-call-ended'));
+        $preconnectUrl = htmlspecialchars(route('dialed-call-preconnect', [
+            'phone_number_config_id' => $config->id,
+            'variables'              => json_encode($variables)
+        ]));
+
+        $response->assertSee(
+            '<Response>' .
+                '<Play>' . $audioClip->url . '</Play>' .
+                '<Dial answerOnBridge="true" action="' . $callEndUrl . '" hangupOnStar="true">' .
+                    '<Number url="' .  $preconnectUrl . '" method="GET">' . $config->forwardToPhoneNumber() . '</Number>' . 
+                '</Dial>' . 
+            '</Response>'
+        , false);
 
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
             return $company->id === $event->call->company_id && $event->name === Plugin::EVENT_CALL_START;
@@ -740,16 +957,18 @@ class IncomingCallTest extends TestCase
      */
     public function testCollectFailed()
     {
+        Event::fake();
+
         $company     = $this->createCompany();
         $audioClip   = $this->createAudioClip($company);
         $config      = $this->createConfig($company, [
-           'greeting_enabled'      => false,
-           'whisper_enabled'       => false,
-           'keypress_enabled'      => true,
-           'keypress_message_type' => 'TEXT',
-           'keypress_message'      => 'Invalid Entry. Please press 5 to continue.',
-           'keypress_key'          => 5,
-           'keypress_attempts'     => 3
+           'greeting_enabled'       => false,
+           'whisper_enabled'        => false,
+           'keypress_enabled'       => true,
+           'keypress_error_message'   => 'Keypress Error',
+           'keypress_failure_message' => 'Keypress Failed',
+           'keypress_key'           => 5,
+           'keypress_attempts'      => 3
         ]);
 
         $phoneNumber = $this->createPhoneNumber($company, $config);
@@ -761,181 +980,78 @@ class IncomingCallTest extends TestCase
             'To' => $phoneNumber->e164Format()
         ]);
 
-        for( $failedAttempts= 0; $failedAttempts < $config->keypress_attempts -1; $failedAttempts++ ){
-            $response = $this->post(route('incoming-call-collect', array_merge([
+        $variables                 = $config->variables();
+        $variables                 = array_merge($variables, json_decode($incomingCall->variables, true));
+        $variables['company_name'] = $company->name;
+        
+        $variables['dialed_cc']           = PhoneNumber::countryCode($phoneNumber->e164Format());
+        $variables['dialed_number']       = PhoneNumber::number($phoneNumber->e164Format());
+        
+        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
+        $response->assertHeader('Content-Type', 'application/xml');
+
+        for( $failedAttempts = 0; $failedAttempts < $config->keypress_attempts -1; $failedAttempts++ ){
+            $variables['failed_attempts']    = $failedAttempts;
+            $variables['remaining_attempts'] = $config->keypress_attempts - $failedAttempts;
+            $incomingCall->variables         = json_encode($variables);
+            
+            $response = $this->json('POST', route('incoming-call-collect', array_merge([
                 'company_id'             => $company->id,
                 'phone_number_id'        => $phoneNumber->id,
                 'phone_number_config_id' => $config->id,
                 'failed_attempts'        => $failedAttempts,
-                'AccountSid'             => config('services.twilio.sid'),
+                'variables'              => json_encode($variables),
                 'Digits'                 => 4
-            ], $incomingCall->toArray())));
+            ],$incomingCall->toArray())));
+
+            $variables['failed_attempts']    = $failedAttempts + 1;
+            $variables['remaining_attempts'] = $config->keypress_attempts - ($failedAttempts + 1);
+            $expectedUrl = route('incoming-call-collect', [
+                'company_id'             => $company->id,
+                'phone_number_id'        => $phoneNumber->id,
+                'phone_number_config_id' => $config->id,
+                'failed_attempts'        => $failedAttempts + 1,
+                'variables'              => json_encode($variables),
+            ]);
 
             $response->assertSee(
-                '<Response>'
-                     . '<Gather numDigits="1" timeout="' . $config->keypress_timeout . '" actionOnEmptyResult="true" method="POST" action="' . htmlspecialchars(route('incoming-call-collect', [
-                                'company_id'             => $company->id,
-                                'phone_number_id'        => $phoneNumber->id,
-                                'phone_number_config_id' => $config->id,
-                                'failed_attempts'        => $failedAttempts + 1
-                            ])). '">'
-                            .'<Say language="' . $company->tts_language . '" voice="Polly.' .$company->tts_voice . '">' . $config->keypress_message . '</Say>'
-                     . '</Gather></Response>'
+                '<Response>' .
+                    '<Gather numDigits="1" timeout="' . $config->keypress_timeout . '" actionOnEmptyResult="true" method="POST" action="' . 
+                    htmlspecialchars($expectedUrl) . '">' .
+                        '<Say language="' . $company->tts_language. '" voice="Polly.' . $company->tts_voice . '">' . 
+                            'Keypress Error' .
+                        '</Say></Gather></Response>'
             , false);
 
             $response->assertHeader('Content-Type', 'application/xml');
+
             $response->assertStatus(200);
         }
 
-        $response = $this->post(route('incoming-call-collect', array_merge([
+        $variables['failed_attempts']    = $config->keypress_attempts - 1;
+        $variables['remaining_attempts'] = 1;
+        $response = $this->json('POST', route('incoming-call-collect', array_merge([
             'company_id'             => $company->id,
             'phone_number_id'        => $phoneNumber->id,
             'phone_number_config_id' => $config->id,
-            'failed_attempts'        => $config->keypress_attempts - 1,
-            'AccountSid'             => config('services.twilio.sid'),
+            'failed_attempts'        => $config->keypress_attempts -1,
+            'variables'              => json_encode($variables),
             'Digits'                 => 4
         ], $incomingCall->toArray())));
 
-        $response->assertHeader('Content-Type', 'application/xml');
         $response->assertSee(
-            '<Response>'
-                 . '<Reject/>'
-            . '</Response>'
+            '<Response>' .
+                '<Say language="' . $company->tts_language. '" voice="Polly.' . $company->tts_voice . '">' . 
+                    'Keypress Failed' .
+                '</Say>' . 
+                '<Reject/>' .
+            '</Response>'
         , false);
 
-        $response->assertStatus(200);
-    }
-
-    /**
-     *  Test successfully collecting digits
-     *  
-     *  @group incoming-calls
-     */
-    public function testCollectSuccess()
-    {
-        $company     = $this->createCompany();
-        $audioClip   = $this->createAudioClip($company);
-        $config      = $this->createConfig($company, [
-           'greeting_enabled'      => false,
-           'whisper_enabled'       => false,
-           'keypress_enabled'      => true,
-           'recording_enabled'     => true,
-           'keypress_message_type' => 'TEXT',
-           'keypress_message'      => 'Invalid Entry. Please press 5 to continue.',
-           'keypress_key'          => mt_rand(0, 9),
-           'keypress_attempts'     => 3
-        ]);
-
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
-            'To' => $phoneNumber->e164Format()
-        ]);
-        $response = $this->post(route('incoming-call-collect', array_merge([
-            'company_id'             => $company->id,
-            'phone_number_id'        => $phoneNumber->id,
-            'phone_number_config_id' => $config->id,
-            'failed_attempts'        => 1,
-            'AccountSid'             => config('services.twilio.sid'),
-            'Digits'                 => $config->keypress_key
-        ], $incomingCall->toArray())));
-
-        $response->assertStatus(200);
-
         $response->assertHeader('Content-Type', 'application/xml');
-        $response->assertSee('<Response><Dial answerOnBridge="true" action="' . route('incoming-call-completed') . '" record="record-from-ringing-dual" recordingStatusCallback="' . route('incoming-call-recording-available') . '" recordingStatusCallbackEvent="completed"><Number>' . $config->forwardToPhoneNumber() . '</Number></Dial></Response>', false);
-        
-        $this->assertDatabaseHas('contacts', [
-            'country_code' => PhoneNumber::countryCode($incomingCall->From),
-            'number' =>  PhoneNumber::number($incomingCall->From)
-        ]);
-
-        $this->assertDatabaseHas('calls', [
-            'account_id'                    => $this->account->id,
-            'company_id'                    => $company->id,
-            'keyword_tracking_pool_id'      => null,
-            'keyword_tracking_pool_name'    => null,
-            'phone_number_id'               => $phoneNumber->id,
-            'phone_number_name'             => $phoneNumber->name,
-            'type'                          => $phoneNumber->type,
-            'category'                      => $phoneNumber->category,
-            'sub_category'                  => $phoneNumber->sub_category,
-            'external_id'                   => $incomingCall->CallSid,
-            'direction'                     => ucfirst($incomingCall->Direction),
-            'status'                        => ucfirst($incomingCall->CallStatus),
-            'source'                        => $phoneNumber->source,
-            'medium'                        => $phoneNumber->medium,
-            'content'                       => $phoneNumber->content,
-            'campaign'                      => $phoneNumber->campaign,
-            'keyword'                       => null,
-            'is_paid'                       => $phoneNumber->is_paid,
-            'is_organic'                    => $phoneNumber->is_organic, 
-            'is_direct'                     => $phoneNumber->is_direct,
-            'is_referral'                   => $phoneNumber->is_referral,
-            'is_remarketing'                => $phoneNumber->is_remarketing,
-            'is_search'                     => $phoneNumber->is_search,
-            'recording_enabled'             => $config->recording_enabled,
-            'forwarded_to'                  => $config->forwardToPhoneNumber(),
-            'duration'                      => null,
-        ]);
-    }
-
-    /**
-     *  Test whisper
-     *  
-     *  @group incoming-calls
-     */
-    public function testWhisper()
-    {
-        $company     = $this->createCompany();
-        $audioClip   = $this->createAudioClip($company);
-        $config      = $this->createConfig($company, [
-            'whisper_enabled'  => true,
-            'whisper_message'  => 'call from ${source} ${medium} ${content} ${campaign} ${keyword} ${caller_first_name} ${caller_last_name} ${caller_country_code} ${caller_number} ${caller_city} ${caller_state} ${caller_zip} ${caller_country} ${forward_number} ${dialed_number}'
-        ]);
-
-        $phoneNumber = $this->createPhoneNumber($company, $config);
-        $contact     = factory(Contact::class)->create([
-            'account_id' => $company->account_id,
-            'company_id' => $company->id
-        ]);
-
-        $call = factory(Call::class)->create([
-            'account_id'        => $company->account_id,
-            'company_id'        => $company->id,
-            'contact_id'        => $contact->id,
-            'phone_number_id'   => $phoneNumber->id,
-            'phone_number_name' => $phoneNumber->name,
-        ]);
-
-        $response = $this->get(route('incoming-call-whisper', [
-            'whisper_message'  => $config->whisperMessage($call),
-            'whisper_language' => $company->tts_language,
-            'whisper_voice'    => $company->tts_voice,
-            'AccountSid'       => config('services.twilio.sid')
-        ]));
-
         $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'application/xml');
-        $response->assertSee(
-            '<Response>'
-                . '<Say language="' . $company->tts_language . '" voice="Polly.' . $company->tts_voice . '">'
-                        . 'call from ' . $call->source . ' ' 
-                        . $call->medium . ' ' 
-                        . $call->content . ' ' 
-                        . $call->campaign . ' ' 
-                        . $call->keyword . ' ' 
-                        . $contact->first_name . ' ' 
-                        . $contact->last_name . ' '
-                        . $contact->country_code . ' ' 
-                        . $contact->number . ' ' 
-                        . $contact->city . ' '
-                        . $contact->state . ' ' 
-                        . $contact->zip . ' ' 
-                        . $contact->country . ' '
-                        . $call->forwarded_to . ' '
-                        . $phoneNumber->name
-                . '</Say>'
-            . '</Response>', false);
+
+        Event::assertNotDispatched(CallEvent::class);
     }
 
 
@@ -1025,9 +1141,9 @@ class IncomingCallTest extends TestCase
                  ->once();
         });
 
-        $response = $this->post(route('incoming-call-recording-available', [
+        $response = $this->post(route('dialed-call-recording-available', [
             'AccountSid'        => config('services.twilio.sid'),
-            'CallSid'           => $call->external_id,
+            'ParentCallSid'     => $call->external_id,
             'RecordingSid'      => $recordingSid,
             'RecordingUrl'      => $url,
             'RecordingDuration' => $duration
@@ -1196,7 +1312,7 @@ class IncomingCallTest extends TestCase
             'sub_category'          => $phoneNumber->sub_category,
             'external_id'           => $incomingCall->CallSid,
             'direction'             => ucfirst($incomingCall->Direction),
-            'status'                => ucfirst($incomingCall->CallStatus),
+
             'source'                => $session->source,
             'medium'                => $session->medium,
             'content'               => $session->content,
@@ -1206,7 +1322,7 @@ class IncomingCallTest extends TestCase
             'is_organic'            => $session->is_organic,
             'is_direct'             => $session->is_direct,
             'is_referral'           => $session->is_referral,
-            'is_remarketing'        => null,
+            'is_remarketing'        => 0,
             'is_search'             => $session->is_search,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
@@ -1319,7 +1435,7 @@ class IncomingCallTest extends TestCase
             'is_organic'            => $session2->is_organic,
             'is_direct'             => $session2->is_direct,
             'is_referral'           => $session2->is_referral,
-            'is_remarketing'        => null,
+            'is_remarketing'        => 0,
             'is_search'             => $session2->is_search,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
@@ -1439,7 +1555,7 @@ class IncomingCallTest extends TestCase
             'is_organic'            => $session2->is_organic,
             'is_direct'             => $session2->is_direct,
             'is_referral'           => $session2->is_referral,
-            'is_remarketing'        => null,
+            'is_remarketing'        => 0,
             'is_search'             => $session2->is_search,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
@@ -1532,11 +1648,11 @@ class IncomingCallTest extends TestCase
             'content'               => null,
             'campaign'              => null,
             'keyword'               => null,
-            'is_paid'               => null,
-            'is_organic'            => null, 
-            'is_direct'             => null,
-            'is_referral'           => null,
-            'is_search'             => null,
+            'is_paid'               => 0,
+            'is_organic'            => 0, 
+            'is_direct'             => 0,
+            'is_referral'           => 0,
+            'is_search'             => 0,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),
             'duration'              => null,
@@ -1629,7 +1745,7 @@ class IncomingCallTest extends TestCase
             'is_organic'            => $session1->is_organic,
             'is_direct'             => $session1->is_direct,
             'is_referral'           => $session1->is_referral,
-            'is_remarketing'        => null,
+            'is_remarketing'        => 0,
             'is_search'             => $session1->is_search,
             'recording_enabled'     => $config->recording_enabled,
             'forwarded_to'          => $config->forwardToPhoneNumber(),

@@ -44,6 +44,7 @@ $factory->define(\App\Models\Company\PhoneNumberConfig::class, function (Faker $
         'keypress_qualification_key_potential'  => 3,
         'keypress_qualification_key_customer'   => 4,
         'keypress_qualification_key_unqualified'  => 5,
+        'keypress_qualification_key_unknown'  => 6,
         'keypress_qualification_attempts'  => 5,
         'keypress_qualification_timeout'   => 20,
         'keypress_qualification_directions_message'  => $faker->realText(50),

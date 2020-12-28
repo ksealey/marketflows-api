@@ -14,10 +14,14 @@ class Contact extends Model
 {
     use SoftDeletes;
     
+    const CREATE_METHOD_INBOUND_CALL = 'Inbound Call';
+    const CREATE_METHOD_MANUAL       = 'Manual';
+    
     protected $fillable = [
         'uuid',
         'account_id',
         'company_id',
+        'create_method',
         'first_name',
         'last_name',
         'country_code',
@@ -147,7 +151,7 @@ class Contact extends Model
     public function getActivityAttribute()
     {
         $calls = Call::where('contact_id', $this->id)
-                     ->orderBy('created_at', 'ASC')
+                     ->orderBy('created_at', 'DESC')
                      ->get();
 
         //
@@ -171,13 +175,13 @@ class Contact extends Model
             $call->recording = $recordingMap[$call->id] ?? null;
         }
 
-        $activities = array_merge([
+        $activities = array_merge($calls->toArray(), [
             [
                 'id'         => $this->id,
                 'kind'       => 'ActivityCreateContact',
                 'created_at' => $this->created_at
             ],
-        ], $calls->toArray());
+        ]);
 
         //
         //  Add sessions
@@ -186,10 +190,10 @@ class Contact extends Model
         $activities = array_merge($sessions->toArray(), $activities);
 
         //
-        //  Order by create date, asc
+        //  Order by create date, desc
         //    
         usort($activities, function($a, $b){
-            return $a['created_at'] <= $b['created_at'] ? -1 : 1;
+            return $a['created_at'] >= $b['created_at'] ? -1 : 1;
         });
 
         return [

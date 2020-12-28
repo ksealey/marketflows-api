@@ -23,7 +23,6 @@ class AddKeypadConversionsToPhoneNumberConfigsTable extends Migration
             $table->string('keypress_success_message', 255)->nullable()->after('keypress_error_message');
             $table->string('keypress_failure_message', 255)->nullable()->after('keypress_success_message');
 
-
             $table->boolean('keypress_conversion_enabled')->default(0)->after('whisper_message');
             $table->tinyInteger('keypress_conversion_key_converted')->nullable()->after('keypress_conversion_enabled');
             $table->tinyInteger('keypress_conversion_key_unconverted')->nullable()->after('keypress_conversion_key_converted');
@@ -39,7 +38,8 @@ class AddKeypadConversionsToPhoneNumberConfigsTable extends Migration
             $table->tinyInteger('keypress_qualification_key_potential')->nullable()->after('keypress_qualification_key_qualified');
             $table->tinyInteger('keypress_qualification_key_customer')->nullable()->after('keypress_qualification_key_potential');
             $table->tinyInteger('keypress_qualification_key_unqualified')->nullable()->after('keypress_qualification_key_customer');
-            $table->tinyInteger('keypress_qualification_attempts')->nullable()->after('keypress_qualification_key_unqualified');
+            $table->tinyInteger('keypress_qualification_key_unknown')->nullable()->after('keypress_qualification_key_unqualified');
+            $table->tinyInteger('keypress_qualification_attempts')->nullable()->after('keypress_qualification_key_unknown');
             $table->tinyInteger('keypress_qualification_timeout')->nullable()->after('keypress_qualification_attempts');
             $table->string('keypress_qualification_directions_message', 255)->nullable()->after('keypress_qualification_timeout');
             $table->string('keypress_qualification_error_message', 255)->nullable()->after('keypress_qualification_directions_message');
@@ -57,8 +57,14 @@ class AddKeypadConversionsToPhoneNumberConfigsTable extends Migration
             $table->dropColumn('keypress_message');
         });
         
+        Schema::table('contacts', function(Blueprint $table){
+            $table->string('create_method', 32)->after('company_id');
+            $table->string('lead_status', 32)->nullable()->default('Unknown')->after('country');
+            $table->string('last_lead_status', 32)->nullable()->after('lead_status');
+        });
+
         Schema::table('calls', function(Blueprint $table){
-            $table->string('lead_status', 16)->nullable()->default('Unknown')->after('converted_at');
+            $table->integer('billable_duration')->unsigned()->nullable()->after('duration');
         });
     }
 

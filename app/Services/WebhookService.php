@@ -30,14 +30,12 @@ class WebhookService
         try{
             $client      = App::make('HTTPClient');
             $fieldsKey   = $method == 'GET' ? 'query' : 'form_params';
-            $contentType = $method == 'GET' ? 'application/text' : 'application/x-www-form-urlencoded';  
             $response    = $client->request($method, $url, [
                 'headers' => [
-                    'X-Sender'     => 'MarketFlows',
-                    'Content-Type' => $contentType
+                    'X-Sender'     => 'MarketFlows'
                 ],
-                $fieldsKey         => $data,
-                'connect_timeout' => 5
+                'json'            => $data,
+                'connect_timeout' => 10
             ]);
             $ok         = true;
             $statusCode = $response->getStatusCode();

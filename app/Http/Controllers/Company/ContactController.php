@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use App\Models\Company;
 use App\Models\Company\Call;
@@ -17,12 +18,15 @@ class ContactController extends Controller
         'contacts.id',
         'contacts.first_name',
         'contacts.last_name',
+        'contacts.email',
         'contacts.country_code',
         'contacts.number',
         'contacts.city',
         'contacts.state',
         'contacts.zip',
         'contacts.country',
+        'contacts.lead_status',
+        'contacts.last_lead_status',
         'contacts.created_at',
         'contacts.updated_at',
         'contact_call_count.call_count',
@@ -64,6 +68,9 @@ class ContactController extends Controller
         $rules = [
             'first_name' => 'bail|max:32',
             'last_name'  => 'bail|max:32',
+            'email'      => ['bail', 'nullable', 'email', 'max:128', Rule::unique('contacts')->where(function ($query) use($company){
+                return $query->where('company_id', $contact->company_id);
+            })],
             'number'     => 'bail|required|digits_between:10,13',
             'city'       => 'bail|max:64',
             'state'      => 'bail|max:64',
@@ -105,6 +112,7 @@ class ContactController extends Controller
             'uuid'       => Str::uuid(),
             'account_id' => $company->account_id,
             'company_id' => $company->id,
+            'create_method' => Contact::CREATE_METHOD_MANUAL,
             'first_name' => $request->first_name,
             'last_name'  => $request->last_name,
             'country_code' => $countryCode,
@@ -140,6 +148,11 @@ class ContactController extends Controller
         $rules = [
             'first_name' => 'bail|max:32',
             'last_name'  => 'bail|max:32',
+            'email'      => ['bail', 'nullable', 'email', 'max:128', Rule::unique('contacts')->where(function ($query) use($contact){
+                return $query->where('company_id', $contact->company_id)
+                             ->where('id', '!=', $contact->id);
+            })],
+            'lead_status'=> 'bail|nullable|in:Qualified,Unqualified,Customer,Potential,Unknown'
         ];
 
         $validator = validator($request->input(), $rules);
@@ -148,15 +161,22 @@ class ContactController extends Controller
                 'error' =>  $validator->errors()->first()
             ], 400);
         }
-
-        //
-        //  Make sure no contact exists with this phone
-        //
         
-        if( $request->has('first_name') )
+        if( $request->filled('first_name') )
             $contact->first_name = $request->first_name;
-        if( $request->has('last_name') )
+
+        if( $request->filled('last_name') )
             $contact->last_name = $request->last_name;
+
+        if( $request->has('email') ){
+            $contact->email = $request->email ?: null;
+        }
+        
+        if( $request->has('lead_status') ){
+            if( $contact->lead_status )
+                $contact->last_lead_status = $contact->lead_status;
+            $contact->lead_status = $request->lead_status;
+        }
 
         $contact->updated_by = $request->user()->id;
         $contact->save();

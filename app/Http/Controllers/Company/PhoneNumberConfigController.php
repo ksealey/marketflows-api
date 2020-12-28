@@ -76,10 +76,12 @@ class PhoneNumberConfigController extends Controller
             'keypress_conversion_error_message'     => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_conversion_enabled; }), 'max:255'],
             'keypress_conversion_success_message'   => ['bail', 'nullable', 'max:255'],
             'keypress_conversion_failure_message'   => ['bail', 'nullable', 'max:255'],
-            'keypress_qualification_key_qualified'  => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_potential,keypress_qualification_key_customer,keypress_qualification_key_unqualified'],
-            'keypress_qualification_key_potential'  => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_customer,keypress_qualification_key_unqualified'],
-            'keypress_qualification_key_customer'   => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_unqualified'],
-            'keypress_qualification_key_unqualified'=> ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_customer'],
+            'keypress_qualification_key_qualified'  => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_potential,keypress_qualification_key_customer,keypress_qualification_key_unqualified,keypress_qualification_key_unknown'],
+            'keypress_qualification_key_potential'  => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_customer,keypress_qualification_key_unqualified,keypress_qualification_key_unknown'],
+            'keypress_qualification_key_customer'   => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_unqualified,keypress_qualification_key_unknown'],
+            'keypress_qualification_key_unqualified'=> ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_customer,keypress_qualification_key_unknown'],
+            'keypress_qualification_key_unknown'    => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_customer,keypress_qualification_key_unqualified'],
+            
             'keypress_qualification_attempts'       => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'numeric', 'min:1', 'max:10'],
             'keypress_qualification_timeout'        => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'numeric', 'min:5', 'max:30'],
             'keypress_qualification_directions_message' => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'max:255'],
@@ -163,6 +165,7 @@ class PhoneNumberConfigController extends Controller
             'keypress_qualification_key_potential'          => $request->filled('keypress_qualification_key_potential') ? $request->keypress_qualification_key_potential : 2,
             'keypress_qualification_key_customer'           => $request->filled('keypress_qualification_key_customer') ? $request->keypress_qualification_key_customer : 3,
             'keypress_qualification_key_unqualified'        => $request->filled('keypress_qualification_key_unqualified') ? $request->keypress_qualification_key_unqualified : 4,
+            'keypress_qualification_key_unknown'            => $request->filled('keypress_qualification_key_unknown') ? $request->keypress_qualification_key_unknown : 0,
             'keypress_qualification_attempts'               => $request->filled('keypress_qualification_attempts') ? $request->keypress_qualification_attempts : 3,
             'keypress_qualification_timeout'                => $request->filled('keypress_qualification_timeout') ? $request->keypress_qualification_timeout : 10,
             'keypress_qualification_directions_message'     => $request->keypress_qualification_directions_message ?: null,
@@ -214,10 +217,12 @@ class PhoneNumberConfigController extends Controller
             'keypress_conversion_error_message'     => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_conversion_enabled; }), 'max:255'],
             'keypress_conversion_success_message'   => ['bail', 'nullable', 'max:255'],
             'keypress_conversion_failure_message'   => ['bail', 'nullable', 'max:255'],
-            'keypress_qualification_key_qualified'  => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_potential,keypress_qualification_key_customer,keypress_qualification_key_unqualified'],
-            'keypress_qualification_key_potential'  => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_customer,keypress_qualification_key_unqualified'],
-            'keypress_qualification_key_customer'   => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_unqualified'],
-            'keypress_qualification_key_unqualified'=> ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_customer'],
+            
+            'keypress_qualification_key_qualified'  => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_potential,keypress_qualification_key_customer,keypress_qualification_key_unqualified,keypress_qualification_key_unknown'],
+            'keypress_qualification_key_potential'  => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_customer,keypress_qualification_key_unqualified,keypress_qualification_key_unknown'],
+            'keypress_qualification_key_customer'   => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_unqualified,keypress_qualification_key_unknown'],
+            'keypress_qualification_key_unqualified'=> ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_customer,keypress_qualification_key_unknown'],
+            'keypress_qualification_key_unknown'    => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'digits:1', 'different:keypress_qualification_key_qualified,keypress_qualification_key_potential,keypress_qualification_key_customer,keypress_qualification_key_unqualified'],
             'keypress_qualification_attempts'       => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'numeric', 'min:1', 'max:10'],
             'keypress_qualification_timeout'        => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'numeric', 'min:5', 'max:30'],
             'keypress_qualification_directions_message' => ['bail', Rule::requiredIf(function() use($request){ return !!$request->keypress_qualification_enabled; }), 'max:255'],
@@ -347,6 +352,9 @@ class PhoneNumberConfigController extends Controller
         }
         if( $request->filled('keypress_qualification_key_unqualified') ){
             $phoneNumberConfig->keypress_qualification_key_unqualified = $request->keypress_qualification_key_unqualified;
+        }
+        if( $request->filled('keypress_qualification_key_unknown') ){
+            $phoneNumberConfig->keypress_qualification_key_unknown = $request->keypress_qualification_key_unknown;
         }
         if( $request->filled('keypress_qualification_attempts') ){
             $phoneNumberConfig->keypress_qualification_attempts = $request->keypress_qualification_attempts;
