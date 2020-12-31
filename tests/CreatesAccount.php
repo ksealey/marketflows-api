@@ -244,14 +244,14 @@ trait CreatesAccount
                 factory(Contact::class, $localCallsPerNumber)->create([
                     'account_id'      => $company->account_id,
                     'company_id'      => $company->id
-                ])->each(function($contact) use($phoneNumber){
+                ])->each(function($contact, $idx) use($phoneNumber){
                     factory(Call::class, 1)->create([
                         'contact_id'      => $contact->id,
                         'account_id'      => $phoneNumber->account_id,
                         'company_id'      => $phoneNumber->company_id,
                         'phone_number_id' => $phoneNumber->id,
                         'phone_number_name' => $phoneNumber->name,
-                        'duration'        => mt_rand(0, 59),
+                        'duration'        => mt_rand(1, 60),
                         'type'            => 'Local',
                         'created_at'      => now()->subMinutes(5),
                         'recording_enabled' => 1
@@ -290,7 +290,7 @@ trait CreatesAccount
                         'company_id'      => $phoneNumber->company_id,
                         'phone_number_id' => $phoneNumber->id,
                         'phone_number_name'=> $phoneNumber->name,
-                        'duration'        => mt_rand(0, 59),
+                        'duration'        => mt_rand(1, 60),
                         'type'            => 'Toll-Free',
                         'recording_enabled' => 1,
                         'created_at'      => now()->subMinutes(5)

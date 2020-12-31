@@ -721,12 +721,6 @@ class IncomingCallController extends Controller
         }
 
         //
-        //  Grab duration
-        //
-        $call->duration          = intval($request->CallDuration);
-        $call->billable_duration = $call->duration;
-
-        //
         //  Flag any that may have not made it to the agent as abandoned
         //
         if( $request->CallStatus === 'canceled' || $call->status === 'Ringing' ){

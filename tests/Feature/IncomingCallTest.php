@@ -233,9 +233,7 @@ class IncomingCallTest extends TestCase
         //  
         //  End Conference
         //
-        $callDuration = mt_rand(1, 1000);
         $response = $this->json('POST', route('incoming-call-cleanup'), [
-            'CallDuration'  => $callDuration,
             'CallSid'       => $incomingCall->CallSid,
             'AccountSid'    => $incomingCall->AccountSid,
             'ParentCallSid' => $incomingCall->CallSid,
@@ -244,7 +242,6 @@ class IncomingCallTest extends TestCase
         $this->assertDatabaseHas('calls', [
             'external_id' => $incomingCall->CallSid,
             'status'      => 'In Progress',
-            'duration'    => $callDuration
         ]);
         
         $response = $this->json('POST', $conferenceEndUrl, [
@@ -255,8 +252,7 @@ class IncomingCallTest extends TestCase
         
         $this->assertDatabaseHas('calls', [
             'external_id' => $incomingCall->CallSid,
-            'status'      => 'Completed',
-            'duration'    => $callDuration
+            'status'      => 'Completed'
         ]);
 
         Event::assertDispatched(CallEvent::class, function(CallEvent $event) use($company){
@@ -557,9 +553,7 @@ class IncomingCallTest extends TestCase
         //  
         //  End Conference for caller
         //
-        $callDuration = mt_rand(1, 1000);
         $response = $this->json('POST', route('incoming-call-cleanup'), [
-            'CallDuration'  => $callDuration,
             'CallSid'       => $incomingCall->CallSid,
             'AccountSid'    => $incomingCall->AccountSid,
             'ParentCallSid' => $incomingCall->CallSid,
@@ -568,7 +562,6 @@ class IncomingCallTest extends TestCase
         $this->assertDatabaseHas('calls', [
             'external_id' => $incomingCall->CallSid,
             'status'      => 'In Progress',
-            'duration'    => $callDuration
         ]);
         
         $response = $this->json('POST', $conferenceEndUrl, [
@@ -580,7 +573,6 @@ class IncomingCallTest extends TestCase
         $this->assertDatabaseHas('calls', [
             'external_id' => $incomingCall->CallSid,
             'status'      => 'Completed',
-            'duration'    => $callDuration
         ]);
 
         Event::assertNotDispatched(CallEvent::class, function(CallEvent $event) use($company){
@@ -1753,5 +1745,111 @@ class IncomingCallTest extends TestCase
         ]);
 
         Event::assertDispatched(CallEvent::class);
+    }
+
+    /**
+     * Test that calls store duration
+     * 
+     * @group incoming-calls
+     */
+    public function testCallDurationSaves()
+    {
+        $company     = $this->createCompany();
+        $config      = $this->createConfig($company, [
+            'recording_enabled'      => true,
+            'greeting_enabled'       => true,
+            'greeting_message_type'  => 'TEXT',
+            'keypress_enabled'       => false,
+            'keypress_conversion_enabled' => false,
+            'keypress_qualification_enabled' => false,
+            'whisper_enabled'        => true,
+            'whisper_message'        => 'call from ${caller_number}'
+        ]);
+        $phoneNumber = $this->createPhoneNumber($company, $config);
+
+        //
+        //  Make call
+        //
+        $incomingCall = factory('Tests\Models\TwilioIncomingCall')->make([
+            'To'   => $phoneNumber->e164Format()
+        ]);
+        $response = $this->json('POST', route('incoming-call'), $incomingCall->toArray());
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/xml');
+
+        $this->assertDatabaseHas('contacts', [
+            'country_code' => PhoneNumber::countryCode($incomingCall->From),
+            'number'       => PhoneNumber::number($incomingCall->From)
+        ]);
+
+        $this->assertDatabaseHas('calls', [
+            'account_id'            => $this->account->id,
+            'company_id'            => $company->id,
+            'phone_number_id'       => $phoneNumber->id,
+            'phone_number_name'     => $phoneNumber->name,
+            'type'                  => $phoneNumber->type,
+            'category'              => $phoneNumber->category,
+            'sub_category'          => $phoneNumber->sub_category,
+            'external_id'           => $incomingCall->CallSid,
+            'direction'             => ucfirst($incomingCall->Direction),
+            'status'                => 'Ringing',
+            'source'                => $phoneNumber->source,
+            'medium'                => $phoneNumber->medium,
+            'content'               => $phoneNumber->content,
+            'campaign'              => $phoneNumber->campaign,
+            'recording_enabled'     => $config->recording_enabled,
+            'forwarded_to'          => $config->forwardToPhoneNumber(),
+            'duration'              => null,
+            'first_call'            => true
+        ]);
+
+        $call = Call::where('external_id', $incomingCall->CallSid)->first();
+        
+        //  Answer call
+        $childCallSid = str_random(40);
+        $this->mock(TwilioClient::class, function($mock) use($childCallSid){
+            $mock->shouldReceive('calls')
+                ->with($childCallSid)
+                ->andReturn($mock);
+
+            $mock->shouldReceive('update');
+        });
+        
+        $response = $this->json('POST', route('dialed-call-collect-accept'), [
+            'AccountSid'             => $incomingCall->AccountSid,
+            'ParentCallSid'          => $incomingCall->CallSid,
+            'CallSid'                => $childCallSid,
+            'Digits'                 => 1,
+            'phone_number_config_id' => $config->id
+        ]);
+        $response->assertStatus(200);
+        $response->assertSee('<Response/>', false);
+
+        //  Move to conference
+        $response = $this->json('POST', route('dialed-call-ended'), [
+            'AccountSid'     => $incomingCall->AccountSid,
+            'CallSid'        => $incomingCall->CallSid,
+            'DialCallStatus' => 'completed'
+        ]);
+        $response->assertStatus(200);
+
+        //  End the call
+        $response = $this->post(route('incoming-call-cleanup'), $incomingCall->toArray());
+
+        //  End conference
+        $response = $this->json('POST', route('incoming-call-conference-ended'), [
+            'ParentCallSid'             => $incomingCall->CallSid,
+            'AccountSid'                => $incomingCall->AccountSid,
+            'phone_number_config_id'    => $config->id
+        ]);
+
+        $this->assertDatabaseHas('calls', [
+            'id'                            => $call->id,
+            'external_id'                   => $incomingCall->CallSid,
+            'status'                        => 'Completed',
+            'duration'                      => $call->current_duration,
+            'phone_number_id'               => $phoneNumber->id,
+            'forwarded_to'                  => $config->forwardToPhoneNumber(),
+        ]);
     }
 }

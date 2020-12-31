@@ -409,7 +409,7 @@ class CompanyPluginTest extends TestCase
         //
         //  Complete call
         //
-        $response = $this->json('POST', route('incoming-call-duration', $incomingCall->toArray()));
+        $response = $this->json('POST', route('incoming-call-cleanup', $incomingCall->toArray()));
     }
 
     /**
@@ -542,6 +542,6 @@ class CompanyPluginTest extends TestCase
         //
         //  Complete call
         //
-        $response = $this->json('POST', route('incoming-call-duration', $incomingCall->toArray()));
+        $response = $this->json('POST', route('incoming-call-cleanup', $incomingCall->toArray()));
     }
 }

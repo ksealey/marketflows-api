@@ -51,10 +51,11 @@ class PhoneNumberConfigTest extends TestCase
         $variables = [
             'first_name'    => $firstName,
             'last_name'     => $lastName,
+            'company_name'  => $company->name
         ];
 
         $this->assertEquals(
-            $config->message('keypress_directions_message',$variables),
+            $config->message('keypress_directions_message', $variables),
             "Hello {$firstName} {$lastName}. Thank you for calling {$company->name}. \${Undefined_Variable}"
         );
     }

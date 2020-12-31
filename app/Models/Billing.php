@@ -146,11 +146,11 @@ class Billing extends Model
                 $query = DB::table('calls')->select([
                             DB::raw('SUM(
                                 CASE 
-                                    WHEN billable_duration = 0
+                                    WHEN duration = 0
                                         THEN 0
-                                    WHEN billable_duration <= 60
+                                    WHEN duration <= 60
                                         THEN 1
-                                    ELSE CEIL(billable_duration / 60)
+                                    ELSE CEIL(duration / 60)
                                 END
                             ) as total_minutes')
                         ])

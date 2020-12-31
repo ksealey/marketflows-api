@@ -77,7 +77,6 @@ class AudioClip extends Model
     public function isInUse()
     {
         return PhoneNumberConfig::where('greeting_audio_clip_id', $this->id)
-                                ->orWhere('keypress_audio_clip_id', $this->id)
                                 ->count() ? true : false;
     }
 }

@@ -62,10 +62,6 @@ class AddKeypadConversionsToPhoneNumberConfigsTable extends Migration
             $table->string('lead_status', 32)->nullable()->default('Unknown')->after('country');
             $table->string('last_lead_status', 32)->nullable()->after('lead_status');
         });
-
-        Schema::table('calls', function(Blueprint $table){
-            $table->integer('billable_duration')->unsigned()->nullable()->after('duration');
-        });
     }
 
     /**

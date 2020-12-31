@@ -742,9 +742,6 @@ Route::prefix('/')->group(function(){
                         Route::post('/collect-accept', 'IncomingCallController@handleDialedCallCollectAccept')
                             ->name('dialed-call-collect-accept');
 
-                        Route::get('/agent-join-conference', 'IncomingCallController@handleDialedCallAgentJoinConference')
-                            ->name('dialed-call-agent-join-conference');
-
                         Route::post('/ended', 'IncomingCallController@handleDialedCallEnded')
                             ->name('dialed-call-ended');
 
@@ -763,39 +760,6 @@ Route::prefix('/')->group(function(){
 
                     Route::post('/cleanup', 'IncomingCallController@handleCleanup')
                             ->name('incoming-call-cleanup');
-
-                    /*
-
-                    Route::post('/start-conference', 'IncomingCallController@handleStartConference')
-                            ->name('incoming-call-start-conference');
-
-                    Route::post('/join-conference', 'IncomingCallController@handleCallerJoinConference')
-                            ->name('incoming-call-caller-join-conference');*/
-
-
-                    
-/*
-                    Route::post('/status-updated', 'IncomingCallController@handleIncomingCallStatusUpdated')
-                            ->name('incoming-call-status-updated');
-
-                    Route::post('/dialed-call-status-updated', 'IncomingCallController@handleIncomingCallDialedCallStatusUpdated')
-                            ->name('incoming-call-dialed-status-updated');
-
-                    Route::post('/dialed-call-join-conference', 'IncomingCallController@handleIncomingCallDialedJoinConference')
-                            ->name('incoming-call-dialed-join-conference');
-
-                    
-
-                    
-
-                    Route::post('/completed', 'IncomingCallController@handleCompletedCall')
-                            ->name('incoming-call-completed');
-
-                    Route::post('/duration', 'IncomingCallController@handleCompletedCallDuration')
-                            ->name('incoming-call-duration');
-
-                    Route::post('/recording-available', 'IncomingCallController@handleRecordingAvailable')
-                            ->name('incoming-call-recording-available');*/
                 });
 
                 /*

@@ -5,6 +5,7 @@ namespace App\Models\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use DB;
+use \Carbon\Carbon;
 
 class Call extends Model
 {
@@ -29,7 +30,6 @@ class Call extends Model
         'direction',
         'status',
         'duration',
-        'billable_duration',
         'first_call',
 
         'source',
@@ -230,5 +230,10 @@ class Call extends Model
     public function getKindAttribute()
     {
         return 'Call';
+    }
+
+    public function getCurrentDurationAttribute()
+    {
+        return now()->format('U') - (new Carbon($this->created_at))->format('U');
     }
 }

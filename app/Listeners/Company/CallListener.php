@@ -29,7 +29,12 @@ class CallListener implements ShouldQueue
      */
     public function handle($event)
     {
-        $call    = $event->call;
+        $call = $event->call;
+        if( $event->name == Plugin::EVENT_CALL_END ){
+            $call->duration = $call->current_duration;
+            $call->save();
+        }
+
         $company = $call->company;
         $contact = $call->contact;
         $session = null;
