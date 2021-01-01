@@ -235,7 +235,7 @@ class PhoneNumberConfig extends Model
             'potential_key'         => $this->keypress_qualification_key_potential,
             'customer_key'          => $this->keypress_qualification_key_customer,
             'unqualified_key'       => $this->keypress_qualification_key_unqualified,
-            'unqualified_key'       => $this->keypress_qualification_key_unqualified,
+            'unknown_key'           => $this->keypress_qualification_key_unknown,
             'qualification_attempts'=> $this->keypress_qualification_attempts,
             'qualification_timeout' => $this->keypress_qualification_timeout
         ];
