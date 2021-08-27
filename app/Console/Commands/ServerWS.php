@@ -6,13 +6,10 @@ use Illuminate\Console\Command;
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
-use Ratchet\Wamp\WampServer;
 use \React\EventLoop\Factory as ReactEventLoopFactory;
 use \React\ZMQ\Context as ReactZMQContext;
 use \React\Socket\Server as ReactSocketServer;
 use App\WebSockets\WebSocketApp;
-use App\WebSockets\Http\Auth as HttpAuth;
-use App\WebSockets\Controllers\AlertController;
 use ZMQ;
 use ZMQSocket;
 
@@ -56,7 +53,7 @@ class ServerWS extends Command
         $context   = new ReactZMQContext($eventLoop);
         $pull      = $context->getSocket(ZMQ::SOCKET_PULL);
         $pullPort  = config('websockets.pull.port');
-        $pull->bind('tcp://0.0.0.0:' . $pullPort); // Allow connections from anywhere on port 5555
+        $pull->bind('tcp://0.0.0.0:' . $pullPort); // Allow connections from anywhere on port
         $pull->on('message', array($app, 'onEvent'));
 
         // Set up our WebSocket server for clients wanting real-time updates

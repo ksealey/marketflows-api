@@ -16,7 +16,7 @@ use App;
 
 class PaymentMethodController extends Controller
 {
-    
+    /*  */
     public $fields = [
         'payment_methods.last_4',
         'payment_methods.brand',

@@ -20,6 +20,7 @@ use DB;
 
 class CompanyController extends Controller
 {
+    /* Listable fields */
     protected $fields = [
         'companies.id',
         'companies.name',
@@ -90,6 +91,7 @@ class CompanyController extends Controller
         $user    = $request->user();
         $account = $user->account;
 
+        //  Create company using account defaults if values not provided
         $company = Company::create([
             'account_id'                    => $user->account_id,
             'user_id'                       => $user->id,
@@ -201,20 +203,23 @@ class CompanyController extends Controller
     {
         $user = $request->user();
 
+        //  Push a job to delete company resources. Phone number, files, etc.
         DeleteCompanyJob::dispatch($user, $company, true);
         
+        //  Soft delete company and tie to user that deleted it
         $company->deleted_by = $user->id;
         $company->deleted_at = now();
         $company->save();
 
-        return response([
-            'message' => 'Deleted'
-        ]);
+        return response([ 'message' => 'Deleted' ]);
     }
 
     /**
      * Export results
      * 
+     * @param Request $request
+     * 
+     * @return Response
      */
     public function export(Request $request)
     {

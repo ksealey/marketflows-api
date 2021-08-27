@@ -17,7 +17,8 @@ RUN composer install && \
     chmod -R ug+wrx /var/www/app
 
 # Setup cron
-RUN chmod 0644 /etc/cron.d/laravel-cron && \
+RUN apt-get install cron -y && \
+    chmod 0644 /etc/cron.d/laravel-cron && \
     crontab /etc/cron.d/laravel-cron
 
 # Install and setup supervisor to manage queue workers
